@@ -1,4 +1,5 @@
 import { appRouter, createTRPCContext } from "@gmacko/api";
+import { ensurePersonalWorkspace } from "@gmacko/api/workspace";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -10,6 +11,12 @@ export async function requireTripsWorkspace() {
   if (!session?.user) {
     redirect("/sign-in");
   }
+
+  await ensurePersonalWorkspace({
+    userId: session.user.id,
+    userName: session.user.name ?? "",
+    userEmail: session.user.email,
+  });
 
   const requestHeaders = new Headers(await headers());
   const caller = appRouter.createCaller(

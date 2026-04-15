@@ -18,6 +18,10 @@
     "./deprecation": {
       "types": "./dist/middleware/deprecation.d.ts",
       "default": "./src/middleware/deprecation.ts"
+    },
+    "./workspace": {
+      "types": "./dist/workspace/index.d.ts",
+      "default": "./src/workspace/index.ts"
     }
   },
   "license": "MIT",
