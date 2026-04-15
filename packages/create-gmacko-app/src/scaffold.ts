@@ -811,8 +811,6 @@ export default defineConfig({
 
 export const cloudflareEnvSchema = z.object({
   APP_ENV: z.enum(["development", "staging", "production"]).default("production"),
-  CLOUDFLARE_ACCOUNT_ID: z.string().min(1),
-  CLOUDFLARE_API_TOKEN: z.string().min(1),
 });
 
 export type CloudflareEnv = z.infer<typeof cloudflareEnvSchema>;
@@ -909,16 +907,18 @@ This app includes an experimental \`vinext\` lane for Cloudflare Workers.
 ## Commands
 
 \`\`\`bash
+pnpm dlx wrangler login
+
 pnpm --filter @gmacko/nextjs dev:vinext
 pnpm --filter @gmacko/nextjs build:vinext
 pnpm --filter @gmacko/nextjs deploy:cloudflare:staging
 pnpm --filter @gmacko/nextjs deploy:cloudflare:production
 \`\`\`
 
-## Required Env
+## Auth
 
-- \`CLOUDFLARE_ACCOUNT_ID\`
-- \`CLOUDFLARE_API_TOKEN\`
+- Default local path: authenticate Wrangler once with \`wrangler login\`.
+- Optional CI/non-interactive path: provide \`CLOUDFLARE_ACCOUNT_ID\` and \`CLOUDFLARE_API_TOKEN\`.
 
 ## Notes
 

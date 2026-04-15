@@ -143,14 +143,10 @@ if [ -f "$ROOT_DIR/apps/nextjs/wrangler.jsonc" ]; then
 
   if command -v wrangler >/dev/null 2>&1; then
     ok "Wrangler CLI available"
+    ok "Wrangler authentication can use OAuth login or optional API-token env vars"
   else
     warn "Wrangler CLI not installed; vinext deploy workflows will be unavailable"
   fi
-
-  check_env_group \
-    "Cloudflare Workers env values" \
-    "CLOUDFLARE_ACCOUNT_ID" \
-    "CLOUDFLARE_API_TOKEN"
 fi
 
 if [ -d "$ROOT_DIR/packages/operator-core" ] || [ -d "$ROOT_DIR/packages/trpc-cli" ] || grep -q '"gmacko-app"' "$ROOT_DIR/.mcp.json" 2>/dev/null; then

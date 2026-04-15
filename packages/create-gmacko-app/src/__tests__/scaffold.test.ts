@@ -383,8 +383,8 @@ describe("create-gmacko-app scaffold", () => {
       expect(wranglerConfig).toContain('"APP_ENV": "production"');
       expect(wranglerConfig).toContain('"env"');
       expect(wranglerConfig).toContain('"staging"');
-      expect(cloudflareEnv).toContain("CLOUDFLARE_ACCOUNT_ID");
-      expect(cloudflareEnv).toContain("CLOUDFLARE_API_TOKEN");
+      expect(cloudflareEnv).not.toContain("CLOUDFLARE_ACCOUNT_ID");
+      expect(cloudflareEnv).not.toContain("CLOUDFLARE_API_TOKEN");
       expect(envExample).toContain("CLOUDFLARE_ACCOUNT_ID");
       expect(envExample).toContain("CLOUDFLARE_API_TOKEN");
       expect(cloudflareReadme).toContain(
@@ -407,8 +407,10 @@ describe("create-gmacko-app scaffold", () => {
       expect(appLocalCloudflareReadme).toContain(
         "pnpm --filter @gmacko/nextjs deploy:cloudflare:staging",
       );
-      expect(appLocalCloudflareReadme).toContain("CLOUDFLARE_ACCOUNT_ID");
-      expect(appLocalCloudflareReadme).toContain("CLOUDFLARE_API_TOKEN");
+      expect(appLocalCloudflareReadme).toContain("wrangler login");
+      expect(appLocalCloudflareReadme).toContain(
+        "Optional CI/non-interactive path",
+      );
     }, 120000);
 
     it("should scaffold stronger Expo development-build defaults", async () => {
@@ -1292,13 +1294,13 @@ describe("create-gmacko-app scaffold", () => {
       expect(doctorScript).toContain("Background jobs");
       expect(doctorScript).toContain("Rate limits");
       expect(doctorScript).toContain("Compliance export hooks");
-      expect(doctorScript).toContain("Cloudflare Workers env values");
+      expect(doctorScript).not.toContain("Cloudflare Workers env values");
       expect(doctorScript).toContain(
         ".forgegraph.yaml still has placeholder ForgeGraph values; update server, domains, and stage node IDs before deploying",
       );
       expect(doctorScript).toContain("Cloudflare Workers lane detected");
       expect(doctorScript).toContain("Wrangler CLI available");
-      expect(doctorScript).toContain("Cloudflare Workers env values");
+      expect(doctorScript).not.toContain("Cloudflare Workers env values");
       expect(envExample).toContain("# CORE APP ENV");
       expect(envExample).toContain("# WEB APP ENV");
       expect(envExample).toContain("# MOBILE APP ENV");

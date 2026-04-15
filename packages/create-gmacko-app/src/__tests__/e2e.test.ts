@@ -350,9 +350,6 @@ describe.skipIf(SKIP_E2E)("create-gmacko-app E2E", () => {
       expect(doctorResult.success).toBe(true);
       expect(doctorResult.stdout).toContain("Cloudflare Workers lane detected");
       expect(doctorResult.stdout).toContain("Wrangler CLI available");
-      expect(doctorResult.stdout).toContain(
-        "Cloudflare Workers credentials present",
-      );
       expect(doctorResult.stdout).not.toContain(
         "CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN are missing",
       );
@@ -368,8 +365,8 @@ describe.skipIf(SKIP_E2E)("create-gmacko-app E2E", () => {
       expect(wranglerConfig).toContain('"main": "./worker/index.ts"');
       expect(wranglerConfig).toContain('"APP_ENV": "production"');
       expect(wranglerConfig).toContain('"staging"');
-      expect(cloudflareEnv).toContain("CLOUDFLARE_ACCOUNT_ID");
-      expect(cloudflareEnv).toContain("CLOUDFLARE_API_TOKEN");
+      expect(cloudflareEnv).not.toContain("CLOUDFLARE_ACCOUNT_ID");
+      expect(cloudflareEnv).not.toContain("CLOUDFLARE_API_TOKEN");
     });
   });
 

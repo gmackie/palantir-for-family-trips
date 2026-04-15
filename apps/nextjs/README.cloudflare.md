@@ -14,10 +14,10 @@ pnpm --filter @gmacko/nextjs deploy:cloudflare:staging
 pnpm --filter @gmacko/nextjs deploy:cloudflare:production
 ```
 
-## Required Env
+## Auth
 
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
+- Default local path: run `pnpm dlx wrangler login` once and reuse the OAuth session.
+- Optional CI/non-interactive path: provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
 
 ## Domain
 
