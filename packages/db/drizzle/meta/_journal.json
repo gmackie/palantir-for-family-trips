@@ -8,6 +8,13 @@
       "when": 1776293343188,
       "tag": "0000_misty_wrecking_crew",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776297023103,
+      "tag": "0001_heavy_next_avengers",
+      "breakpoints": true
     }
   ]
 }

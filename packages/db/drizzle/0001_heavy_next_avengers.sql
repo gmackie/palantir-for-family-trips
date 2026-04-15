@@ -1,0 +1,1 @@
+ALTER TABLE "application_settings" ADD COLUMN "tenancy_mode" text DEFAULT 'single-tenant' NOT NULL;

@@ -22,7 +22,119 @@ export const workspaceRlsTargets = [
   },
   { tableName: "workspace_subscription", workspaceColumn: "workspace_id" },
   { tableName: "workspace_usage_rollup", workspaceColumn: "workspace_id" },
+  { tableName: "trip", workspaceColumn: "workspace_id" },
 ] as const;
+
+/**
+ * Trip child tables reference `trip_id` and inherit workspace scope from their
+ * parent trip row. The policy predicate joins through `trip` to check workspace
+ * membership.
+ */
+export const tripChildRlsTargets = [
+  { tableName: "trip_segment", tripColumn: "trip_id" },
+  { tableName: "trip_member", tripColumn: "trip_id" },
+  { tableName: "trip_invite", tripColumn: "trip_id" },
+  { tableName: "segment_member", parentTable: "trip_segment" },
+] as const;
+
+function buildTripChildReadPredicate(input: {
+  tableName: string;
+  tripColumn?: string;
+  parentTable?: string;
+}) {
+  if (input.parentTable === "trip_segment") {
+    return `exists (
+  select 1
+  from "trip_segment" segment
+  join "trip" trip on trip.id = segment.trip_id
+  join "workspace_membership" membership on membership.workspace_id = trip.workspace_id
+  where segment.id = "${input.tableName}"."segment_id"
+    and membership.user_id = current_setting('app.user_id', true)
+    and (
+      current_setting('app.workspace_id', true) = ''
+      or membership.workspace_id::text = current_setting('app.workspace_id', true)
+    )
+)`;
+  }
+
+  const tripColumn = input.tripColumn ?? "trip_id";
+  return `exists (
+  select 1
+  from "trip" trip
+  join "workspace_membership" membership on membership.workspace_id = trip.workspace_id
+  where trip.id = "${input.tableName}"."${tripColumn}"
+    and membership.user_id = current_setting('app.user_id', true)
+    and (
+      current_setting('app.workspace_id', true) = ''
+      or membership.workspace_id::text = current_setting('app.workspace_id', true)
+    )
+)`;
+}
+
+function buildTripChildMutationPredicate(input: {
+  tableName: string;
+  tripColumn?: string;
+  parentTable?: string;
+}) {
+  if (input.parentTable === "trip_segment") {
+    return `exists (
+  select 1
+  from "trip_segment" segment
+  join "trip" trip on trip.id = segment.trip_id
+  join "workspace_membership" membership on membership.workspace_id = trip.workspace_id
+  where segment.id = "${input.tableName}"."segment_id"
+    and membership.user_id = current_setting('app.user_id', true)
+    and current_setting('app.workspace_id', true) <> ''
+    and membership.workspace_id::text = current_setting('app.workspace_id', true)
+)`;
+  }
+
+  const tripColumn = input.tripColumn ?? "trip_id";
+  return `exists (
+  select 1
+  from "trip" trip
+  join "workspace_membership" membership on membership.workspace_id = trip.workspace_id
+  where trip.id = "${input.tableName}"."${tripColumn}"
+    and membership.user_id = current_setting('app.user_id', true)
+    and current_setting('app.workspace_id', true) <> ''
+    and membership.workspace_id::text = current_setting('app.workspace_id', true)
+)`;
+}
+
+function buildTripChildPolicyStatements(target: {
+  tableName: string;
+  tripColumn?: string;
+  parentTable?: string;
+}) {
+  const readPredicate = buildTripChildReadPredicate(target);
+  const mutationPredicate = buildTripChildMutationPredicate(target);
+  const selectPolicyName = `${target.tableName}_workspace_select`;
+  const insertPolicyName = `${target.tableName}_workspace_insert`;
+  const updatePolicyName = `${target.tableName}_workspace_update`;
+  const deletePolicyName = `${target.tableName}_workspace_delete`;
+
+  return [
+    buildEnableRlsStatement(target.tableName),
+    buildForceRlsStatement(target.tableName),
+    buildDropPolicyStatement(target.tableName, selectPolicyName),
+    buildDropPolicyStatement(target.tableName, insertPolicyName),
+    buildDropPolicyStatement(target.tableName, updatePolicyName),
+    buildDropPolicyStatement(target.tableName, deletePolicyName),
+    `create policy "${selectPolicyName}" on "${target.tableName}"
+for select
+using (${readPredicate});`,
+    `create policy "${insertPolicyName}" on "${target.tableName}"
+for insert
+with check (${mutationPredicate});`,
+    `create policy "${updatePolicyName}" on "${target.tableName}"
+for update
+using (${mutationPredicate})
+with check (${mutationPredicate});`,
+    `create policy "${deletePolicyName}" on "${target.tableName}"
+for delete
+using (${mutationPredicate});`,
+  ];
+}
 
 type SqlExecutor = {
   execute(statement: unknown): Promise<unknown>;
@@ -135,10 +247,15 @@ export function buildWorkspaceRlsStatements() {
     return tableStatements;
   });
 
+  const tripChildStatements = tripChildRlsTargets.flatMap((target) =>
+    buildTripChildPolicyStatements(target),
+  );
+
   const applicationSettingsPolicyPrefix = "application_settings_platform_admin";
 
   return [
     ...workspaceStatements,
+    ...tripChildStatements,
     buildEnableRlsStatement("application_settings"),
     buildForceRlsStatement("application_settings"),
     buildDropPolicyStatement(
