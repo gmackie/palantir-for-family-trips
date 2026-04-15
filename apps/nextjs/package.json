@@ -6,6 +6,13 @@
     "build": "pnpm with-env next build",
     "clean": "git clean -xdf .cache .next .turbo node_modules playwright-report storybook-static test-results",
     "dev": "pnpm with-env next dev",
+    "dev:vinext": "pnpm prebuild:vinext && pnpm with-env vinext dev --port 3001",
+    "build:vinext": "pnpm prebuild:vinext && pnpm with-env vinext build",
+    "start:vinext": "pnpm with-env vinext start",
+    "prebuild:vinext": "pnpm --dir ../.. --filter @gmacko/nextjs^... build",
+    "deploy:cloudflare": "pnpm deploy:cloudflare:production",
+    "deploy:cloudflare:staging": "pnpm build:vinext && pnpm with-env wrangler deploy --env staging",
+    "deploy:cloudflare:production": "pnpm build:vinext && pnpm with-env wrangler deploy",
     "format": "biome check .",
     "lint": "oxlint .",
     "storybook": "SKIP_ENV_VALIDATION=1 storybook dev -p 6006",
@@ -49,6 +56,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@cloudflare/vite-plugin": "^1.32.3",
     "@gmacko/tailwind-config": "workspace:*",
     "@gmacko/tsconfig": "workspace:*",
     "@playwright/test": "^1.58.2",
@@ -58,11 +66,17 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitejs/plugin-rsc": "^0.5.24",
     "jiti": "^2.6.1",
     "oxlint": "catalog:",
+    "react-server-dom-webpack": "^19.2.5",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",
     "tw-animate-css": "^1.4.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vinext": "^0.0.41",
+    "vite": "catalog:",
+    "wrangler": "^4.83.0"
   }
 }
