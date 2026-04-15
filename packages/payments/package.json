@@ -1,0 +1,30 @@
+{
+  "name": "@gmacko/payments",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "dev": "tsc",
+    "format": "biome check .",
+    "lint": "oxlint .",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+  },
+  "dependencies": {
+    "@gmacko/config": "workspace:*",
+    "stripe": "^20.4.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@gmacko/tsconfig": "workspace:*",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

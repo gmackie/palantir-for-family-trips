@@ -1,123 +1,71 @@
-# Initial Proposal — Group Trip Command Center
+# SaaS Scaffold Proposal
 
-## Background
+This proposal captures the next major expansion of `create-gmacko-app`: turning the template into a real SaaS starter instead of only a framework/infrastructure starter.
 
-The current repo is a Vite + React single-page app: a Palantir-styled "situation dashboard" for a single family trip. State is local (`usePersistedTripState`), and the UI is built from a handful of top-level components (`App`, `CommandMap`, `InspectorRail`) driven by a static `tripData` / `tripModel` pair. There is no backend, no auth, and no multi-user concept.
+## Workflow
 
-This proposal expands the product into a **group trip command center** that preserves the existing single-family experience and adds a new *group mode* for coordinating trips where multiple people or households fly into the same destination and share an itinerary, expenses, and logistics on the ground.
+1. Use `superpowers:brainstorming` to turn the raw idea into a concrete proposal and write the result into this file.
+2. Run `/plan-ceo-review` to tighten the problem statement, user value, and scope.
+3. Run `/plan-eng-review` to translate the approved scope into `docs/ai/IMPLEMENTATION_PLAN.md`.
+4. Run `/design-consultation` to establish the design philosophy and generate `DESIGN.md`.
 
-## Goals
+## Problem
 
-1. **Preserve the existing family-trip experience.** The current dashboard is the baseline; single-trip users should see the same density and feel after migration.
-2. **Add per-trip group mode.** A trip can be flagged as a group trip, which unlocks shared membership, expenses, settlement, and a collaborative itinerary. Non-group trips keep the existing simple flow.
-3. **Make shared spending painless.** Receipts can be uploaded as photos, line items extracted automatically, items assigned to one or more people, and tax + tip prorated by subtotal share. A running "who owes whom" settlement is always visible.
-4. **Plan activities on the ground, together.** A zoomed-in area map lets members drop pins for lodging, activities, meals, and transit, and the shared itinerary shows a timeline of who's doing what, when.
-5. **Deploy via ForgeGraph** using the standard create-gmacko-app monorepo layout.
+The template already gives teams a strong repo, deployment, AI-agent, and framework baseline, but it still leaves too much of the actual SaaS product spine to greenfield work. New apps still need to invent their own workspace model, onboarding, billing shape, support surface, public shell, admin settings, launch controls, and operator tooling. That slows down the first meaningful week of product work and makes generated apps feel like polished shells instead of serious SaaS foundations.
 
-## Non-Goals (v1)
+## Users
 
-- Multi-currency support
-- Flight / hotel booking integrations
-- Native mobile apps (web-first, mobile-responsive)
-- Offline mode
-- Real-time collaborative cursors (we'll use normal fetch/poll + optimistic updates)
-- Automatic expense categorization beyond what OCR provides
+The primary users are small product teams and solo founders who want to launch a modern SaaS quickly without accepting a shallow starter. They need a generated app that already understands workspaces, onboarding, access control, billing shape, support flows, growth surfaces, and AI-assisted follow-up work. Internal maintainers of this template are also users: they need a clear opt-in matrix and a consistent monorepo model so new SaaS capabilities do not collapse into an unmaintainable kitchen sink.
 
-## Users & Roles
+## Core Experience
 
-- **Trip organizer** — creates the trip, invites members via magic link, can assign line items on behalf of others, can close out / lock the trip.
-- **Trip member** — joins via magic link, sees the shared itinerary, can upload receipts, claim line items, drop map pins, and view their balance.
-- **Family mode user** (existing) — a solo user running the legacy single-family dashboard experience; group features are hidden unless they flip a trip to group mode.
+The generated app should start with a guided first-run setup instead of a half-configured blank shell. An operator should be able to initialize the app, create the first platform admin, create the first user, and create the first named workspace in one flow. From there, the app should expose a workspace-centric SaaS structure with optional layers selected in the onboarding wizard: collaboration, billing, limits, metering, support, marketing shell, waitlist, referrals, feature flags, jobs, compliance, and operator APIs.
 
-## Feature Set
+The public side should also feel product-ready from day one. A generated app should be able to ship with a landing page, pricing, FAQ, changelog, contact/support flow, legal pages, optional waitlist mode, and controlled signup behavior. After scaffold, the repo should recommend the next Claude/Codex/OpenCode workflows and optional skills to help the team tailor onboarding, design, mobile, billing, and marketing to the specific product.
 
-### 1. Trips & Membership
-- A `Trip` has a name, destination area (lat/lng + radius for the map default), date range, and a `group_mode` flag.
-- Members join via **Better Auth magic links**. Invite flow: organizer enters emails → each gets a one-click join link → on first visit they pick a display name + color.
-- Each member has a role (`organizer` | `member`) per trip.
+## Scope
 
-### 2. Shared Itinerary & Map
-- **Area map** (Google Maps JS API) centered on the trip destination, zoomed to neighborhood / city level rather than cross-country.
-- **Pin types**: lodging, activity, meal, transit hub, custom. Each pin has title, time window, notes, attendees, and an optional link.
-- **Timeline view** (Gantt-style, borrowed from tulip's stay timeline) showing pins across trip days, with overlap handling and per-member attendance lanes.
-- **Routing between pins** via Google Maps Directions, with transit / walk / drive modes per leg.
-- **Gap detection** (borrowed from tulip): highlight time windows with no planned activity.
-- Pins and itinerary entries are collaboratively editable; last-write-wins with a short edit history.
+### Must-have v1 capabilities
 
-### 3. Expenses & Receipts
-- **Expense entity**: payer, date, merchant, subtotal, tax, tip, total, currency (USD only v1), notes, receipt image(s), line items.
-- **Receipt upload**: members take a photo or upload an image; it's stored in object storage (ForgeGraph-managed bucket or equivalent).
-- **OCR pipeline**: on upload, a server-side job calls Claude Sonnet 4.6 vision (or Codex) with a prompt-cached extraction schema to pull merchant, date, subtotal, tax, tip, total, and line items (name, qty, unit price, line total). Low-confidence extractions fall back to manual entry with OCR values pre-filled.
-- **Line-item assignment** — two supported modes per trip:
-  - **Organizer-assigns**: the uploader or organizer taps each line item and picks who it belongs to (one or many).
-  - **Tap-to-claim**: the expense shows as "unclaimed items" and each member opens it on their phone and taps items they had. Conflicts (two people claim same item) surface for resolution. This mode uses short-interval polling — no websockets in v1.
-- **Shared items**: a line item can be assigned to multiple people, splitting its cost equally across claimants.
-- **Tax & tip allocation**: each person's share of tax + tip = (their subtotal share) / (total subtotal) × (tax + tip). This is applied automatically once all items are assigned.
-- **Settlement view**: a running "who owes whom" panel computed from all expenses using a minimize-transactions algorithm (classic Splitwise simplification). One-tap "mark settled" when someone pays another.
+- Guided first-run bootstrap UI for uninitialized apps.
+- Workspace-centric SaaS model with one visible workspace per user in v1.
+- Future-friendly membership schema even though multi-workspace UX stays out of v1.
+- Workspace naming during onboarding.
+- Separate workspace roles and platform admin roles.
+- Separate wizard opt-ins for SaaS capability layers instead of one giant bundle.
+- Optional collaboration layer with invites.
+- Optional billing layer with per-workspace plans, limits, and optional metering.
+- Optional support/content layer with contact, tickets, FAQ, changelog, and pricing.
+- Optional launch/growth layer with waitlist, referral tracking, admin waitlist review, maintenance mode, signup toggle, and allowlists.
+- Optional operator lane with CLI and MCP wrappers around the same tRPC API.
+- Feature flags, background jobs, rate limiting, and bot protection as shared platform primitives where relevant.
+- Email-driven flows when `Resend` is enabled.
+- Admin settings as the home for global app settings and provider configuration.
+- Generated AI workspace docs and follow-up skill recommendations based on scaffold choices.
 
-### 4. Legacy Family Dashboard
-- The existing Palantir-styled components (`CommandMap`, `InspectorRail`, activity board, meals planner, mission launch view) become stories in `packages/ui` and routes in `apps/nextjs` that render when `trip.group_mode === false`.
-- Visual language stays governed by `DESIGN.md`.
+### Explicit non-goals for this phase
 
-## Architecture
+- Multi-workspace switching UX.
+- Ownership transfer flow.
+- Advanced audit logging.
+- Webhooks framework.
+- Search.
+- Experimentation / A/B testing.
+- First-party incident management or status tooling.
+- Generic custom-fields/metadata layer.
+- Heavy storage/media pipeline.
+- Full permissions policy editor.
 
-### Monorepo (create-gmacko-app layout)
+## Constraints
 
-```
-apps/nextjs          Next.js App Router, routes, layouts, auth wiring
-packages/ui          Shared React components + Storybook stories
-packages/api         Server-side routers: trips, members, itinerary, expenses, receipts, settlement
-packages/db          Drizzle (or Prisma) schema, migrations, seeds
-docs/ai              Planning artifacts (this file, IMPLEMENTATION_PLAN.md, etc.)
-```
+- Preserve the repo’s stable direction: ForgeGraph + Nix + colocated Postgres + `jj`.
+- Keep Cloudflare and `vinext` as separate lanes rather than polluting the default runtime assumptions.
+- Keep generated behavior opt-in and modular; do not force every SaaS feature into every app.
+- Keep the schema explicit and understandable even while staying future-friendly.
+- Align with Better Auth, tRPC, Drizzle, and the existing monorepo package boundaries where possible.
+- Keep the generated app portable across Claude, Codex, and OpenCode.
+- Avoid touching unrelated in-progress `create-site` work unless explicitly requested.
 
-### Data Model (sketch)
+## Success
 
-- `users` (Better Auth)
-- `trips` (id, name, destination_lat, destination_lng, default_zoom, start_date, end_date, group_mode, claim_mode, created_by)
-- `trip_members` (trip_id, user_id, role, display_name, color)
-- `pins` (trip_id, type, title, lat, lng, starts_at, ends_at, notes, created_by)
-- `pin_attendees` (pin_id, user_id)
-- `expenses` (trip_id, payer_user_id, merchant, occurred_at, subtotal, tax, tip, total, notes, ocr_confidence)
-- `expense_images` (expense_id, storage_key)
-- `line_items` (expense_id, name, quantity, unit_price, line_total)
-- `line_item_claims` (line_item_id, user_id) — many-to-many, equal split across claimants
-- `settlements` (trip_id, from_user_id, to_user_id, amount, settled_at)
-
-### External Services
-
-- **Better Auth** (magic links) — session + auth tables in the same Postgres.
-- **Google Maps JS API** — maps, pins, directions. Requires an API key (stored server-side, proxied to the client via a keyed endpoint).
-- **Claude API (Sonnet 4.6 vision)** — receipt OCR with prompt-cached schema. Codex as a fallback or alternative.
-- **Object storage** — for receipt images (ForgeGraph-managed or S3-compatible).
-
-### Deployment
-
-- ForgeGraph app on the standard `apps/nextjs` target.
-- Postgres provisioned per create-gmacko-app defaults.
-- Secrets: `BETTER_AUTH_SECRET`, `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY`, object storage credentials.
-
-## UX Notes
-
-- **Group mode toggle** lives in trip settings; flipping on mid-trip preserves existing data and reveals member/expense UIs.
-- **Dashboard for group trips** foregrounds: today's plan, unclaimed line items count, your current balance, and unread edits.
-- **Receipt capture** is a first-class floating action — one tap from anywhere in a group trip.
-- **Mobile-first** for in-trip use; desktop keeps the existing high-density Palantir aesthetic for planning.
-
-## Risks & Open Questions
-
-- **OCR accuracy on crumpled / low-light receipts.** Mitigation: always show extracted fields in an editable form before saving; never silently trust OCR.
-- **Google Maps cost at scale.** Mitigation: cache directions results per pin pair; load map libraries lazily.
-- **Migration churn.** The Vite → Next.js migration touches every existing component. Mitigation: phase 0 is the migration with visual parity as the acceptance criterion, no new features.
-- **Conflict handling on concurrent itinerary edits.** Mitigation: v1 is last-write-wins with a 30-second edit lock on a pin while someone has it open.
-- **"Family mode" discoverability.** If group mode becomes the default mental model, make sure solo users can still land on the legacy dashboard without friction.
-
-## Success Criteria
-
-- A group of 4 people can create a trip, join via magic links, upload 5+ receipts, assign all line items (mix of organizer-assigns and tap-to-claim), and see an accurate settlement summary with no manual math.
-- The same group can drop 10+ pins on the area map, view them on a shared timeline, and get directions between two pins.
-- A legacy single-family user's existing dashboard looks and feels identical to today's after migration.
-
-## Next Step
-
-`docs/ai/IMPLEMENTATION_PLAN.md` — phased work breakdown starting with the monorepo migration, then auth, then trips/groups, then expenses/OCR, then settlement, then map/itinerary, with Storybook coverage gates throughout.
+This launch is successful if a generated app feels like a credible early-stage SaaS foundation on day one: it can initialize itself cleanly, ship with a real public shell, expose a useful workspace/admin/settings structure, support optional business-critical layers without schema rewrites, and hand the team directly into the right AI-assisted next steps instead of forcing them to invent the product spine from scratch.

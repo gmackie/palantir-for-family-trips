@@ -1,0 +1,8 @@
+{
+  "name": "@gmacko/tsconfig",
+  "private": true,
+  "files": [
+    "*.json"
+  ],
+  "scripts": {}
+}

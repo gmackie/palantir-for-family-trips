@@ -1,0 +1,650 @@
+name: CLI E2E Tests
+
+on:
+  # Run on release branches
+  push:
+    branches:
+      - main
+      - release/*
+    paths:
+      - "packages/create-gmacko-app/**"
+      - ".github/workflows/cli-e2e.yml"
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      keep_test_apps:
+        description: "Keep test apps for debugging"
+        type: boolean
+        default: false
+  # Run nightly
+  schedule:
+    - cron: "0 2 * * *" # 2 AM UTC daily
+
+concurrency:
+  group: cli-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-cli:
+    name: Build CLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI
+        run: pnpm --dir packages/create-gmacko-app build
+
+      - name: Upload CLI dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-dist
+          path: packages/create-gmacko-app/dist
+          retention-days: 1
+
+  e2e-default:
+    name: E2E - Default Config
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CLI dist
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: packages/create-gmacko-app/dist
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install CLI dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scaffold app
+        run: |
+          mkdir -p /tmp/e2e-test
+          node ${{ github.workspace }}/packages/create-gmacko-app/dist/index.js test-app-default \
+            --yes --no-git
+        working-directory: /tmp/e2e-test
+        env:
+          CI: "true"
+
+      - name: Create mock .env
+        run: |
+          cat > .env << 'EOF'
+          DATABASE_URL="postgresql://test:test@localhost:5432/test"
+          AUTH_SECRET="test-secret-key-for-testing-only"
+          AUTH_DISCORD_ID="test-discord-client-id"
+          AUTH_DISCORD_SECRET="test-discord-client-secret"
+          AUTH_URL="http://localhost:3000"
+          NEXT_PUBLIC_APP_URL="http://localhost:3000"
+          NEXT_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+          GMACKO_API_URL="http://localhost:3000"
+          GMACKO_API_KEY="test-gmacko-api-key"
+          EOF
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Run typecheck
+        run: pnpm doctor
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Validate ForgeGraph metadata
+        run: |
+          grep 'metadata:' .forgegraph.yaml || (echo "Missing ForgeGraph metadata block" && exit 1)
+          grep 'healthcheckPath: /api/health' .forgegraph.yaml || (echo "Missing ForgeGraph healthcheck metadata" && exit 1)
+          grep 'preview: change-me.preview.example.com' .forgegraph.yaml || (echo "Missing ForgeGraph preview route placeholder" && exit 1)
+          grep 'production: change-me.example.com' .forgegraph.yaml || (echo "Missing ForgeGraph production route placeholder" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Verify local forge CLI resolution
+        run: |
+          pnpm exec forge --version | tee /tmp/e2e-test/forge-version.log
+          grep '^0\.' /tmp/e2e-test/forge-version.log || (echo "Local forge CLI did not resolve from repo install" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Smoke ForgeGraph scripts
+        run: |
+          mkdir -p /tmp/fake-bin
+          cat > /tmp/fake-bin/forge << 'EOF'
+          #!/bin/sh
+          echo "fake-forge $@"
+          EOF
+          chmod +x /tmp/fake-bin/forge
+          PATH="/tmp/fake-bin:$PATH" pnpm forge:stages | tee /tmp/e2e-test/forge-stages.log
+          PATH="/tmp/fake-bin:$PATH" pnpm forge:deploy:staging | tee /tmp/e2e-test/forge-deploy-staging.log
+          grep 'fake-forge stage list' /tmp/e2e-test/forge-stages.log || (echo "ForgeGraph stage script did not invoke forge correctly" && exit 1)
+          grep 'fake-forge deploy create staging --wait' /tmp/e2e-test/forge-deploy-staging.log || (echo "ForgeGraph deploy script did not invoke forge correctly" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Run auth and db bootstrap commands
+        run: |
+          pnpm auth:generate
+          pnpm db:generate
+          test -f packages/db/src/auth-schema.ts || (echo "Auth schema output missing after bootstrap commands" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Validate health route scaffold
+        run: |
+          grep 'status: "healthy"' apps/nextjs/src/app/api/health/route.ts || (echo "Missing healthy status in health route" && exit 1)
+          grep 'status: "degraded"' apps/nextjs/src/app/api/health/route.ts || (echo "Missing degraded status in health route" && exit 1)
+          grep 'status: "unhealthy"' apps/nextjs/src/app/api/health/route.ts || (echo "Missing unhealthy status in health route" && exit 1)
+          grep 'return NextResponse.json' apps/nextjs/src/app/api/health/route.ts || (echo "Missing NextResponse health route return" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Run fast checks
+        run: pnpm check:fast
+        working-directory: /tmp/e2e-test/test-app-default
+
+      - name: Run Next.js build
+        run: pnpm --filter @gmacko/nextjs build
+        working-directory: /tmp/e2e-test/test-app-default
+
+  e2e-operators:
+    name: E2E - Operator Lane
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CLI dist
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: packages/create-gmacko-app/dist
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install CLI dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scaffold operator app
+        run: |
+          mkdir -p /tmp/e2e-test
+          node ${{ github.workspace }}/packages/create-gmacko-app/dist/index.js test-app-operators \
+            --yes --no-git --no-mobile --saas-bootstrap --trpc-operators
+        working-directory: /tmp/e2e-test
+        env:
+          CI: "true"
+
+      - name: Create mock .env
+        run: |
+          cat > .env << 'EOF'
+          DATABASE_URL="postgresql://test:test@localhost:5432/test"
+          AUTH_SECRET="test-secret-key-for-testing-only"
+          AUTH_DISCORD_ID="test-discord-client-id"
+          AUTH_DISCORD_SECRET="test-discord-client-secret"
+          AUTH_URL="http://localhost:3000"
+          NEXT_PUBLIC_APP_URL="http://localhost:3000"
+          NEXT_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+          GMACKO_API_URL="http://localhost:3000"
+          GMACKO_API_KEY="test-gmacko-api-key"
+          EOF
+        working-directory: /tmp/e2e-test/test-app-operators
+
+      - name: Run doctor
+        run: |
+          pnpm doctor | tee /tmp/e2e-test/operator-doctor.log
+          grep 'Operator API lane detected' /tmp/e2e-test/operator-doctor.log || (echo "Doctor did not detect operator lane" && exit 1)
+          grep 'Operator API env values' /tmp/e2e-test/operator-doctor.log || (echo "Doctor did not check operator env values" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-operators
+
+      - name: Smoke operator CLI help
+        run: |
+          pnpm trpc:ops -- --help | tee /tmp/e2e-test/operator-help.log
+          grep 'gmacko-ops' /tmp/e2e-test/operator-help.log || (echo "Operator CLI help did not render" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-operators
+
+      - name: Verify bootstrap artifacts
+        run: |
+          test -f docs/ai/BOOTSTRAP_PLAYBOOK.md || (echo "Missing BOOTSTRAP_PLAYBOOK.md" && exit 1)
+          test -f .claude/skills/bootstrap-saas/SKILL.md || (echo "Missing bootstrap-saas skill" && exit 1)
+          grep '/office-hours' docs/ai/BOOTSTRAP_PLAYBOOK.md || (echo "Missing office-hours guidance" && exit 1)
+          grep '/autoplan' docs/ai/BOOTSTRAP_PLAYBOOK.md || (echo "Missing autoplan guidance" && exit 1)
+          grep '/design-consultation' docs/ai/BOOTSTRAP_PLAYBOOK.md || (echo "Missing design-consultation guidance" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-operators
+
+  e2e-minimal:
+    name: E2E - Minimal (Web Only)
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CLI dist
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: packages/create-gmacko-app/dist
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install CLI dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scaffold minimal app
+        run: |
+          mkdir -p /tmp/e2e-test
+          cd /tmp/e2e-test
+          node ${{ github.workspace }}/packages/create-gmacko-app/dist/index.js test-app-minimal \
+            --yes --no-git \
+            --no-mobile --no-ai --prune \
+            --integrations ""
+        env:
+          CI: "true"
+
+      - name: Create mock .env
+        run: |
+          cat > .env << 'EOF'
+          DATABASE_URL="postgresql://test:test@localhost:5432/test"
+          AUTH_SECRET="test-secret-key-for-testing-only"
+          AUTH_DISCORD_ID="test-discord-client-id"
+          AUTH_DISCORD_SECRET="test-discord-client-secret"
+          AUTH_URL="http://localhost:3000"
+          NEXT_PUBLIC_APP_URL="http://localhost:3000"
+          NEXT_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+          EOF
+        working-directory: /tmp/e2e-test/test-app-minimal
+
+      - name: Verify structure
+        run: |
+          test -d apps/nextjs || (echo "Missing apps/nextjs" && exit 1)
+          test ! -d apps/expo || (echo "apps/expo should not exist" && exit 1)
+          test ! -d packages/analytics || (echo "packages/analytics should not exist" && exit 1)
+          echo "Structure verified!"
+        working-directory: /tmp/e2e-test/test-app-minimal
+
+      - name: Run doctor
+        run: pnpm doctor
+        working-directory: /tmp/e2e-test/test-app-minimal
+
+      - name: Run fast checks
+        run: pnpm check:fast
+        working-directory: /tmp/e2e-test/test-app-minimal
+
+      - name: Run Next.js build
+        run: pnpm --filter @gmacko/nextjs build
+        working-directory: /tmp/e2e-test/test-app-minimal
+
+  e2e-custom-scope:
+    name: E2E - Custom Package Scope
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CLI dist
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: packages/create-gmacko-app/dist
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install CLI dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scaffold with custom scope
+        run: |
+          mkdir -p /tmp/e2e-test
+          cd /tmp/e2e-test
+          node ${{ github.workspace }}/packages/create-gmacko-app/dist/index.js test-app-scope \
+            --yes --no-git \
+            --no-mobile --no-ai --prune \
+            --package-scope "@mycompany" \
+            --integrations ""
+        env:
+          CI: "true"
+
+      - name: Create mock .env
+        run: |
+          cat > .env << 'EOF'
+          DATABASE_URL="postgresql://test:test@localhost:5432/test"
+          AUTH_SECRET="test-secret-key-for-testing-only"
+          AUTH_DISCORD_ID="test-discord-client-id"
+          AUTH_DISCORD_SECRET="test-discord-client-secret"
+          AUTH_URL="http://localhost:3000"
+          NEXT_PUBLIC_APP_URL="http://localhost:3000"
+          NEXT_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+          EOF
+        working-directory: /tmp/e2e-test/test-app-scope
+
+      - name: Verify package scope
+        run: |
+          grep '"name": "@mycompany/api"' packages/api/package.json || (echo "Wrong scope in api" && exit 1)
+          grep '"name": "@mycompany/db"' packages/db/package.json || (echo "Wrong scope in db" && exit 1)
+          echo "Package scope verified!"
+        working-directory: /tmp/e2e-test/test-app-scope
+
+      - name: Run doctor
+        run: pnpm doctor
+        working-directory: /tmp/e2e-test/test-app-scope
+
+      - name: Run fast checks
+        run: pnpm check:fast
+        working-directory: /tmp/e2e-test/test-app-scope
+
+      - name: Run Next.js build
+        run: pnpm --filter @mycompany/nextjs build
+        working-directory: /tmp/e2e-test/test-app-scope
+
+  e2e-full:
+    name: E2E - Full Config
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CLI dist
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: packages/create-gmacko-app/dist
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install CLI dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scaffold full app
+        run: |
+          mkdir -p /tmp/e2e-test
+          cd /tmp/e2e-test
+          node ${{ github.workspace }}/packages/create-gmacko-app/dist/index.js test-app-full \
+            --yes --no-git \
+            --tanstack-start \
+            --integrations "sentry,posthog,stripe,email" \
+            --email-provider resend
+        env:
+          CI: "true"
+
+      - name: Create mock .env
+        run: |
+          cat > .env << 'EOF'
+          DATABASE_URL="postgresql://test:test@localhost:5432/test"
+          AUTH_SECRET="test-secret-key-for-testing-only"
+          AUTH_DISCORD_ID="test-discord-client-id"
+          AUTH_DISCORD_SECRET="test-discord-client-secret"
+          AUTH_URL="http://localhost:3000"
+          NEXT_PUBLIC_APP_URL="http://localhost:3000"
+          SENTRY_DSN="https://test@test.ingest.sentry.io/test"
+          NEXT_PUBLIC_POSTHOG_KEY="phc_test"
+          NEXT_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+          EXPO_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+          EXPO_PUBLIC_POSTHOG_KEY_DEV="phc_test_dev"
+          EXPO_PUBLIC_POSTHOG_KEY_STAGING="phc_test_staging"
+          EXPO_PUBLIC_POSTHOG_KEY_PROD="phc_test_prod"
+          EXPO_PUBLIC_SENTRY_DSN_DEV="https://test@example.ingest.sentry.io/123"
+          EXPO_PUBLIC_SENTRY_DSN_STAGING="https://test@example.ingest.sentry.io/456"
+          EXPO_PUBLIC_SENTRY_DSN_PROD="https://test@example.ingest.sentry.io/789"
+          STRIPE_SECRET_KEY="sk_test_123"
+          RESEND_API_KEY="re_test_123"
+          EOF
+        working-directory: /tmp/e2e-test/test-app-full
+
+      - name: Verify structure
+        run: |
+          test -d apps/nextjs || (echo "Missing apps/nextjs" && exit 1)
+          test -d apps/expo || (echo "Missing apps/expo" && exit 1)
+          test -d apps/tanstack-start || (echo "Missing apps/tanstack-start" && exit 1)
+          test -d packages/monitoring || (echo "Missing packages/monitoring" && exit 1)
+          test -d packages/analytics || (echo "Missing packages/analytics" && exit 1)
+          test -d packages/payments || (echo "Missing packages/payments" && exit 1)
+          test -d packages/email || (echo "Missing packages/email" && exit 1)
+          echo "Structure verified!"
+        working-directory: /tmp/e2e-test/test-app-full
+
+      - name: Run doctor
+        run: pnpm doctor
+        working-directory: /tmp/e2e-test/test-app-full
+
+      - name: Run fast checks
+        run: pnpm check:fast
+        working-directory: /tmp/e2e-test/test-app-full
+
+      - name: Run Next.js build
+        run: pnpm --filter @gmacko/nextjs build
+        working-directory: /tmp/e2e-test/test-app-full
+
+      - name: Run TanStack Start build
+        run: pnpm --filter @gmacko/tanstack-start build
+        working-directory: /tmp/e2e-test/test-app-full
+
+      - name: Run Expo typecheck
+        run: pnpm --filter @gmacko/expo typecheck
+        working-directory: /tmp/e2e-test/test-app-full
+
+      - name: Run Expo dev-client smoke checks
+        run: |
+          pnpm --filter @gmacko/expo exec expo start --dev-client --help
+          pnpm --filter @gmacko/expo exec expo config --json >/tmp/e2e-test/expo-config.json
+          grep '"name"' /tmp/e2e-test/expo-config.json || (echo "Expo config did not resolve" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-full
+
+  e2e-vinext:
+    name: E2E - Vinext
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CLI dist
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: packages/create-gmacko-app/dist
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install CLI dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scaffold vinext app
+        run: |
+          mkdir -p /tmp/e2e-test
+          cd /tmp/e2e-test
+          node ${{ github.workspace }}/packages/create-gmacko-app/dist/index.js test-app-vinext \
+            --yes --no-git \
+            --no-mobile --no-ai --vinext
+        env:
+          CI: "true"
+
+      - name: Create mock .env
+        run: |
+          cat > .env << 'EOF'
+          DATABASE_URL="postgresql://test:test@localhost:5432/test"
+          AUTH_SECRET="test-secret-key-for-testing-only"
+          AUTH_DISCORD_ID="test-discord-client-id"
+          AUTH_DISCORD_SECRET="test-discord-client-secret"
+          AUTH_URL="http://localhost:3000"
+          NEXT_PUBLIC_APP_URL="http://localhost:3000"
+          NEXT_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+          CLOUDFLARE_ACCOUNT_ID="test-cloudflare-account"
+          CLOUDFLARE_API_TOKEN="test-cloudflare-token"
+          EOF
+        working-directory: /tmp/e2e-test/test-app-vinext
+
+      - name: Run doctor
+        run: |
+          pnpm doctor | tee /tmp/e2e-test/vinext-doctor.log
+          grep 'Cloudflare Workers lane detected' /tmp/e2e-test/vinext-doctor.log || (echo "Doctor did not detect Cloudflare lane" && exit 1)
+          grep 'Wrangler CLI available' /tmp/e2e-test/vinext-doctor.log || (echo "Doctor did not detect Wrangler CLI" && exit 1)
+          grep 'Cloudflare Workers credentials present' /tmp/e2e-test/vinext-doctor.log || (echo "Doctor did not detect Cloudflare credentials" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-vinext
+
+      - name: Run fast checks
+        run: pnpm check:fast
+        working-directory: /tmp/e2e-test/test-app-vinext
+
+      - name: Run vinext build
+        run: pnpm --filter @gmacko/nextjs build:vinext
+        working-directory: /tmp/e2e-test/test-app-vinext
+        env:
+          CI: "true"
+
+      - name: Smoke Cloudflare deploy script
+        run: |
+          mkdir -p /tmp/fake-bin
+          cat > /tmp/fake-bin/wrangler << 'EOF'
+          #!/bin/sh
+          echo "fake-wrangler $@"
+          EOF
+          chmod +x /tmp/fake-bin/wrangler
+          PATH="/tmp/fake-bin:$PATH" pnpm --filter @gmacko/nextjs deploy:cloudflare:staging | tee /tmp/e2e-test/vinext-deploy.log
+          grep 'fake-wrangler deploy --env staging' /tmp/e2e-test/vinext-deploy.log || (echo "Cloudflare deploy script did not invoke wrangler correctly" && exit 1)
+        working-directory: /tmp/e2e-test/test-app-vinext
+
+  report:
+    name: Report Results
+    needs: [e2e-default, e2e-operators, e2e-minimal, e2e-custom-scope, e2e-full, e2e-vinext]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          echo "## CLI E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.e2e-default.result }}" == "success" ]; then
+            echo "- :white_check_mark: Default configuration" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :x: Default configuration" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-operators.result }}" == "success" ]; then
+            echo "- :white_check_mark: Operator lane" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :x: Operator lane" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-minimal.result }}" == "success" ]; then
+            echo "- :white_check_mark: Minimal (web only)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :x: Minimal (web only)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-custom-scope.result }}" == "success" ]; then
+            echo "- :white_check_mark: Custom package scope" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :x: Custom package scope" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-full.result }}" == "success" ]; then
+            echo "- :white_check_mark: Full configuration" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :x: Full configuration" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-vinext.result }}" == "success" ]; then
+            echo "- :white_check_mark: Vinext" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :x: Vinext" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Fail if any test failed
+          if [ "${{ needs.e2e-default.result }}" != "success" ] || \
+             [ "${{ needs.e2e-operators.result }}" != "success" ] || \
+             [ "${{ needs.e2e-minimal.result }}" != "success" ] || \
+             [ "${{ needs.e2e-custom-scope.result }}" != "success" ] || \
+             [ "${{ needs.e2e-full.result }}" != "success" ] || \
+             [ "${{ needs.e2e-vinext.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Some E2E tests failed!**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**All E2E tests passed!** :tada:" >> $GITHUB_STEP_SUMMARY
+
+  e2e-vitest-on-demand:
+    name: E2E - Full Vitest Suite
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run full CLI E2E vitest suite
+        run: pnpm --dir packages/create-gmacko-app vitest run src/__tests__/e2e.test.ts
+        env:
+          RUN_E2E: "true"
+          KEEP_TEST_APPS: ${{ inputs.keep_test_apps && 'true' || 'false' }}

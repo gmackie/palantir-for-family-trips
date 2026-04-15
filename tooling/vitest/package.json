@@ -1,0 +1,42 @@
+{
+  "name": "@gmacko/vitest-config",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./base": "./src/base.ts",
+    "./react": "./src/react.ts"
+  },
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo node_modules",
+    "format": "biome check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vitest/coverage-v8": "^4.1.0",
+    "vitest": "^4.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@gmacko/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "@testing-library/react": ">=14.0.0",
+    "@vitejs/plugin-react": ">=4.0.0",
+    "jsdom": ">=22.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@testing-library/react": {
+      "optional": true
+    },
+    "@vitejs/plugin-react": {
+      "optional": true
+    },
+    "jsdom": {
+      "optional": true
+    }
+  }
+}

@@ -1,0 +1,131 @@
+name: ForgeGraph Preview Handoff
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+concurrency:
+  group: forgegraph-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview-handoff:
+    name: Publish ForgeGraph Preview Context
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build preview handoff summary
+        id: summary
+        run: |
+          PREVIEW_REF="pr-${{ github.event.pull_request.number }}"
+          PREVIEW_DOMAIN="${PREVIEW_REF}.${{ vars.PREVIEW_BASE_DOMAIN || 'preview.gmacko.io' }}"
+
+          {
+            echo "preview_ref=${PREVIEW_REF}"
+            echo "preview_domain=${PREVIEW_DOMAIN}"
+            echo "preview_url=https://${PREVIEW_DOMAIN}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment PR with ForgeGraph handoff
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = '${{ steps.summary.outputs.preview_url }}';
+            const previewRef = '${{ steps.summary.outputs.preview_ref }}';
+            const sha = '${{ github.event.pull_request.head.sha }}';
+            const shortSha = sha.substring(0, 7);
+
+            const body = `## ForgeGraph Preview Handoff
+
+            This template no longer performs preview deploys from GitHub Actions directly.
+            Preview environments should be created and managed in ForgeGraph.
+
+            | Field | Value |
+            |------|-------|
+            | Preview ref | \`${previewRef}\` |
+            | Suggested URL | ${previewUrl} |
+            | Commit | \`${shortSha}\` |
+
+            Use the ForgeGraph deployment model described in \`deploy/README.md\` and \`deploy/forgegraph/README.md\`.
+            Configure the preview stack in ForgeGraph with colocated Postgres unless stronger isolation is warranted.
+            `;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find((comment) =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## ForgeGraph Preview Handoff')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  preview-closeout:
+    name: Close ForgeGraph Preview Handoff
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Comment PR with closeout status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## ForgeGraph Preview Handoff
+
+            PR closed. If this branch has a ForgeGraph preview environment, retire it from ForgeGraph using the repo's preview ref.
+            `;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find((comment) =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## ForgeGraph Preview Handoff')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
