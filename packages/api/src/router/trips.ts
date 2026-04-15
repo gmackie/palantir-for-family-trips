@@ -122,6 +122,26 @@ export interface TripStore {
     workspaceId: string;
     tripId: string;
   }): Promise<TripSummary | null>;
+  updateTrip(input: {
+    workspaceId: string;
+    tripId: string;
+    name?: string;
+    destinationName?: string;
+    startDate?: string;
+    endDate?: string;
+    tz?: string;
+    groupMode?: boolean;
+    claimMode?: "organizer" | "tap";
+  }): Promise<TripSummary | null>;
+}
+
+function requireOrganizerTripRole(tripRole: "organizer" | "member") {
+  if (tripRole !== "organizer") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only organizers can update trip settings.",
+    });
+  }
 }
 
 export async function createTripRecord(
@@ -177,6 +197,59 @@ export async function listWorkspaceTrips(
   },
 ) {
   return store.listWorkspaceTrips(input);
+}
+
+export async function updateTripRecord(
+  store: TripStore,
+  input: {
+    workspaceId: string;
+    tripId: string;
+    tripRole: "organizer" | "member";
+    name?: string;
+    destinationName?: string;
+    startDate?: string;
+    endDate?: string;
+    tz?: string;
+    groupMode?: boolean;
+    claimMode?: "organizer" | "tap";
+  },
+) {
+  requireOrganizerTripRole(input.tripRole);
+
+  const updated = await store.updateTrip(input);
+
+  if (!updated) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Trip not found.",
+    });
+  }
+
+  return updated;
+}
+
+export function setTripGroupMode(
+  store: TripStore,
+  input: {
+    workspaceId: string;
+    tripId: string;
+    tripRole: "organizer" | "member";
+    groupMode: boolean;
+  },
+) {
+  return updateTripRecord(store, input);
+}
+
+export function setTripClaimMode(
+  store: TripStore,
+  input: {
+    workspaceId: string;
+    tripId: string;
+    tripRole: "organizer" | "member";
+    claimMode: "organizer" | "tap";
+  },
+) {
+  return updateTripRecord(store, input);
 }
 
 function createTripStore(db: any): TripStore {
@@ -312,6 +385,19 @@ function createTripStore(db: any): TripStore {
 
       return tripsInWorkspace.find((trip) => trip.id === tripId) ?? null;
     },
+    updateTrip: async ({ workspaceId, tripId, ...changes }) => {
+      const [updatedTrip] = (await db
+        .update(trips)
+        .set(changes)
+        .where(eq(trips.id, tripId))
+        .returning(tripSummaryShape)) as TripSummary[];
+
+      if (!updatedTrip || updatedTrip.workspaceId !== workspaceId) {
+        return null;
+      }
+
+      return updatedTrip;
+    },
   };
 }
 
@@ -380,4 +466,63 @@ export const tripsRouter = {
 
       return trip;
     }),
+
+  update: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        name: z.string().min(1).max(160),
+        destinationName: z.string().min(1).max(160),
+        startDate: tripDateSchema.optional(),
+        endDate: tripDateSchema.optional(),
+        tz: z.string().min(1).max(100).default("UTC"),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      updateTripRecord(createTripStore(ctx.db), {
+        workspaceId: ctx.workspaceId,
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+        name: input.name,
+        destinationName: input.destinationName,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        tz: input.tz,
+      }),
+    ),
+
+  setGroupMode: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        groupMode: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      setTripGroupMode(createTripStore(ctx.db), {
+        workspaceId: ctx.workspaceId,
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+        groupMode: input.groupMode,
+      }),
+    ),
+
+  setClaimMode: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        claimMode: z.enum(["organizer", "tap"]),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      setTripClaimMode(createTripStore(ctx.db), {
+        workspaceId: ctx.workspaceId,
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+        claimMode: input.claimMode,
+      }),
+    ),
 } satisfies TRPCRouterRecord;

@@ -9,7 +9,13 @@ process.env.DATABASE_URL ??=
 const { resolveTripAccess, resolveWorkspaceAccess } = await import(
   "../../auth/guards"
 );
-const { createTripRecord, listWorkspaceTrips } = await import("../trips");
+const {
+  createTripRecord,
+  listWorkspaceTrips,
+  setTripClaimMode,
+  setTripGroupMode,
+  updateTripRecord,
+} = await import("../trips");
 
 type WorkspaceRole = "owner" | "admin" | "member";
 type TripRole = "organizer" | "member";
@@ -284,6 +290,37 @@ function createTripStore(input?: {
       state.trips.find(
         (trip) => trip.workspaceId === workspaceId && trip.id === tripId,
       ) ?? null,
+    updateTrip: async ({
+      workspaceId,
+      tripId,
+      ...changes
+    }: {
+      workspaceId: string;
+      tripId: string;
+      name?: string;
+      destinationName?: string;
+      startDate?: string;
+      endDate?: string;
+      tz?: string;
+      groupMode?: boolean;
+      claimMode?: "organizer" | "tap";
+    }) => {
+      const index = state.trips.findIndex(
+        (trip) => trip.workspaceId === workspaceId && trip.id === tripId,
+      );
+
+      if (index === -1) {
+        return null;
+      }
+
+      state.trips[index] = {
+        ...state.trips[index]!,
+        ...changes,
+        updatedAt: new Date("2026-04-16T08:00:00.000Z"),
+      };
+
+      return state.trips[index]!;
+    },
   };
 
   return { state, store };
@@ -487,5 +524,127 @@ describe("trip creation", () => {
         name: "Milan",
       },
     ]);
+  });
+});
+
+describe("trip updates", () => {
+  it("lets an organizer update the trip settings", async () => {
+    const { state, store } = createTripStore({
+      trips: [
+        {
+          id: "trip_1",
+          workspaceId: "workspace_1",
+          name: "Italy Summer",
+          createdByUserId: "user_1",
+          status: "planning",
+          groupMode: false,
+          claimMode: "organizer",
+          destinationName: "Milan",
+          destinationLat: null,
+          destinationLng: null,
+          defaultZoom: 13,
+          startDate: "2026-06-01",
+          endDate: "2026-06-08",
+          tz: "Europe/Rome",
+          createdAt: new Date("2026-04-10T00:00:00.000Z"),
+          updatedAt: null,
+        },
+      ],
+    });
+
+    const updated = await updateTripRecord(store, {
+      workspaceId: "workspace_1",
+      tripId: "trip_1",
+      tripRole: "organizer",
+      name: "Italy Summer Reset",
+      destinationName: "Florence",
+      startDate: "2026-06-02",
+      endDate: "2026-06-09",
+      tz: "Europe/Paris",
+    });
+
+    expect(updated.name).toBe("Italy Summer Reset");
+    expect(updated.destinationName).toBe("Florence");
+    expect(updated.startDate).toBe("2026-06-02");
+    expect(updated.endDate).toBe("2026-06-09");
+    expect(updated.tz).toBe("Europe/Paris");
+    expect(state.trips[0]?.updatedAt).not.toBeNull();
+  });
+
+  it("rejects settings updates from non-organizers", async () => {
+    const { store } = createTripStore({
+      trips: [
+        {
+          id: "trip_1",
+          workspaceId: "workspace_1",
+          name: "Italy Summer",
+          createdByUserId: "user_1",
+          status: "planning",
+          groupMode: false,
+          claimMode: "organizer",
+          destinationName: "Milan",
+          destinationLat: null,
+          destinationLng: null,
+          defaultZoom: 13,
+          startDate: null,
+          endDate: null,
+          tz: "Europe/Rome",
+          createdAt: new Date("2026-04-10T00:00:00.000Z"),
+          updatedAt: null,
+        },
+      ],
+    });
+
+    await expect(
+      updateTripRecord(store, {
+        workspaceId: "workspace_1",
+        tripId: "trip_1",
+        tripRole: "member",
+        name: "Blocked Edit",
+      }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("updates group mode and claim mode with organizer-only helpers", async () => {
+    const { store } = createTripStore({
+      trips: [
+        {
+          id: "trip_1",
+          workspaceId: "workspace_1",
+          name: "Italy Summer",
+          createdByUserId: "user_1",
+          status: "planning",
+          groupMode: false,
+          claimMode: "organizer",
+          destinationName: "Milan",
+          destinationLat: null,
+          destinationLng: null,
+          defaultZoom: 13,
+          startDate: null,
+          endDate: null,
+          tz: "Europe/Rome",
+          createdAt: new Date("2026-04-10T00:00:00.000Z"),
+          updatedAt: null,
+        },
+      ],
+    });
+
+    const grouped = await setTripGroupMode(store, {
+      workspaceId: "workspace_1",
+      tripId: "trip_1",
+      tripRole: "organizer",
+      groupMode: true,
+    });
+    const claimed = await setTripClaimMode(store, {
+      workspaceId: "workspace_1",
+      tripId: "trip_1",
+      tripRole: "organizer",
+      claimMode: "tap",
+    });
+
+    expect(grouped.groupMode).toBe(true);
+    expect(claimed.claimMode).toBe("tap");
   });
 });
