@@ -90,12 +90,12 @@ const sentryConfig = {
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  disableLogger: true,
 };
 
 // Apply i18n plugin conditionally, then Sentry if enabled
 const configWithI18n = integrations.i18n ? withNextIntl(config) : config;
+const isVinextRuntime = process.env.VINEXT === "1";
 
-export default integrations.sentry
+export default integrations.sentry && !isVinextRuntime
   ? withSentryConfig(configWithI18n, sentryConfig)
   : configWithI18n;

@@ -1,4 +1,5 @@
 import { integrations } from "@gmacko/config";
+import { captureException } from "@gmacko/monitoring/web";
 
 export async function register() {
   if (integrations.sentry) {
@@ -10,4 +11,12 @@ export async function register() {
       await import("../sentry.edge.config");
     }
   }
+}
+
+export async function onRequestError(error: unknown) {
+  if (!integrations.sentry) {
+    return;
+  }
+
+  captureException(error);
 }
