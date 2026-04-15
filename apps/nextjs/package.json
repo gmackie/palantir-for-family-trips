@@ -23,6 +23,7 @@
     "@gmacko/auth": "workspace:*",
     "@gmacko/config": "workspace:*",
     "@gmacko/db": "workspace:*",
+    "@gmacko/email": "workspace:*",
     "@gmacko/i18n": "workspace:*",
     "@gmacko/monitoring": "workspace:*",
     "@gmacko/ui": "workspace:*",

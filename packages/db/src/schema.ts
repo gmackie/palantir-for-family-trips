@@ -7,6 +7,17 @@ import { user } from "./auth-schema";
 
 export const workspaceRoleEnum = ["owner", "admin", "member"] as const;
 export type WorkspaceRole = (typeof workspaceRoleEnum)[number];
+export const tripStatusEnum = [
+  "planning",
+  "confirmed",
+  "active",
+  "completed",
+] as const;
+export type TripStatus = (typeof tripStatusEnum)[number];
+export const tripClaimModeEnum = ["organizer", "tap"] as const;
+export type TripClaimMode = (typeof tripClaimModeEnum)[number];
+export const tripMemberRoleEnum = ["organizer", "member"] as const;
+export type TripMemberRole = (typeof tripMemberRoleEnum)[number];
 export const billingIntervalEnum = ["month", "year"] as const;
 export type BillingInterval = (typeof billingIntervalEnum)[number];
 export const workspaceSubscriptionStatusEnum = [
@@ -143,6 +154,133 @@ export const workspaceInviteAllowlist = pgTable(
       table.workspaceId,
       table.email,
     ),
+  ],
+);
+
+export const trips = pgTable("trip", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  workspaceId: t
+    .uuid()
+    .notNull()
+    .references(() => workspace.id, { onDelete: "cascade" }),
+  name: t.varchar({ length: 160 }).notNull(),
+  createdByUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  status: t.text().$type<TripStatus>().notNull().default("planning"),
+  groupMode: t.boolean().notNull().default(false),
+  claimMode: t.text().$type<TripClaimMode>().notNull().default("organizer"),
+  destinationName: t.varchar({ length: 160 }),
+  destinationLat: t.numeric(),
+  destinationLng: t.numeric(),
+  defaultZoom: t.integer().notNull().default(13),
+  startDate: t.date(),
+  endDate: t.date(),
+  tz: t.varchar({ length: 100 }).notNull().default("UTC"),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const tripMembers = pgTable(
+  "trip_member",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: t.text().$type<TripMemberRole>().notNull().default("member"),
+    displayName: t.varchar({ length: 120 }),
+    colorHex: t.varchar({ length: 16 }),
+    venmoHandle: t.varchar({ length: 80 }),
+    joinedAt: t.timestamp().defaultNow().notNull(),
+  }),
+  (table) => [
+    unique("trip_members_trip_user_unique").on(table.tripId, table.userId),
+  ],
+);
+
+export const tripSegments = pgTable(
+  "trip_segment",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    name: t.varchar({ length: 160 }).notNull(),
+    destinationName: t.varchar({ length: 160 }),
+    destinationLat: t.numeric(),
+    destinationLng: t.numeric(),
+    defaultZoom: t.integer().notNull().default(13),
+    startDate: t.date(),
+    endDate: t.date(),
+    tz: t.varchar({ length: 100 }).notNull().default("UTC"),
+    sortOrder: t.integer().notNull(),
+    createdAt: t.timestamp().defaultNow().notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    unique("trip_segments_trip_sort_order_unique").on(
+      table.tripId,
+      table.sortOrder,
+    ),
+  ],
+);
+
+export const segmentMembers = pgTable(
+  "segment_member",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    segmentId: t
+      .uuid()
+      .notNull()
+      .references(() => tripSegments.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  }),
+  (table) => [
+    unique("segment_members_segment_user_unique").on(
+      table.segmentId,
+      table.userId,
+    ),
+  ],
+);
+
+export const tripInvites = pgTable(
+  "trip_invite",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    email: t.varchar({ length: 320 }).notNull(),
+    token: t.varchar({ length: 255 }).notNull().unique(),
+    invitedByUserId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+    acceptedAt: t.timestamp({ mode: "date", withTimezone: true }),
+    createdAt: t.timestamp().defaultNow().notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    unique("trip_invites_trip_email_unique").on(table.tripId, table.email),
   ],
 );
 

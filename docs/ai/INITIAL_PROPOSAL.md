@@ -18,9 +18,9 @@ This proposal expands the product into a **group trip command center** that pres
 
 - Multi-currency support
 - Flight / hotel booking integrations
-- Native mobile apps (web-first, mobile-responsive)
+- Full native parity beyond the core mobile jobs (receipt capture, claiming, itinerary review, planning votes)
 - Offline mode
-- Real-time collaborative cursors (we'll use normal fetch/poll + optimistic updates)
+- Real-time collaborative cursors (receipt and planning updates use realtime invalidation, not shared cursors)
 - Automatic expense categorization beyond what OCR provides
 
 ## Users & Roles
@@ -50,7 +50,7 @@ This proposal expands the product into a **group trip command center** that pres
 - **OCR pipeline**: on upload, a server-side job calls Claude Sonnet 4.6 vision (or Codex) with a prompt-cached extraction schema to pull merchant, date, subtotal, tax, tip, total, and line items (name, qty, unit price, line total). Low-confidence extractions fall back to manual entry with OCR values pre-filled.
 - **Line-item assignment** — two supported modes per trip:
   - **Organizer-assigns**: the uploader or organizer taps each line item and picks who it belongs to (one or many).
-  - **Tap-to-claim**: the expense shows as "unclaimed items" and each member opens it on their phone and taps items they had. Conflicts (two people claim same item) surface for resolution. This mode uses short-interval polling — no websockets in v1.
+  - **Tap-to-claim**: the expense shows as "unclaimed items" and each member opens it on their phone and taps items they had. Conflicts reconcile live. This mode is realtime-first via `@gmacko/realtime`, with 3-second polling only as a fallback when realtime is unavailable.
 - **Shared items**: a line item can be assigned to multiple people, splitting its cost equally across claimants.
 - **Tax & tip allocation**: each person's share of tax + tip = (their subtotal share) / (total subtotal) × (tax + tip). This is applied automatically once all items are assigned.
 - **Settlement view**: a running "who owes whom" panel computed from all expenses using a minimize-transactions algorithm (classic Splitwise simplification). One-tap "mark settled" when someone pays another.
@@ -64,7 +64,8 @@ This proposal expands the product into a **group trip command center** that pres
 ### Monorepo (create-gmacko-app layout)
 
 ```
-apps/nextjs          Next.js App Router, routes, layouts, auth wiring
+apps/nextjs          Next.js App Router, planning/dashboard/settlement, auth wiring
+apps/expo            Mobile receipt capture, claiming, itinerary review, planning votes
 packages/ui          Shared React components + Storybook stories
 packages/api         Server-side routers: trips, members, itinerary, expenses, receipts, settlement
 packages/db          Drizzle (or Prisma) schema, migrations, seeds
@@ -102,6 +103,7 @@ docs/ai              Planning artifacts (this file, IMPLEMENTATION_PLAN.md, etc.
 - **Group mode toggle** lives in trip settings; flipping on mid-trip preserves existing data and reveals member/expense UIs.
 - **Dashboard for group trips** foregrounds: today's plan, unclaimed line items count, your current balance, and unread edits.
 - **Receipt capture** is a first-class floating action — one tap from anywhere in a group trip.
+- **Both web and Expo are first-class in v1.** Next.js handles planning, dashboarding, and settlement; Expo handles receipt capture, claiming, itinerary review, and planning votes.
 - **Mobile-first** for in-trip use; desktop keeps the existing high-density Palantir aesthetic for planning.
 
 ## Risks & Open Questions

@@ -9,6 +9,8 @@ export type Locale = (typeof locales)[number];
 export const routing = defineRouting({
   locales,
   defaultLocale,
-  // When i18n is disabled, don't use locale prefixes
-  localePrefix: integrations.i18n ? "as-needed" : "never",
+  // The current app routes are not locale-segmented, so prefix rewrites break
+  // non-root pages like /faq and /sign-in. Keep locale state without URL prefixes
+  // until the route tree is actually localized.
+  localePrefix: "never",
 });

@@ -94,6 +94,33 @@ The template ships a multi-tenant **Workspace** model with roles and billing. We
 - **Every phase ends with a verification section** — a list of commands the reviewer runs to confirm the phase is done.
 - **Every phase is a single PR** unless explicitly split. Phase titles map 1:1 to PR titles.
 
+## Locked Interfaces And Contracts
+
+These are fixed cross-cutting contracts for the implementation work:
+
+- **Dev auth endpoints**
+  - `POST /api/dev/auto-login`
+    - Input: `{ email: string }`
+    - Behavior: only when `NODE_ENV === "development"`; creates or reuses a local session without sending email
+  - `GET /api/dev/last-magic-link`
+    - Output: the last generated magic-link URL for local automation and manual testing
+    - Behavior: only when `NODE_ENV === "development"`
+- **Auth client capability**
+  - `apps/nextjs/src/auth/client.ts` must expose `authClient.signIn.magicLink(...)` via `magicLinkClient()`
+- **Guard interfaces**
+  - `protectedProcedure`
+  - `workspaceProcedure(wsId)`
+  - `tripProcedure(tripId)`
+- **Core domain fields**
+  - `trips.status`
+  - `trips.tz`
+  - `expenses.currency`
+  - `tripMembers.venmoHandle`
+- **Realtime claim contract**
+  - Channel: `private-expense-${expenseId}`
+  - Event: `line-item:claimed`
+  - Client behavior: invalidate TanStack Query data and fall back to 3-second polling only when realtime is unavailable
+
 ## Phase Dependency Graph
 
 ```
@@ -179,7 +206,7 @@ Each becomes a flat file in `packages/ui/src/`, with a co-located story. **No fo
 **Shadcn primitives**: if any dashboard component needs a primitive that `@gmacko/ui` doesn't already export (`select`, `tabs`, `dialog`, `tooltip`, `badge`, etc.), add them via `pnpm -F @gmacko/ui ui-add <name>` rather than hand-writing them. Do not duplicate Radix primitives.
 
 0.4 **Design tokens**
-- `DESIGN.md` stays unchanged — it's the source of truth.
+- `DESIGN.md` remains the source of truth. Phase 0 preserves the existing Palantir aesthetic rather than redesigning it; later phases may extend the document for mobile/accessibility without changing the migration goal.
 - Token values (fonts, Palantir-style colors, spacing) go into `packages/tailwind-config` (the workspace package the template uses for shared Tailwind config). Read it first, add tokens without touching template defaults.
 - Any dashboard-specific CSS from the old `src/index.css` goes into `apps/nextjs/src/app/globals.css` (or the template's equivalent — inspect first), NOT into `packages/ui`.
 
@@ -210,6 +237,7 @@ Create the following files as stubs (table of contents only, content filled by l
 - `docs/ai/ERROR_PLAYBOOK.md` — failure class × user-visible toast copy × log shape × recoverability
 - `docs/ai/TESTING.md` — Vitest unit (single spec, watch), Playwright e2e (single spec, headed, trace), Claude API mocking via `MockOCRProvider`
 - Update `CLAUDE.md` to reference all five docs
+- `docs/ai/CLAIM_SPEC.md` is intentionally deferred to Phase 2.5 as a blocking design artifact rather than a Phase 0 stub
 
 0.A **Unified `DEV_MODE=local` toggle (A23)**
 - When `DEV_MODE=local` is set in `.env`:
@@ -229,7 +257,7 @@ Create the following files as stubs (table of contents only, content filled by l
 - `pnpm dev:next` serves the app on localhost and `/demo` renders the ported dashboard with visual density matching `docs/screenshots/dashboard-overview.png`
 - **Visual regression snapshot gate (A15)**: take a Playwright screenshot of `/demo` and commit it as `e2e/__screenshots__/demo-baseline.png`. Phase 6 uses this for comparison.
 - The old `src/`, `index.html`, `vite.config.js`, `postcss.config.js` are gone
-- `DESIGN.md` is unchanged from pre-migration
+- `DESIGN.md` remains the source of truth, and Phase 0 does not introduce a redesign beyond the documented system
 - `pnpm -F @gmacko/nextjs e2e` still passes whatever Playwright tests the template ships with (we haven't broken the template's golden paths)
 - `docs/ai/LOCAL_DEV.md`, `COOKBOOK.md`, `ERROR_PLAYBOOK.md`, `TESTING.md`, `TEMPLATE_SNAPSHOT.md` exist as stubs
 - `CLAUDE.md` references the new docs
@@ -245,7 +273,7 @@ Create the following files as stubs (table of contents only, content filled by l
 
 ## Phase 1 — Enable Magic-Link Auth
 
-**Goal**: add Better Auth's magic-link plugin via `extraPlugins` (no fork of `@gmacko/auth`), wire delivery through `@gmacko/email`, and keep all template routes working. Schema changes are minimal — just whatever Better Auth's magic-link plugin requires on the verifications table (which `auth-schema.ts` already has).
+**Goal**: add Better Auth's magic-link plugin via `extraPlugins` (no fork of `@gmacko/auth`), wire delivery through `@gmacko/email`, add development-only local auth shortcuts, and keep all template routes working. Schema changes are minimal — just whatever Better Auth's magic-link plugin requires on the verifications table (which `auth-schema.ts` already has).
 
 **Out of scope**: adding any new domain tables. `trips` lives in Phase 2 because the Trip-vs-Workspace decision must be committed before we touch the schema.
 
@@ -272,8 +300,13 @@ Create the following files as stubs (table of contents only, content filled by l
 - `sendMagicLink` implementation:
   - Import the email sender from `@gmacko/email`
   - In dev (detected via `env.NODE_ENV === "development"`): log the URL to the console with a visible banner (`console.log("\n\n🔗 MAGIC LINK for <email>:\n" + url + "\n\n")`). Do this regardless of whether `@gmacko/email` has its own log transport, because we want the link visible in `pnpm dev:next` output.
+  - **Dev bypass**: add a `/api/dev/auto-login` route (gated on `NODE_ENV === 'development'`) that auto-creates a session for a given email without sending a magic link. Lets developers skip the email flow entirely during local iteration. Also expose `/api/dev/last-magic-link` returning the last generated URL for Playwright automation.
   - In non-dev: call `@gmacko/email`'s send function with a minimal HTML template (subject `"Sign in to Trip Command Center"`, one-button link)
 - If `@gmacko/email` requires a transport that isn't configured yet, guard the non-dev branch with a TODO referencing Phase 7 and fail loudly rather than silently swallowing
+- **Exact dev-route contract**
+  - `apps/nextjs/src/app/api/dev/auto-login/route.ts` handles `POST` with `{ email: string }`
+  - `apps/nextjs/src/app/api/dev/last-magic-link/route.ts` handles `GET`
+  - Both routes must hard-fail outside development (404 or 403; do not expose behavior in staging or production)
 
 1.3 **Regenerate and migrate (if needed)**
 - Run `pnpm auth:generate` — the magic link plugin should not add new tables (it reuses `verification`), but running the generator confirms `packages/db/src/auth-schema.ts` is still accurate
@@ -293,6 +326,9 @@ Create the following files as stubs (table of contents only, content filled by l
 
 - `pnpm db:migrate` is a no-op or applies a trivially empty migration
 - `pnpm dev:next` → open `/sign-in` → enter email → see the magic link in the dev console → click it → land on the post-sign-in destination as an authenticated session
+- `authClient.signIn.magicLink(...)` exists in the browser and successfully submits
+- Server auth still works after adding magic link because `nextCookies()` remains last in `extraPlugins`
+- `POST /api/dev/auto-login` and `GET /api/dev/last-magic-link` work locally and are unavailable outside development
 - `pnpm -F @gmacko/nextjs e2e` passes (the template's existing e2e tests must not regress)
 - `/demo` still renders the legacy dashboard without auth
 - Running `pnpm auth:generate && pnpm db:generate` produces no schema diff — confirms we didn't accidentally fork the auth schema
@@ -327,7 +363,7 @@ trips: id (uuid, pk, default random),
   destinationName (text nullable),  // nullable during planning phase — may not be decided yet
   destinationLat (numeric nullable), destinationLng (numeric nullable),
   defaultZoom (int, default 13), startDate (date nullable), endDate (date nullable),  // nullable during planning
-  timezone (text, not null, default 'UTC'),  // A30: trip-local timezone
+  tz (text, not null, default 'UTC'),  // A30: trip-local timezone
   createdAt, updatedAt
 
 // ═══════════════════════════════════════════════════════
@@ -431,7 +467,7 @@ tripSegments: id (uuid, pk, default random),
   destinationName (text), destinationLat (numeric), destinationLng (numeric),
   defaultZoom (int, default 13),
   startDate (date, not null), endDate (date, not null),
-  timezone (text, not null, default 'UTC'),
+  tz (text, not null, default 'UTC'),
   sortOrder (int, not null),
   createdAt, updatedAt
 
@@ -500,6 +536,7 @@ tripInvites: id, tripId (fk), email (citext), token (text unique, ≥128 bits vi
 2.2 **Destination picker (A24, phase-ordering fix)**
 - `packages/ui/src/destination-picker.tsx` + story — text input with server-side geocoding (Google Geocoding API, or a free alternative like Nominatim/MapTiler geocode for Phase 2 only). Returns `{ name, lat, lng }`. No Google Maps JS dependency.
 - Saves `destinationName`, `destinationLat`, `destinationLng` to the trip. Phase 5's map component reads these as its default center.
+- Organizer must be able to create a trip from this text search before any Phase 5 map UI exists.
 
 2.3 **API routers in `packages/api/src/routers/`** (all scoped via `tripProcedure`)
 - `trips.ts`: `create`, `list` (trips in the user's workspace), `get`, `update` (organizer only), `setGroupMode`, `setClaimMode`
@@ -557,39 +594,20 @@ tripInvites: id, tripId (fk), email (citext), token (text unique, ≥128 bits vi
 
 Every component gets stories for Default + Empty + Loading states (A27 states matrix).
 
-2.5 **Routes in `apps/nextjs/src/app/`**
+2.7 **Routes in `apps/nextjs/src/app/`**
 - `trips/page.tsx` — trip list (replaces placeholder from Phase 1)
 - `trips/new/page.tsx` — create trip form with destination picker
 - `trips/[tripId]/page.tsx` — trip dashboard shell (branches on `groupMode`)
 - `trips/[tripId]/settings/page.tsx` — name, dates, destination, group mode toggle, claim mode toggle, invite dialog, member roster, venmo handle, leave trip
 
-2.6 **Invite acceptance flow**
+2.8 **Invite acceptance flow**
 - Invite link: `https://<host>/invite/<token>`
 - `apps/nextjs/src/app/invite/[token]/page.tsx` — if unauthenticated, triggers magic link sign-in with the invite email prefilled; on success, accepts invite (which auto-provisions workspace membership in a transaction) and redirects to the trip dashboard.
-
-2.3 **UI components in `packages/ui/src/`**
-- `trip-card/` — summary card (name, dates, member avatars, group-mode badge)
-- `trip-list/` — grid of trip cards with a "Create trip" CTA
-- `group-mode-toggle/` — switch with a short description; disabled unless the caller is the organizer
-- `member-chip/` — avatar + name + color
-- `invite-dialog/` — email input list + send button + sent state
-- `member-roster/` — vertical list of `member-chip` components
-
-Every component gets a story with at least Default + Empty + Loading states.
-
-2.4 **Routes in `apps/nextjs/src/app/`**
-- `app/app/page.tsx` — trip list (replaces the placeholder from Phase 1)
-- `app/app/trips/new/page.tsx` — create trip form
-- `app/app/trips/[tripId]/page.tsx` — trip dashboard shell (renders legacy dashboard if `groupMode === false`, else group-mode dashboard placeholder)
-- `app/app/trips/[tripId]/settings/page.tsx` — name, dates, destination, group mode toggle, claim mode toggle, invite dialog, member roster, leave trip
-
-2.5 **Invite acceptance flow**
-- Invite link format: `https://<host>/invite/<token>`
-- `apps/nextjs/app/invite/[token]/page.tsx` — if unauthenticated, triggers magic link sign-in with the invite email prefilled; on success, accepts the invite and redirects to the trip dashboard.
 
 ### Verification (Phase 2)
 
 - A user can create a trip with a destination (geocoded text search), invite two email addresses, and both recipients can join via the invite link and see the trip in their trip list
+- Destination creation works before any Phase 5 map UI exists
 - Invite acceptance auto-provisions workspace membership in a single transaction
 - Organizer can flip group mode on/off; the toggle is hidden for non-organizers
 - Only trip members can load the trip dashboard — a non-member gets a 403 (enforced by `tripProcedure` middleware, NOT a helper)
@@ -703,11 +721,12 @@ A 1-2 page interaction spec covering:
 - WCAG AA floor declared for all surfaces
 - Route × form-factor table with breakpoints: 0–767 phone, 768–1279 tablet, 1280+ desktop
 - Declare which routes are phone-primary (expense/new, expense detail, claim) vs desktop-primary (map, timeline, settlement overview)
+- Add a states matrix for every new interactive surface: loading, empty, optimistic/in-progress, conflict/error, success/completed
 
 ### Verification (Phase 2.5)
 
 - `docs/ai/CLAIM_SPEC.md` exists and covers all 6 topics above
-- `DESIGN.md` has a "Palantir on Mobile" section with breakpoints, touch targets, and route × form-factor table
+- `DESIGN.md` has a "Palantir on Mobile" section with breakpoints, touch targets, route × form-factor table, WCAG AA floor, and the states matrix requirement
 - Phase 3 may begin
 
 ---
@@ -816,9 +835,10 @@ Every component gets stories for: Default, Empty, Loading, Error, **OCR-pending*
 
 - A user can upload a receipt photo, have it OCR-extracted (or fixture-extracted in `DEV_MODE=local`), edit the draft, finalize it, and see line items
 - In tap mode: two members on different devices each claim their own items with live Pusher updates; `computeShares` returns the correct cents split
+- With realtime disabled, expense detail falls back to 3-second foreground polling and still converges correctly
 - In organizer mode: the organizer assigns items without other members needing to act
 - Tax/tip are prorated correctly; rounding residuals go to the payer and are visible in the UI
-- Currency mismatch warning appears for non-USD receipts
+- Currency mismatch warning appears for non-USD receipts, and non-USD expenses cannot be settled together with USD expenses
 - **Multi-user Playwright spec (A20)**: `apps/nextjs/e2e/tap-to-claim.spec.ts` uses `browser.newContext()` for user B, both claim items, asserts realtime sync
 - `pnpm -F @gmacko/api test` passes with at least 10 expense/share cases including currency mismatch + rounding
 

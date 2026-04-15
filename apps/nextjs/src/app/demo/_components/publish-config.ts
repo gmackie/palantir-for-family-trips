@@ -1,13 +1,13 @@
 // @ts-nocheck
 export const PUBLISH_CONFIG = {
-  visibilityMode: 'public',
+  visibilityMode: "public",
   liveExternalData: true,
-}
+};
 
 export function isPublicMode() {
-  return PUBLISH_CONFIG.visibilityMode === 'public'
+  return PUBLISH_CONFIG.visibilityMode === "public";
 }
 
 export function isLiveExternalDataEnabled() {
-  return PUBLISH_CONFIG.liveExternalData !== false
+  return PUBLISH_CONFIG.liveExternalData !== false;
 }
