@@ -60,7 +60,14 @@ export default {
                 env.ASSETS.fetch(
                   new Request(new URL(assetPath, currentRequest.url)),
                 ),
-              transformImage: async (body, { width, format, quality }) => {
+              transformImage: async (
+                body: ReadableStream,
+                {
+                  width,
+                  format,
+                  quality,
+                }: { width: number; format: string; quality: number },
+              ) => {
                 const result = await env.IMAGES.input(body)
                   .transform(width > 0 ? { width } : {})
                   .output({ format, quality });

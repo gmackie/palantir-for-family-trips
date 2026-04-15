@@ -1,5 +1,5 @@
 import { getTableConfig } from "drizzle-orm/pg-core";
-// @ts-expect-error vitest is installed in sibling workspace test packages
+
 import { describe, expect, it } from "vitest";
 
 import { userRoleEnum } from "../auth-schema";
