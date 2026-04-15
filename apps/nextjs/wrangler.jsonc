@@ -32,5 +32,11 @@
         "APP_ENV": "staging"
       }
     }
-  }
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "71e7b1f713a841c4b98b4fa41c42ffef"
+    }
+  ]
 }

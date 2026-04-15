@@ -1,3 +1,4 @@
+import { runWithDatabaseRuntime } from "@gmacko/db/runtime";
 import handler from "vinext/server/app-router-entry";
 import type { ImageConfig } from "vinext/server/image-optimization";
 import {
@@ -21,6 +22,9 @@ interface Env {
       };
     };
   };
+  HYPERDRIVE?: {
+    connectionString?: string | null;
+  };
 }
 
 interface ExecutionContext {
@@ -36,29 +40,40 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
-    const url = new URL(request.url);
+    return runWithDatabaseRuntime(
+      {
+        databaseUrl:
+          env.HYPERDRIVE?.connectionString ?? process.env.DATABASE_URL ?? null,
+      },
+      async () => {
+        const url = new URL(request.url);
 
-    if (url.pathname === "/_vinext/image") {
-      const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      return handleImageOptimization(
-        request,
-        {
-          fetchAsset: (assetPath, currentRequest) =>
-            env.ASSETS.fetch(
-              new Request(new URL(assetPath, currentRequest.url)),
-            ),
-          transformImage: async (body, { width, format, quality }) => {
-            const result = await env.IMAGES.input(body)
-              .transform(width > 0 ? { width } : {})
-              .output({ format, quality });
-            return result.response();
-          },
-        },
-        allowedWidths,
-        imageConfig,
-      );
-    }
+        if (url.pathname === "/_vinext/image") {
+          const allowedWidths = [
+            ...DEFAULT_DEVICE_SIZES,
+            ...DEFAULT_IMAGE_SIZES,
+          ];
+          return handleImageOptimization(
+            request,
+            {
+              fetchAsset: (assetPath, currentRequest) =>
+                env.ASSETS.fetch(
+                  new Request(new URL(assetPath, currentRequest.url)),
+                ),
+              transformImage: async (body, { width, format, quality }) => {
+                const result = await env.IMAGES.input(body)
+                  .transform(width > 0 ? { width } : {})
+                  .output({ format, quality });
+                return result.response();
+              },
+            },
+            allowedWidths,
+            imageConfig,
+          );
+        }
 
-    return handler.fetch(request, env, ctx);
+        return handler.fetch(request, env, ctx);
+      },
+    );
   },
 };

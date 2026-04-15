@@ -11,6 +11,10 @@
       "types": "./dist/client.d.ts",
       "default": "./src/client.ts"
     },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./src/runtime.ts"
+    },
     "./schema": {
       "types": "./dist/schema.d.ts",
       "default": "./src/schema.ts"
