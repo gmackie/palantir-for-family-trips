@@ -29,3 +29,32 @@ If the repo was scaffolded with the optional SaaS bootstrap pack, run that flow 
 
 - Use Storybook for isolated UI work with `pnpm --filter @gmacko/nextjs storybook`.
 - Add or update stories in `packages/ui/src/**/*.stories.tsx` when shared components change.
+
+## Project: Group Trip Command Center
+
+### Design System
+Always read `DESIGN.md` before making any visual or UI decisions.
+All font choices, colors, spacing, and aesthetic direction are defined there.
+Do not deviate without explicit user approval.
+
+### Planning Artifacts
+- `docs/ai/INITIAL_PROPOSAL.md` — product proposal
+- `docs/ai/IMPLEMENTATION_PLAN.md` — phased execution plan (source of truth for all phases)
+- `docs/ai/AUTOPLAN_REVIEW.md` — /autoplan review findings and decisions
+- `docs/ai/TEMPLATE_SNAPSHOT_SHA.txt` — upstream template commit
+
+### Architecture Decisions (settled)
+- **Workspace ⊃ Trip ⊃ Segments**: Workspace = long-lived group, Trip = bounded event, Segment = one stop
+- **Auth guards**: tRPC middleware chain (`protectedProcedure → workspaceProcedure → tripProcedure`), NOT helper functions
+- **Both apps**: `apps/nextjs` (dashboard) + `apps/expo` (mobile capture), shared tRPC backend
+- **Realtime**: `@gmacko/realtime` (Pusher) for tap-to-claim, polling as fallback
+- **Storage**: Extend `@gmacko/storage`, do NOT create parallel storage code
+- **Currency**: Stored per expense, settlement refuses mixed currencies
+
+### Development Rules
+- Maintain high information density in the Palantir dashboard aesthetic
+- Use semantic colors strictly for status
+- Ensure all numerical data uses monospace fonts for alignment
+- Keep the UI responsive but optimized for large dashboard displays
+- Every `segmentId` on expenses and pins is NOT nullable — segments all the way down
+- Trip lifecycle: planning → confirmed → active → completed
