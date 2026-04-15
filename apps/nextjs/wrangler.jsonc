@@ -3,7 +3,18 @@
   "name": "trip-gmac-io",
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat"],
+  "build": {
+    "command": "pnpm prebuild:vinext && VINEXT=1 pnpm with-env vinext build",
+    "cwd": ".",
+    "watch_dir": ["src", "worker", "../../packages"]
+  },
   "main": "./worker/index.ts",
+  "routes": [
+    {
+      "pattern": "trip.gmac.io",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",

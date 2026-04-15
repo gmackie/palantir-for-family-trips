@@ -5,6 +5,9 @@ This app now includes an experimental `vinext` lane for Cloudflare Workers.
 ## Commands
 
 ```bash
+cd apps/nextjs
+pnpm with-env wrangler deploy
+
 pnpm --filter @gmacko/nextjs dev:vinext
 pnpm --filter @gmacko/nextjs build:vinext
 pnpm --filter @gmacko/nextjs deploy:cloudflare:staging
@@ -20,7 +23,7 @@ pnpm --filter @gmacko/nextjs deploy:cloudflare:production
 
 - The intended production custom domain is `trip.gmac.io`.
 - The Worker config lives in `apps/nextjs/wrangler.jsonc`.
-- Attach the custom domain in Cloudflare once the first Worker deploy succeeds.
+- `wrangler deploy` now uses that config directly, including the `trip.gmac.io` custom-domain route and the vinext build hook.
 
 ## Notes
 
