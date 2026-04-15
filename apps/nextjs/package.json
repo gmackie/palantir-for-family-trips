@@ -27,6 +27,7 @@
     "@gmacko/monitoring": "workspace:*",
     "@gmacko/ui": "workspace:*",
     "@gmacko/validators": "workspace:*",
+    "@googlemaps/js-api-loader": "^2.0.2",
     "@sentry/nextjs": "^10.44.0",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/react-form": "catalog:",
@@ -35,11 +36,14 @@
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "catalog:",
     "better-auth": "catalog:",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0",
     "next": "16.2.1",
     "next-intl": "^4.8.3",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
     "superjson": "catalog:",
+    "tailwind-merge": "^3.5.0",
     "zod": "catalog:"
   },
   "devDependencies": {

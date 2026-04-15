@@ -1,0 +1,59 @@
+/*
+ * Demo-specific styles ported from the original Vite app's index.css.
+ * The main Tailwind import lives in the app-level styles.css, so we only
+ * bring in theme extensions and custom properties here.
+ */
+
+@theme {
+  --color-background: #0A0C10;
+  --color-surface: #161B22;
+  --color-muted: #8B949E;
+  --color-primary: #C9D1D9;
+  --color-border: #30363D;
+  --color-critical: #F85149;
+  --color-warning: #D29922;
+  --color-success: #3FB950;
+  --color-info: #58A6FF;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+}
+
+.demo-shell {
+  --background: #0A0C10;
+  --surface: #161B22;
+  --primary: #C9D1D9;
+  --muted: #8B949E;
+  --border: #30363D;
+  --critical: #F85149;
+  --warning: #D29922;
+  --success: #3FB950;
+  --info: #58A6FF;
+
+  background-color: var(--background);
+  color: var(--primary);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.demo-shell ::-webkit-scrollbar {
+  width: 4px;
+}
+
+.demo-shell ::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+.demo-shell ::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.demo-shell ::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
