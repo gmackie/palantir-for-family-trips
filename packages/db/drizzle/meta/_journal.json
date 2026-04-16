@@ -36,6 +36,13 @@
       "when": 1776335744734,
       "tag": "0004_open_the_order",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776336123224,
+      "tag": "0005_fair_miss_america",
+      "breakpoints": true
     }
   ]
 }

@@ -599,6 +599,70 @@ export const proposalReactions = pgTable(
   ],
 );
 
+// ═══════════════════════════════════════════════════════
+// MAP + ITINERARY (Phase 5)
+// ═══════════════════════════════════════════════════════
+
+export const pinTypeEnum = [
+  "lodging",
+  "activity",
+  "meal",
+  "transit",
+  "drinks",
+  "tickets",
+  "custom",
+] as const;
+export type PinType = (typeof pinTypeEnum)[number];
+
+export const pins = pgTable("pin", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  segmentId: t
+    .uuid()
+    .notNull()
+    .references(() => tripSegments.id, { onDelete: "cascade" }),
+  type: t.text().$type<PinType>().notNull().default("custom"),
+  title: t.varchar({ length: 200 }).notNull(),
+  lat: t.numeric().notNull(),
+  lng: t.numeric().notNull(),
+  startsAt: t.timestamp({ mode: "date", withTimezone: true }),
+  endsAt: t.timestamp({ mode: "date", withTimezone: true }),
+  notes: t.text(),
+  createdByUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  editLockedByUserId: t
+    .text()
+    .references(() => user.id, { onDelete: "set null" }),
+  editLockedUntil: t.timestamp({ mode: "date", withTimezone: true }),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const pinAttendees = pgTable(
+  "pin_attendee",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    pinId: t
+      .uuid()
+      .notNull()
+      .references(() => pins.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  }),
+  (table) => [
+    unique("pin_attendees_pin_user_unique").on(table.pinId, table.userId),
+  ],
+);
+
 export const applicationSettings = pgTable("application_settings", (t) => ({
   id: t.uuid().notNull().primaryKey().defaultRandom(),
   setupCompletedAt: t.timestamp({ mode: "date", withTimezone: true }),
