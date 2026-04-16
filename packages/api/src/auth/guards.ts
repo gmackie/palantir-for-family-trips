@@ -45,6 +45,7 @@ function readScopedId(input: unknown, key: string): string {
   if (typeof value !== "string" || value.length === 0) {
     throw new TRPCError({
       code: "BAD_REQUEST",
+      message: `Missing ${key}. Debug: type=${typeof input}, keys=${input && typeof input === "object" ? Object.keys(input as object).join(",") : "none"}, raw=${JSON.stringify(input)?.slice(0, 300)}`,
       message: `Missing ${key}`,
     });
   }
