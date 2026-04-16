@@ -43,10 +43,10 @@ function readScopedId(input: unknown, key: string): string {
   const value = typeof directValue === "string" ? directValue : typeof jsonWrappedValue === "string" ? jsonWrappedValue : undefined;
 
   if (typeof value !== "string" || value.length === 0) {
+    const debugInfo = `type=${typeof input}, keys=${input && typeof input === "object" ? Object.keys(input as object).join(",") : "none"}, raw=${JSON.stringify(input)?.slice(0, 300)}`;
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Missing ${key}. Debug: type=${typeof input}, keys=${input && typeof input === "object" ? Object.keys(input as object).join(",") : "none"}, raw=${JSON.stringify(input)?.slice(0, 300)}`,
-      message: `Missing ${key}`,
+      message: `Missing ${key}. ${debugInfo}`,
     });
   }
 
@@ -167,10 +167,13 @@ export async function resolveTripAccess(
 }
 
 export function workspaceProcedure(workspaceIdKey = "workspaceId") {
-  return protectedProcedure.use(async ({ ctx, input, next }) => {
+  return protectedProcedure.use(async ({ ctx, input, next, getRawInput }) => {
+    // tRPC v11: middleware `input` is undefined before .input() parsing.
+    // Use getRawInput() to access the caller-provided input.
+    const rawInput = input ?? (await getRawInput());
     const access = await resolveWorkspaceAccess(createTripAccessStore(ctx.db), {
       userId: ctx.session.user.id,
-      workspaceId: readScopedId(input, workspaceIdKey),
+      workspaceId: readScopedId(rawInput, workspaceIdKey),
     });
 
     return next({
@@ -189,11 +192,12 @@ export function tripProcedure(
   const { tripIdKey = "tripId", workspaceIdKey = "workspaceId" } = options;
 
   return workspaceProcedure(workspaceIdKey).use(
-    async ({ ctx, input, next }) => {
+    async ({ ctx, input, next, getRawInput }) => {
+      const rawInput = input ?? (await getRawInput());
       const access = await resolveTripAccess(createTripAccessStore(ctx.db), {
         userId: ctx.session.user.id,
         workspaceId: ctx.workspaceId,
-        tripId: readScopedId(input, tripIdKey),
+        tripId: readScopedId(rawInput, tripIdKey),
       });
 
       return next({
