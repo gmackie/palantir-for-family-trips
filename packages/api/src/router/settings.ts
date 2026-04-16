@@ -697,4 +697,21 @@ export const settingsRouter = {
 
     return { success: !!deletedUser };
   }),
+
+  listMyWorkspaces: protectedProcedure.query(async ({ ctx }) => {
+    const memberships = await ctx.db
+      .select({
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        role: workspaceMembership.role,
+        joinedAt: workspaceMembership.createdAt,
+      })
+      .from(workspaceMembership)
+      .innerJoin(workspace, eq(workspace.id, workspaceMembership.workspaceId))
+      .where(eq(workspaceMembership.userId, ctx.session.user.id))
+      .orderBy(workspaceMembership.createdAt);
+
+    return memberships;
+  }),
 } satisfies TRPCRouterRecord;
