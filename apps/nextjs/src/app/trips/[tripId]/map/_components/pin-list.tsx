@@ -5,7 +5,7 @@ import { Button } from "@gmacko/ui/button";
 import { Input } from "@gmacko/ui/input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
@@ -53,6 +53,8 @@ export function PinList(props: {
   tripId: string;
   segmentId: string;
   initialPins: PinListOutput;
+  prefillLat?: string;
+  prefillLng?: string;
 }) {
   const { workspaceId, tripId, segmentId } = props;
   const trpc = useTRPC();
@@ -68,6 +70,15 @@ export function PinList(props: {
   const [type, setType] = useState<(typeof PIN_TYPE_OPTIONS)[number]>("custom");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+
+  // Sync prefill coordinates from map clicks
+  useEffect(() => {
+    if (props.prefillLat) setLat(props.prefillLat);
+  }, [props.prefillLat]);
+
+  useEffect(() => {
+    if (props.prefillLng) setLng(props.prefillLng);
+  }, [props.prefillLng]);
 
   const invalidate = () => {
     void queryClient.invalidateQueries({

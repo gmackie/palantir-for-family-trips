@@ -65,6 +65,7 @@
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
     "@storybook/nextjs-vite": "catalog:",
+    "@types/google.maps": "^3.64.0",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
