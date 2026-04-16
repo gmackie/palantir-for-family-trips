@@ -12,11 +12,15 @@ export async function requireTripsWorkspace() {
     redirect("/sign-in");
   }
 
-  await ensurePersonalWorkspace({
-    userId: session.user.id,
-    userName: session.user.name ?? "",
-    userEmail: session.user.email,
-  });
+  try {
+    await ensurePersonalWorkspace({
+      userId: session.user.id,
+      userName: session.user.name ?? "",
+      userEmail: session.user.email,
+    });
+  } catch (error) {
+    console.error("[requireTripsWorkspace] ensurePersonalWorkspace failed:", error);
+  }
 
   const requestHeaders = new Headers(await headers());
   const caller = appRouter.createCaller(
