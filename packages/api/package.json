@@ -36,6 +36,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.89.0",
     "@gmacko/auth": "workspace:*",
     "@gmacko/config": "workspace:*",
     "@gmacko/db": "workspace:*",

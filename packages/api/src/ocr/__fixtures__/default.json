@@ -1,0 +1,38 @@
+{
+  "name": "default",
+  "extraction": {
+    "merchant": "Corner Cafe",
+    "occurredAt": "2026-04-15T13:42:00Z",
+    "currency": "USD",
+    "subtotalCents": 2850,
+    "taxCents": 228,
+    "tipCents": 500,
+    "totalCents": 3578,
+    "lineItems": [
+      {
+        "name": "Avocado toast",
+        "quantity": 1,
+        "unitPriceCents": 1200,
+        "lineTotalCents": 1200
+      },
+      {
+        "name": "Pancakes",
+        "quantity": 1,
+        "unitPriceCents": 950,
+        "lineTotalCents": 950
+      },
+      {
+        "name": "Latte",
+        "quantity": 1,
+        "unitPriceCents": 450,
+        "lineTotalCents": 450
+      },
+      {
+        "name": "Orange juice",
+        "quantity": 1,
+        "unitPriceCents": 250,
+        "lineTotalCents": 250
+      }
+    ]
+  }
+}
