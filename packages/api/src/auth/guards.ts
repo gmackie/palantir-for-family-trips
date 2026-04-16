@@ -35,13 +35,14 @@ export interface TripAccessStore {
 }
 
 function readScopedId(input: unknown, key: string): string {
-  const value =
-    input && typeof input === "object"
-      ? (input as ScopedInput)?.[key]
-      : undefined;
+  // tRPC middleware receives raw input. With superjson transformer,
+  // the actual values may be nested under a `json` key.
+  const obj = input as ScopedInput;
+  const directValue = obj?.[key];
+  const jsonWrappedValue = (obj?.json as ScopedInput)?.[key];
+  const value = typeof directValue === "string" ? directValue : typeof jsonWrappedValue === "string" ? jsonWrappedValue : undefined;
 
   if (typeof value !== "string" || value.length === 0) {
-    console.error(`[readScopedId] Missing ${key}. input type=${typeof input}, input=${JSON.stringify(input)?.slice(0, 200)}`);
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Missing ${key}`,
