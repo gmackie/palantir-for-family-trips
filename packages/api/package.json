@@ -22,6 +22,10 @@
     "./workspace": {
       "types": "./dist/workspace/index.d.ts",
       "default": "./src/workspace/index.ts"
+    },
+    "./ocr": {
+      "types": "./dist/ocr/index.d.ts",
+      "default": "./src/ocr/index.ts"
     }
   },
   "license": "MIT",
