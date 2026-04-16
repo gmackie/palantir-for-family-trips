@@ -34,6 +34,7 @@
     "@gmacko/email": "workspace:*",
     "@gmacko/i18n": "workspace:*",
     "@gmacko/monitoring": "workspace:*",
+    "@gmacko/realtime": "workspace:*",
     "@gmacko/ui": "workspace:*",
     "@gmacko/validators": "workspace:*",
     "@googlemaps/js-api-loader": "^2.0.2",
