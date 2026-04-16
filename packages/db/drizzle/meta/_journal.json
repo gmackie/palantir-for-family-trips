@@ -43,6 +43,13 @@
       "when": 1776336123224,
       "tag": "0005_fair_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776338435128,
+      "tag": "0006_tan_gorilla_man",
+      "breakpoints": true
     }
   ]
 }

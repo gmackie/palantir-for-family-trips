@@ -663,6 +663,193 @@ export const pinAttendees = pgTable(
   ],
 );
 
+// ═══════════════════════════════════════════════════════
+// LODGING + ARRIVALS
+// ═══════════════════════════════════════════════════════
+
+export const lodgingProviderEnum = [
+  "airbnb",
+  "vrbo",
+  "hotel",
+  "hostel",
+  "other",
+] as const;
+export type LodgingProvider = (typeof lodgingProviderEnum)[number];
+
+export const lodgingSourceTypeEnum = [
+  "manual",
+  "email_parsed",
+  "api_imported",
+  "link_parsed",
+] as const;
+export type LodgingSourceType = (typeof lodgingSourceTypeEnum)[number];
+
+export const lodgings = pgTable("lodging", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  segmentId: t
+    .uuid()
+    .notNull()
+    .references(() => tripSegments.id, { onDelete: "cascade" }),
+  createdByUserId: t
+    .text()
+    .references(() => user.id, { onDelete: "set null" }),
+  provider: t.text().$type<LodgingProvider>(),
+  propertyName: t.varchar({ length: 200 }).notNull(),
+  address: t.text(),
+  lat: t.numeric(),
+  lng: t.numeric(),
+  checkInAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  checkOutAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  checkInInstructions: t.text(),
+  confirmationNumber: t.varchar({ length: 100 }),
+  bookingUrl: t.text(),
+  nightlyRateCents: t.integer(),
+  totalCostCents: t.integer(),
+  currency: t.varchar({ length: 8 }).notNull().default("USD"),
+  hostName: t.varchar({ length: 120 }),
+  hostPhone: t.varchar({ length: 30 }),
+  notes: t.text(),
+  sourceType: t
+    .text()
+    .$type<LodgingSourceType>()
+    .notNull()
+    .default("manual"),
+  sourceRaw: t.text(),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const lodgingGuests = pgTable(
+  "lodging_guest",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    lodgingId: t
+      .uuid()
+      .notNull()
+      .references(() => lodgings.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  }),
+  (table) => [
+    unique("lodging_guests_lodging_user_unique").on(
+      table.lodgingId,
+      table.userId,
+    ),
+  ],
+);
+
+export const transitDirectionEnum = ["arrival", "departure"] as const;
+export type TransitDirection = (typeof transitDirectionEnum)[number];
+
+export const transitTypeEnum = [
+  "flight",
+  "train",
+  "bus",
+  "car",
+  "other",
+] as const;
+export type TransitType = (typeof transitTypeEnum)[number];
+
+export const trackingStatusEnum = [
+  "scheduled",
+  "en_route",
+  "delayed",
+  "arrived",
+  "cancelled",
+] as const;
+export type TrackingStatus = (typeof trackingStatusEnum)[number];
+
+export const memberTransits = pgTable("member_transit", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  segmentId: t
+    .uuid()
+    .notNull()
+    .references(() => tripSegments.id, { onDelete: "cascade" }),
+  userId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  direction: t.text().$type<TransitDirection>(),
+  transitType: t.text().$type<TransitType>(),
+  carrier: t.varchar({ length: 100 }),
+  transitNumber: t.varchar({ length: 50 }),
+  departureStation: t.varchar({ length: 200 }),
+  arrivalStation: t.varchar({ length: 200 }),
+  scheduledAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  estimatedAt: t.timestamp({ mode: "date", withTimezone: true }),
+  actualAt: t.timestamp({ mode: "date", withTimezone: true }),
+  trackingStatus: t
+    .text()
+    .$type<TrackingStatus>()
+    .notNull()
+    .default("scheduled"),
+  notes: t.text(),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const groundTransportTypeEnum = [
+  "rental_car",
+  "taxi",
+  "rideshare",
+  "shuttle",
+  "public_transit",
+] as const;
+export type GroundTransportType = (typeof groundTransportTypeEnum)[number];
+
+export const groundTransportGroups = pgTable(
+  "ground_transport_group",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    segmentId: t
+      .uuid()
+      .notNull()
+      .references(() => tripSegments.id, { onDelete: "cascade" }),
+    createdByUserId: t
+      .text()
+      .references(() => user.id, { onDelete: "set null" }),
+    transportType: t.text().$type<GroundTransportType>(),
+    label: t.varchar({ length: 200 }).notNull(),
+    fromDescription: t.text(),
+    toDescription: t.text(),
+    scheduledAt: t.timestamp({ mode: "date", withTimezone: true }),
+    costCents: t.integer(),
+    currency: t.varchar({ length: 8 }).notNull().default("USD"),
+    notes: t.text(),
+    createdAt: t.timestamp().defaultNow().notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+);
+
+export const groundTransportMembers = pgTable(
+  "ground_transport_member",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    groundTransportGroupId: t
+      .uuid()
+      .notNull()
+      .references(() => groundTransportGroups.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  }),
+  (table) => [
+    unique("ground_transport_members_group_user_unique").on(
+      table.groundTransportGroupId,
+      table.userId,
+    ),
+  ],
+);
+
 export const applicationSettings = pgTable("application_settings", (t) => ({
   id: t.uuid().notNull().primaryKey().defaultRandom(),
   setupCompletedAt: t.timestamp({ mode: "date", withTimezone: true }),
