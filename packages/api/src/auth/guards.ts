@@ -41,6 +41,7 @@ function readScopedId(input: unknown, key: string): string {
       : undefined;
 
   if (typeof value !== "string" || value.length === 0) {
+    console.error(`[readScopedId] Missing ${key}. input type=${typeof input}, input=${JSON.stringify(input)?.slice(0, 200)}`);
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Missing ${key}`,
