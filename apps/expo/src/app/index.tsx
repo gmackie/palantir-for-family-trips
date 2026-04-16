@@ -1,227 +1,236 @@
-import { useTranslationsNative } from "@gmacko/i18n/native";
-import { LegendList } from "@legendapp/list";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as AppleAuthentication from "expo-apple-authentication";
-import { Link, Stack } from "expo-router";
-import { useEffect, useState } from "react";
-import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { Link, Stack, useRouter } from "expo-router";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
+import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-function PostCard(props: {
-  post: RouterOutputs["post"]["all"][number];
-  onDelete: () => void;
-}) {
-  const t = useTranslationsNative();
+const STATUS_COLORS: Record<string, string> = {
+  planning: "bg-yellow-500",
+  confirmed: "bg-blue-500",
+  active: "bg-green-500",
+  completed: "bg-gray-500",
+};
+
+function formatDate(value: string | null) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
+    new Date(value),
+  );
+}
+
+function SignIn() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await authClient.signIn.magicLink({ email: email.trim() });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="text-foreground mb-2 text-2xl font-bold">
+          Check your email
+        </Text>
+        <Text className="text-muted-foreground mb-6 text-center">
+          We sent a magic link to {email}. Tap the link in your email to sign
+          in.
+        </Text>
+        <Pressable
+          onPress={() => {
+            setSent(false);
+            setEmail("");
+          }}
+          className="rounded-md px-4 py-2"
+        >
+          <Text className="text-primary font-medium">Try another email</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
-    <View className="bg-muted flex flex-row rounded-lg p-4">
-      <View className="grow">
-        <Link
-          asChild
-          href={{
-            pathname: "/post/[id]",
-            params: { id: props.post.id },
-          }}
-        >
-          <Pressable className="">
-            <Text className="text-primary text-xl font-semibold">
-              {props.post.title}
-            </Text>
-            <Text className="text-foreground mt-2">{props.post.content}</Text>
-          </Pressable>
-        </Link>
-      </View>
-      <Pressable onPress={props.onDelete}>
-        <Text className="text-primary font-bold uppercase">
-          {t("common.delete")}
-        </Text>
+    <View className="flex-1 items-center justify-center px-6">
+      <Text className="text-foreground mb-2 text-3xl font-bold">
+        Trip Planner
+      </Text>
+      <Text className="text-muted-foreground mb-8 text-center">
+        Sign in with your email to get started
+      </Text>
+
+      <TextInput
+        className="border-input bg-background text-foreground mb-4 w-full rounded-md border px-4 py-3 text-base"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="you@example.com"
+        placeholderTextColor="#888"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoCorrect={false}
+      />
+
+      {error && (
+        <Text className="text-destructive mb-3 text-sm">{error}</Text>
+      )}
+
+      <Pressable
+        onPress={() => void handleSend()}
+        disabled={loading || !email.trim()}
+        className="bg-primary w-full items-center rounded-md px-4 py-3"
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text className="text-primary-foreground font-semibold">
+            Send magic link
+          </Text>
+        )}
       </Pressable>
     </View>
   );
 }
 
-function CreatePost() {
-  const queryClient = useQueryClient();
-  const t = useTranslationsNative();
+function TripList() {
+  const router = useRouter();
+  const workspaceId = getActiveWorkspaceId();
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-
-  const { mutate, error } = useMutation(
-    trpc.post.create.mutationOptions({
-      async onSuccess() {
-        setTitle("");
-        setContent("");
-        await queryClient.invalidateQueries(trpc.post.all.queryFilter());
-      },
+  const { data: trips, isLoading } = useQuery(
+    trpc.trips.list.queryOptions({
+      workspaceId: workspaceId ?? "",
     }),
   );
 
+  if (!workspaceId) {
+    return (
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="text-muted-foreground text-center">
+          No workspace selected. Please set up your workspace in settings.
+        </Text>
+        <Link href="/settings" asChild>
+          <Pressable className="bg-primary mt-4 rounded-md px-4 py-2">
+            <Text className="text-primary-foreground font-medium">
+              Go to Settings
+            </Text>
+          </Pressable>
+        </Link>
+      </View>
+    );
+  }
+
   return (
-    <View className="mt-4 flex gap-2">
-      <TextInput
-        className="border-input bg-background text-foreground items-center rounded-md border px-3 text-lg leading-tight"
-        value={title}
-        onChangeText={setTitle}
-        placeholder={t("common.create") + " " + t("common.title")}
-      />
-      {error?.data?.zodError?.fieldErrors.title && (
-        <Text className="text-destructive mb-2">
-          {error.data.zodError.fieldErrors.title}
-        </Text>
-      )}
-      <TextInput
-        className="border-input bg-background text-foreground items-center rounded-md border px-3 text-lg leading-tight"
-        value={content}
-        onChangeText={setContent}
-        placeholder={t("common.content")}
-      />
-      {error?.data?.zodError?.fieldErrors.content && (
-        <Text className="text-destructive mb-2">
-          {error.data.zodError.fieldErrors.content}
-        </Text>
-      )}
-      <Pressable
-        className="bg-primary flex items-center rounded-sm p-2"
-        onPress={() => {
-          mutate({
-            title,
-            content,
-          });
-        }}
-      >
-        <Text className="text-foreground">{t("common.create")}</Text>
-      </Pressable>
-      {error?.data?.code === "UNAUTHORIZED" && (
-        <Text className="text-destructive mt-2">
-          {t("errors.unauthorized")}
-        </Text>
+    <View className="flex-1 px-4 pt-4">
+      <View className="mb-4 flex-row items-center justify-between">
+        <Text className="text-foreground text-2xl font-bold">Your Trips</Text>
+        <View className="flex-row gap-2">
+          <Link href="/settings" asChild>
+            <Pressable className="border-border rounded-md border px-3 py-2">
+              <Text className="text-foreground text-sm">Settings</Text>
+            </Pressable>
+          </Link>
+        </View>
+      </View>
+
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" />
+        </View>
+      ) : !trips || trips.length === 0 ? (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-muted-foreground mb-2 text-lg">
+            No trips yet
+          </Text>
+          <Text className="text-muted-foreground text-center text-sm">
+            Create your first trip to get started planning.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={trips}
+          keyExtractor={(item) => item.id}
+          ItemSeparatorComponent={() => <View className="h-3" />}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/trip/[tripId]",
+                  params: { tripId: item.id },
+                })
+              }
+              className="border-border bg-card rounded-lg border p-4"
+            >
+              <View className="mb-2 flex-row items-center justify-between">
+                <Text className="text-foreground text-lg font-semibold">
+                  {item.name}
+                </Text>
+                <View
+                  className={`rounded-full px-2 py-0.5 ${STATUS_COLORS[item.status] ?? "bg-gray-400"}`}
+                >
+                  <Text className="text-xs font-medium capitalize text-white">
+                    {item.status}
+                  </Text>
+                </View>
+              </View>
+              {item.destinationName && (
+                <Text className="text-muted-foreground mb-1 text-sm">
+                  {item.destinationName}
+                </Text>
+              )}
+              {(item.startDate || item.endDate) && (
+                <Text className="text-muted-foreground text-xs">
+                  {formatDate(item.startDate)}
+                  {item.startDate && item.endDate ? " - " : ""}
+                  {formatDate(item.endDate)}
+                </Text>
+              )}
+            </Pressable>
+          )}
+        />
       )}
     </View>
-  );
-}
-
-function MobileAuth() {
-  const { data: session } = authClient.useSession();
-  const t = useTranslationsNative();
-  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
-
-  useEffect(() => {
-    if (Platform.OS !== "ios") {
-      return;
-    }
-
-    void AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
-  }, []);
-
-  const handleAppleSignIn = async () => {
-    const credential = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
-    });
-
-    if (!credential.identityToken) {
-      throw new Error("Apple sign-in did not return an identity token.");
-    }
-
-    await authClient.signIn.social({
-      provider: "apple",
-      idToken: {
-        token: credential.identityToken,
-        accessToken: credential.authorizationCode ?? undefined,
-      },
-      callbackURL: "/",
-    });
-  };
-
-  return (
-    <>
-      <Text className="text-foreground pb-2 text-center text-xl font-semibold">
-        {session?.user.name
-          ? `${t("common.welcome")}, ${session.user.name}`
-          : t("auth.dontHaveAccount")}
-      </Text>
-      <Pressable
-        onPress={() =>
-          session
-            ? authClient.signOut()
-            : authClient.signIn.social({
-                provider: "discord",
-                callbackURL: "/",
-              })
-        }
-        className="bg-primary flex items-center rounded-sm p-2"
-      >
-        <Text>
-          {session ? t("auth.signOut") : t("auth.signIn") + " With Discord"}
-        </Text>
-      </Pressable>
-      {!session && appleAuthAvailable ? (
-        <AppleAuthentication.AppleAuthenticationButton
-          buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-          cornerRadius={8}
-          onPress={() => {
-            void handleAppleSignIn();
-          }}
-          style={{ height: 44, marginTop: 12, width: "100%" }}
-        />
-      ) : null}
-    </>
   );
 }
 
 export default function Index() {
-  const queryClient = useQueryClient();
-  const t = useTranslationsNative();
+  const { data: session, isPending } = authClient.useSession();
 
-  const postQuery = useQuery(trpc.post.all.queryOptions());
-
-  const deletePostMutation = useMutation(
-    trpc.post.delete.mutationOptions({
-      onSettled: () =>
-        queryClient.invalidateQueries(trpc.post.all.queryFilter()),
-    }),
-  );
+  if (isPending) {
+    return (
+      <SafeAreaView className="bg-background flex-1">
+        <Stack.Screen options={{ title: "Trip Planner" }} />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView className="bg-background">
-      {/* Changes page title visible on the header */}
-      <Stack.Screen options={{ title: t("nav.home") }} />
-      <View className="bg-background h-full w-full p-4">
-        <Text className="text-foreground pb-2 text-center text-5xl font-bold">
-          Create <Text className="text-primary">T3</Text> Turbo
-        </Text>
-
-        <MobileAuth />
-
-        <View className="py-2">
-          <Text className="text-primary font-semibold italic">
-            Press on a post
-          </Text>
-        </View>
-
-        <LegendList
-          data={postQuery.data ?? []}
-          estimatedItemSize={20}
-          keyExtractor={(item) => item.id}
-          ItemSeparatorComponent={() => <View className="h-2" />}
-          renderItem={(p) => (
-            <PostCard
-              post={p.item}
-              onDelete={() => deletePostMutation.mutate(p.item.id)}
-            />
-          )}
-        />
-
-        <CreatePost />
-      </View>
+    <SafeAreaView className="bg-background flex-1">
+      <Stack.Screen options={{ title: "Trip Planner" }} />
+      {session?.user ? <TripList /> : <SignIn />}
     </SafeAreaView>
   );
 }
