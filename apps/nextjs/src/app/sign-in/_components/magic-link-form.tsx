@@ -14,28 +14,9 @@ export function MagicLinkForm() {
   const [submitted, setSubmitted] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
-  async function handleDevLogin() {
-    setError(null);
+  function handleDevLogin() {
     setIsPending(true);
-
-    try {
-      const res = await fetch(
-        `/api/dev/auto-login?email=${encodeURIComponent(email)}`,
-      );
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error ?? "Dev login failed");
-        return;
-      }
-
-      router.push("/trips");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Dev login failed");
-    } finally {
-      setIsPending(false);
-    }
+    window.location.href = `/api/dev/auto-login?email=${encodeURIComponent(email)}`;
   }
 
   async function handleMagicLink() {
