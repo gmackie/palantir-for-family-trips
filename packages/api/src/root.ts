@@ -3,6 +3,7 @@ import { authRouter } from "./router/auth";
 import { expensesRouter } from "./router/expenses";
 import { postRouter } from "./router/post";
 import { settingsRouter } from "./router/settings";
+import { settlementsRouter } from "./router/settlements";
 import { tripsRouter } from "./router/trips";
 import { createTRPCRouter } from "./trpc";
 
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   expenses: expensesRouter,
   post: postRouter,
   settings: settingsRouter,
+  settlements: settlementsRouter,
   trips: tripsRouter,
 });
 

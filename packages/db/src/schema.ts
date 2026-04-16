@@ -394,6 +394,35 @@ export const lineItemClaims = pgTable(
   ],
 );
 
+// ═══════════════════════════════════════════════════════
+// SETTLEMENTS (Phase 4)
+// ═══════════════════════════════════════════════════════
+
+export const settlements = pgTable("settlement", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  fromUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  toUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  amountCents: t.integer().notNull(),
+  idempotencyKey: t.varchar({ length: 255 }).notNull().unique(),
+  note: t.text(),
+  settledAt: t.timestamp({ mode: "date", withTimezone: true }).defaultNow().notNull(),
+  undoneAt: t.timestamp({ mode: "date", withTimezone: true }),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
 export const applicationSettings = pgTable("application_settings", (t) => ({
   id: t.uuid().notNull().primaryKey().defaultRandom(),
   setupCompletedAt: t.timestamp({ mode: "date", withTimezone: true }),
