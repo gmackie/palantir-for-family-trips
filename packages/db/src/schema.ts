@@ -286,6 +286,114 @@ export const tripInvites = pgTable(
   ],
 );
 
+// ═══════════════════════════════════════════════════════
+// EXPENSES (Phase 3)
+// ═══════════════════════════════════════════════════════
+
+export const expenseStatusEnum = ["draft", "finalized"] as const;
+export type ExpenseStatus = (typeof expenseStatusEnum)[number];
+
+export const expenseCategoryEnum = [
+  "meal",
+  "transit",
+  "lodging",
+  "activity",
+  "drinks",
+  "tickets",
+  "general",
+] as const;
+export type ExpenseCategory = (typeof expenseCategoryEnum)[number];
+
+export const expenses = pgTable("expense", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  segmentId: t
+    .uuid()
+    .notNull()
+    .references(() => tripSegments.id, { onDelete: "cascade" }),
+  payerUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  merchant: t.varchar({ length: 200 }).notNull(),
+  category: t
+    .text()
+    .$type<ExpenseCategory>()
+    .notNull()
+    .default("general"),
+  occurredAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  subtotalCents: t.integer().notNull().default(0),
+  taxCents: t.integer().notNull().default(0),
+  tipCents: t.integer().notNull().default(0),
+  totalCents: t.integer().notNull().default(0),
+  currency: t.varchar({ length: 8 }).notNull().default("USD"),
+  notes: t.text(),
+  ocrConfidence: t.real(),
+  status: t.text().$type<ExpenseStatus>().notNull().default("draft"),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const receiptImages = pgTable("receipt_image", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  expenseId: t
+    .uuid()
+    .notNull()
+    .references(() => expenses.id, { onDelete: "cascade" }),
+  storageKey: t.varchar({ length: 500 }).notNull(),
+  mimeType: t.varchar({ length: 100 }).notNull(),
+  sizeBytes: t.integer().notNull(),
+  uploadedByUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: t.timestamp().defaultNow().notNull(),
+}));
+
+export const lineItems = pgTable("line_item", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  expenseId: t
+    .uuid()
+    .notNull()
+    .references(() => expenses.id, { onDelete: "cascade" }),
+  name: t.varchar({ length: 200 }).notNull(),
+  quantity: t.numeric({ precision: 10, scale: 3 }).notNull().default("1"),
+  unitPriceCents: t.integer().notNull().default(0),
+  lineTotalCents: t.integer().notNull().default(0),
+  sortOrder: t.integer().notNull().default(0),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const lineItemClaims = pgTable(
+  "line_item_claim",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    lineItemId: t
+      .uuid()
+      .notNull()
+      .references(() => lineItems.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: t.timestamp().defaultNow().notNull(),
+  }),
+  (table) => [
+    unique("line_item_claim_line_item_user_unique").on(
+      table.lineItemId,
+      table.userId,
+    ),
+  ],
+);
+
 export const applicationSettings = pgTable("application_settings", (t) => ({
   id: t.uuid().notNull().primaryKey().defaultRandom(),
   setupCompletedAt: t.timestamp({ mode: "date", withTimezone: true }),
