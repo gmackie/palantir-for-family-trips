@@ -1,15 +1,26 @@
-import { asc, desc, eq } from "@gmacko/db";
+import { randomBytes } from "node:crypto";
+
+import { and, asc, desc, eq, isNull } from "@gmacko/db";
 import {
   segmentMembers,
+  tripInvites,
   tripMembers,
   tripSegments,
   trips,
+  workspaceMembership,
 } from "@gmacko/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 
+import { protectedProcedure, publicProcedure } from "../trpc";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
+
+const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
+function generateInviteToken(): string {
+  return randomBytes(24).toString("base64url");
+}
 
 const tripDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const coordinateSchema = z
@@ -525,4 +536,262 @@ export const tripsRouter = {
         claimMode: input.claimMode,
       }),
     ),
+
+  createInvite: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        email: z.string().email().toLowerCase(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireOrganizerTripRole(ctx.tripRole);
+
+      const token = generateInviteToken();
+      const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+
+      const [created] = (await ctx.db
+        .insert(tripInvites)
+        .values({
+          tripId: ctx.tripId,
+          email: input.email,
+          token,
+          invitedByUserId: ctx.session.user.id,
+          expiresAt,
+        })
+        .onConflictDoUpdate({
+          target: [tripInvites.tripId, tripInvites.email],
+          set: {
+            token,
+            expiresAt,
+            invitedByUserId: ctx.session.user.id,
+            acceptedAt: null,
+          },
+        })
+        .returning({
+          id: tripInvites.id,
+          tripId: tripInvites.tripId,
+          email: tripInvites.email,
+          token: tripInvites.token,
+          expiresAt: tripInvites.expiresAt,
+        })) as Array<{
+        id: string;
+        tripId: string;
+        email: string;
+        token: string;
+        expiresAt: Date;
+      }>;
+
+      if (!created) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create trip invite.",
+        });
+      }
+
+      return created;
+    }),
+
+  listInvites: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      requireOrganizerTripRole(ctx.tripRole);
+
+      const rows = (await ctx.db
+        .select({
+          id: tripInvites.id,
+          email: tripInvites.email,
+          expiresAt: tripInvites.expiresAt,
+          acceptedAt: tripInvites.acceptedAt,
+          createdAt: tripInvites.createdAt,
+        })
+        .from(tripInvites)
+        .where(eq(tripInvites.tripId, ctx.tripId))
+        .orderBy(desc(tripInvites.createdAt))) as Array<{
+        id: string;
+        email: string;
+        expiresAt: Date;
+        acceptedAt: Date | null;
+        createdAt: Date;
+      }>;
+
+      return rows;
+    }),
+
+  getInviteByToken: publicProcedure
+    .input(
+      z.object({
+        token: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const [invite] = (await ctx.db
+        .select({
+          id: tripInvites.id,
+          tripId: tripInvites.tripId,
+          email: tripInvites.email,
+          expiresAt: tripInvites.expiresAt,
+          acceptedAt: tripInvites.acceptedAt,
+          tripName: trips.name,
+          workspaceId: trips.workspaceId,
+        })
+        .from(tripInvites)
+        .innerJoin(trips, eq(trips.id, tripInvites.tripId))
+        .where(eq(tripInvites.token, input.token))
+        .limit(1)) as Array<{
+        id: string;
+        tripId: string;
+        email: string;
+        expiresAt: Date;
+        acceptedAt: Date | null;
+        tripName: string;
+        workspaceId: string;
+      }>;
+
+      if (!invite) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Invite not found.",
+        });
+      }
+
+      if (invite.acceptedAt) {
+        return {
+          status: "already_accepted" as const,
+          email: invite.email,
+          tripId: invite.tripId,
+          tripName: invite.tripName,
+        };
+      }
+
+      if (invite.expiresAt < new Date()) {
+        return {
+          status: "expired" as const,
+          email: invite.email,
+          tripId: invite.tripId,
+          tripName: invite.tripName,
+        };
+      }
+
+      return {
+        status: "valid" as const,
+        email: invite.email,
+        tripId: invite.tripId,
+        tripName: invite.tripName,
+      };
+    }),
+
+  acceptInvite: protectedProcedure
+    .input(
+      z.object({
+        token: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // The current user must match the invite email. This prevents someone
+      // with a link from accepting on behalf of a different signed-in user.
+      const [invite] = (await ctx.db
+        .select({
+          id: tripInvites.id,
+          tripId: tripInvites.tripId,
+          email: tripInvites.email,
+          expiresAt: tripInvites.expiresAt,
+          acceptedAt: tripInvites.acceptedAt,
+          workspaceId: trips.workspaceId,
+        })
+        .from(tripInvites)
+        .innerJoin(trips, eq(trips.id, tripInvites.tripId))
+        .where(eq(tripInvites.token, input.token))
+        .limit(1)) as Array<{
+        id: string;
+        tripId: string;
+        email: string;
+        expiresAt: Date;
+        acceptedAt: Date | null;
+        workspaceId: string;
+      }>;
+
+      if (!invite) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Invite not found.",
+        });
+      }
+
+      if (invite.acceptedAt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invite has already been accepted.",
+        });
+      }
+
+      if (invite.expiresAt < new Date()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invite has expired.",
+        });
+      }
+
+      const sessionEmail = ctx.session.user.email.toLowerCase();
+      if (sessionEmail !== invite.email.toLowerCase()) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "This invite was sent to a different email than the one you're signed in with.",
+        });
+      }
+
+      // Transactionally provision workspace membership (if missing),
+      // create the trip membership, and mark the invite accepted.
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle tx type is complex
+      await ctx.db.transaction(async (tx: any) => {
+        const existingWorkspaceMember = await tx.query.workspaceMembership.findFirst({
+          where: and(
+            eq(workspaceMembership.userId, ctx.session.user.id),
+            eq(workspaceMembership.workspaceId, invite.workspaceId),
+          ),
+        });
+
+        if (!existingWorkspaceMember) {
+          await tx.insert(workspaceMembership).values({
+            workspaceId: invite.workspaceId,
+            userId: ctx.session.user.id,
+            role: "member",
+          });
+        }
+
+        const existingTripMember = await tx.query.tripMembers?.findFirst?.({
+          where: and(
+            eq(tripMembers.userId, ctx.session.user.id),
+            eq(tripMembers.tripId, invite.tripId),
+          ),
+        });
+
+        if (!existingTripMember) {
+          await tx.insert(tripMembers).values({
+            tripId: invite.tripId,
+            userId: ctx.session.user.id,
+            role: "member",
+          });
+        }
+
+        await tx
+          .update(tripInvites)
+          .set({ acceptedAt: new Date() })
+          .where(
+            and(eq(tripInvites.id, invite.id), isNull(tripInvites.acceptedAt)),
+          );
+      });
+
+      return {
+        tripId: invite.tripId,
+        workspaceId: invite.workspaceId,
+      };
+    }),
 } satisfies TRPCRouterRecord;
