@@ -4,7 +4,7 @@ import { Button } from "@gmacko/ui/button";
 import { Input } from "@gmacko/ui/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
@@ -18,7 +18,6 @@ const VOTE_RESPONSES = [
 
 export default function PollDetailPage() {
   const { tripId, pollId } = useParams<{ tripId: string; pollId: string }>();
-  const router = useRouter();
   const trpc = useTRPC();
 
   const [newOptionLabel, setNewOptionLabel] = useState("");

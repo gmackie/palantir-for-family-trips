@@ -10,11 +10,6 @@ function formatTime(date: Date | string | null) {
   return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-function formatDate(date: string | null) {
-  if (!date) return "TBD";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(date));
-}
-
 function statusColor(status: string) {
   switch (status) {
     case "scheduled": return "text-blue-400";

@@ -13,14 +13,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const TRANSIT_TYPE_ICONS: Record<string, string> = {
-  flight: "plane",
-  train: "train",
-  bus: "bus",
-  car: "car",
-  other: "circle",
-};
-
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800",
   en_route: "bg-yellow-100 text-yellow-800",
