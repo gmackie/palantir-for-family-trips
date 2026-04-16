@@ -35,12 +35,18 @@ export default async function TripDashboardPage(props: {
     redirect(`/trips/${tripId}/plan`);
   }
 
-  // Active / Confirmed command center
+  if (trip.status === "active") {
+    redirect(`/trips/${tripId}/dashboard`);
+  }
+
+  // Confirmed / Completed — nav grid
   const navLinks = [
+    { label: "Dashboard", href: `/trips/${tripId}/dashboard`, desc: "Palantir-style command center" },
     { label: "Expenses", href: `/trips/${tripId}/expenses`, desc: "Track spending + split receipts" },
     { label: "Settle", href: `/trips/${tripId}/settle`, desc: "Who owes whom" },
     { label: "Map", href: `/trips/${tripId}/map`, desc: "Pins + transit routes" },
     { label: "Itinerary", href: `/trips/${tripId}/itinerary`, desc: "Timeline + gap detection" },
+    { label: "Lodging", href: `/trips/${tripId}/lodging`, desc: "Accommodation + arrivals" },
     { label: "Plan", href: `/trips/${tripId}/plan`, desc: "Polls + proposals" },
     { label: "Settings", href: `/trips/${tripId}/settings`, desc: "Trip config + members" },
   ];
