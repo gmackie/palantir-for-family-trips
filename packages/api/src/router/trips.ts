@@ -687,6 +687,33 @@ export const tripsRouter = {
       };
     }),
 
+  listSegments: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      const rows = (await ctx.db
+        .select({
+          id: tripSegments.id,
+          tripId: tripSegments.tripId,
+          name: tripSegments.name,
+          sortOrder: tripSegments.sortOrder,
+        })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, ctx.tripId))
+        .orderBy(asc(tripSegments.sortOrder))) as Array<{
+        id: string;
+        tripId: string;
+        name: string;
+        sortOrder: number;
+      }>;
+
+      return rows;
+    }),
+
   acceptInvite: protectedProcedure
     .input(
       z.object({
