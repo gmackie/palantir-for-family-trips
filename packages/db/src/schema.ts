@@ -423,6 +423,182 @@ export const settlements = pgTable("settlement", (t) => ({
     .$onUpdateFn(() => sql`now()`),
 }));
 
+// ═══════════════════════════════════════════════════════
+// PRE-TRIP PLANNING
+// ═══════════════════════════════════════════════════════
+
+export const pollTypeEnum = [
+  "date_range",
+  "single_choice",
+  "multi_choice",
+  "ranked",
+] as const;
+export type PollType = (typeof pollTypeEnum)[number];
+
+export const pollStatusEnum = ["open", "closed"] as const;
+export type PollStatus = (typeof pollStatusEnum)[number];
+
+export const pollVoteResponseEnum = ["yes", "no", "maybe", "prefer"] as const;
+export type PollVoteResponse = (typeof pollVoteResponseEnum)[number];
+
+export const proposalTypeEnum = [
+  "flight",
+  "lodging",
+  "car_rental",
+  "activity",
+  "other",
+] as const;
+export type ProposalType = (typeof proposalTypeEnum)[number];
+
+export const proposalStatusEnum = [
+  "proposed",
+  "selected",
+  "booked",
+  "rejected",
+] as const;
+export type ProposalStatus = (typeof proposalStatusEnum)[number];
+
+export const proposalReactionEnum = [
+  "up",
+  "down",
+  "interested",
+  "booked",
+] as const;
+export type ProposalReaction = (typeof proposalReactionEnum)[number];
+
+export const polls = pgTable("poll", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  createdByUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  title: t.varchar({ length: 200 }).notNull(),
+  pollType: t.text().$type<PollType>().notNull().default("single_choice"),
+  status: t.text().$type<PollStatus>().notNull().default("open"),
+  closesAt: t.timestamp({ mode: "date", withTimezone: true }),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const pollOptions = pgTable("poll_option", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  pollId: t
+    .uuid()
+    .notNull()
+    .references(() => polls.id, { onDelete: "cascade" }),
+  label: t.varchar({ length: 200 }).notNull(),
+  description: t.text(),
+  url: t.text(),
+  sortOrder: t.integer().notNull().default(0),
+  createdAt: t.timestamp().defaultNow().notNull(),
+}));
+
+export const pollVotes = pgTable(
+  "poll_vote",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    pollOptionId: t
+      .uuid()
+      .notNull()
+      .references(() => pollOptions.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    response: t
+      .text()
+      .$type<PollVoteResponse>()
+      .notNull()
+      .default("yes"),
+    rank: t.integer(),
+    note: t.text(),
+    createdAt: t.timestamp().defaultNow().notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    unique("poll_votes_option_user_unique").on(
+      table.pollOptionId,
+      table.userId,
+    ),
+  ],
+);
+
+export const proposals = pgTable("proposal", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  segmentId: t
+    .uuid()
+    .references(() => tripSegments.id, { onDelete: "set null" }),
+  createdByUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  proposalType: t
+    .text()
+    .$type<ProposalType>()
+    .notNull()
+    .default("other"),
+  title: t.varchar({ length: 200 }).notNull(),
+  description: t.text(),
+  url: t.text(),
+  priceCents: t.integer(),
+  currency: t.varchar({ length: 8 }).notNull().default("USD"),
+  priceNote: t.text(),
+  imageUrl: t.text(),
+  status: t
+    .text()
+    .$type<ProposalStatus>()
+    .notNull()
+    .default("proposed"),
+  bookedByUserId: t.text().references(() => user.id, { onDelete: "set null" }),
+  createdAt: t.timestamp().defaultNow().notNull(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .$onUpdateFn(() => sql`now()`),
+}));
+
+export const proposalReactions = pgTable(
+  "proposal_reaction",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    proposalId: t
+      .uuid()
+      .notNull()
+      .references(() => proposals.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    reaction: t
+      .text()
+      .$type<ProposalReaction>()
+      .notNull()
+      .default("up"),
+    note: t.text(),
+    createdAt: t.timestamp().defaultNow().notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    unique("proposal_reactions_proposal_user_unique").on(
+      table.proposalId,
+      table.userId,
+    ),
+  ],
+);
+
 export const applicationSettings = pgTable("application_settings", (t) => ({
   id: t.uuid().notNull().primaryKey().defaultRandom(),
   setupCompletedAt: t.timestamp({ mode: "date", withTimezone: true }),
