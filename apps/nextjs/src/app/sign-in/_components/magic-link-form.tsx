@@ -2,40 +2,70 @@
 
 import { Button } from "@gmacko/ui/button";
 import { Input } from "@gmacko/ui/input";
+import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 
 import { authClient } from "~/auth/client";
 
 export function MagicLinkForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isPending, setIsPending] = useState(false);
+
+  async function handleDevLogin() {
+    setError(null);
+    setIsPending(true);
+
+    try {
+      const res = await fetch(
+        `/api/dev/auto-login?email=${encodeURIComponent(email)}`,
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Dev login failed");
+        return;
+      }
+
+      router.push("/trips");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Dev login failed");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function handleMagicLink() {
+    setError(null);
+    setIsPending(true);
+
+    try {
+      await authClient.signIn.magicLink({
+        email,
+        callbackURL: "/",
+      });
+      setSubmitted(true);
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Could not send magic link",
+      );
+    } finally {
+      setIsPending(false);
+    }
+  }
 
   return (
     <form
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
-        setError(null);
-        setIsPending(true);
-
-        startTransition(async () => {
-          try {
-            await authClient.signIn.magicLink({
-              email,
-              callbackURL: "/",
-            });
-            setSubmitted(true);
-          } catch (submissionError) {
-            setError(
-              submissionError instanceof Error
-                ? submissionError.message
-                : "Could not send magic link",
-            );
-          } finally {
-            setIsPending(false);
-          }
+        startTransition(() => {
+          void handleDevLogin();
         });
       }}
     >
@@ -56,8 +86,17 @@ export function MagicLinkForm() {
       </div>
 
       <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? "Sending..." : "Send magic link"}
+        {isPending ? "Signing in..." : "Sign in"}
       </Button>
+
+      <button
+        type="button"
+        onClick={() => startTransition(() => void handleMagicLink())}
+        disabled={isPending || !email}
+        className="text-muted-foreground hover:text-foreground w-full text-center text-xs underline transition-colors disabled:opacity-50"
+      >
+        Send email magic link instead
+      </button>
 
       {submitted ? (
         <p className="text-sm text-muted-foreground">
