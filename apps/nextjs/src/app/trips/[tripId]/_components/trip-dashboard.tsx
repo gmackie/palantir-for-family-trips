@@ -49,8 +49,9 @@ export function TripDashboard(props: {
   segments: Segment[];
   workspaceId: string;
   currentUserId: string;
+  googleMapsApiKey?: string;
 }) {
-  const { trip, segments, workspaceId, currentUserId } = props;
+  const { trip, segments, workspaceId, currentUserId, googleMapsApiKey } = props;
   const [activeNav, setActiveNav] = useState<NavItem>("overview");
   const [timelineOpen, setTimelineOpen] = useState(true);
 
@@ -191,6 +192,7 @@ export function TripDashboard(props: {
           <CenterView
             trip={trip}
             workspaceId={workspaceId}
+            googleMapsApiKey={googleMapsApiKey}
           />
         </div>
 

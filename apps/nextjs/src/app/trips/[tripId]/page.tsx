@@ -32,6 +32,7 @@ export default async function TripDashboardPage(props: {
       segments={segments}
       workspaceId={workspace.id}
       currentUserId={session.user.id}
+      googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
     />
   );
 }

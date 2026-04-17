@@ -35,8 +35,9 @@ function formatCents(cents: number): string {
 export function CenterView(props: {
   trip: Trip;
   workspaceId: string;
+  googleMapsApiKey?: string;
 }) {
-  const { trip, workspaceId } = props;
+  const { trip, workspaceId, googleMapsApiKey } = props;
   const trpc = useTRPC();
 
   const { data: expenses } = useQuery(
@@ -47,7 +48,7 @@ export function CenterView(props: {
     trpc.pins.list.queryOptions({ workspaceId, tripId: trip.id }),
   );
 
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const apiKey = googleMapsApiKey ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
   const totalExpenses = expenses?.reduce((s, e) => s + (e.totalCents ?? 0), 0) ?? 0;
   const tripDays = computeTripDays(trip.startDate, trip.endDate);
