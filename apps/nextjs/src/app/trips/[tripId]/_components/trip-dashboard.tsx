@@ -9,6 +9,8 @@ import { OverviewPanel } from "./inspector/overview-panel";
 import { ExpensesPanel } from "./inspector/expenses-panel";
 import { SettlementPanel } from "./inspector/settlement-panel";
 import { MembersPanel } from "./inspector/members-panel";
+import { PollsPanel } from "./inspector/polls-panel";
+import { ProposalsPanel } from "./inspector/proposals-panel";
 
 type Trip = {
   id: string;
@@ -117,6 +119,20 @@ export function TripDashboard(props: {
             </p>
           </div>
         );
+      case "polls":
+        return (
+          <PollsPanel
+            tripId={trip.id}
+            workspaceId={workspaceId}
+          />
+        );
+      case "proposals":
+        return (
+          <ProposalsPanel
+            tripId={trip.id}
+            workspaceId={workspaceId}
+          />
+        );
       default:
         return null;
     }
@@ -168,7 +184,7 @@ export function TripDashboard(props: {
       {/* ── Main body: nav rail + center + inspector ── */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left nav rail */}
-        <NavRail activeItem={activeNav} onItemClick={setActiveNav} />
+        <NavRail activeItem={activeNav} onItemClick={setActiveNav} tripStatus={trip.status} />
 
         {/* Center view */}
         <div className="flex-1 overflow-auto border-r border-[#21262D]">

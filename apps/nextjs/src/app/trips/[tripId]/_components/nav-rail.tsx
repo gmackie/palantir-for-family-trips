@@ -7,10 +7,16 @@ export type NavItem =
   | "activities"
   | "expenses"
   | "settlement"
-  | "members";
+  | "members"
+  | "polls"
+  | "proposals";
 
-const NAV_ITEMS: { id: NavItem; label: string; icon: string }[] = [
+type TripStatus = "planning" | "confirmed" | "active" | "completed";
+
+const NAV_ITEMS: { id: NavItem; label: string; icon: string; planningOnly?: boolean }[] = [
   { id: "overview", label: "Overview", icon: "grid" },
+  { id: "polls", label: "Polls", icon: "ballot", planningOnly: true },
+  { id: "proposals", label: "Proposals", icon: "lightbulb", planningOnly: true },
   { id: "stay", label: "Stay", icon: "home" },
   { id: "meals", label: "Meals", icon: "utensils" },
   { id: "activities", label: "Activities", icon: "target" },
@@ -82,6 +88,26 @@ function NavIcon({ icon, active }: { icon: string; active: boolean }) {
           <path d="M16 3.13a4 4 0 010 7.75" />
         </svg>
       );
+    case "ballot":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M9 7h6" />
+          <path d="M9 12h6" />
+          <path d="M9 17h6" />
+          <path d="M6 7h0" />
+          <path d="M6 12h0" />
+          <path d="M6 17h0" />
+        </svg>
+      );
+    case "lightbulb":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+          <path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -90,10 +116,15 @@ function NavIcon({ icon, active }: { icon: string; active: boolean }) {
 export function NavRail(props: {
   activeItem: NavItem;
   onItemClick: (item: NavItem) => void;
+  tripStatus?: TripStatus;
 }) {
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !item.planningOnly || props.tripStatus === "planning",
+  );
+
   return (
     <nav className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-[#21262D] bg-[#0D1117] py-3">
-      {NAV_ITEMS.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = props.activeItem === item.id;
         return (
           <button
