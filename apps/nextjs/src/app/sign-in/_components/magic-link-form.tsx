@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
-import { Input } from "@gmacko/ui/input";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 
@@ -51,10 +49,13 @@ export function MagicLinkForm() {
       }}
     >
       <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="email">
+        <label
+          className="text-xs font-semibold text-[#8B949E]"
+          htmlFor="email"
+        >
           Email
         </label>
-        <Input
+        <input
           id="email"
           name="email"
           type="email"
@@ -63,28 +64,33 @@ export function MagicLinkForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
+          className="flex h-10 w-full rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 text-sm text-[#C9D1D9] placeholder-[#484F58] outline-none transition-colors focus:border-[#58A6FF]"
         />
       </div>
 
-      <Button className="w-full" disabled={isPending} type="submit">
+      <button
+        className="flex h-10 w-full items-center justify-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20 disabled:opacity-50"
+        disabled={isPending}
+        type="submit"
+      >
         {isPending ? "Signing in..." : "Sign in"}
-      </Button>
+      </button>
 
       <button
         type="button"
         onClick={() => startTransition(() => void handleMagicLink())}
         disabled={isPending || !email}
-        className="text-muted-foreground hover:text-foreground w-full text-center text-xs underline transition-colors disabled:opacity-50"
+        className="w-full text-center text-xs text-[#484F58] underline transition-colors hover:text-[#8B949E] disabled:opacity-50"
       >
         Send email magic link instead
       </button>
 
       {submitted ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-[#8B949E]">
           Check your email for a sign-in link.
         </p>
       ) : null}
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? <p className="text-sm text-[#F85149]">{error}</p> : null}
     </form>
   );
 }

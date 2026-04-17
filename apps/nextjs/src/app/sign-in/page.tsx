@@ -1,4 +1,3 @@
-import { Button } from "@gmacko/ui/button";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -32,14 +31,16 @@ export default async function SignInPage() {
   }
 
   return (
-    <main className="container mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-16">
-      <div className="bg-card space-y-6 rounded-3xl border p-6 shadow-sm">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-[#0A0C10] px-4">
+      <div className="w-full max-w-sm space-y-6 rounded-[4px] border border-[#21262D] bg-[#161B22] p-6">
         <div className="space-y-2">
-          <p className="text-primary text-sm font-semibold uppercase tracking-[0.24em]">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
             Trip Command Center
           </p>
-          <h1 className="text-3xl font-black tracking-tight">Sign in</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-black tracking-tight text-[#C9D1D9]">
+            Sign in
+          </h1>
+          <p className="text-sm text-[#8B949E]">
             Use a magic link for email sign-in or continue with Discord.
           </p>
         </div>
@@ -48,21 +49,27 @@ export default async function SignInPage() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
+            <span className="w-full border-t border-[#21262D]" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card text-muted-foreground px-2">or</span>
+            <span className="bg-[#161B22] px-2 text-[#484F58]">or</span>
           </div>
         </div>
 
         <form action={signInWithDiscord}>
-          <Button className="w-full" type="submit" variant="outline">
+          <button
+            className="flex h-10 w-full items-center justify-center rounded-[2px] border border-[#21262D] bg-[#0D1117] text-sm font-semibold text-[#8B949E] transition-colors hover:border-[#484F58] hover:text-[#C9D1D9]"
+            type="submit"
+          >
             Sign in with Discord
-          </Button>
+          </button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
-          <Link className="underline underline-offset-4" href="/">
+        <p className="text-center text-sm text-[#484F58]">
+          <Link
+            className="text-[#8B949E] underline underline-offset-4 transition-colors hover:text-[#C9D1D9]"
+            href="/"
+          >
             Back to home
           </Link>
         </p>
