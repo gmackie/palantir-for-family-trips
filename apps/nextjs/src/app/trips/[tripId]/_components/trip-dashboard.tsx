@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { NavRail, type NavItem } from "./nav-rail";
 import { CenterView } from "./center-view";
@@ -143,6 +144,15 @@ export function TripDashboard(props: {
     <div className="flex min-h-screen flex-col bg-[#0A0C10] text-[#C9D1D9]">
       {/* ── Top bar ── */}
       <header className="flex items-center gap-4 border-b border-[#21262D] px-4 py-2">
+        <Link
+          href="/trips"
+          className="text-[#484F58] hover:text-[#8B949E] transition-colors"
+          title="All trips"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </Link>
         <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#8B949E]">
           Command Center
         </span>
