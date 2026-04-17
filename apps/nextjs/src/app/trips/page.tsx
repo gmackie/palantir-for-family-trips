@@ -87,29 +87,22 @@ export default async function TripsPage() {
                 className="group block overflow-hidden rounded-[4px] border border-[#21262D] bg-[#161B22] transition-colors hover:border-[#484F58]"
               >
                 {/* Map thumbnail */}
-                {trip.destinationLat && trip.destinationLng ? (
-                  (() => {
-                    const url = mapThumbnailUrl(
-                      trip.destinationLat,
-                      trip.destinationLng,
-                    );
-                    return url ? (
-                      <img
-                        src={url}
-                        alt={`Map of ${trip.destinationName ?? "destination"}`}
-                        className="h-[120px] w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-[120px] w-full items-center justify-center bg-[#0D1117] text-sm text-[#484F58]">
-                        {trip.destinationName ?? "Unknown destination"}
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="flex h-[120px] w-full items-center justify-center bg-[#0D1117] text-sm text-[#484F58]">
-                    {trip.destinationName ?? "Destination pending"}
+                <div className="relative flex h-[140px] w-full items-center justify-center overflow-hidden bg-gradient-to-b from-[#0D1117] to-[#161B22]">
+                  <div className="text-center">
+                    <svg className="mx-auto mb-2 h-8 w-8 text-[#21262D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <p className="text-xs text-[#484F58]">
+                      {trip.destinationName ?? "Destination pending"}
+                    </p>
+                    {trip.destinationLat && trip.destinationLng && (
+                      <p className="mt-1 font-mono text-[10px] text-[#30363D]">
+                        {parseFloat(trip.destinationLat).toFixed(2)}N {Math.abs(parseFloat(trip.destinationLng)).toFixed(2)}{parseFloat(trip.destinationLng) < 0 ? "W" : "E"}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
 
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-3">
