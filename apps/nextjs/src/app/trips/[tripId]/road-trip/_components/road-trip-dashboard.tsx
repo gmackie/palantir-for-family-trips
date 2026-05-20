@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { FuelLogPanel } from "~/components/road-trip/fuel-log-panel";
 import { PoiInfoCard } from "~/components/road-trip/poi-info-card";
 import { RouteGradientMap } from "~/components/road-trip/route-gradient-map";
@@ -252,6 +253,8 @@ export function RoadTripDashboard(props: {
   googleMapsApiKey?: string;
   vanProfiles?: VanProfile[];
   corridorPois?: CorridorPoi[];
+  deleteTripAction: () => Promise<{ error?: string }>;
+  setStatusAction: (status: Trip["status"]) => Promise<{ error?: string }>;
 }) {
   const {
     trip,
@@ -264,9 +267,35 @@ export function RoadTripDashboard(props: {
     corridorPois = [],
   } = props;
 
+  const router = useRouter();
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const [isUpdatingStatus, startStatusTransition] = useTransition();
   const [selectedPoi, setSelectedPoi] = useState<SelectedPoi | null>(null);
   const [activeTab, setActiveTab] = useState<InspectorTab>("fuel");
   const [poiFilter, setPoiFilter] = useState<string | null>(null);
+
+  function handleDelete() {
+    if (!confirm("Delete this trip? This cannot be undone.")) return;
+    startDeleteTransition(async () => {
+      const result = await props.deleteTripAction();
+      if (result.error) {
+        alert(result.error);
+      } else {
+        router.push("/trips");
+      }
+    });
+  }
+
+  function handleStatusChange(newStatus: Trip["status"]) {
+    startStatusTransition(async () => {
+      const result = await props.setStatusAction(newStatus);
+      if (result.error) {
+        alert(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
 
   const totalMiles = computeTotalMiles(segments);
   const { currentDay, totalDays, daysRemaining } = computeTripDays(trip);
@@ -318,8 +347,49 @@ export function RoadTripDashboard(props: {
         <span
           className={`rounded-[2px] px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${STATUS_COLORS[trip.status] ?? "bg-[#8B949E]/20 text-[#8B949E]"}`}
         >
-          {trip.status}
+          {trip.status.replace("_", " ")}
         </span>
+
+        {trip.status === "planning" && (
+          <button
+            type="button"
+            onClick={() => handleStatusChange("en_route")}
+            disabled={isUpdatingStatus}
+            className="rounded-[2px] bg-[#3FB950] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0A0C10] transition-colors hover:bg-[#56D364] disabled:opacity-50"
+          >
+            {isUpdatingStatus ? "..." : "Start Trip"}
+          </button>
+        )}
+        {trip.status === "en_route" && (
+          <button
+            type="button"
+            onClick={() => handleStatusChange("paused")}
+            disabled={isUpdatingStatus}
+            className="rounded-[2px] bg-[#D29922] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0A0C10] transition-colors hover:bg-[#E3B341] disabled:opacity-50"
+          >
+            {isUpdatingStatus ? "..." : "Pause"}
+          </button>
+        )}
+        {trip.status === "paused" && (
+          <button
+            type="button"
+            onClick={() => handleStatusChange("en_route")}
+            disabled={isUpdatingStatus}
+            className="rounded-[2px] bg-[#3FB950] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0A0C10] transition-colors hover:bg-[#56D364] disabled:opacity-50"
+          >
+            {isUpdatingStatus ? "..." : "Resume"}
+          </button>
+        )}
+        {(trip.status === "en_route" || trip.status === "paused") && (
+          <button
+            type="button"
+            onClick={() => handleStatusChange("completed")}
+            disabled={isUpdatingStatus}
+            className="rounded-[2px] border border-[#8B949E]/30 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#8B949E] transition-colors hover:bg-[#8B949E]/10 disabled:opacity-50"
+          >
+            {isUpdatingStatus ? "..." : "End Trip"}
+          </button>
+        )}
 
         <div className="ml-auto flex items-center gap-3">
           {trip.destinationName && (
@@ -337,6 +407,15 @@ export function RoadTripDashboard(props: {
               {trip.startDate} — {trip.endDate}
             </span>
           )}
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="rounded-[2px] border border-[#F85149]/30 px-2 py-1 text-[10px] font-semibold text-[#F85149] transition-colors hover:bg-[#F85149]/10 disabled:opacity-50"
+            title="Delete trip"
+          >
+            {isDeleting ? "..." : "Delete"}
+          </button>
         </div>
       </header>
 

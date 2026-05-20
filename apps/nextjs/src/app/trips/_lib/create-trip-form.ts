@@ -5,8 +5,17 @@ const tripDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .optional();
 
+const coordinateStringSchema = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || !Number.isNaN(Number(v)), "Invalid coordinate")
+  .transform((v) => (v === "" ? undefined : v))
+  .optional();
+
 const CreateTripFormSchema = z.object({
   destinationName: z.string().trim().min(1, "Destination is required"),
+  destinationLat: coordinateStringSchema,
+  destinationLng: coordinateStringSchema,
   endDate: tripDateSchema,
   name: z.string().trim().min(1, "Trip name is required"),
   tripMode: z.enum(["destination", "roadtrip"]).default("destination"),
@@ -28,6 +37,8 @@ export function parseCreateTripFormData(
     name: readText(formData, "name"),
     tripMode: readText(formData, "tripMode") || "destination",
     destinationName: readText(formData, "destinationName"),
+    destinationLat: readText(formData, "destinationNameLat") || undefined,
+    destinationLng: readText(formData, "destinationNameLng") || undefined,
     startDate: readText(formData, "startDate") || undefined,
     endDate: readText(formData, "endDate") || undefined,
     tz: readText(formData, "tz") || "UTC",

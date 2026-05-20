@@ -27,7 +27,7 @@
     "APP_ENV": "production",
     "APP_URL": "https://sortie.gmac.io",
     "NEXT_PUBLIC_APP_URL": "https://sortie.gmac.io",
-    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyD-_6bRsv9VULS4cTMktQynRAGwvzO913w"
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCV5J1xb6BWFdk_WKYjJfD1QbehJdtjqrc"
   },
   "env": {
     "staging": {

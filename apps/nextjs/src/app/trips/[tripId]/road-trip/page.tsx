@@ -1,4 +1,5 @@
 import { appRouter, createTRPCContext } from "@gmacko/api";
+import type { TripStatus } from "@gmacko/db/schema";
 import { TRPCError } from "@trpc/server";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
@@ -108,10 +109,30 @@ export default async function RoadTripPage(props: {
       process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) return { error: "Google Maps API key not configured" };
 
-    const [originGeo, destGeo] = await Promise.all([
-      geocode(originName, apiKey),
-      geocode(destName, apiKey),
+    // Use lat/lng from autocomplete if available, fall back to geocoding
+    const originLatStr = formData.get("originNameLat") as string;
+    const originLngStr = formData.get("originNameLng") as string;
+    const destLatStr = formData.get("destNameLat") as string;
+    const destLngStr = formData.get("destNameLng") as string;
+
+    let originGeo: { lat: number; lng: number } | null = null;
+    let destGeo: { lat: number; lng: number } | null = null;
+
+    if (originLatStr && originLngStr) {
+      originGeo = { lat: Number(originLatStr), lng: Number(originLngStr) };
+    }
+    if (destLatStr && destLngStr) {
+      destGeo = { lat: Number(destLatStr), lng: Number(destLngStr) };
+    }
+
+    // Fall back to geocoding for any missing coordinates
+    const [originFallback, destFallback] = await Promise.all([
+      originGeo ? Promise.resolve(null) : geocode(originName, apiKey),
+      destGeo ? Promise.resolve(null) : geocode(destName, apiKey),
     ]);
+
+    if (!originGeo) originGeo = originFallback;
+    if (!destGeo) destGeo = destFallback;
 
     if (!originGeo) return { error: `Could not geocode "${originName}"` };
     if (!destGeo) return { error: `Could not geocode "${destName}"` };
@@ -134,13 +155,72 @@ export default async function RoadTripPage(props: {
     }
   }
 
+  async function deleteTripAction(): Promise<{ error?: string }> {
+    "use server";
+
+    const session = await getSession();
+    if (!session?.user) return { error: "Not authenticated" };
+
+    const requestHeaders = new Headers(await headers());
+    const serverCaller = appRouter.createCaller(
+      await createTRPCContext({
+        headers: requestHeaders,
+        authApi: auth.api,
+      }),
+    );
+
+    try {
+      await serverCaller.trips.delete({ workspaceId: workspace.id, tripId });
+      return {};
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : "Failed to delete trip",
+      };
+    }
+  }
+
+  async function setStatusAction(
+    status: TripStatus,
+  ): Promise<{ error?: string }> {
+    "use server";
+
+    const session = await getSession();
+    if (!session?.user) return { error: "Not authenticated" };
+
+    const requestHeaders = new Headers(await headers());
+    const serverCaller = appRouter.createCaller(
+      await createTRPCContext({
+        headers: requestHeaders,
+        authApi: auth.api,
+      }),
+    );
+
+    try {
+      await serverCaller.trips.setStatus({
+        workspaceId: workspace.id,
+        tripId,
+        status,
+      });
+      return {};
+    } catch (err) {
+      return {
+        error:
+          err instanceof Error ? err.message : "Failed to update trip status",
+      };
+    }
+  }
+
   if (!hasRoute) {
     return (
       <div className="flex h-screen flex-col bg-[#0A0C10]">
         <RoutePlannerForm
           tripId={trip.id}
           workspaceId={workspace.id}
+          defaultDestination={trip.destinationName ?? ""}
+          defaultStartDate={trip.startDate ?? ""}
+          googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
           planRouteAction={planRouteAction}
+          deleteTripAction={deleteTripAction}
         />
       </div>
     );
@@ -154,6 +234,8 @@ export default async function RoadTripPage(props: {
       fuelStats={fuelStats}
       workspaceId={workspace.id}
       currentUserId={session.user.id}
+      deleteTripAction={deleteTripAction}
+      setStatusAction={setStatusAction}
       googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
       vanProfiles={vanProfiles}
       corridorPois={corridorPois}

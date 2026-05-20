@@ -131,7 +131,12 @@ export default async function TripSettingsPage(props: {
               </FieldContent>
             </Field>
 
-            <DestinationPicker defaultValue={trip.destinationName ?? ""} />
+            <DestinationPicker
+              defaultValue={trip.destinationName ?? ""}
+              googleMapsApiKey={
+                process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
+              }
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field>

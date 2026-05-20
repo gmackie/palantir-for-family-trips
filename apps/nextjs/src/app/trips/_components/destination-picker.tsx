@@ -1,26 +1,31 @@
+"use client";
+
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel,
 } from "@gmacko/ui/field";
-import { Input } from "@gmacko/ui/input";
 
-export function DestinationPicker(props: { defaultValue?: string }) {
+import { PlacesAutocompleteInput } from "~/components/places-autocomplete-input";
+
+export function DestinationPicker(props: {
+  defaultValue?: string;
+  googleMapsApiKey: string;
+}) {
   return (
     <Field>
       <FieldLabel htmlFor="destinationName">Destination</FieldLabel>
       <FieldContent>
-        <Input
-          id="destinationName"
+        <PlacesAutocompleteInput
           name="destinationName"
           defaultValue={props.defaultValue}
           placeholder="Milan, Italy"
           required
+          apiKey={props.googleMapsApiKey}
         />
         <FieldDescription>
-          Start with a text destination so the trip can be created before the
-          map tools land.
+          Start typing a city name to see autocomplete suggestions.
         </FieldDescription>
       </FieldContent>
     </Field>

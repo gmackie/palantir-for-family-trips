@@ -6,6 +6,7 @@ import {
   tripInvites,
   tripMembers,
   tripSegments,
+  tripStatusEnum,
   trips,
   workspaceMembership,
 } from "@gmacko/db/schema";
@@ -151,6 +152,13 @@ export interface TripStore {
     tz?: string;
     groupMode?: boolean;
     claimMode?: "organizer" | "tap";
+    status?:
+      | "planning"
+      | "confirmed"
+      | "active"
+      | "en_route"
+      | "paused"
+      | "completed";
   }): Promise<TripSummary | null>;
 }
 
@@ -232,6 +240,13 @@ export async function updateTripRecord(
     tz?: string;
     groupMode?: boolean;
     claimMode?: "organizer" | "tap";
+    status?:
+      | "planning"
+      | "confirmed"
+      | "active"
+      | "en_route"
+      | "paused"
+      | "completed";
   },
 ) {
   requireOrganizerTripRole(input.tripRole);
@@ -515,6 +530,23 @@ export const tripsRouter = {
       }),
     ),
 
+  setStatus: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        status: z.enum(tripStatusEnum),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      updateTripRecord(createTripStore(ctx.db), {
+        workspaceId: ctx.workspaceId,
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+        status: input.status,
+      }),
+    ),
+
   setGroupMode: tripProcedure()
     .input(
       z.object({
@@ -697,6 +729,19 @@ export const tripsRouter = {
         tripId: invite.tripId,
         tripName: invite.tripName,
       };
+    }),
+
+  delete: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx }) => {
+      requireOrganizerTripRole(ctx.tripRole);
+      await ctx.db.delete(trips).where(eq(trips.id, ctx.tripId));
+      return { deleted: true };
     }),
 
   listSegments: tripProcedure()

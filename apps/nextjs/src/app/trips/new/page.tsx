@@ -125,7 +125,9 @@ export default async function NewTripPage() {
             </FieldContent>
           </Field>
 
-          <DestinationPicker />
+          <DestinationPicker
+            googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
+          />
 
           <div className="grid gap-4 md:grid-cols-2">
             <Field>
