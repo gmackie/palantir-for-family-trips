@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/tsconfig": "workspace:^undefined",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

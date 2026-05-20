@@ -25,12 +25,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gmacko/trpc-client": "workspace:*"
+    "@gmacko/trpc-client": "workspace:^0.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/api": "workspace:*",
-    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/api": "workspace:^undefined",
+    "@gmacko/tsconfig": "workspace:^undefined",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsup": "^8.5.1",

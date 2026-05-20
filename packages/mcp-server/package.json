@@ -20,14 +20,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gmacko/operator-core": "workspace:*",
+    "@gmacko/operator-core": "workspace:^0.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "superjson": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/tsconfig": "workspace:^undefined",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsup": "^8.5.1",

@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/tsconfig": "workspace:^undefined",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "oxlint": "catalog:",

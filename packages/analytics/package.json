@@ -26,13 +26,13 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
-    "posthog-js": "^1.374.2",
-    "posthog-react-native": "^4.45.10"
+    "@gmacko/config": "workspace:^undefined",
+    "posthog-js": "^1.374.3",
+    "posthog-react-native": "^4.45.11"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/tsconfig": "workspace:^undefined",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "expo-constants": "~55.0.16",

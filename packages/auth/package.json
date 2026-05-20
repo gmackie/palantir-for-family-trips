@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@better-auth/expo": "catalog:",
-    "@gmacko/db": "workspace:*",
+    "@gmacko/db": "workspace:^undefined",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "catalog:",
     "zod": "catalog:"
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@better-auth/cli": "catalog:",
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/tsconfig": "workspace:^undefined",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

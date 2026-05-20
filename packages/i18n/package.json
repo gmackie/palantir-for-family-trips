@@ -31,14 +31,14 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
+    "@gmacko/config": "workspace:^undefined",
     "i18next": "^26.2.0",
     "next-intl": "^4.12.0",
     "react-i18next": "^17.0.8"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/tsconfig": "workspace:^undefined",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "expo-localization": "~55.0.15",
