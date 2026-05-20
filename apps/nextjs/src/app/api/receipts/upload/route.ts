@@ -1,5 +1,6 @@
 import { appRouter, createTRPCContext } from "@gmacko/api";
 import { extractAndReconcileReceipt } from "@gmacko/api/ocr";
+import { getR2Bucket } from "@gmacko/db/runtime";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { auth, getSession } from "~/auth/server";
@@ -66,9 +67,10 @@ export async function POST(request: NextRequest) {
   const bytes = Buffer.from(await file.arrayBuffer());
 
   // Store the image first so we can persist its key even if OCR fails
+  const r2 = getR2Bucket() as Parameters<typeof storeReceiptImage>[0]["r2"];
   let stored;
   try {
-    stored = await storeReceiptImage({ bytes, mimeType });
+    stored = await storeReceiptImage({ bytes, mimeType, r2: r2 ?? undefined });
   } catch (error) {
     return NextResponse.json(
       {

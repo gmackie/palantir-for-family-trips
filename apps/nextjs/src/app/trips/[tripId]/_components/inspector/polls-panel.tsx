@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
@@ -25,10 +25,7 @@ const RESPONSE_COLORS: Record<string, string> = {
   prefer: "bg-[#58A6FF]/25",
 };
 
-export function PollsPanel(props: {
-  tripId: string;
-  workspaceId: string;
-}) {
+export function PollsPanel(props: { tripId: string; workspaceId: string }) {
   const { tripId, workspaceId } = props;
   const trpc = useTRPC();
   const [expandedPollId, setExpandedPollId] = useState<string | null>(null);
@@ -181,7 +178,9 @@ function PollCard(props: {
             poll.options.map((option) => (
               <div key={option.id} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#C9D1D9] truncate">{option.label}</span>
+                  <span className="text-[#C9D1D9] truncate">
+                    {option.label}
+                  </span>
                   <span className="font-mono text-[#8B949E] tabular-nums ml-2 shrink-0">
                     {option.voteCount}
                   </span>
@@ -235,16 +234,17 @@ function DateAvailabilityGrid(props: { pollResults: PollResultsData }) {
   const voters = Array.from(voterIds);
 
   if (voters.length === 0) {
-    return (
-      <p className="text-[10px] text-[#484F58]">No votes yet.</p>
-    );
+    return <p className="text-[10px] text-[#484F58]">No votes yet.</p>;
   }
 
   return (
     <div className="overflow-x-auto">
-      <div className="inline-grid gap-[2px]" style={{
-        gridTemplateColumns: `auto repeat(${pollResults.options.length}, 28px)`,
-      }}>
+      <div
+        className="inline-grid gap-[2px]"
+        style={{
+          gridTemplateColumns: `auto repeat(${pollResults.options.length}, 28px)`,
+        }}
+      >
         {/* Header row: option labels */}
         <div /> {/* empty top-left cell */}
         {pollResults.options.map((option) => (
@@ -256,7 +256,6 @@ function DateAvailabilityGrid(props: { pollResults: PollResultsData }) {
             {option.label.slice(0, 5)}
           </div>
         ))}
-
         {/* Grid rows: one per voter */}
         {voters.map((voterId) => (
           <GridRow

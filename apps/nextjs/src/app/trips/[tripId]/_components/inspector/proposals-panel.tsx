@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
@@ -35,10 +35,7 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export function ProposalsPanel(props: {
-  tripId: string;
-  workspaceId: string;
-}) {
+export function ProposalsPanel(props: { tripId: string; workspaceId: string }) {
   const { tripId, workspaceId } = props;
   const trpc = useTRPC();
   const [filter, setFilter] = useState<ProposalType | "all">("all");
@@ -96,11 +93,7 @@ export function ProposalsPanel(props: {
 
       {/* Proposal cards */}
       {proposals?.map((proposal) => (
-        <ProposalCard
-          key={proposal.id}
-          proposal={proposal}
-          tripId={tripId}
-        />
+        <ProposalCard key={proposal.id} proposal={proposal} tripId={tripId} />
       ))}
     </div>
   );
@@ -142,7 +135,9 @@ function ProposalCard(props: {
             </span>
           </div>
           <div className="mt-0.5 flex gap-3 text-[10px] text-[#484F58]">
-            <span>{TYPE_LABELS[proposal.proposalType] ?? proposal.proposalType}</span>
+            <span>
+              {TYPE_LABELS[proposal.proposalType] ?? proposal.proposalType}
+            </span>
             {proposal.url && (
               <a
                 href={proposal.url}
@@ -171,16 +166,8 @@ function ProposalCard(props: {
 
       {/* Reaction buttons */}
       <div className="mt-2 flex items-center gap-2">
-        <ReactionButton
-          label={`+${upCount}`}
-          active={false}
-          variant="up"
-        />
-        <ReactionButton
-          label={`-${downCount}`}
-          active={false}
-          variant="down"
-        />
+        <ReactionButton label={`+${upCount}`} active={false} variant="up" />
+        <ReactionButton label={`-${downCount}`} active={false} variant="down" />
 
         <Link
           href={`/trips/${tripId}/plan`}
@@ -200,9 +187,14 @@ function ReactionButton(props: {
 }) {
   const { label, active, variant } = props;
   const borderColor = active ? "border-[#58A6FF]" : "border-[#21262D]";
-  const textColor = variant === "up"
-    ? (active ? "text-[#3FB950]" : "text-[#8B949E]")
-    : (active ? "text-[#F85149]" : "text-[#8B949E]");
+  const textColor =
+    variant === "up"
+      ? active
+        ? "text-[#3FB950]"
+        : "text-[#8B949E]"
+      : active
+        ? "text-[#F85149]"
+        : "text-[#8B949E]";
 
   return (
     <span

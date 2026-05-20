@@ -1,18 +1,37 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 
 /**
- * Local disk storage for receipt images during development.
- *
- * Writes bytes to `.data/receipts/` under a content-hash-derived key
- * and returns a storage key that can be passed back to `read()`.
- *
- * DEV_MODE=local uses this. Production receipt storage will route
- * through @gmacko/storage (UploadThing or S3) in a later phase.
+ * Minimal Cloudflare R2 types — avoids pulling in @cloudflare/workers-types
+ * just for the receipt storage module. Matches the subset of the R2 API we use.
  */
+interface R2PutOptions {
+  httpMetadata?: { contentType?: string };
+}
 
-const RECEIPT_DIR = join(process.cwd(), ".data", "receipts");
+interface R2ObjectBody {
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+interface R2Bucket {
+  put(
+    key: string,
+    value: ArrayBuffer | ArrayBufferView | string | ReadableStream | Blob,
+    options?: R2PutOptions,
+  ): Promise<unknown>;
+  get(key: string): Promise<R2ObjectBody | null>;
+}
+
+/**
+ * Receipt image storage.
+ *
+ * Production: Cloudflare R2 via the "R2" binding (wrangler.jsonc).
+ * Development: Local disk fallback to `.data/receipts/`.
+ *
+ * Callers pass an optional `r2` bucket handle. When present, images are
+ * stored in R2 under `receipts/<hash>-<suffix>.<ext>`. When absent
+ * (DEV_MODE=local, or Node.js dev server without bindings), images fall
+ * back to the local filesystem.
+ */
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -44,29 +63,49 @@ function extensionFor(mimeType: string): string {
   }
 }
 
+function generateStorageKey(bytes: Buffer, mimeType: string): string {
+  const contentHash = createHash("sha256")
+    .update(bytes)
+    .digest("hex")
+    .slice(0, 16);
+  const suffix = randomBytes(4).toString("hex");
+  return `receipts/${contentHash}-${suffix}.${extensionFor(mimeType)}`;
+}
+
+function validateInput(bytes: Buffer, mimeType: string): void {
+  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+    throw new Error(`Unsupported receipt image mime type: ${mimeType}`);
+  }
+  if (bytes.byteLength > MAX_BYTES) {
+    throw new Error(
+      `Receipt image is ${bytes.byteLength} bytes, exceeds ${MAX_BYTES} byte limit.`,
+    );
+  }
+}
+
 export async function storeReceiptImage(input: {
   bytes: Buffer;
   mimeType: string;
+  r2?: R2Bucket;
 }): Promise<ReceiptStorageResult> {
-  if (!ALLOWED_MIME_TYPES.has(input.mimeType)) {
-    throw new Error(
-      `Unsupported receipt image mime type: ${input.mimeType}. Allowed: ${Array.from(ALLOWED_MIME_TYPES).join(", ")}`,
+  validateInput(input.bytes, input.mimeType);
+  const storageKey = generateStorageKey(input.bytes, input.mimeType);
+
+  if (input.r2) {
+    await input.r2.put(storageKey, input.bytes, {
+      httpMetadata: { contentType: input.mimeType },
+    });
+  } else {
+    // Local disk fallback for development
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const dir = join(process.cwd(), ".data", "receipts");
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, storageKey.replace("receipts/", "")),
+      input.bytes,
     );
   }
-  if (input.bytes.byteLength > MAX_BYTES) {
-    throw new Error(
-      `Receipt image is ${input.bytes.byteLength} bytes, exceeds ${MAX_BYTES} byte limit.`,
-    );
-  }
-
-  await mkdir(RECEIPT_DIR, { recursive: true });
-
-  // storage key: content-hash prefix + random suffix + extension
-  const contentHash = createHash("sha256").update(input.bytes).digest("hex").slice(0, 16);
-  const suffix = randomBytes(4).toString("hex");
-  const storageKey = `${contentHash}-${suffix}.${extensionFor(input.mimeType)}`;
-
-  await writeFile(join(RECEIPT_DIR, storageKey), input.bytes);
 
   return {
     storageKey,
@@ -75,10 +114,23 @@ export async function storeReceiptImage(input: {
   };
 }
 
-export async function readReceiptImage(storageKey: string): Promise<Buffer> {
-  // Defense in depth: reject any key that tries to path-traverse
-  if (storageKey.includes("..") || storageKey.includes("/") || storageKey.includes("\\")) {
+export async function readReceiptImage(
+  storageKey: string,
+  r2?: R2Bucket,
+): Promise<Buffer> {
+  if (storageKey.includes("..")) {
     throw new Error("Invalid receipt storage key");
   }
-  return readFile(join(RECEIPT_DIR, storageKey));
+
+  if (r2) {
+    const object = await r2.get(storageKey);
+    if (!object) throw new Error(`Receipt not found: ${storageKey}`);
+    return Buffer.from(await object.arrayBuffer());
+  }
+
+  // Local disk fallback
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const localKey = storageKey.replace("receipts/", "");
+  return readFile(join(process.cwd(), ".data", "receipts", localKey));
 }

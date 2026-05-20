@@ -96,7 +96,9 @@ export function TripMap({
           globalThis.__tripMapLoaderConfigured = true;
         }
 
-        const { Map } = (await importLibrary("maps")) as google.maps.MapsLibrary;
+        const { Map } = (await importLibrary(
+          "maps",
+        )) as google.maps.MapsLibrary;
 
         if (cancelled || !containerRef.current) return;
 
@@ -189,8 +191,9 @@ export function TripMap({
     async function createMarkers() {
       if (useAdvanced) {
         try {
-          const { AdvancedMarkerElement } =
-            (await importLibrary("marker")) as google.maps.MarkerLibrary;
+          const { AdvancedMarkerElement } = (await importLibrary(
+            "marker",
+          )) as google.maps.MarkerLibrary;
 
           for (const pin of pins) {
             const color = PIN_TYPE_MARKER_COLORS[pin.type] ?? "#6b7280";

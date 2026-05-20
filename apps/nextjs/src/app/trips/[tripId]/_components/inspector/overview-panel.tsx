@@ -9,7 +9,13 @@ type Trip = {
   id: string;
   workspaceId: string;
   name: string;
-  status: "planning" | "confirmed" | "active" | "completed";
+  status:
+    | "planning"
+    | "confirmed"
+    | "active"
+    | "en_route"
+    | "paused"
+    | "completed";
   groupMode: boolean;
   claimMode: "organizer" | "tap";
   destinationName: string | null;
@@ -22,17 +28,20 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function computeTripDays(startDate: string | null, endDate: string | null): number {
+function computeTripDays(
+  startDate: string | null,
+  endDate: string | null,
+): number {
   if (!startDate || !endDate) return 0;
   const start = new Date(startDate + "T00:00:00Z");
   const end = new Date(endDate + "T00:00:00Z");
-  return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+  return Math.max(
+    1,
+    Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1,
+  );
 }
 
-export function OverviewPanel(props: {
-  trip: Trip;
-  workspaceId: string;
-}) {
+export function OverviewPanel(props: { trip: Trip; workspaceId: string }) {
   const { trip, workspaceId } = props;
   const trpc = useTRPC();
 
@@ -44,7 +53,8 @@ export function OverviewPanel(props: {
     trpc.settlements.summary.queryOptions({ workspaceId, tripId: trip.id }),
   );
 
-  const totalExpenses = expenses?.reduce((s, e) => s + (e.totalCents ?? 0), 0) ?? 0;
+  const totalExpenses =
+    expenses?.reduce((s, e) => s + (e.totalCents ?? 0), 0) ?? 0;
   const memberCount = settlement?.members?.length ?? 0;
   const tripDays = computeTripDays(trip.startDate, trip.endDate);
   const allSettled = settlement?.allSettled ?? false;
@@ -114,10 +124,16 @@ export function OverviewPanel(props: {
         </h4>
         <div className="space-y-1.5">
           <InfoRow label="Status" value={trip.status} />
-          <InfoRow label="Group Mode" value={trip.groupMode ? "Enabled" : "Disabled"} />
+          <InfoRow
+            label="Group Mode"
+            value={trip.groupMode ? "Enabled" : "Disabled"}
+          />
           <InfoRow label="Claim Mode" value={trip.claimMode} />
           <InfoRow label="Timezone" value={trip.tz} />
-          <InfoRow label="Destination" value={trip.destinationName ?? "Pending"} />
+          <InfoRow
+            label="Destination"
+            value={trip.destinationName ?? "Pending"}
+          />
         </div>
       </div>
 

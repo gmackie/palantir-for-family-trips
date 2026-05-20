@@ -67,7 +67,10 @@ export default function ExpenseList() {
           contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
           ItemSeparatorComponent={() => <View className="h-3" />}
           renderItem={({ item }) => {
-            const badge = STATUS_BADGE[item.status] ?? { bg: "bg-yellow-100", text: "text-yellow-800" };
+            const badge = STATUS_BADGE[item.status] ?? {
+              bg: "bg-yellow-100",
+              text: "text-yellow-800",
+            };
             return (
               <Pressable
                 onPress={() =>
@@ -88,7 +91,9 @@ export default function ExpenseList() {
                 </View>
                 <View className="flex-row items-center gap-2">
                   <View className={`rounded-full px-2 py-0.5 ${badge.bg}`}>
-                    <Text className={`text-xs font-medium capitalize ${badge.text}`}>
+                    <Text
+                      className={`text-xs font-medium capitalize ${badge.text}`}
+                    >
                       {item.status}
                     </Text>
                   </View>

@@ -15,7 +15,7 @@ export default async function HomePage() {
       {/* Hero */}
       <div className="max-w-2xl space-y-6 text-center">
         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
-          Trip Command Center
+          Sortie
         </p>
         <h1 className="text-5xl font-black tracking-tight text-[#C9D1D9] md:text-6xl">
           Plan together.
@@ -78,9 +78,7 @@ export default async function HomePage() {
 
       {/* Footer */}
       <footer className="mt-20 pb-8 text-center">
-        <p className="text-[11px] text-[#484F58]">
-          Powered by Claude Vision for receipt OCR
-        </p>
+        <p className="text-[11px] text-[#484F58]">Powered by Sortie</p>
       </footer>
     </main>
   );

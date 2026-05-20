@@ -21,9 +21,7 @@ export default function MapScreen() {
     <SafeAreaView className="bg-background flex-1">
       <Stack.Screen options={{ title: "Map" }} />
       <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-foreground mb-2 text-xl font-bold">
-          Trip Map
-        </Text>
+        <Text className="text-foreground mb-2 text-xl font-bold">Trip Map</Text>
         {trip?.destinationName && (
           <Text className="text-muted-foreground mb-4 text-center">
             {trip.destinationName}

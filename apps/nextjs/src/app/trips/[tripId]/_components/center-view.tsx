@@ -4,14 +4,20 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { useTRPC } from "~/trpc/react";
-import { TripMap } from "../map/_components/trip-map";
 import type { TripMapPin } from "../map/_components/trip-map";
+import { TripMap } from "../map/_components/trip-map";
 
 type Trip = {
   id: string;
   workspaceId: string;
   name: string;
-  status: "planning" | "confirmed" | "active" | "completed";
+  status:
+    | "planning"
+    | "confirmed"
+    | "active"
+    | "en_route"
+    | "paused"
+    | "completed";
   destinationName: string | null;
   destinationLat: string | null;
   destinationLng: string | null;
@@ -21,11 +27,17 @@ type Trip = {
   tz: string;
 };
 
-function computeTripDays(startDate: string | null, endDate: string | null): number {
+function computeTripDays(
+  startDate: string | null,
+  endDate: string | null,
+): number {
   if (!startDate || !endDate) return 0;
   const start = new Date(startDate + "T00:00:00Z");
   const end = new Date(endDate + "T00:00:00Z");
-  return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+  return Math.max(
+    1,
+    Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1,
+  );
 }
 
 function formatCents(cents: number): string {
@@ -48,9 +60,11 @@ export function CenterView(props: {
     trpc.pins.list.queryOptions({ workspaceId, tripId: trip.id }),
   );
 
-  const apiKey = googleMapsApiKey ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const apiKey =
+    googleMapsApiKey ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
-  const totalExpenses = expenses?.reduce((s, e) => s + (e.totalCents ?? 0), 0) ?? 0;
+  const totalExpenses =
+    expenses?.reduce((s, e) => s + (e.totalCents ?? 0), 0) ?? 0;
   const tripDays = computeTripDays(trip.startDate, trip.endDate);
   const pinCount = pins?.length ?? 0;
 
@@ -58,10 +72,20 @@ export function CenterView(props: {
     id: pin.id,
     type: pin.type,
     title: pin.title,
-    lat: typeof pin.lat === "string" ? parseFloat(pin.lat) : (pin.lat as number),
-    lng: typeof pin.lng === "string" ? parseFloat(pin.lng) : (pin.lng as number),
-    startsAt: pin.startsAt ? (pin.startsAt instanceof Date ? pin.startsAt.toISOString() : String(pin.startsAt)) : null,
-    endsAt: pin.endsAt ? (pin.endsAt instanceof Date ? pin.endsAt.toISOString() : String(pin.endsAt)) : null,
+    lat:
+      typeof pin.lat === "string" ? parseFloat(pin.lat) : (pin.lat as number),
+    lng:
+      typeof pin.lng === "string" ? parseFloat(pin.lng) : (pin.lng as number),
+    startsAt: pin.startsAt
+      ? pin.startsAt instanceof Date
+        ? pin.startsAt.toISOString()
+        : String(pin.startsAt)
+      : null,
+    endsAt: pin.endsAt
+      ? pin.endsAt instanceof Date
+        ? pin.endsAt.toISOString()
+        : String(pin.endsAt)
+      : null,
     attendeeCount: pin.attendeeCount ?? 0,
   }));
 

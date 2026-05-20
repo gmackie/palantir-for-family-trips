@@ -15,8 +15,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { trpc } from "~/utils/api";
-import { getBaseUrl } from "~/utils/base-url";
 import { authClient } from "~/utils/auth";
+import { getBaseUrl } from "~/utils/base-url";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 interface OcrResult {
@@ -61,9 +61,7 @@ export default function NewExpense() {
   const createExpense = useMutation(
     trpc.expenses.create.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries(
-          trpc.expenses.list.queryFilter(),
-        );
+        await queryClient.invalidateQueries(trpc.expenses.list.queryFilter());
         router.back();
       },
       onError: (err) => {
@@ -183,7 +181,10 @@ export default function NewExpense() {
   return (
     <SafeAreaView className="bg-background flex-1">
       <Stack.Screen options={{ title: "New Expense" }} />
-      <ScrollView className="flex-1 px-4 pt-4" keyboardShouldPersistTaps="handled">
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Receipt photo section */}
         <View className="mb-6">
           <Text className="text-foreground mb-3 text-lg font-semibold">

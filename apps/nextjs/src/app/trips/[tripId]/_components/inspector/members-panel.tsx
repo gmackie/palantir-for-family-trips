@@ -5,10 +5,7 @@ import { useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
-export function MembersPanel(props: {
-  tripId: string;
-  workspaceId: string;
-}) {
+export function MembersPanel(props: { tripId: string; workspaceId: string }) {
   const { tripId, workspaceId } = props;
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -34,7 +31,16 @@ export function MembersPanel(props: {
   );
 
   const members = summary?.members ?? [];
-  const palette = ["#58A6FF", "#3FB950", "#D29922", "#F85149", "#BC8CFF", "#F778BA", "#79C0FF", "#56D364"];
+  const palette = [
+    "#58A6FF",
+    "#3FB950",
+    "#D29922",
+    "#F85149",
+    "#BC8CFF",
+    "#F778BA",
+    "#79C0FF",
+    "#56D364",
+  ];
 
   return (
     <div className="space-y-3 p-4">
@@ -42,9 +48,7 @@ export function MembersPanel(props: {
         Trip Members
       </h3>
 
-      {isLoading && (
-        <p className="text-xs text-[#484F58]">Loading...</p>
-      )}
+      {isLoading && <p className="text-xs text-[#484F58]">Loading...</p>}
 
       <div className="space-y-2">
         {members.map((member, idx) => {
@@ -107,7 +111,9 @@ export function MembersPanel(props: {
           </button>
         </form>
         {inviteStatus && (
-          <p className={`text-[10px] break-all ${inviteStatus.startsWith("Error") ? "text-[#F85149]" : "text-[#3FB950]"}`}>
+          <p
+            className={`text-[10px] break-all ${inviteStatus.startsWith("Error") ? "text-[#F85149]" : "text-[#3FB950]"}`}
+          >
             {inviteStatus}
           </p>
         )}

@@ -1,7 +1,9 @@
 {
   "extends": "@gmacko/tsconfig/base.json",
   "compilerOptions": {
+    "rootDir": "./src",
     "outDir": "./dist",
+    "types": ["node"],
     "declaration": true,
     "declarationMap": true,
     "emitDeclarationOnly": false,

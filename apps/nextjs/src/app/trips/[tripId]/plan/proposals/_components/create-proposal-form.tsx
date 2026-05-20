@@ -122,7 +122,12 @@ export function CreateProposalForm({
           >
             URL (optional)
           </label>
-          <Input id="proposal-url" name="url" type="url" placeholder="https://..." />
+          <Input
+            id="proposal-url"
+            name="url"
+            type="url"
+            placeholder="https://..."
+          />
         </div>
 
         <div>

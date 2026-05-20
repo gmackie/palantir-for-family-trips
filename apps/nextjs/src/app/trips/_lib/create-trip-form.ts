@@ -9,6 +9,7 @@ const CreateTripFormSchema = z.object({
   destinationName: z.string().trim().min(1, "Destination is required"),
   endDate: tripDateSchema,
   name: z.string().trim().min(1, "Trip name is required"),
+  tripMode: z.enum(["destination", "roadtrip"]).default("destination"),
   startDate: tripDateSchema,
   tz: z.string().trim().min(1).default("UTC"),
 });
@@ -25,6 +26,7 @@ export function parseCreateTripFormData(
 ): CreateTripFormInput {
   const parsed = CreateTripFormSchema.safeParse({
     name: readText(formData, "name"),
+    tripMode: readText(formData, "tripMode") || "destination",
     destinationName: readText(formData, "destinationName"),
     startDate: readText(formData, "startDate") || undefined,
     endDate: readText(formData, "endDate") || undefined,

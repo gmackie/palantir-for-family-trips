@@ -1,17 +1,20 @@
 "use client";
 
-import { getPusherClient } from "@gmacko/realtime";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
 /**
- * Subscribe to realtime claim events for a specific expense.
+ * Poll for realtime claim updates on a specific expense.
  *
- * When a Pusher event fires (line-item:claimed, line-item:unclaimed,
- * line-item:assigned), invalidates the `expenses.get` query to
- * refresh the UI. Falls back to 3s polling when Pusher is unavailable.
+ * Invalidates the `expenses.get` query every 3 seconds so the UI
+ * reflects line-item claims/unclaims made by other users. Polling
+ * pauses automatically when the browser tab is hidden.
+ *
+ * This replaces the previous Pusher-based subscription with a
+ * dependency-free polling approach. A future SSE upgrade can hook
+ * into the server-side event log without changing this interface.
  */
 export function useExpenseRealtime(input: {
   expenseId: string;
@@ -22,10 +25,6 @@ export function useExpenseRealtime(input: {
   const trpc = useTRPC();
 
   useEffect(() => {
-    const client = getPusherClient();
-    const channelName = `private-expense-${input.expenseId}`;
-
-    // Query key for invalidation
     const getQueryKey = trpc.expenses.get.queryKey({
       workspaceId: input.workspaceId,
       tripId: input.tripId,
@@ -36,20 +35,7 @@ export function useExpenseRealtime(input: {
       void queryClient.invalidateQueries({ queryKey: getQueryKey });
     };
 
-    if (client) {
-      const channel = client.subscribe(channelName);
-      channel.bind("line-item:claimed", invalidate);
-      channel.bind("line-item:unclaimed", invalidate);
-      channel.bind("line-item:assigned", invalidate);
-
-      return () => {
-        channel.unbind_all();
-        client.unsubscribe(channelName);
-      };
-    }
-
-    // Fallback: 3s polling when Pusher is disabled.
-    // Pauses when tab is hidden.
+    // 3-second polling, pauses when the tab is hidden
     let timer: ReturnType<typeof setInterval> | null = null;
 
     function startPolling() {
@@ -57,7 +43,7 @@ export function useExpenseRealtime(input: {
         if (document.visibilityState === "visible") {
           invalidate();
         }
-      }, 3000);
+      }, 3_000);
     }
 
     function stopPolling() {

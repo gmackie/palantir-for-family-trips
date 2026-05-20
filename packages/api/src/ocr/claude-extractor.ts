@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
-import { receiptExtractionSchema, type ReceiptExtraction } from "./schema";
+import { type ReceiptExtraction, receiptExtractionSchema } from "./schema";
 
 /**
  * Claude vision-based receipt extractor.
@@ -56,7 +56,8 @@ export class ClaudeReceiptExtractor {
   constructor(options: ClaudeOCROptions = {}) {
     this.client = options.client ?? new Anthropic();
     this.model = options.model ?? "claude-sonnet-4-6";
-    this.systemPrompt = options.systemPrompt ?? RECEIPT_EXTRACTION_SYSTEM_PROMPT;
+    this.systemPrompt =
+      options.systemPrompt ?? RECEIPT_EXTRACTION_SYSTEM_PROMPT;
   }
 
   async extract(input: {

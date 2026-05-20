@@ -65,9 +65,7 @@ async function validateSegmentBelongsToTrip(
   const [segment] = (await db
     .select({ id: tripSegments.id })
     .from(tripSegments)
-    .where(
-      and(eq(tripSegments.id, segmentId), eq(tripSegments.tripId, tripId)),
-    )
+    .where(and(eq(tripSegments.id, segmentId), eq(tripSegments.tripId, tripId)))
     .limit(1)) as { id: string }[];
 
   if (!segment) {
@@ -330,8 +328,7 @@ export const lodgingRouter = {
       ) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message:
-            "Only organizers can add transits for other members.",
+          message: "Only organizers can add transits for other members.",
         });
       }
 
@@ -413,7 +410,9 @@ export const lodgingRouter = {
         .select()
         .from(memberTransits)
         .where(eq(memberTransits.segmentId, input.segmentId))
-        .orderBy(asc(memberTransits.scheduledAt))) as (typeof memberTransits.$inferSelect)[];
+        .orderBy(
+          asc(memberTransits.scheduledAt),
+        )) as (typeof memberTransits.$inferSelect)[];
 
       return rows;
     }),
@@ -516,11 +515,15 @@ export const lodgingRouter = {
         .select()
         .from(groundTransportGroups)
         .where(eq(groundTransportGroups.segmentId, input.segmentId))
-        .orderBy(asc(groundTransportGroups.scheduledAt))) as (typeof groundTransportGroups.$inferSelect)[];
+        .orderBy(
+          asc(groundTransportGroups.scheduledAt),
+        )) as (typeof groundTransportGroups.$inferSelect)[];
 
       const members = (await ctx.db
         .select()
-        .from(groundTransportMembers)) as (typeof groundTransportMembers.$inferSelect)[];
+        .from(
+          groundTransportMembers,
+        )) as (typeof groundTransportMembers.$inferSelect)[];
 
       const groupIds = new Set(groups.map((g) => g.id));
 

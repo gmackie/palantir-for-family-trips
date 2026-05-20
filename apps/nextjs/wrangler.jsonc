@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "trip-gmac-io",
+  "name": "sortie-gmac-io",
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat"],
   "build": {
@@ -11,7 +11,7 @@
   "main": "./worker/index.ts",
   "routes": [
     {
-      "pattern": "trip.gmac.io",
+      "pattern": "sortie.gmac.io",
       "custom_domain": true
     }
   ],
@@ -25,6 +25,8 @@
   },
   "vars": {
     "APP_ENV": "production",
+    "APP_URL": "https://sortie.gmac.io",
+    "NEXT_PUBLIC_APP_URL": "https://sortie.gmac.io",
     "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyD-_6bRsv9VULS4cTMktQynRAGwvzO913w"
   },
   "env": {
@@ -34,6 +36,12 @@
       }
     }
   },
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "sortie-receipts"
+    }
+  ],
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

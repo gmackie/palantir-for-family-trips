@@ -109,9 +109,7 @@ export function ProposalCard({
         </div>
       </div>
 
-      {error && (
-        <p className="mt-2 text-xs text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
       <div className="mt-3 flex items-center gap-2">
         {REACTIONS.map((r) => (

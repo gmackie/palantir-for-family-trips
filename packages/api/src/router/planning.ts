@@ -1,10 +1,10 @@
-import { and, asc, desc, eq, sql, count as drizzleCount } from "@gmacko/db";
+import { and, asc, desc, count as drizzleCount, eq, sql } from "@gmacko/db";
 import {
-  polls,
   pollOptions,
+  polls,
   pollVotes,
-  proposals,
   proposalReactions,
+  proposals,
   trips,
 } from "@gmacko/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
@@ -31,7 +31,12 @@ export const planningRouter = {
         workspaceId: z.string().min(1),
         tripId: z.string().min(1),
         title: z.string().min(1).max(200),
-        pollType: z.enum(["date_range", "single_choice", "multi_choice", "ranked"]),
+        pollType: z.enum([
+          "date_range",
+          "single_choice",
+          "multi_choice",
+          "ranked",
+        ]),
         closesAt: z.string().datetime().optional(),
       }),
     )
@@ -181,9 +186,7 @@ export const planningRouter = {
       const [updated] = (await ctx.db
         .update(polls)
         .set({ status: "closed" as const })
-        .where(
-          and(eq(polls.id, input.pollId), eq(polls.tripId, ctx.tripId)),
-        )
+        .where(and(eq(polls.id, input.pollId), eq(polls.tripId, ctx.tripId)))
         .returning()) as Array<typeof polls.$inferSelect>;
 
       if (!updated) {
@@ -529,9 +532,7 @@ export const planningRouter = {
       await ctx.db
         .update(polls)
         .set({ status: "closed" as const })
-        .where(
-          and(eq(polls.tripId, ctx.tripId), eq(polls.status, "open")),
-        );
+        .where(and(eq(polls.tripId, ctx.tripId), eq(polls.status, "open")));
 
       // Set trip status to confirmed
       const [updated] = (await ctx.db

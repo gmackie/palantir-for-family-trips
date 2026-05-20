@@ -71,9 +71,7 @@ describe("minimizeTransactions", () => {
           ],
         },
       ],
-      settlements: [
-        { fromUserId: "bob", toUserId: "alice", amountCents: 300 },
-      ],
+      settlements: [{ fromUserId: "bob", toUserId: "alice", amountCents: 300 }],
     });
     // bob owed 500, paid 300, still owes 200
     expect(balances.get("bob")).toBe(-200);
@@ -96,9 +94,7 @@ describe("minimizeTransactions", () => {
           ],
         },
       ],
-      settlements: [
-        { fromUserId: "bob", toUserId: "alice", amountCents: 500 },
-      ],
+      settlements: [{ fromUserId: "bob", toUserId: "alice", amountCents: 500 }],
     });
     expect(balances.size).toBe(0);
     expect(minimizeTransactions(balances)).toEqual([]);

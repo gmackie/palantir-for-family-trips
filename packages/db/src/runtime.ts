@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 export type DatabaseRuntime = {
   databaseUrl?: string | null;
+  r2?: unknown;
 };
 
 const databaseRuntimeStorage = new AsyncLocalStorage<DatabaseRuntime>();
@@ -15,6 +16,10 @@ export function runWithDatabaseRuntime<T>(
 
 export function getDatabaseRuntime(): DatabaseRuntime | null {
   return databaseRuntimeStorage.getStore() ?? null;
+}
+
+export function getR2Bucket(): unknown | null {
+  return databaseRuntimeStorage.getStore()?.r2 ?? null;
 }
 
 export function resolveDatabaseUrl(input: {

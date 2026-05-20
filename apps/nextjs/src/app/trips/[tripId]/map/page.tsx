@@ -15,11 +15,9 @@ import { PinList } from "./_components/pin-list";
 import type { TripMapPin } from "./_components/trip-map";
 import { TripMap } from "./_components/trip-map";
 
-type SegmentOutput =
-  inferRouterOutputs<AppRouter>["trips"]["listSegments"];
+type SegmentOutput = inferRouterOutputs<AppRouter>["trips"]["listSegments"];
 
-const GOOGLE_MAPS_API_KEY =
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const GOOGLE_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID ?? "";
 
 export default function MapPage() {

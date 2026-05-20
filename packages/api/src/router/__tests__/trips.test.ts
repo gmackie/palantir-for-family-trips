@@ -34,6 +34,7 @@ type TripRecord = {
   name: string;
   createdByUserId: string;
   status: TripStatus;
+  tripMode: "destination" | "roadtrip";
   groupMode: boolean;
   claimMode: ClaimMode;
   destinationName: string | null;
@@ -176,6 +177,7 @@ function createTripStore(input?: {
       endDate?: string;
       tz?: string;
       groupMode?: boolean;
+      tripMode?: "destination" | "roadtrip";
     }) => {
       const trip: TripRecord = {
         id: randomUUID(),
@@ -183,6 +185,7 @@ function createTripStore(input?: {
         name: input.name,
         createdByUserId: input.createdByUserId,
         status: "planning",
+        tripMode: input.tripMode ?? "destination",
         groupMode: input.groupMode ?? false,
         claimMode: "organizer",
         destinationName: input.destinationName ?? null,
@@ -365,6 +368,7 @@ describe("trip guards", () => {
           name: "Milan",
           createdByUserId: "user_2",
           status: "planning",
+          tripMode: "destination" as const,
           groupMode: false,
           claimMode: "organizer",
           destinationName: "Milan",
@@ -429,6 +433,7 @@ describe("trip creation", () => {
           name: "Milan",
           createdByUserId: "user_1",
           status: "planning",
+          tripMode: "destination" as const,
           groupMode: false,
           claimMode: "organizer",
           destinationName: "Milan",
@@ -447,6 +452,7 @@ describe("trip creation", () => {
           name: "Florence",
           createdByUserId: "user_2",
           status: "planning",
+          tripMode: "destination" as const,
           groupMode: false,
           claimMode: "organizer",
           destinationName: "Florence",
@@ -465,6 +471,7 @@ describe("trip creation", () => {
           name: "Paris",
           createdByUserId: "user_1",
           status: "planning",
+          tripMode: "destination" as const,
           groupMode: false,
           claimMode: "organizer",
           destinationName: "Paris",
@@ -537,6 +544,7 @@ describe("trip updates", () => {
           name: "Italy Summer",
           createdByUserId: "user_1",
           status: "planning",
+          tripMode: "destination" as const,
           groupMode: false,
           claimMode: "organizer",
           destinationName: "Milan",
@@ -580,6 +588,7 @@ describe("trip updates", () => {
           name: "Italy Summer",
           createdByUserId: "user_1",
           status: "planning",
+          tripMode: "destination" as const,
           groupMode: false,
           claimMode: "organizer",
           destinationName: "Milan",
@@ -616,6 +625,7 @@ describe("trip updates", () => {
           name: "Italy Summer",
           createdByUserId: "user_1",
           status: "planning",
+          tripMode: "destination" as const,
           groupMode: false,
           claimMode: "organizer",
           destinationName: "Milan",

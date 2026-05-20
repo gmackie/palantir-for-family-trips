@@ -83,13 +83,19 @@ export default async function TripsPage() {
             {trips.map((trip) => (
               <Link
                 key={trip.id}
-                href={`/trips/${trip.id}`}
+                href={`/trips/${trip.id}${(trip as any).tripMode === "roadtrip" ? "/road-trip" : ""}`}
                 className="group block overflow-hidden rounded-[4px] border border-[#21262D] bg-[#161B22] transition-colors hover:border-[#484F58]"
               >
                 {/* Map thumbnail */}
                 <div className="relative flex h-[140px] w-full items-center justify-center overflow-hidden bg-gradient-to-b from-[#0D1117] to-[#161B22]">
                   <div className="text-center">
-                    <svg className="mx-auto mb-2 h-8 w-8 text-[#21262D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <svg
+                      className="mx-auto mb-2 h-8 w-8 text-[#21262D]"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
                       <circle cx="12" cy="10" r="3" />
                     </svg>
@@ -98,7 +104,9 @@ export default async function TripsPage() {
                     </p>
                     {trip.destinationLat && trip.destinationLng && (
                       <p className="mt-1 font-mono text-[10px] text-[#30363D]">
-                        {parseFloat(trip.destinationLat).toFixed(2)}N {Math.abs(parseFloat(trip.destinationLng)).toFixed(2)}{parseFloat(trip.destinationLng) < 0 ? "W" : "E"}
+                        {parseFloat(trip.destinationLat).toFixed(2)}N{" "}
+                        {Math.abs(parseFloat(trip.destinationLng)).toFixed(2)}
+                        {parseFloat(trip.destinationLng) < 0 ? "W" : "E"}
                       </p>
                     )}
                   </div>
@@ -114,11 +122,18 @@ export default async function TripsPage() {
                         {trip.destinationName ?? "Destination pending"}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex items-center rounded-[2px] border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusColor(trip.status)}`}
-                    >
-                      {trip.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {(trip as any).tripMode === "roadtrip" && (
+                        <span className="inline-flex items-center rounded-[2px] border border-[#D29922]/40 bg-[#D29922]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#D29922]">
+                          Road Trip
+                        </span>
+                      )}
+                      <span
+                        className={`inline-flex items-center rounded-[2px] border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusColor(trip.status)}`}
+                      >
+                        {trip.status}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-4 flex items-center gap-4 text-xs text-[#8B949E]">

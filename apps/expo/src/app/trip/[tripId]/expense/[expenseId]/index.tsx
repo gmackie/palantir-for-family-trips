@@ -50,9 +50,7 @@ export default function ExpenseDetail() {
   const claimMutation = useMutation(
     trpc.expenses.claimLineItem.mutationOptions({
       onSuccess: () => {
-        void queryClient.invalidateQueries(
-          trpc.expenses.get.queryFilter(),
-        );
+        void queryClient.invalidateQueries(trpc.expenses.get.queryFilter());
       },
     }),
   );
@@ -60,9 +58,7 @@ export default function ExpenseDetail() {
   const unclaimMutation = useMutation(
     trpc.expenses.unclaimLineItem.mutationOptions({
       onSuccess: () => {
-        void queryClient.invalidateQueries(
-          trpc.expenses.get.queryFilter(),
-        );
+        void queryClient.invalidateQueries(trpc.expenses.get.queryFilter());
       },
     }),
   );
@@ -180,9 +176,7 @@ export default function ExpenseDetail() {
                     <Text className="text-muted-foreground text-xs">
                       Qty: {item.quantity} |{" "}
                       {formatCurrency(item.lineTotalCents, expense.currency)}
-                      {claimCount > 0
-                        ? ` | ${claimCount} claimed`
-                        : ""}
+                      {claimCount > 0 ? ` | ${claimCount} claimed` : ""}
                     </Text>
                   </View>
 
@@ -211,7 +205,12 @@ export default function ExpenseDetail() {
                       className={`rounded-md px-4 py-2 ${
                         claimed ? "bg-green-500" : "bg-primary"
                       }`}
-                      style={{ minHeight: 44, minWidth: 80, justifyContent: "center", alignItems: "center" }}
+                      style={{
+                        minHeight: 44,
+                        minWidth: 80,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
                     >
                       <Text className="text-center font-medium text-white">
                         {claimed ? "Claimed" : "Claim"}

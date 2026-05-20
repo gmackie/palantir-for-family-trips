@@ -7,6 +7,15 @@ import {
   handleImageOptimization,
 } from "vinext/server/image-optimization";
 
+interface R2Bucket {
+  put(
+    key: string,
+    value: ArrayBuffer | ArrayBufferView | string | ReadableStream | Blob,
+    options?: { httpMetadata?: { contentType?: string } },
+  ): Promise<unknown>;
+  get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>;
+}
+
 interface Env {
   APP_ENV?: "development" | "staging" | "production";
   ASSETS: {
@@ -25,6 +34,7 @@ interface Env {
   HYPERDRIVE?: {
     connectionString?: string | null;
   };
+  R2?: R2Bucket;
 }
 
 interface ExecutionContext {
@@ -44,6 +54,7 @@ export default {
       {
         databaseUrl:
           env.HYPERDRIVE?.connectionString ?? process.env.DATABASE_URL ?? null,
+        r2: env.R2,
       },
       async () => {
         const url = new URL(request.url);

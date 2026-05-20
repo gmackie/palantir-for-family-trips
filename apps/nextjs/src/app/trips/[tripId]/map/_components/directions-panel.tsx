@@ -56,8 +56,9 @@ export function DirectionsPanel({ map, fromPin, toPin }: DirectionsPanelProps) {
       setSteps([]);
 
       try {
-        const { DirectionsService, DirectionsRenderer } =
-          (await importLibrary("routes")) as google.maps.RoutesLibrary;
+        const { DirectionsService, DirectionsRenderer } = (await importLibrary(
+          "routes",
+        )) as google.maps.RoutesLibrary;
 
         if (!serviceRef.current) {
           serviceRef.current = new DirectionsService();
@@ -112,7 +113,8 @@ export function DirectionsPanel({ map, fromPin, toPin }: DirectionsPanelProps) {
           };
 
           if (step.transit?.line) {
-            s.transitLine = step.transit.line.short_name ?? step.transit.line.name ?? "";
+            s.transitLine =
+              step.transit.line.short_name ?? step.transit.line.name ?? "";
             s.transitColor = step.transit.line.color ?? "#58a6ff";
           }
 

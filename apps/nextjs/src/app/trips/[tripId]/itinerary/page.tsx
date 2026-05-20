@@ -258,8 +258,7 @@ export default async function ItineraryPage(props: {
                                     title={`${pin.title} (${formatTime(new Date(pin.startsAt!))}${pin.endsAt ? ` - ${formatTime(new Date(pin.endsAt))}` : ""})`}
                                   >
                                     <span className="truncate">
-                                      {PIN_TYPE_LABELS[pin.type]}{" "}
-                                      {pin.title}
+                                      {PIN_TYPE_LABELS[pin.type]} {pin.title}
                                     </span>
                                   </div>
                                 </div>

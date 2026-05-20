@@ -7,11 +7,10 @@ import {
   tripMembers,
   tripSegments,
 } from "@gmacko/db/schema";
+import { triggerEvent } from "@gmacko/realtime";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
-
-import { triggerEvent } from "@gmacko/realtime";
 
 import { tripProcedure } from "../auth/guards";
 import { computeExpenseShares } from "../expenses/shares";
@@ -492,7 +491,10 @@ export const expensesRouter = {
         .limit(1)) as Array<typeof expenses.$inferSelect>;
 
       if (!expense) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found." });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found.",
+        });
       }
 
       if (expense.status !== "draft") {
@@ -582,10 +584,14 @@ export const expensesRouter = {
           target: [lineItemClaims.lineItemId, lineItemClaims.userId],
         });
 
-      await triggerEvent(`private-expense-${input.expenseId}`, "line-item:claimed", {
-        lineItemId: input.lineItemId,
-        userId: ctx.session.user.id,
-      });
+      await triggerEvent(
+        `private-expense-${input.expenseId}`,
+        "line-item:claimed",
+        {
+          lineItemId: input.lineItemId,
+          userId: ctx.session.user.id,
+        },
+      );
 
       return { claimed: true };
     }),
@@ -611,10 +617,14 @@ export const expensesRouter = {
             eq(lineItemClaims.userId, ctx.session.user.id),
           ),
         );
-      await triggerEvent(`private-expense-${input.expenseId}`, "line-item:unclaimed", {
-        lineItemId: input.lineItemId,
-        userId: ctx.session.user.id,
-      });
+      await triggerEvent(
+        `private-expense-${input.expenseId}`,
+        "line-item:unclaimed",
+        {
+          lineItemId: input.lineItemId,
+          userId: ctx.session.user.id,
+        },
+      );
 
       return { unclaimed: true };
     }),
@@ -674,10 +684,14 @@ export const expensesRouter = {
         }
       });
 
-      await triggerEvent(`private-expense-${input.expenseId}`, "line-item:assigned", {
-        lineItemId: input.lineItemId,
-        userIds: input.userIds,
-      });
+      await triggerEvent(
+        `private-expense-${input.expenseId}`,
+        "line-item:assigned",
+        {
+          lineItemId: input.lineItemId,
+          userIds: input.userIds,
+        },
+      );
 
       return { assigned: input.userIds.length };
     }),

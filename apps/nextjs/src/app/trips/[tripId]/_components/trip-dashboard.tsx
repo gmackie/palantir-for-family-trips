@@ -1,23 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-
-import { NavRail, type NavItem } from "./nav-rail";
+import { useState } from "react";
 import { CenterView } from "./center-view";
-import { TimelineBar } from "./timeline-bar";
-import { OverviewPanel } from "./inspector/overview-panel";
 import { ExpensesPanel } from "./inspector/expenses-panel";
-import { SettlementPanel } from "./inspector/settlement-panel";
 import { MembersPanel } from "./inspector/members-panel";
+import { OverviewPanel } from "./inspector/overview-panel";
 import { PollsPanel } from "./inspector/polls-panel";
 import { ProposalsPanel } from "./inspector/proposals-panel";
+import { SettlementPanel } from "./inspector/settlement-panel";
+import { type NavItem, NavRail } from "./nav-rail";
+import { TimelineBar } from "./timeline-bar";
 
 type Trip = {
   id: string;
   workspaceId: string;
   name: string;
-  status: "planning" | "confirmed" | "active" | "completed";
+  status:
+    | "planning"
+    | "confirmed"
+    | "active"
+    | "en_route"
+    | "paused"
+    | "completed";
+  tripMode: "destination" | "roadtrip";
   groupMode: boolean;
   claimMode: "organizer" | "tap";
   destinationName: string | null;
@@ -42,6 +48,8 @@ const STATUS_COLORS: Record<string, string> = {
   planning: "bg-[#D29922]/20 text-[#D29922]",
   confirmed: "bg-[#58A6FF]/20 text-[#58A6FF]",
   active: "bg-[#3FB950]/20 text-[#3FB950]",
+  en_route: "bg-[#D29922]/20 text-[#D29922]",
+  paused: "bg-[#8B949E]/20 text-[#8B949E]",
   completed: "bg-[#8B949E]/20 text-[#8B949E]",
 };
 
@@ -52,19 +60,15 @@ export function TripDashboard(props: {
   currentUserId: string;
   googleMapsApiKey?: string;
 }) {
-  const { trip, segments, workspaceId, currentUserId, googleMapsApiKey } = props;
+  const { trip, segments, workspaceId, currentUserId, googleMapsApiKey } =
+    props;
   const [activeNav, setActiveNav] = useState<NavItem>("overview");
   const [timelineOpen, setTimelineOpen] = useState(true);
 
   function renderInspector() {
     switch (activeNav) {
       case "overview":
-        return (
-          <OverviewPanel
-            trip={trip}
-            workspaceId={workspaceId}
-          />
-        );
+        return <OverviewPanel trip={trip} workspaceId={workspaceId} />;
       case "expenses":
         return (
           <ExpensesPanel
@@ -82,12 +86,7 @@ export function TripDashboard(props: {
           />
         );
       case "members":
-        return (
-          <MembersPanel
-            tripId={trip.id}
-            workspaceId={workspaceId}
-          />
-        );
+        return <MembersPanel tripId={trip.id} workspaceId={workspaceId} />;
       case "stay":
         return (
           <div className="p-4">
@@ -122,19 +121,9 @@ export function TripDashboard(props: {
           </div>
         );
       case "polls":
-        return (
-          <PollsPanel
-            tripId={trip.id}
-            workspaceId={workspaceId}
-          />
-        );
+        return <PollsPanel tripId={trip.id} workspaceId={workspaceId} />;
       case "proposals":
-        return (
-          <ProposalsPanel
-            tripId={trip.id}
-            workspaceId={workspaceId}
-          />
-        );
+        return <ProposalsPanel tripId={trip.id} workspaceId={workspaceId} />;
       default:
         return null;
     }
@@ -149,7 +138,16 @@ export function TripDashboard(props: {
           className="text-[#484F58] hover:text-[#8B949E] transition-colors"
           title="All trips"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </Link>
@@ -195,7 +193,11 @@ export function TripDashboard(props: {
       {/* ── Main body: nav rail + center + inspector ── */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left nav rail */}
-        <NavRail activeItem={activeNav} onItemClick={setActiveNav} tripStatus={trip.status} />
+        <NavRail
+          activeItem={activeNav}
+          onItemClick={setActiveNav}
+          tripStatus={trip.status}
+        />
 
         {/* Center view */}
         <div className="flex-1 overflow-auto border-r border-[#21262D]">

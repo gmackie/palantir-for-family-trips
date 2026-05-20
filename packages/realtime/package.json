@@ -18,9 +18,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
-    "pusher": "^5.3.3",
-    "pusher-js": "^8.4.2"
+    "@gmacko/config": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

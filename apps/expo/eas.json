@@ -5,8 +5,8 @@
   },
   "build": {
     "base": {
-      "node": "22.12.0",
-      "pnpm": "9.15.4",
+      "node": "22.16.0",
+      "pnpm": "10.32.1",
       "ios": {
         "resourceClass": "m-medium"
       },
@@ -76,10 +76,8 @@
       "autoIncrement": true,
       "env": {
         "APP_ENV": "production",
-        "API_URL": "${PRODUCTION_API_URL}",
-        "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_PROD}",
-        "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_PROD}",
-        "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
+        "API_URL": "https://sortie.gmac.io",
+        "EXPO_PUBLIC_APP_DOMAIN": "sortie.gmac.io"
       },
       "ios": {
         "enterpriseProvisioning": "universal"

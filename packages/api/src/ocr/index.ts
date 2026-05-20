@@ -1,14 +1,16 @@
 import { ClaudeReceiptExtractor } from "./claude-extractor";
+import { GeminiReceiptExtractor } from "./gemini-extractor";
 import { MockOCRProvider } from "./mock-provider";
-import { reconcileReceipt, type ReconcileResult } from "./reconcile";
+import { type ReconcileResult, reconcileReceipt } from "./reconcile";
 import type { ReceiptExtraction } from "./schema";
 
-export { receiptExtractionSchema } from "./schema";
-export type { ReceiptExtraction } from "./schema";
-export { reconcileReceipt } from "./reconcile";
-export type { ReconcileResult } from "./reconcile";
-export { MockOCRProvider } from "./mock-provider";
 export { ClaudeReceiptExtractor } from "./claude-extractor";
+export { GeminiReceiptExtractor } from "./gemini-extractor";
+export { MockOCRProvider } from "./mock-provider";
+export type { ReconcileResult } from "./reconcile";
+export { reconcileReceipt } from "./reconcile";
+export type { ReceiptExtraction } from "./schema";
+export { receiptExtractionSchema } from "./schema";
 
 export interface OCRProvider {
   extract(input: {
@@ -21,7 +23,8 @@ export interface OCRProvider {
  * Resolves the OCR provider based on environment:
  * - DEV_MODE=local → MockOCRProvider (reads fixtures, no API cost)
  * - OCR_PROVIDER=fixture → MockOCRProvider (explicit override)
- * - Otherwise → ClaudeReceiptExtractor (real Claude vision)
+ * - OCR_PROVIDER=claude → ClaudeReceiptExtractor (explicit Claude)
+ * - Otherwise → GeminiReceiptExtractor (Gemini Flash-Lite, default)
  */
 export function resolveOCRProvider(): OCRProvider {
   const devMode = process.env.DEV_MODE === "local";
@@ -36,7 +39,11 @@ export function resolveOCRProvider(): OCRProvider {
     };
   }
 
-  return new ClaudeReceiptExtractor();
+  if (ocrOverride === "claude") {
+    return new ClaudeReceiptExtractor();
+  }
+
+  return new GeminiReceiptExtractor();
 }
 
 /**

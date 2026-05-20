@@ -40,12 +40,13 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.89.0",
+    "@anthropic-ai/sdk": "^0.97.1",
     "@gmacko/auth": "workspace:*",
     "@gmacko/config": "workspace:*",
     "@gmacko/db": "workspace:*",
     "@gmacko/realtime": "workspace:*",
     "@gmacko/validators": "workspace:*",
+    "@google/generative-ai": "^0.24.1",
     "@trpc/server": "catalog:",
     "superjson": "catalog:",
     "zod": "catalog:"
@@ -58,6 +59,6 @@
     "openapi-types": "^12.1.3",
     "oxlint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.7"
   }
 }

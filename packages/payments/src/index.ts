@@ -5,7 +5,7 @@ let stripeClient: Stripe | null = null;
 
 export interface StripeConfig {
   secretKey: string;
-  apiVersion?: Stripe.LatestApiVersion;
+  apiVersion?: string;
 }
 
 /**
@@ -19,9 +19,7 @@ export function initStripe(config: StripeConfig): Stripe | null {
   }
 
   if (!stripeClient) {
-    stripeClient = new Stripe(config.secretKey, {
-      apiVersion: config.apiVersion,
-    });
+    stripeClient = new Stripe(config.secretKey);
   }
 
   return stripeClient;

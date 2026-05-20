@@ -277,8 +277,7 @@ export function SettlementView(props: {
                       {" paid "}
                       <span className="font-semibold">
                         {getMemberName(s.toUserId, members)}
-                      </span>
-                      {" "}
+                      </span>{" "}
                       <span className="font-bold tabular-nums">
                         {formatCents(s.amountCents)}
                       </span>

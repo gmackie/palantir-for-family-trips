@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { trpc } from "~/utils/api";
@@ -10,6 +16,8 @@ const STATUS_COLORS: Record<string, string> = {
   planning: "bg-yellow-500",
   confirmed: "bg-blue-500",
   active: "bg-green-500",
+  en_route: "bg-orange-500",
+  paused: "bg-yellow-600",
   completed: "bg-gray-500",
 };
 
@@ -20,11 +28,18 @@ function formatDate(value: string | null) {
   );
 }
 
-const TABS = [
+const GROUP_TABS = [
   { key: "expenses", label: "Expenses", path: "expenses" },
   { key: "settle", label: "Settle", path: "settle" },
   { key: "plan", label: "Plan", path: "polls" },
   { key: "map", label: "Map", path: "map" },
+] as const;
+
+const ROAD_TRIP_TABS = [
+  { key: "map", label: "Route", path: "map" },
+  { key: "expenses", label: "Expenses", path: "expenses" },
+  { key: "new-expense", label: "Fuel Log", path: "new-expense" },
+  { key: "settle", label: "Settle", path: "settle" },
 ] as const;
 
 export default function TripDetail() {
@@ -95,9 +110,23 @@ export default function TripDetail() {
           )}
         </View>
 
+        {/* Mode badge for road trips */}
+        {(trip as any).tripMode === "roadtrip" && (
+          <View className="mb-4 flex-row items-center gap-2">
+            <View className="rounded bg-orange-500/20 px-2 py-1">
+              <Text className="text-xs font-bold text-orange-400">
+                ROAD TRIP
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Tab navigation */}
         <View className="flex-row gap-3">
-          {TABS.map((tab) => (
+          {((trip as any).tripMode === "roadtrip"
+            ? ROAD_TRIP_TABS
+            : GROUP_TABS
+          ).map((tab) => (
             <Pressable
               key={tab.key}
               onPress={() =>

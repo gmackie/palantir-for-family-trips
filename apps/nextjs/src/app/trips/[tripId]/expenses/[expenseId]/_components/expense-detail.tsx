@@ -54,12 +54,8 @@ export function ExpenseDetail(props: {
   const [draftSubtotal, setDraftSubtotal] = useState(
     (expense.subtotalCents / 100).toFixed(2),
   );
-  const [draftTax, setDraftTax] = useState(
-    (expense.taxCents / 100).toFixed(2),
-  );
-  const [draftTip, setDraftTip] = useState(
-    (expense.tipCents / 100).toFixed(2),
-  );
+  const [draftTax, setDraftTax] = useState((expense.taxCents / 100).toFixed(2));
+  const [draftTip, setDraftTip] = useState((expense.tipCents / 100).toFixed(2));
   const [draftTotal, setDraftTotal] = useState(
     (expense.totalCents / 100).toFixed(2),
   );
@@ -69,15 +65,9 @@ export function ExpenseDetail(props: {
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
 
-  const updateDraft = useMutation(
-    trpc.expenses.updateDraft.mutationOptions(),
-  );
-  const finalize = useMutation(
-    trpc.expenses.finalize.mutationOptions(),
-  );
-  const addLineItem = useMutation(
-    trpc.expenses.addLineItem.mutationOptions(),
-  );
+  const updateDraft = useMutation(trpc.expenses.updateDraft.mutationOptions());
+  const finalize = useMutation(trpc.expenses.finalize.mutationOptions());
+  const addLineItem = useMutation(trpc.expenses.addLineItem.mutationOptions());
   const removeLineItem = useMutation(
     trpc.expenses.removeLineItem.mutationOptions(),
   );
@@ -311,10 +301,7 @@ export function ExpenseDetail(props: {
 
         {isDraft && (
           <div className="mt-6">
-            <Button
-              onClick={handleFinalize}
-              disabled={finalize.isPending}
-            >
+            <Button onClick={handleFinalize} disabled={finalize.isPending}>
               {finalize.isPending ? "Finalizing..." : "Finalize expense"}
             </Button>
           </div>
@@ -454,10 +441,7 @@ export function ExpenseDetail(props: {
         {shares.warnings.length > 0 && (
           <div className="mt-3 space-y-1">
             {shares.warnings.map((warning, i) => (
-              <p
-                key={i}
-                className="text-xs text-amber-600 dark:text-amber-400"
-              >
+              <p key={i} className="text-xs text-amber-600 dark:text-amber-400">
                 {warning}
               </p>
             ))}

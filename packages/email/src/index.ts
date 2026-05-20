@@ -1,3 +1,5 @@
+declare const process: { env: Record<string, string | undefined> };
+
 import { integrations } from "@gmacko/config";
 import { Resend } from "resend";
 
@@ -8,13 +10,8 @@ export interface EmailConfig {
   from: string;
 }
 
-/**
- * Initialize email client (Resend)
- * Only initializes if email integration is enabled
- */
 export function initEmail(config: EmailConfig): Resend | null {
   if (!integrations.email.enabled) {
-    console.log("[Email disabled] Email initialization skipped");
     return null;
   }
 
@@ -25,12 +22,15 @@ export function initEmail(config: EmailConfig): Resend | null {
   return resendClient;
 }
 
-/**
- * Get the email client instance
- */
 export function getEmailClient(): Resend | null {
   if (!integrations.email.enabled) {
     return null;
+  }
+  if (!resendClient) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (apiKey) {
+      resendClient = new Resend(apiKey);
+    }
   }
   return resendClient;
 }

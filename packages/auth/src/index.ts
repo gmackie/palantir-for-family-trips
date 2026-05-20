@@ -27,6 +27,8 @@ export function initAuth<
 
   discordClientId: string;
   discordClientSecret: string;
+  googleClientId?: string;
+  googleClientSecret?: string;
   appleClientId?: string;
   appleClientSecret?: string;
   appleBundleIdentifier?: string;
@@ -51,6 +53,14 @@ export function initAuth<
         clientSecret: options.discordClientSecret,
         redirectURI: `${options.productionUrl}/api/auth/callback/discord`,
       },
+      ...(options.googleClientId && options.googleClientSecret
+        ? {
+            google: {
+              clientId: options.googleClientId,
+              clientSecret: options.googleClientSecret,
+            },
+          }
+        : {}),
       ...(options.appleClientId && options.appleClientSecret
         ? {
             apple: {

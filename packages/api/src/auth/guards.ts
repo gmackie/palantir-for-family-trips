@@ -40,7 +40,12 @@ function readScopedId(input: unknown, key: string): string {
   const obj = input as ScopedInput;
   const directValue = obj?.[key];
   const jsonWrappedValue = (obj?.json as ScopedInput)?.[key];
-  const value = typeof directValue === "string" ? directValue : typeof jsonWrappedValue === "string" ? jsonWrappedValue : undefined;
+  const value =
+    typeof directValue === "string"
+      ? directValue
+      : typeof jsonWrappedValue === "string"
+        ? jsonWrappedValue
+        : undefined;
 
   if (typeof value !== "string" || value.length === 0) {
     const debugInfo = `type=${typeof input}, keys=${input && typeof input === "object" ? Object.keys(input as object).join(",") : "none"}, raw=${JSON.stringify(input)?.slice(0, 300)}`;

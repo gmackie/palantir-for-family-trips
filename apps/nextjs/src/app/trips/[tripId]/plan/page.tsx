@@ -35,7 +35,8 @@ export default async function PlanningDashboardPage(props: {
             </p>
             <h1 className="text-4xl font-black tracking-tight">{trip.name}</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
-              Collaboratively decide on dates, destinations, flights, and lodging
+              Collaboratively decide on dates, destinations, flights, and
+              lodging
             </p>
           </div>
 

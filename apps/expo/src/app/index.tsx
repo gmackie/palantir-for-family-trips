@@ -92,9 +92,7 @@ function SignIn() {
         autoCorrect={false}
       />
 
-      {error && (
-        <Text className="text-destructive mb-3 text-sm">{error}</Text>
-      )}
+      {error && <Text className="text-destructive mb-3 text-sm">{error}</Text>}
 
       <Pressable
         onPress={() => void handleSend()}

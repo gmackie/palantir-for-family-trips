@@ -19,7 +19,10 @@ export async function requireTripsWorkspace() {
       userEmail: session.user.email,
     });
   } catch (error) {
-    console.error("[requireTripsWorkspace] ensurePersonalWorkspace failed:", error);
+    console.error(
+      "[requireTripsWorkspace] ensurePersonalWorkspace failed:",
+      error,
+    );
   }
 
   const requestHeaders = new Headers(await headers());

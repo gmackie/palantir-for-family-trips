@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  ExpenseShareError,
-  computeExpenseShares,
-} from "../shares";
+import { computeExpenseShares, ExpenseShareError } from "../shares";
 
 describe("computeExpenseShares", () => {
   it("single-payer, solo claimed item, no tax or tip", () => {
@@ -13,11 +10,19 @@ describe("computeExpenseShares", () => {
       taxCents: 0,
       tipCents: 0,
       participantUserIds: ["alice", "bob"],
-      lineItems: [{ id: "li1", lineTotalCents: 1000, claimantUserIds: ["alice"] }],
+      lineItems: [
+        { id: "li1", lineTotalCents: 1000, claimantUserIds: ["alice"] },
+      ],
     });
 
     expect(result.shares).toEqual([
-      { userId: "alice", subtotalCents: 1000, taxCents: 0, tipCents: 0, totalCents: 1000 },
+      {
+        userId: "alice",
+        subtotalCents: 1000,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 1000,
+      },
     ]);
     expect(result.payerRoundingAbsorptionCents).toBe(0);
     expect(result.warnings).toEqual([]);
@@ -30,7 +35,9 @@ describe("computeExpenseShares", () => {
       taxCents: 0,
       tipCents: 0,
       participantUserIds: ["alice", "bob"],
-      lineItems: [{ id: "li1", lineTotalCents: 1200, claimantUserIds: ["alice", "bob"] }],
+      lineItems: [
+        { id: "li1", lineTotalCents: 1200, claimantUserIds: ["alice", "bob"] },
+      ],
     });
 
     const alice = result.shares.find((s) => s.userId === "alice");
@@ -47,14 +54,38 @@ describe("computeExpenseShares", () => {
       taxCents: 0,
       tipCents: 0,
       participantUserIds: ["alice", "bob", "carol"],
-      lineItems: [{ id: "li1", lineTotalCents: 100, claimantUserIds: ["alice", "bob", "carol"] }],
+      lineItems: [
+        {
+          id: "li1",
+          lineTotalCents: 100,
+          claimantUserIds: ["alice", "bob", "carol"],
+        },
+      ],
     });
 
     // 100 / 3 = 33 remainder 1 → last sorted (carol) gets 34
     expect(result.shares).toEqual([
-      { userId: "alice", subtotalCents: 33, taxCents: 0, tipCents: 0, totalCents: 33 },
-      { userId: "bob", subtotalCents: 33, taxCents: 0, tipCents: 0, totalCents: 33 },
-      { userId: "carol", subtotalCents: 34, taxCents: 0, tipCents: 0, totalCents: 34 },
+      {
+        userId: "alice",
+        subtotalCents: 33,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 33,
+      },
+      {
+        userId: "bob",
+        subtotalCents: 33,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 33,
+      },
+      {
+        userId: "carol",
+        subtotalCents: 34,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 34,
+      },
     ]);
   });
 
@@ -100,7 +131,11 @@ describe("computeExpenseShares", () => {
       tipCents: 0,
       participantUserIds: ["alice", "bob", "carol"],
       lineItems: [
-        { id: "li1", lineTotalCents: 1000, claimantUserIds: ["alice", "bob", "carol"] },
+        {
+          id: "li1",
+          lineTotalCents: 1000,
+          claimantUserIds: ["alice", "bob", "carol"],
+        },
       ],
     });
 
@@ -122,9 +157,27 @@ describe("computeExpenseShares", () => {
     });
 
     expect(result.shares).toEqual([
-      { userId: "alice", subtotalCents: 200, taxCents: 0, tipCents: 0, totalCents: 200 },
-      { userId: "bob", subtotalCents: 200, taxCents: 0, tipCents: 0, totalCents: 200 },
-      { userId: "carol", subtotalCents: 200, taxCents: 0, tipCents: 0, totalCents: 200 },
+      {
+        userId: "alice",
+        subtotalCents: 200,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 200,
+      },
+      {
+        userId: "bob",
+        subtotalCents: 200,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 200,
+      },
+      {
+        userId: "carol",
+        subtotalCents: 200,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 200,
+      },
     ]);
     expect(result.warnings.length).toBeGreaterThanOrEqual(1);
   });
@@ -140,7 +193,13 @@ describe("computeExpenseShares", () => {
     });
 
     expect(result.shares).toEqual([
-      { userId: "alice", subtotalCents: 500, taxCents: 0, tipCents: 0, totalCents: 500 },
+      {
+        userId: "alice",
+        subtotalCents: 500,
+        taxCents: 0,
+        tipCents: 0,
+        totalCents: 500,
+      },
     ]);
     expect(result.warnings.length).toBeGreaterThanOrEqual(1);
   });
@@ -172,7 +231,11 @@ describe("computeExpenseShares", () => {
       tipCents: 0,
       participantUserIds: ["zoe", "alice", "marvin"],
       lineItems: [
-        { id: "li1", lineTotalCents: 300, claimantUserIds: ["zoe", "alice", "marvin"] },
+        {
+          id: "li1",
+          lineTotalCents: 300,
+          claimantUserIds: ["zoe", "alice", "marvin"],
+        },
       ],
     });
 

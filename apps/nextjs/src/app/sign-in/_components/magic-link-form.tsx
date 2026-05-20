@@ -49,10 +49,7 @@ export function MagicLinkForm() {
       }}
     >
       <div className="space-y-2">
-        <label
-          className="text-xs font-semibold text-[#8B949E]"
-          htmlFor="email"
-        >
+        <label className="text-xs font-semibold text-[#8B949E]" htmlFor="email">
           Email
         </label>
         <input

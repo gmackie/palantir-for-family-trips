@@ -1,2 +1,3 @@
 app: trip
-server: forgegraf.com
+db:
+  type: postgres

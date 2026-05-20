@@ -85,9 +85,7 @@ export default function PollsScreen() {
               <View className="border-border bg-card rounded-lg border">
                 {/* Poll header */}
                 <Pressable
-                  onPress={() =>
-                    setExpandedPollId(isExpanded ? null : poll.id)
-                  }
+                  onPress={() => setExpandedPollId(isExpanded ? null : poll.id)}
                   className="p-4"
                   style={{ minHeight: 48 }}
                 >
@@ -134,10 +132,7 @@ export default function PollsScreen() {
                           <View className="flex-row gap-2">
                             {(
                               Object.entries(RESPONSE_LABELS) as Array<
-                                [
-                                  string,
-                                  { label: string; color: string },
-                                ]
+                                [string, { label: string; color: string }]
                               >
                             ).map(([response, meta]) => (
                               <Pressable
@@ -156,7 +151,10 @@ export default function PollsScreen() {
                                 }}
                                 disabled={voteMutation.isPending}
                                 className={`rounded-md px-3 py-2 ${meta.color}`}
-                                style={{ minHeight: 44, justifyContent: "center" }}
+                                style={{
+                                  minHeight: 44,
+                                  justifyContent: "center",
+                                }}
                               >
                                 <Text className="text-center text-xs font-medium text-white">
                                   {meta.label}

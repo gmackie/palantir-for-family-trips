@@ -27,8 +27,8 @@
   },
   "dependencies": {
     "@gmacko/config": "workspace:*",
-    "@sentry/nextjs": "^10.44.0",
-    "@sentry/react-native": "^8.4.0"
+    "@sentry/nextjs": "^10.53.1",
+    "@sentry/react-native": "^8.11.1"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

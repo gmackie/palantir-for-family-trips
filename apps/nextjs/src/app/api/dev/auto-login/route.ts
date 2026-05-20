@@ -21,7 +21,10 @@ async function handleAutoLogin(request: NextRequest, email: string) {
   const magicLink = devMagicLinkStore.getLast()?.url;
   if (!magicLink) {
     return NextResponse.json(
-      { error: "Magic link was not generated — email provider may not be configured" },
+      {
+        error:
+          "Magic link was not generated — email provider may not be configured",
+      },
       { status: 500 },
     );
   }

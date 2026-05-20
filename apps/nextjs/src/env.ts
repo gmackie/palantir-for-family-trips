@@ -15,7 +15,7 @@ export const env = createEnv({
    */
   server: {
     APP_URL: z.string().url().optional(),
-    DATABASE_URL: z.url(),
+    DATABASE_URL: z.url().optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),

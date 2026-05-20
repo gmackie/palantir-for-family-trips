@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { requireTripsWorkspace } from "../_lib/server";
 import { TripDashboard } from "./_components/trip-dashboard";
@@ -21,10 +21,22 @@ export default async function TripDashboardPage(props: {
     throw error;
   }
 
+  if (trip.tripMode === "roadtrip") {
+    redirect(`/trips/${tripId}/road-trip`);
+  }
+
   // Load segments in parallel
   const segments = await caller.trips
     .listSegments({ workspaceId: workspace.id, tripId })
-    .catch(() => [] as Array<{ id: string; tripId: string; name: string; sortOrder: number }>);
+    .catch(
+      () =>
+        [] as Array<{
+          id: string;
+          tripId: string;
+          name: string;
+          sortOrder: number;
+        }>,
+    );
 
   return (
     <TripDashboard

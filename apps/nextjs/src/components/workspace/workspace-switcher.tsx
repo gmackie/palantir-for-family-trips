@@ -18,7 +18,9 @@ interface WorkspaceSwitcherProps {
   currentWorkspaceSlug: string | null;
 }
 
-export function WorkspaceSwitcher({ currentWorkspaceSlug }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({
+  currentWorkspaceSlug,
+}: WorkspaceSwitcherProps) {
   const router = useRouter();
   const trpc = useTRPC();
   const { data: workspaces, isLoading } = useQuery(

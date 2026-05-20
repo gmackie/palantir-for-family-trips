@@ -1,12 +1,7 @@
 "use client";
 
 import { Button } from "@gmacko/ui/button";
-import {
-  Field,
-  FieldContent,
-  FieldGroup,
-  FieldLabel,
-} from "@gmacko/ui/field";
+import { Field, FieldContent, FieldGroup, FieldLabel } from "@gmacko/ui/field";
 import { Input } from "@gmacko/ui/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
@@ -54,9 +49,7 @@ export default function NewExpensePage() {
     ),
   );
 
-  const createExpense = useMutation(
-    trpc.expenses.create.mutationOptions(),
-  );
+  const createExpense = useMutation(trpc.expenses.create.mutationOptions());
 
   const attachReceipt = useMutation(
     trpc.expenses.attachReceiptImage.mutationOptions(),
@@ -87,7 +80,14 @@ export default function NewExpensePage() {
         segmentId,
         merchant,
         occurredAt: new Date(occurredAt).toISOString(),
-        category: category as "meal" | "transit" | "lodging" | "activity" | "drinks" | "tickets" | "general",
+        category: category as
+          | "meal"
+          | "transit"
+          | "lodging"
+          | "activity"
+          | "drinks"
+          | "tickets"
+          | "general",
         subtotalCents,
         taxCents,
         tipCents,
@@ -130,9 +130,7 @@ export default function NewExpensePage() {
 
       router.push(`/trips/${tripId}/expenses/${expense.id}`);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create expense",
-      );
+      setError(err instanceof Error ? err.message : "Failed to create expense");
       setSubmitting(false);
     }
   }

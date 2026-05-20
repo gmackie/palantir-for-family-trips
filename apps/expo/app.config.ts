@@ -12,17 +12,17 @@ const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
 const getAppName = (): string => {
   switch (APP_ENV) {
     case "production":
-      return "Gmacko";
+      return "Sortie";
     case "staging":
-      return "Gmacko (Beta)";
+      return "Sortie (Beta)";
     default:
-      return "Gmacko (Dev)";
+      return "Sortie (Dev)";
   }
 };
 
 const getBundleId = (): string => {
   // Scaffold note: replace these app identifiers and domains before store submission.
-  const base = "com.gmacko.app";
+  const base = "com.gmacko.sortie";
   switch (APP_ENV) {
     case "production":
       return base;
@@ -72,19 +72,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: getAppName(),
-    slug: "gmacko",
-    scheme: "gmacko",
+    slug: "sortie",
+    scheme: "sortie",
     version: "0.1.0",
     orientation: "portrait",
     icon: "./assets/icon-light.png",
     userInterfaceStyle: "automatic",
-    updates: {
-      fallbackToCacheTimeout: 0,
-      url: "https://u.expo.dev/your-project-id",
-    },
-    runtimeVersion: {
-      policy: "appVersion",
-    },
+    runtimeVersion: "0.1.0",
     assetBundlePatterns: ["**/*"],
     ios: {
       bundleIdentifier: getBundleId(),
@@ -97,6 +91,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
       infoPlist: {
         CFBundleDisplayName: getAppName(),
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
@@ -127,7 +122,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       POSTHOG_KEY,
       POSTHOG_HOST,
       eas: {
-        projectId: process.env.EAS_PROJECT_ID,
+        projectId: "5f21337f-9f48-4b0c-8d02-656e4a08dc86",
       },
     },
     owner: process.env.EXPO_OWNER,

@@ -12,9 +12,8 @@ import {
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
-
-import { protectedProcedure, publicProcedure } from "../trpc";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
+import { protectedProcedure, publicProcedure } from "../trpc";
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
@@ -33,6 +32,7 @@ const tripSummaryShape = {
   name: trips.name,
   createdByUserId: trips.createdByUserId,
   status: trips.status,
+  tripMode: trips.tripMode,
   groupMode: trips.groupMode,
   claimMode: trips.claimMode,
   destinationName: trips.destinationName,
@@ -51,7 +51,14 @@ export type TripSummary = {
   workspaceId: string;
   name: string;
   createdByUserId: string;
-  status: "planning" | "confirmed" | "active" | "completed";
+  status:
+    | "planning"
+    | "confirmed"
+    | "active"
+    | "en_route"
+    | "paused"
+    | "completed";
+  tripMode: "destination" | "roadtrip";
   groupMode: boolean;
   claimMode: "organizer" | "tap";
   destinationName: string | null;
@@ -104,6 +111,7 @@ export interface TripStore {
     endDate?: string;
     tz?: string;
     groupMode?: boolean;
+    tripMode?: "destination" | "roadtrip";
   }): Promise<TripSummary>;
   createTripMember(input: {
     tripId: string;
@@ -168,6 +176,7 @@ export async function createTripRecord(
     endDate?: string;
     tz?: string;
     groupMode?: boolean;
+    tripMode?: "destination" | "roadtrip";
   },
 ) {
   const trip = await store.createTrip(input);
@@ -272,6 +281,7 @@ function createTripStore(db: any): TripStore {
           workspaceId: input.workspaceId,
           name: input.name,
           createdByUserId: input.createdByUserId,
+          tripMode: input.tripMode ?? "destination",
           groupMode: input.groupMode ?? false,
           destinationName: input.destinationName ?? null,
           destinationLat: input.destinationLat ?? null,
@@ -418,6 +428,7 @@ export const tripsRouter = {
       z.object({
         workspaceId: z.string().min(1),
         name: z.string().min(2).max(160),
+        tripMode: z.enum(["destination", "roadtrip"]).default("destination"),
         destinationName: z.string().min(1).max(160).optional(),
         destinationLat: coordinateSchema.optional(),
         destinationLng: coordinateSchema.optional(),
@@ -432,6 +443,7 @@ export const tripsRouter = {
         workspaceId: ctx.workspaceId,
         createdByUserId: ctx.session.user.id,
         name: input.name,
+        tripMode: input.tripMode,
         destinationName: input.destinationName,
         destinationLat: input.destinationLat,
         destinationLng: input.destinationLng,
@@ -695,23 +707,27 @@ export const tripsRouter = {
       }),
     )
     .query(async ({ ctx }) => {
-      const rows = (await ctx.db
+      return ctx.db
         .select({
           id: tripSegments.id,
           tripId: tripSegments.tripId,
           name: tripSegments.name,
           sortOrder: tripSegments.sortOrder,
+          destinationName: tripSegments.destinationName,
+          destinationLat: tripSegments.destinationLat,
+          destinationLng: tripSegments.destinationLng,
+          originName: tripSegments.originName,
+          originLat: tripSegments.originLat,
+          originLng: tripSegments.originLng,
+          routePolyline: tripSegments.routePolyline,
+          distanceMiles: tripSegments.distanceMiles,
+          durationMinutes: tripSegments.durationMinutes,
+          startDate: tripSegments.startDate,
+          endDate: tripSegments.endDate,
         })
         .from(tripSegments)
         .where(eq(tripSegments.tripId, ctx.tripId))
-        .orderBy(asc(tripSegments.sortOrder))) as Array<{
-        id: string;
-        tripId: string;
-        name: string;
-        sortOrder: number;
-      }>;
-
-      return rows;
+        .orderBy(asc(tripSegments.sortOrder));
     }),
 
   acceptInvite: protectedProcedure
@@ -778,12 +794,13 @@ export const tripsRouter = {
       // create the trip membership, and mark the invite accepted.
       // biome-ignore lint/suspicious/noExplicitAny: Drizzle tx type is complex
       await ctx.db.transaction(async (tx: any) => {
-        const existingWorkspaceMember = await tx.query.workspaceMembership.findFirst({
-          where: and(
-            eq(workspaceMembership.userId, ctx.session.user.id),
-            eq(workspaceMembership.workspaceId, invite.workspaceId),
-          ),
-        });
+        const existingWorkspaceMember =
+          await tx.query.workspaceMembership.findFirst({
+            where: and(
+              eq(workspaceMembership.userId, ctx.session.user.id),
+              eq(workspaceMembership.workspaceId, invite.workspaceId),
+            ),
+          });
 
         if (!existingWorkspaceMember) {
           await tx.insert(workspaceMembership).values({

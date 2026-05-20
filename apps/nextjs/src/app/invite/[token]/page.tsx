@@ -110,8 +110,8 @@ export default async function InvitePage(props: {
         </p>
         <h1 className="text-xl font-semibold">Join {invite.tripName}</h1>
         <p className="text-sm text-muted-foreground">
-          You&apos;re signed in as {session.user.email}. Accept to add this
-          trip to your dashboard.
+          You&apos;re signed in as {session.user.email}. Accept to add this trip
+          to your dashboard.
         </p>
       </div>
       <AcceptInviteButton token={token} />

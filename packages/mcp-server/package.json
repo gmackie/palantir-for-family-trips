@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@gmacko/operator-core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "superjson": "catalog:",
     "zod": "catalog:"
   },
@@ -32,6 +32,6 @@
     "oxlint": "catalog:",
     "tsup": "^8.5.1",
     "typescript": "catalog:",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.7"
   }
 }

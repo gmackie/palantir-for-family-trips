@@ -35,6 +35,6 @@
     "oxlint": "catalog:",
     "tsup": "^8.5.1",
     "typescript": "catalog:",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.7"
   }
 }

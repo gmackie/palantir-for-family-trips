@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { receiptExtractionSchema, type ReceiptExtraction } from "./schema";
+import { type ReceiptExtraction, receiptExtractionSchema } from "./schema";
 
 /**
  * MockOCRProvider — for DEV_MODE=local and tests.

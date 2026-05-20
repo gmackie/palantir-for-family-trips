@@ -11,8 +11,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
-import { computeExpenseShares } from "../expenses/shares";
 import { computeNetBalances, minimizeTransactions } from "../expenses/settle";
+import { computeExpenseShares } from "../expenses/shares";
 
 export const settlementsRouter = {
   /**
@@ -110,10 +110,7 @@ export const settlementsRouter = {
         .select()
         .from(settlements)
         .where(
-          and(
-            eq(settlements.tripId, ctx.tripId),
-            isNull(settlements.undoneAt),
-          ),
+          and(eq(settlements.tripId, ctx.tripId), isNull(settlements.undoneAt)),
         )) as Array<typeof settlements.$inferSelect>;
 
       const balancesMap = computeNetBalances({
@@ -261,8 +258,7 @@ export const settlementsRouter = {
       if (hoursSinceSettled > 24) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message:
-            "Cannot undo a settlement older than 24 hours.",
+          message: "Cannot undo a settlement older than 24 hours.",
         });
       }
 

@@ -14,20 +14,20 @@ export const integrations = {
 
   // Communication (default OFF)
   email: {
-    enabled: false,
-    provider: "none" as "resend" | "sendgrid" | "none",
+    enabled: true,
+    provider: "resend" as "resend" | "sendgrid" | "none",
   },
 
-  // Realtime (default OFF)
+  // Realtime (polling with SSE upgrade path)
   realtime: {
-    enabled: false,
-    provider: "none" as "pusher" | "ably" | "none",
+    enabled: true,
+    provider: "sse" as "pusher" | "ably" | "sse" | "none",
   },
 
-  // Storage (default OFF)
+  // Storage (Cloudflare R2)
   storage: {
-    enabled: false,
-    provider: "none" as "uploadthing" | "none",
+    enabled: true,
+    provider: "r2" as "uploadthing" | "r2" | "none",
   },
 
   // Internationalization (default OFF)

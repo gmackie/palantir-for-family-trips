@@ -36,7 +36,8 @@ export function ExpensesPanel(props: {
     trpc.expenses.list.queryOptions({ workspaceId, tripId }),
   );
 
-  const totalCents = expenses?.reduce((s, e) => s + (e.totalCents ?? 0), 0) ?? 0;
+  const totalCents =
+    expenses?.reduce((s, e) => s + (e.totalCents ?? 0), 0) ?? 0;
 
   return (
     <div className="space-y-3 p-4">
@@ -61,7 +62,8 @@ export function ExpensesPanel(props: {
           {formatCents(totalCents)}
         </p>
         <p className="text-[10px] text-[#484F58]">
-          {expenses?.length ?? 0} expense{(expenses?.length ?? 0) !== 1 ? "s" : ""}
+          {expenses?.length ?? 0} expense
+          {(expenses?.length ?? 0) !== 1 ? "s" : ""}
         </p>
       </div>
 
@@ -82,7 +84,10 @@ export function ExpensesPanel(props: {
         const isExpanded = expandedId === expense.id;
 
         return (
-          <div key={expense.id} className="rounded-[4px] border border-[#21262D] bg-[#161B22]">
+          <div
+            key={expense.id}
+            className="rounded-[4px] border border-[#21262D] bg-[#161B22]"
+          >
             <button
               onClick={() => setExpandedId(isExpanded ? null : expense.id)}
               className="flex w-full items-center justify-between p-3 text-left hover:bg-[#1C2128] transition-colors"

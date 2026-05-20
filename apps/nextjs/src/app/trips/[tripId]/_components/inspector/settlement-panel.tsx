@@ -24,7 +24,11 @@ function getVenmoHandle(
   return member?.venmoHandle ?? null;
 }
 
-function buildVenmoLink(handle: string, amountCents: number, note: string): string {
+function buildVenmoLink(
+  handle: string,
+  amountCents: number,
+  note: string,
+): string {
   const dollars = (amountCents / 100).toFixed(2);
   return `venmo://paycharge?txn=pay&recipients=${handle}&amount=${dollars}&note=${encodeURIComponent(note)}`;
 }
@@ -46,7 +50,8 @@ export function SettlementPanel(props: {
     ...trpc.settlements.record.mutationOptions(),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: trpc.settlements.summary.queryOptions({ workspaceId, tripId }).queryKey,
+        queryKey: trpc.settlements.summary.queryOptions({ workspaceId, tripId })
+          .queryKey,
       });
     },
   });

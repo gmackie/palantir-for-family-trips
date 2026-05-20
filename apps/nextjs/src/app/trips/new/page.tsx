@@ -41,11 +41,16 @@ export default async function NewTripPage() {
     }
 
     const input = parseCreateTripFormData(formData);
+    const tripMode = input.tripMode;
     const created = await caller.trips.create({
       workspaceId: workspaceContext.workspace.id,
       ...input,
+      tripMode,
     });
 
+    if (tripMode === "roadtrip") {
+      redirect(`/trips/${created.trip.id}/road-trip`);
+    }
     redirect(`/trips/${created.trip.id}`);
   }
 
@@ -68,12 +73,49 @@ export default async function NewTripPage() {
       >
         <FieldGroup>
           <Field>
+            <FieldLabel htmlFor="tripMode">Trip mode</FieldLabel>
+            <FieldContent>
+              <div className="flex gap-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-4 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input
+                    type="radio"
+                    name="tripMode"
+                    value="destination"
+                    defaultChecked
+                    className="accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium">Group Trip</p>
+                    <p className="text-muted-foreground text-xs">
+                      Fixed destination, group expenses
+                    </p>
+                  </div>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-4 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                  <input
+                    type="radio"
+                    name="tripMode"
+                    value="roadtrip"
+                    className="accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium">Road Trip</p>
+                    <p className="text-muted-foreground text-xs">
+                      Route-based with fuel tracking
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </FieldContent>
+          </Field>
+
+          <Field>
             <FieldLabel htmlFor="name">Trip name</FieldLabel>
             <FieldContent>
               <Input
                 id="name"
                 name="name"
-                placeholder="Italy Summer"
+                placeholder="Seattle to Des Moines"
                 required
               />
               <FieldDescription>

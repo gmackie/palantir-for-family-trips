@@ -25,11 +25,11 @@
     "test:e2e:update": "vitest run --config vitest.e2e.config.ts --update"
   },
   "dependencies": {
-    "@clack/prompts": "^1.1.0",
+    "@clack/prompts": "^1.4.0",
     "commander": "^14.0.3",
-    "fs-extra": "^11.3.4",
+    "fs-extra": "^11.3.5",
     "picocolors": "^1.1.1",
-    "validate-npm-package-name": "^7.0.2"
+    "validate-npm-package-name": "^8.0.0"
   },
   "keywords": [
     "saas",
@@ -55,7 +55,7 @@
     "execa": "^9.6.1",
     "tsup": "^8.5.1",
     "typescript": "catalog:",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.7"
   },
   "publishConfig": {
     "access": "public"

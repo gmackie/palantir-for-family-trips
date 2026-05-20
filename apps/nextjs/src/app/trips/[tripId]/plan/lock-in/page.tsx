@@ -40,9 +40,7 @@ export default function LockInPage() {
     ),
   );
 
-  const confirmTrip = useMutation(
-    trpc.planning.confirmTrip.mutationOptions(),
-  );
+  const confirmTrip = useMutation(trpc.planning.confirmTrip.mutationOptions());
 
   const isLoading =
     workspaceQuery.isLoading ||
@@ -222,10 +220,7 @@ export default function LockInPage() {
         <Button asChild variant="outline">
           <Link href={`/trips/${tripId}/plan`}>Back to planning</Link>
         </Button>
-        <Button
-          onClick={handleConfirm}
-          disabled={confirmTrip.isPending}
-        >
+        <Button onClick={handleConfirm} disabled={confirmTrip.isPending}>
           {confirmTrip.isPending ? "Confirming..." : "Confirm trip"}
         </Button>
       </div>
