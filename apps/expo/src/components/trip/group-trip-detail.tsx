@@ -1,5 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+
+import { trpc } from "~/utils/api";
+import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 const C = {
   bg: "#141116",
@@ -9,6 +13,7 @@ const C = {
   primaryFg: "#141116",
   card: "#1e1b24",
   border: "#2f2a33",
+  accent: "#58A6FF",
 } as const;
 
 const STATUS_COLORS: Record<string, string> = {
@@ -25,6 +30,26 @@ function formatDate(value: string | null) {
   );
 }
 
+function formatCurrency(cents: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(cents / 100);
+}
+
+function getDaysUntil(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.ceil(
+    (target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (diff < 0) return null;
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  return `${diff}d`;
+}
+
 interface Trip {
   id: string;
   name: string;
@@ -37,9 +62,47 @@ interface Trip {
 const TABS = [
   { key: "expenses", label: "Expenses", icon: "💰", path: "expenses" },
   { key: "settle", label: "Settle Up", icon: "🤝", path: "settle" },
+  { key: "schedule", label: "Schedule", icon: "📅", path: "segments" },
+  { key: "members", label: "Members", icon: "👥", path: "members" },
   { key: "plan", label: "Plan", icon: "📋", path: "polls" },
   { key: "map", label: "Map", icon: "📍", path: "map" },
 ] as const;
+
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <View style={{ flex: 1, alignItems: "center", gap: 2 }}>
+      <Text
+        style={{
+          color: color ?? C.fg,
+          fontSize: 20,
+          fontWeight: "800",
+          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+        }}
+      >
+        {value}
+      </Text>
+      <Text
+        style={{
+          color: C.muted,
+          fontSize: 11,
+          fontWeight: "500",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 export function GroupTripDetail({
   trip,
@@ -50,11 +113,33 @@ export function GroupTripDetail({
 }) {
   "use no memo";
   const router = useRouter();
+  const workspaceId = getActiveWorkspaceId() ?? "";
+
+  const { data: expenses } = useQuery({
+    ...trpc.expenses.list.queryOptions({
+      workspaceId,
+      tripId,
+    }),
+    retry: false,
+  });
+
+  const { data: segments } = useQuery({
+    ...trpc.trips.listSegments.queryOptions({
+      workspaceId,
+      tripId,
+    }),
+    retry: false,
+  });
+
+  const totalCents = expenses?.reduce((sum, e) => sum + e.totalCents, 0) ?? 0;
+  const expenseCount = expenses?.length ?? 0;
+  const segmentCount = segments?.length ?? 0;
+  const daysUntil = getDaysUntil(trip.startDate);
 
   return (
     <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
       {/* Trip header */}
-      <View style={{ marginBottom: 24 }}>
+      <View style={{ marginBottom: 20 }}>
         <View
           style={{
             flexDirection: "row",
@@ -101,6 +186,33 @@ export function GroupTripDetail({
             {trip.startDate && trip.endDate ? " – " : ""}
             {formatDate(trip.endDate)}
           </Text>
+        )}
+      </View>
+
+      {/* Stats bar */}
+      <View
+        style={{
+          flexDirection: "row",
+          backgroundColor: C.card,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: C.border,
+          paddingVertical: 14,
+          marginBottom: 20,
+        }}
+      >
+        <StatCard
+          label="Spent"
+          value={totalCents > 0 ? formatCurrency(totalCents) : "$0"}
+          color={totalCents > 0 ? C.primary : C.muted}
+        />
+        <View style={{ width: 1, backgroundColor: C.border }} />
+        <StatCard label="Expenses" value={String(expenseCount)} />
+        <View style={{ width: 1, backgroundColor: C.border }} />
+        {daysUntil ? (
+          <StatCard label="Countdown" value={daysUntil} color={C.accent} />
+        ) : (
+          <StatCard label="Segments" value={String(segmentCount)} />
         )}
       </View>
 

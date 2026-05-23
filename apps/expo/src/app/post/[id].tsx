@@ -1,8 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useGlobalSearchParams } from "expo-router";
-import { SafeAreaView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { trpc } from "~/utils/api";
+
+const C = {
+  bg: "#141116",
+  fg: "#f9f7fb",
+  primary: "#d66daa",
+} as const;
 
 export default function Post() {
   const { id } = useGlobalSearchParams<{ id: string }>();
@@ -11,14 +17,21 @@ export default function Post() {
   if (!data) return null;
 
   return (
-    <SafeAreaView className="bg-background">
+    <View style={{ backgroundColor: C.bg }}>
       <Stack.Screen options={{ title: data.title }} />
-      <View className="h-full w-full p-4">
-        <Text className="text-primary py-2 text-3xl font-bold">
+      <View style={{ height: "100%", width: "100%", padding: 16 }}>
+        <Text
+          style={{
+            color: C.primary,
+            paddingVertical: 8,
+            fontSize: 30,
+            fontWeight: "bold",
+          }}
+        >
           {data.title}
         </Text>
-        <Text className="text-foreground py-4">{data.content}</Text>
+        <Text style={{ color: C.fg, paddingVertical: 16 }}>{data.content}</Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

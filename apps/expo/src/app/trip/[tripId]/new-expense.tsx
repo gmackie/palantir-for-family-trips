@@ -14,8 +14,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { getBaseUrl } from "~/utils/base-url";
@@ -337,12 +335,12 @@ export default function NewExpense() {
   const isPending = createExpense.isPending || addLineItemsMutation.isPending;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
         options={{
           title: "New Expense",
-          headerStyle: { backgroundColor: "#0A0C10" },
-          headerTintColor: "#C9D1D9",
+          headerStyle: { backgroundColor: C.bg },
+          headerTintColor: C.fg,
         }}
       />
       <KeyboardAvoidingView
@@ -803,6 +801,6 @@ export default function NewExpense() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -7,8 +7,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
 import { trpc } from "~/utils/api";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -55,8 +53,14 @@ export default function ExpenseList() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      <Stack.Screen options={{ title: "Expenses" }} />
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <Stack.Screen
+        options={{
+          title: "Expenses",
+          headerStyle: { backgroundColor: C.bg },
+          headerTintColor: C.fg,
+        }}
+      />
 
       {isLoading ? (
         <View
@@ -201,6 +205,6 @@ export default function ExpenseList() {
           </Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

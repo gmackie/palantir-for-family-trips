@@ -11,8 +11,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
@@ -78,11 +76,31 @@ function SignIn() {
 
   if (sent) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-foreground mb-2 text-2xl font-bold">
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        <Text
+          style={{
+            color: "#f9f7fb",
+            fontSize: 24,
+            fontWeight: "bold",
+            marginBottom: 8,
+          }}
+        >
           Check your email
         </Text>
-        <Text style={{ color: "#8c8691" }} className=" mb-6 text-center">
+        <Text
+          style={{
+            color: "#8c8691",
+            textAlign: "center",
+            marginBottom: 24,
+          }}
+        >
           We sent a magic link to {email}. Tap the link in your email to sign
           in.
         </Text>
@@ -91,25 +109,46 @@ function SignIn() {
             setSent(false);
             setEmail("");
           }}
-          className="rounded-md px-4 py-2"
+          style={{ borderRadius: 6, paddingHorizontal: 16, paddingVertical: 8 }}
         >
-          <Text className="text-primary font-medium">Try another email</Text>
+          <Text style={{ color: "#d66daa", fontWeight: "500" }}>
+            Try another email
+          </Text>
         </Pressable>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 items-center justify-center px-6">
-      <Text className="text-foreground mb-2 text-3xl font-bold">
+    <View
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 24,
+      }}
+    >
+      <Text
+        style={{
+          color: "#f9f7fb",
+          fontSize: 30,
+          fontWeight: "bold",
+          marginBottom: 8,
+        }}
+      >
         SORTIE DEV
       </Text>
-      <Text style={{ color: "#8c8691" }} className=" mb-8 text-center">
+      <Text
+        style={{
+          color: "#8c8691",
+          textAlign: "center",
+          marginBottom: 32,
+        }}
+      >
         Sign in with your email to get started
       </Text>
 
       <TextInput
-        className="border-input bg-background text-foreground mb-4 w-full rounded-md border px-4 py-3 text-base"
         value={email}
         onChangeText={setEmail}
         placeholder="you@example.com"
@@ -117,19 +156,42 @@ function SignIn() {
         autoCapitalize="none"
         keyboardType="email-address"
         autoCorrect={false}
+        style={{
+          borderWidth: 1,
+          borderColor: "#2f2a33",
+          backgroundColor: "#0d0b0f",
+          color: "#f9f7fb",
+          borderRadius: 6,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          fontSize: 16,
+          width: "100%",
+          marginBottom: 16,
+        }}
       />
 
-      {error && <Text className="text-destructive mb-3 text-sm">{error}</Text>}
+      {error && (
+        <Text style={{ color: "#ef4444", fontSize: 14, marginBottom: 12 }}>
+          {error}
+        </Text>
+      )}
 
       <Pressable
         onPress={() => void handleSend()}
         disabled={loading || !email.trim()}
-        className="bg-primary w-full items-center rounded-md px-4 py-3"
+        style={{
+          backgroundColor: "#d66daa",
+          width: "100%",
+          alignItems: "center",
+          borderRadius: 6,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text className="text-primary-foreground font-semibold">
+          <Text style={{ color: "#141116", fontWeight: "600" }}>
             Send magic link
           </Text>
         )}
@@ -170,7 +232,7 @@ function TripList() {
 
   if (!trips || trips.length === 0) {
     return (
-      <View style={{ padding: 16 }}>
+      <View style={{ padding: 16, flex: 1 }}>
         <Text
           style={{
             color: "#f9f7fb",
@@ -181,25 +243,74 @@ function TripList() {
         >
           Your Trips
         </Text>
-        <Text style={{ color: "#8c8691", textAlign: "center", marginTop: 40 }}>
-          No trips yet
-        </Text>
+        <View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 60,
+            gap: 16,
+          }}
+        >
+          <Text style={{ color: "#8c8691", textAlign: "center" }}>
+            No trips yet
+          </Text>
+          <Pressable
+            onPress={() => router.push("/new-trip")}
+            style={{
+              backgroundColor: "#d66daa",
+              borderRadius: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 28,
+            }}
+          >
+            <Text
+              style={{
+                color: "#141116",
+                fontSize: 16,
+                fontWeight: "700",
+              }}
+            >
+              + New Trip
+            </Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   return (
     <ScrollView style={{ padding: 16 }}>
-      <Text
+      <View
         style={{
-          color: "#f9f7fb",
-          fontSize: 24,
-          fontWeight: "bold",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: 16,
         }}
       >
-        Your Trips
-      </Text>
+        <Text
+          style={{
+            color: "#f9f7fb",
+            fontSize: 24,
+            fontWeight: "bold",
+          }}
+        >
+          Your Trips
+        </Text>
+        <Pressable
+          onPress={() => router.push("/new-trip")}
+          style={{
+            backgroundColor: "#d66daa",
+            borderRadius: 8,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+          }}
+        >
+          <Text style={{ color: "#141116", fontSize: 14, fontWeight: "700" }}>
+            + New
+          </Text>
+        </Pressable>
+      </View>
       {trips.map((item) => (
         <Pressable
           key={item.id}
@@ -245,19 +356,21 @@ export default function Index() {
 
   if (isPending) {
     return (
-      <SafeAreaView className="bg-background flex-1">
+      <View style={{ flex: 1, backgroundColor: "#141116" }}>
         <Stack.Screen options={{ title: "Sortie" }} />
-        <View className="flex-1 items-center justify-center">
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <ActivityIndicator size="large" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="bg-background flex-1">
+    <View style={{ flex: 1, backgroundColor: "#141116" }}>
       <Stack.Screen options={{ title: "Sortie" }} />
       {session?.user ? <TripList /> : <SignIn />}
-    </SafeAreaView>
+    </View>
   );
 }

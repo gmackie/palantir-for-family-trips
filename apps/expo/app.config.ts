@@ -2,6 +2,10 @@ import type { ConfigContext, ExpoConfig } from "expo/config";
 
 const APP_ENV = process.env.APP_ENV ?? "development";
 const API_URL = process.env.API_URL ?? "https://trip.gmac.io";
+const GOOGLE_MAPS_API_KEY =
+  process.env.GOOGLE_MAPS_API_KEY ??
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
+  "";
 const ASSOCIATED_DOMAIN =
   process.env.EXPO_PUBLIC_APP_DOMAIN ?? "change-me.example.com";
 
@@ -58,6 +62,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     "expo-router",
     "expo-secure-store",
     "expo-web-browser",
+    ["react-native-maps", { iosGoogleMapsApiKey: GOOGLE_MAPS_API_KEY }],
     [
       "expo-splash-screen",
       {

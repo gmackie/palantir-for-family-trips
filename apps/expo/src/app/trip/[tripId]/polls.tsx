@@ -8,23 +8,31 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { trpc } from "~/utils/api";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-const RESPONSE_LABELS: Record<string, { label: string; color: string }> = {
-  yes: { label: "Yes", color: "bg-green-500" },
-  no: { label: "No", color: "bg-red-500" },
-  maybe: { label: "Maybe", color: "bg-yellow-500" },
-  prefer: { label: "Prefer", color: "bg-blue-500" },
+const C = {
+  bg: "#141116",
+  fg: "#f9f7fb",
+  muted: "#8c8691",
+  card: "#1e1b24",
+  border: "#2f2a33",
+  primary: "#d66daa",
+} as const;
+
+const RESPONSE_STYLES: Record<string, { bg: string; text: string }> = {
+  yes: { bg: "#22c55e", text: "#fff" },
+  no: { bg: "#ef4444", text: "#fff" },
+  maybe: { bg: "#eab308", text: "#000" },
+  prefer: { bg: "#3b82f6", text: "#fff" },
 };
 
 export default function PollsScreen() {
+  "use no memo";
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const queryClient = useQueryClient();
   const workspaceId = getActiveWorkspaceId() ?? "";
-
   const [expandedPollId, setExpandedPollId] = useState<string | null>(null);
 
   const { data: polls, isLoading } = useQuery(
@@ -46,25 +54,49 @@ export default function PollsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="bg-background flex-1">
-        <Stack.Screen options={{ title: "Polls" }} />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
-        </View>
-      </SafeAreaView>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Stack.Screen
+          options={{
+            title: "Polls",
+            headerStyle: { backgroundColor: C.bg },
+            headerTintColor: C.fg,
+          }}
+        />
+        <ActivityIndicator size="large" />
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="bg-background flex-1">
-      <Stack.Screen options={{ title: "Polls & Planning" }} />
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <Stack.Screen
+        options={{
+          title: "Polls & Planning",
+          headerStyle: { backgroundColor: C.bg },
+          headerTintColor: C.fg,
+        }}
+      />
 
       {!polls || polls.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-muted-foreground mb-2 text-lg">
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <Text style={{ color: C.muted, fontSize: 18, marginBottom: 8 }}>
             No polls yet
           </Text>
-          <Text className="text-muted-foreground text-center text-sm">
+          <Text style={{ color: C.muted, fontSize: 14, textAlign: "center" }}>
             Polls help your group decide on dates, activities, and more.
           </Text>
         </View>
@@ -73,7 +105,7 @@ export default function PollsScreen() {
           data={polls}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16 }}
-          ItemSeparatorComponent={() => <View className="h-4" />}
+          ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
           renderItem={({ item: poll }) => {
             const isExpanded = expandedPollId === poll.id;
             const totalVotes = poll.options.reduce(
@@ -82,59 +114,102 @@ export default function PollsScreen() {
             );
 
             return (
-              <View className="border-border bg-card rounded-lg border">
-                {/* Poll header */}
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  backgroundColor: C.card,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                }}
+              >
                 <Pressable
                   onPress={() => setExpandedPollId(isExpanded ? null : poll.id)}
-                  className="p-4"
-                  style={{ minHeight: 48 }}
+                  style={{ padding: 16, minHeight: 48 }}
                 >
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-1">
-                      <Text className="text-foreground text-base font-semibold">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}
+                      >
                         {poll.title}
                       </Text>
-                      <Text className="text-muted-foreground mt-1 text-xs">
+                      <Text
+                        style={{ color: C.muted, fontSize: 12, marginTop: 4 }}
+                      >
                         {poll.pollType.replace("_", " ")} | {totalVotes} vote
                         {totalVotes !== 1 ? "s" : ""} | {poll.status}
                       </Text>
                     </View>
-                    <Text className="text-muted-foreground text-lg">
+                    <Text style={{ color: C.muted, fontSize: 18 }}>
                       {isExpanded ? "−" : "+"}
                     </Text>
                   </View>
                 </Pressable>
 
-                {/* Expanded poll options with voting */}
                 {isExpanded && (
-                  <View className="border-border border-t px-4 pb-4 pt-3">
+                  <View
+                    style={{
+                      borderTopWidth: 1,
+                      borderTopColor: C.border,
+                      paddingHorizontal: 16,
+                      paddingBottom: 16,
+                      paddingTop: 12,
+                    }}
+                  >
                     {poll.options.map((option) => (
                       <View
                         key={option.id}
-                        className="border-border mb-3 rounded-md border p-3"
+                        style={{
+                          borderWidth: 1,
+                          borderColor: C.border,
+                          borderRadius: 6,
+                          padding: 12,
+                          marginBottom: 12,
+                        }}
                       >
-                        <View className="mb-2 flex-row items-center justify-between">
-                          <Text className="text-foreground flex-1 font-medium">
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <Text
+                            style={{ color: C.fg, fontWeight: "500", flex: 1 }}
+                          >
                             {option.label}
                           </Text>
-                          <Text className="text-muted-foreground text-xs">
+                          <Text style={{ color: C.muted, fontSize: 12 }}>
                             {option.voteCount ?? 0} votes
                           </Text>
                         </View>
                         {option.description && (
-                          <Text className="text-muted-foreground mb-2 text-sm">
+                          <Text
+                            style={{
+                              color: C.muted,
+                              fontSize: 14,
+                              marginBottom: 8,
+                            }}
+                          >
                             {option.description}
                           </Text>
                         )}
 
-                        {/* Vote buttons */}
                         {poll.status === "open" && (
-                          <View className="flex-row gap-2">
+                          <View style={{ flexDirection: "row", gap: 8 }}>
                             {(
-                              Object.entries(RESPONSE_LABELS) as Array<
-                                [string, { label: string; color: string }]
+                              Object.entries(RESPONSE_STYLES) as Array<
+                                [string, { bg: string; text: string }]
                               >
-                            ).map(([response, meta]) => (
+                            ).map(([response, style]) => (
                               <Pressable
                                 key={response}
                                 onPress={() => {
@@ -150,14 +225,25 @@ export default function PollsScreen() {
                                   });
                                 }}
                                 disabled={voteMutation.isPending}
-                                className={`rounded-md px-3 py-2 ${meta.color}`}
                                 style={{
-                                  minHeight: 44,
+                                  backgroundColor: style.bg,
+                                  borderRadius: 6,
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 8,
+                                  minHeight: 36,
                                   justifyContent: "center",
                                 }}
                               >
-                                <Text className="text-center text-xs font-medium text-white">
-                                  {meta.label}
+                                <Text
+                                  style={{
+                                    color: style.text,
+                                    fontSize: 12,
+                                    fontWeight: "600",
+                                    textAlign: "center",
+                                    textTransform: "capitalize",
+                                  }}
+                                >
+                                  {response}
                                 </Text>
                               </Pressable>
                             ))}
@@ -172,6 +258,6 @@ export default function PollsScreen() {
           }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }

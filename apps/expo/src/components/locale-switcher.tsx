@@ -9,6 +9,16 @@ import { Modal, Pressable, Text, View } from "react-native";
 
 import { setLocale } from "~/utils/i18n";
 
+const C = {
+  bg: "#141116",
+  fg: "#f9f7fb",
+  muted: "#8c8691",
+  border: "#2f2a33",
+  primary: "#d66daa",
+  primaryFg: "#141116",
+  primaryBg: "rgba(214,109,170,0.1)",
+} as const;
+
 const LOCALE_LABELS: Record<string, string> = {
   en: "English",
   es: "Espanol",
@@ -37,10 +47,20 @@ export function LocaleSwitcher({ onLocaleChange }: LocaleSwitcherProps) {
     <View>
       <Pressable
         onPress={() => setModalVisible(true)}
-        className="border-border bg-background flex-row items-center justify-between rounded-lg border px-4 py-3"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderWidth: 1,
+          borderColor: C.border,
+          backgroundColor: C.bg,
+          borderRadius: 8,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}
       >
-        <Text className="text-foreground">{t("common.selectLanguage")}</Text>
-        <Text className="text-muted-foreground">
+        <Text style={{ color: C.fg }}>{t("common.selectLanguage")}</Text>
+        <Text style={{ color: C.muted }}>
           {LOCALE_LABELS[currentLocale] ?? currentLocale.toUpperCase()}
         </Text>
       </Pressable>
@@ -52,45 +72,70 @@ export function LocaleSwitcher({ onLocaleChange }: LocaleSwitcherProps) {
         onRequestClose={() => setModalVisible(false)}
       >
         <Pressable
-          className="flex-1 justify-end bg-black/50"
+          style={{
+            flex: 1,
+            justifyContent: "flex-end",
+            backgroundColor: "rgba(0,0,0,0.5)",
+          }}
           onPress={() => setModalVisible(false)}
         >
-          <View className="bg-background rounded-t-3xl p-4">
-            <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-foreground text-xl font-semibold">
+          <View
+            style={{
+              backgroundColor: C.bg,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 16,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ color: C.fg, fontSize: 20, fontWeight: "600" }}>
                 {t("common.selectLanguage")}
               </Text>
               <Pressable onPress={() => setModalVisible(false)}>
-                <Text className="text-primary">{t("common.close")}</Text>
+                <Text style={{ color: C.primary }}>{t("common.close")}</Text>
               </Pressable>
             </View>
 
-            <View className="gap-1">
-              {supportedLocales.map((locale) => (
-                <Pressable
-                  key={locale}
-                  onPress={() => void handleLocaleChange(locale)}
-                  className={`flex-row items-center justify-between rounded-lg px-4 py-3 ${
-                    currentLocale === locale ? "bg-primary/10" : ""
-                  }`}
-                >
-                  <Text
-                    className={`text-base ${
-                      currentLocale === locale
-                        ? "text-primary font-semibold"
-                        : "text-foreground"
-                    }`}
+            <View style={{ gap: 4 }}>
+              {supportedLocales.map((locale) => {
+                const active = currentLocale === locale;
+                return (
+                  <Pressable
+                    key={locale}
+                    onPress={() => void handleLocaleChange(locale)}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      borderRadius: 8,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      backgroundColor: active ? C.primaryBg : "transparent",
+                    }}
                   >
-                    {LOCALE_LABELS[locale] ?? locale.toUpperCase()}
-                  </Text>
-                  {currentLocale === locale && (
-                    <Text className="text-primary">✓</Text>
-                  )}
-                </Pressable>
-              ))}
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        color: active ? C.primary : C.fg,
+                        fontWeight: active ? "600" : "400",
+                      }}
+                    >
+                      {LOCALE_LABELS[locale] ?? locale.toUpperCase()}
+                    </Text>
+                    {active && <Text style={{ color: C.primary }}>✓</Text>}
+                  </Pressable>
+                );
+              })}
             </View>
 
-            <View className="mt-4 h-8" />
+            <View style={{ marginTop: 16, height: 32 }} />
           </View>
         </Pressable>
       </Modal>
@@ -107,28 +152,28 @@ export function LocaleButtonGroup({ onLocaleChange }: LocaleSwitcherProps) {
   };
 
   return (
-    <View className="flex-row flex-wrap gap-2">
-      {supportedLocales.map((locale) => (
-        <Pressable
-          key={locale}
-          onPress={() => void handleLocaleChange(locale)}
-          className={`rounded-md px-4 py-2 ${
-            currentLocale === locale
-              ? "bg-primary"
-              : "border-border bg-background border"
-          }`}
-        >
-          <Text
-            className={
-              currentLocale === locale
-                ? "text-primary-foreground"
-                : "text-foreground"
-            }
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {supportedLocales.map((locale) => {
+        const active = currentLocale === locale;
+        return (
+          <Pressable
+            key={locale}
+            onPress={() => void handleLocaleChange(locale)}
+            style={{
+              backgroundColor: active ? C.primary : C.bg,
+              borderWidth: active ? 0 : 1,
+              borderColor: C.border,
+              borderRadius: 6,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+            }}
           >
-            {locale.toUpperCase()}
-          </Text>
-        </Pressable>
-      ))}
+            <Text style={{ color: active ? C.primaryFg : C.fg }}>
+              {locale.toUpperCase()}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

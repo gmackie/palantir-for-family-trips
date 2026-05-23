@@ -15,7 +15,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
@@ -23,6 +22,23 @@ import { setLocale } from "~/utils/i18n";
 
 const PERMISSIONS = ["read", "write", "delete", "admin"] as const;
 const COLLABORATION_ROLES = ["member", "admin"] as const;
+
+const C = {
+  bg: "#141116",
+  fg: "#f9f7fb",
+  muted: "#8c8691",
+  card: "#1e1b24",
+  border: "#2f2a33",
+  primary: "#d66daa",
+  primaryFg: "#141116",
+  danger: "#ef4444",
+  dangerFg: "#ffffff",
+  green: "#22c55e",
+  greenBg: "#052e16",
+  greenText: "#86efac",
+  greenMuted: "#4ade80",
+  inputBg: "#0d0b0f",
+} as const;
 
 function formatMoney(amountInCents: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
@@ -42,6 +58,7 @@ function formatDate(value: Date | string | null) {
 }
 
 function PreferencesSection() {
+  "use no memo";
   const queryClient = useQueryClient();
   const _t = useTranslationsNative();
   const currentLocale = useLocaleNative();
@@ -83,100 +100,169 @@ function PreferencesSection() {
 
   if (isLoading) {
     return (
-      <View className="border-border bg-card rounded-lg border p-4">
-        <Text className="text-foreground text-lg font-semibold">
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: C.border,
+          backgroundColor: C.card,
+          borderRadius: 8,
+          padding: 16,
+        }}
+      >
+        <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
           Preferences
         </Text>
-        <Text className="text-muted-foreground mt-2">Loading...</Text>
+        <Text style={{ color: C.muted, marginTop: 8 }}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <View className="border-border bg-card rounded-lg border p-4">
-      <Text className="text-foreground mb-4 text-lg font-semibold">
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+        borderRadius: 8,
+        padding: 16,
+      }}
+    >
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 18,
+          fontWeight: "600",
+          marginBottom: 16,
+        }}
+      >
         Preferences
       </Text>
 
-      <Text className="text-foreground mb-2 text-sm font-medium">Theme</Text>
-      <View className="mb-4 flex-row gap-2">
-        {(["light", "dark", "system"] as const).map((theme) => (
-          <Pressable
-            key={theme}
-            onPress={() => handleThemeChange(theme)}
-            className={`rounded-md px-4 py-2 ${
-              preferences?.theme === theme
-                ? "bg-primary"
-                : "border-border bg-background border"
-            }`}
-          >
-            <Text
-              className={
-                preferences?.theme === theme
-                  ? "text-primary-foreground"
-                  : "text-foreground"
-              }
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 14,
+          fontWeight: "500",
+          marginBottom: 8,
+        }}
+      >
+        Theme
+      </Text>
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+        {(["light", "dark", "system"] as const).map((theme) => {
+          const active = preferences?.theme === theme;
+          return (
+            <Pressable
+              key={theme}
+              onPress={() => handleThemeChange(theme)}
+              style={{
+                backgroundColor: active ? C.primary : C.bg,
+                borderWidth: active ? 0 : 1,
+                borderColor: C.border,
+                borderRadius: 6,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+              }}
             >
-              {theme.charAt(0).toUpperCase() + theme.slice(1)}
-            </Text>
-          </Pressable>
-        ))}
+              <Text style={{ color: active ? C.primaryFg : C.fg }}>
+                {theme.charAt(0).toUpperCase() + theme.slice(1)}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      <Text className="text-foreground mb-2 text-sm font-medium">Language</Text>
-      <View className="mb-4 flex-row flex-wrap gap-2">
-        {supportedLocales.map((lang) => (
-          <Pressable
-            key={lang}
-            onPress={() => handleLanguageChange(lang)}
-            className={`rounded-md px-4 py-2 ${
-              currentLocale === lang
-                ? "bg-primary"
-                : "border-border bg-background border"
-            }`}
-          >
-            <Text
-              className={
-                currentLocale === lang
-                  ? "text-primary-foreground"
-                  : "text-foreground"
-              }
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 14,
+          fontWeight: "500",
+          marginBottom: 8,
+        }}
+      >
+        Language
+      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        {supportedLocales.map((lang) => {
+          const active = currentLocale === lang;
+          return (
+            <Pressable
+              key={lang}
+              onPress={() => handleLanguageChange(lang)}
+              style={{
+                backgroundColor: active ? C.primary : C.bg,
+                borderWidth: active ? 0 : 1,
+                borderColor: C.border,
+                borderRadius: 6,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+              }}
             >
-              {lang.toUpperCase()}
-            </Text>
-          </Pressable>
-        ))}
+              <Text style={{ color: active ? C.primaryFg : C.fg }}>
+                {lang.toUpperCase()}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      <Text className="text-foreground mb-2 text-sm font-medium">
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 14,
+          fontWeight: "500",
+          marginBottom: 8,
+        }}
+      >
         Notifications
       </Text>
-      <View className="gap-2">
+      <View style={{ gap: 8 }}>
         <Pressable
           onPress={() => toggleNotification("email")}
-          className="flex-row items-center gap-2"
+          style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
         >
           <View
-            className={`h-5 w-5 rounded border ${
-              preferences?.emailNotifications
-                ? "border-primary bg-primary"
-                : "border-border bg-background"
-            }`}
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 4,
+              borderWidth: 1,
+              borderColor: preferences?.emailNotifications
+                ? C.primary
+                : C.border,
+              backgroundColor: preferences?.emailNotifications
+                ? C.primary
+                : C.bg,
+            }}
           />
-          <Text className="text-foreground">Email notifications</Text>
+          <Text style={{ color: C.fg }}>Email notifications</Text>
         </Pressable>
         <Pressable
           onPress={() => toggleNotification("push")}
-          className="flex-row items-center gap-2"
+          style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
         >
           <View
-            className={`h-5 w-5 rounded border ${
-              preferences?.pushNotifications
-                ? "border-primary bg-primary"
-                : "border-border bg-background"
-            }`}
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 4,
+              borderWidth: 1,
+              borderColor: preferences?.pushNotifications
+                ? C.primary
+                : C.border,
+              backgroundColor: preferences?.pushNotifications
+                ? C.primary
+                : C.bg,
+            }}
           />
-          <Text className="text-foreground">Push notifications</Text>
+          <Text style={{ color: C.fg }}>Push notifications</Text>
         </Pressable>
       </View>
     </View>
@@ -184,6 +270,7 @@ function PreferencesSection() {
 }
 
 function ApiKeysSection() {
+  "use no memo";
   const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
@@ -262,44 +349,106 @@ function ApiKeysSection() {
   };
 
   return (
-    <View className="border-border bg-card mt-4 rounded-lg border p-4">
-      <View className="mb-4 flex-row items-center justify-between">
-        <Text className="text-foreground text-lg font-semibold">API Keys</Text>
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+        borderRadius: 8,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
+        <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
+          API Keys
+        </Text>
         {!showCreateForm && (
           <Pressable
             onPress={() => setShowCreateForm(true)}
-            className="bg-primary rounded-md px-3 py-1"
+            style={{
+              backgroundColor: C.primary,
+              borderRadius: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+            }}
           >
-            <Text className="text-primary-foreground">New Key</Text>
+            <Text style={{ color: C.primaryFg }}>New Key</Text>
           </Pressable>
         )}
       </View>
 
       {newKey && (
-        <View className="mb-4 rounded-lg border border-green-500 bg-green-50 p-3 dark:bg-green-950">
-          <Text className="mb-1 font-medium text-green-800 dark:text-green-200">
+        <View
+          style={{
+            marginBottom: 16,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: C.green,
+            backgroundColor: C.greenBg,
+            padding: 12,
+          }}
+        >
+          <Text
+            style={{
+              fontWeight: "500",
+              color: C.greenText,
+              marginBottom: 4,
+            }}
+          >
             API Key Created
           </Text>
-          <Text className="mb-2 text-xs text-green-700 dark:text-green-300">
+          <Text
+            style={{
+              fontSize: 12,
+              color: C.greenMuted,
+              marginBottom: 8,
+            }}
+          >
             Copy now. You won&apos;t see this again.
           </Text>
           <Pressable
             onPress={() => void copyToClipboard(newKey)}
-            className="rounded bg-white p-2 dark:bg-gray-900"
+            style={{
+              backgroundColor: C.bg,
+              borderRadius: 4,
+              padding: 8,
+            }}
           >
-            <Text className="text-foreground font-mono text-xs">{newKey}</Text>
-          </Pressable>
-          <Pressable onPress={() => setNewKey(null)} className="mt-2">
-            <Text className="text-sm text-green-700 dark:text-green-300">
-              Dismiss
+            <Text
+              style={{
+                color: C.fg,
+                fontSize: 12,
+                fontFamily: "Menlo",
+              }}
+            >
+              {newKey}
             </Text>
+          </Pressable>
+          <Pressable onPress={() => setNewKey(null)} style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 14, color: C.greenMuted }}>Dismiss</Text>
           </Pressable>
         </View>
       )}
 
       {showCreateForm && (
-        <View className="border-border mb-4 rounded-lg border p-3">
-          <Text className="text-foreground mb-2 font-medium">
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: C.border,
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ color: C.fg, fontWeight: "500", marginBottom: 8 }}>
             Create New API Key
           </Text>
 
@@ -307,31 +456,63 @@ function ApiKeysSection() {
             value={newKeyName}
             onChangeText={setNewKeyName}
             placeholder="Key name"
-            className="border-border bg-background text-foreground mb-3 rounded-md border px-3 py-2"
             placeholderTextColor="#888"
+            style={{
+              borderWidth: 1,
+              borderColor: C.border,
+              backgroundColor: C.inputBg,
+              color: C.fg,
+              borderRadius: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              marginBottom: 12,
+            }}
           />
 
-          <Text className="text-foreground mb-2 text-sm">Permissions</Text>
-          <View className="mb-3 flex-row flex-wrap gap-2">
+          <Text style={{ color: C.fg, fontSize: 14, marginBottom: 8 }}>
+            Permissions
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+              marginBottom: 12,
+            }}
+          >
             {PERMISSIONS.map((permission) => (
               <Pressable
                 key={permission}
                 onPress={() => togglePermission(permission)}
-                className="flex-row items-center gap-1"
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
               >
                 <View
-                  className={`h-4 w-4 rounded border ${
-                    selectedPermissions.includes(permission)
-                      ? "border-primary bg-primary"
-                      : "border-border bg-background"
-                  }`}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                    borderWidth: 1,
+                    borderColor: selectedPermissions.includes(permission)
+                      ? C.primary
+                      : C.border,
+                    backgroundColor: selectedPermissions.includes(permission)
+                      ? C.primary
+                      : C.bg,
+                  }}
                 />
-                <Text className="text-foreground capitalize">{permission}</Text>
+                <Text
+                  style={{
+                    color: C.fg,
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {permission}
+                </Text>
               </Pressable>
             ))}
           </View>
 
-          <View className="flex-row gap-2">
+          <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
               onPress={handleCreateKey}
               disabled={
@@ -339,9 +520,14 @@ function ApiKeysSection() {
                 !newKeyName.trim() ||
                 selectedPermissions.length === 0
               }
-              className="bg-primary rounded-md px-4 py-2"
+              style={{
+                backgroundColor: C.primary,
+                borderRadius: 6,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+              }}
             >
-              <Text className="text-primary-foreground">Create</Text>
+              <Text style={{ color: C.primaryFg }}>Create</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -349,32 +535,48 @@ function ApiKeysSection() {
                 setNewKeyName("");
                 setSelectedPermissions(["read"]);
               }}
-              className="border-border rounded-md border px-4 py-2"
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                borderRadius: 6,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+              }}
             >
-              <Text className="text-foreground">Cancel</Text>
+              <Text style={{ color: C.fg }}>Cancel</Text>
             </Pressable>
           </View>
         </View>
       )}
 
       {isLoading ? (
-        <Text className="text-muted-foreground">Loading...</Text>
+        <Text style={{ color: C.muted }}>Loading...</Text>
       ) : apiKeys?.length === 0 ? (
-        <Text className="text-muted-foreground">No API keys created yet.</Text>
+        <Text style={{ color: C.muted }}>No API keys created yet.</Text>
       ) : (
-        <View className="gap-2">
+        <View style={{ gap: 8 }}>
           {apiKeys?.map((key) => (
             <View
               key={key.id}
-              className="border-border flex-row items-center justify-between rounded-lg border p-3"
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                borderRadius: 8,
+                padding: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
             >
-              <View className="flex-1">
-                <Text className="text-foreground font-medium">{key.name}</Text>
-                <Text className="text-muted-foreground text-xs">
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.fg, fontWeight: "500" }}>
+                  {key.name}
+                </Text>
+                <Text style={{ color: C.muted, fontSize: 12 }}>
                   {key.keyPrefix}... | {key.permissions.join(", ")}
                 </Text>
                 {key.lastUsedAt && (
-                  <Text className="text-muted-foreground text-xs">
+                  <Text style={{ color: C.muted, fontSize: 12 }}>
                     Last used: {new Date(key.lastUsedAt).toLocaleDateString()}
                   </Text>
                 )}
@@ -382,9 +584,14 @@ function ApiKeysSection() {
               <Pressable
                 onPress={() => handleRevokeKey(key.id, key.name)}
                 disabled={isRevoking}
-                className="bg-destructive rounded-md px-3 py-1"
+                style={{
+                  backgroundColor: C.danger,
+                  borderRadius: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                }}
               >
-                <Text className="text-destructive-foreground">Revoke</Text>
+                <Text style={{ color: C.dangerFg }}>Revoke</Text>
               </Pressable>
             </View>
           ))}
@@ -395,6 +602,7 @@ function ApiKeysSection() {
 }
 
 function CollaborationSection() {
+  "use no memo";
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
@@ -446,105 +654,192 @@ function CollaborationSection() {
   };
 
   return (
-    <View className="border-border bg-card mt-4 rounded-lg border p-4">
-      <Text className="text-foreground mb-2 text-lg font-semibold">
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+        borderRadius: 8,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 18,
+          fontWeight: "600",
+          marginBottom: 8,
+        }}
+      >
         Collaboration
       </Text>
-      <Text className="text-muted-foreground mb-4">
+      <Text style={{ color: C.muted, marginBottom: 16 }}>
         Invite teammates into{" "}
         {workspaceContext.workspace?.name ?? "this workspace"}. v1 keeps each
         account on a single active workspace and limits invites to member/admin
         roles.
       </Text>
 
-      <Text className="text-foreground mb-2 text-sm font-medium">
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 14,
+          fontWeight: "500",
+          marginBottom: 8,
+        }}
+      >
         Invite teammate
       </Text>
       <TextInput
         value={inviteEmail}
         onChangeText={setInviteEmail}
         placeholder="teammate@example.com"
-        className="border-border bg-background text-foreground mb-3 rounded-md border px-3 py-2"
         placeholderTextColor="#888"
         autoCapitalize="none"
         keyboardType="email-address"
+        style={{
+          borderWidth: 1,
+          borderColor: C.border,
+          backgroundColor: C.inputBg,
+          color: C.fg,
+          borderRadius: 6,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          marginBottom: 12,
+        }}
       />
 
-      <Text className="text-foreground mb-2 text-sm font-medium">Role</Text>
-      <View className="mb-4 flex-row flex-wrap gap-2">
-        {COLLABORATION_ROLES.map((role) => (
-          <Pressable
-            key={role}
-            onPress={() => setInviteRole(role)}
-            className={`rounded-md px-4 py-2 ${
-              inviteRole === role
-                ? "bg-primary"
-                : "border-border bg-background border"
-            }`}
-          >
-            <Text
-              className={
-                inviteRole === role
-                  ? "text-primary-foreground capitalize"
-                  : "text-foreground capitalize"
-              }
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 14,
+          fontWeight: "500",
+          marginBottom: 8,
+        }}
+      >
+        Role
+      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        {COLLABORATION_ROLES.map((role) => {
+          const active = inviteRole === role;
+          return (
+            <Pressable
+              key={role}
+              onPress={() => setInviteRole(role)}
+              style={{
+                backgroundColor: active ? C.primary : C.bg,
+                borderWidth: active ? 0 : 1,
+                borderColor: C.border,
+                borderRadius: 6,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+              }}
             >
-              {role}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                style={{
+                  color: active ? C.primaryFg : C.fg,
+                  textTransform: "capitalize",
+                }}
+              >
+                {role}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <Pressable
         onPress={handleCreateInvite}
         disabled={isCreatingInvite || inviteEmail.trim().length === 0}
-        className="bg-primary mb-4 rounded-md px-4 py-3"
+        style={{
+          backgroundColor: C.primary,
+          borderRadius: 6,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          marginBottom: 16,
+        }}
       >
-        <Text className="text-primary-foreground text-center font-medium">
-          {isCreatingInvite ? "Sending…" : "Send Invite"}
+        <Text
+          style={{
+            color: C.primaryFg,
+            textAlign: "center",
+            fontWeight: "500",
+          }}
+        >
+          {isCreatingInvite ? "Sending..." : "Send Invite"}
         </Text>
       </Pressable>
 
-      <Text className="text-foreground mb-2 text-sm font-medium">
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 14,
+          fontWeight: "500",
+          marginBottom: 8,
+        }}
+      >
         Pending invites
       </Text>
       {isInvitesLoading ? (
-        <Text className="text-muted-foreground">Loading…</Text>
+        <Text style={{ color: C.muted }}>Loading...</Text>
       ) : invites && invites.length > 0 ? (
-        <View className="gap-2">
+        <View style={{ gap: 8 }}>
           {invites.map((invite) => (
             <View
               key={invite.id}
-              className="border-border rounded-lg border p-3"
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                borderRadius: 8,
+                padding: 12,
+              }}
             >
-              <Text className="text-foreground font-medium">
+              <Text style={{ color: C.fg, fontWeight: "500" }}>
                 {invite.email}
               </Text>
-              <Text className="text-muted-foreground capitalize">
+              <Text style={{ color: C.muted, textTransform: "capitalize" }}>
                 {invite.role}
               </Text>
             </View>
           ))}
         </View>
       ) : (
-        <Text className="text-muted-foreground">No pending invites yet.</Text>
+        <Text style={{ color: C.muted }}>No pending invites yet.</Text>
       )}
     </View>
   );
 }
 
 function BillingUsageSection() {
+  "use no memo";
   const { data, isLoading } = useQuery(
     trpc.settings.getBillingOverview.queryOptions(),
   );
 
   if (isLoading) {
     return (
-      <View className="border-border bg-card mt-4 rounded-lg border p-4">
-        <Text className="text-foreground text-lg font-semibold">
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: C.border,
+          backgroundColor: C.card,
+          borderRadius: 8,
+          padding: 16,
+          marginTop: 16,
+        }}
+      >
+        <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
           Billing & Usage
         </Text>
-        <Text className="text-muted-foreground mt-2">Loading...</Text>
+        <Text style={{ color: C.muted, marginTop: 8 }}>Loading...</Text>
       </View>
     );
   }
@@ -554,23 +849,47 @@ function BillingUsageSection() {
   }
 
   return (
-    <View className="border-border bg-card mt-4 rounded-lg border p-4">
-      <Text className="text-foreground mb-2 text-lg font-semibold">
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+        borderRadius: 8,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 18,
+          fontWeight: "600",
+          marginBottom: 8,
+        }}
+      >
         Billing
       </Text>
-      <Text className="text-muted-foreground mb-4">
+      <Text style={{ color: C.muted, marginBottom: 16 }}>
         Billing stays per-workspace in v1, and seat billing is intentionally
         deferred.
       </Text>
 
-      <View className="border-border mb-4 rounded-lg border p-3">
-        <Text className="text-foreground font-medium">Current plan</Text>
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: C.border,
+          borderRadius: 8,
+          padding: 12,
+          marginBottom: 16,
+        }}
+      >
+        <Text style={{ color: C.fg, fontWeight: "500" }}>Current plan</Text>
         {data?.billing.plan ? (
           <>
-            <Text className="text-foreground mt-2">
+            <Text style={{ color: C.fg, marginTop: 8 }}>
               {data.billing.plan.name}
             </Text>
-            <Text className="text-muted-foreground">
+            <Text style={{ color: C.muted }}>
               {formatMoney(
                 data.billing.plan.amountInCents,
                 data.billing.plan.currency,
@@ -579,51 +898,77 @@ function BillingUsageSection() {
             </Text>
           </>
         ) : (
-          <Text className="text-muted-foreground mt-2">
+          <Text style={{ color: C.muted, marginTop: 8 }}>
             No workspace plan is configured yet.
           </Text>
         )}
       </View>
 
-      <View className="border-border mb-4 rounded-lg border p-3">
-        <Text className="text-foreground font-medium">Subscription</Text>
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: C.border,
+          borderRadius: 8,
+          padding: 12,
+          marginBottom: 16,
+        }}
+      >
+        <Text style={{ color: C.fg, fontWeight: "500" }}>Subscription</Text>
         {data?.billing.subscription ? (
           <>
-            <Text className="text-foreground mt-2 capitalize">
+            <Text
+              style={{
+                color: C.fg,
+                marginTop: 8,
+                textTransform: "capitalize",
+              }}
+            >
               {data.billing.subscription.status.replaceAll("_", " ")}
             </Text>
-            <Text className="text-muted-foreground capitalize">
+            <Text style={{ color: C.muted, textTransform: "capitalize" }}>
               Provider: {data.billing.subscription.provider}
             </Text>
-            <Text className="text-muted-foreground">
+            <Text style={{ color: C.muted }}>
               Current period ends{" "}
               {formatDate(data.billing.subscription.currentPeriodEnd)}
             </Text>
           </>
         ) : (
-          <Text className="text-muted-foreground mt-2">
+          <Text style={{ color: C.muted, marginTop: 8 }}>
             No paid subscription is attached yet.
           </Text>
         )}
       </View>
 
-      <View className="border-border rounded-lg border p-3">
-        <Text className="text-foreground font-medium">Usage & Limits</Text>
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: C.border,
+          borderRadius: 8,
+          padding: 12,
+        }}
+      >
+        <Text style={{ color: C.fg, fontWeight: "500" }}>Usage & Limits</Text>
         {data?.usage.limits.length ? (
-          <View className="mt-3 gap-2">
+          <View style={{ marginTop: 12, gap: 8 }}>
             {data.usage.limits.map(
               (limit: (typeof data.usage.limits)[number]) => (
                 <View
                   key={limit.key}
-                  className="border-border rounded-md border p-3"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderRadius: 6,
+                    padding: 12,
+                  }}
                 >
-                  <Text className="text-foreground font-medium">
+                  <Text style={{ color: C.fg, fontWeight: "500" }}>
                     {limit.key}
                   </Text>
-                  <Text className="text-muted-foreground capitalize">
+                  <Text style={{ color: C.muted, textTransform: "capitalize" }}>
                     {limit.period.replaceAll("_", " ")}
                   </Text>
-                  <Text className="text-foreground mt-1">
+                  <Text style={{ color: C.fg, marginTop: 4 }}>
                     {limit.currentUsage} /{" "}
                     {limit.value === null ? "Unlimited" : limit.value}
                   </Text>
@@ -632,31 +977,42 @@ function BillingUsageSection() {
             )}
           </View>
         ) : (
-          <Text className="text-muted-foreground mt-2">
+          <Text style={{ color: C.muted, marginTop: 8 }}>
             No limits are configured yet.
           </Text>
         )}
 
         {data?.usage.meters.length ? (
-          <View className="mt-4 gap-2">
+          <View style={{ marginTop: 16, gap: 8 }}>
             {data.usage.meters.map(
               (meter: (typeof data.usage.meters)[number]) => (
                 <View
                   key={meter.key}
-                  className="border-border rounded-md border p-3"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderRadius: 6,
+                    padding: 12,
+                  }}
                 >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-foreground font-medium">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text style={{ color: C.fg, fontWeight: "500" }}>
                       {meter.name}
                     </Text>
-                    <Text className="text-foreground">
+                    <Text style={{ color: C.fg }}>
                       {meter.currentUsage} {meter.unit}
                     </Text>
                   </View>
-                  <Text className="text-muted-foreground mt-1">
-                    {meter.key} • {meter.aggregation}
+                  <Text style={{ color: C.muted, marginTop: 4 }}>
+                    {meter.key} - {meter.aggregation}
                   </Text>
-                  <Text className="text-muted-foreground mt-1">
+                  <Text style={{ color: C.muted, marginTop: 4 }}>
                     {formatDate(meter.latestPeriodStart)} -{" "}
                     {formatDate(meter.latestPeriodEnd)}
                   </Text>
@@ -665,7 +1021,7 @@ function BillingUsageSection() {
             )}
           </View>
         ) : (
-          <Text className="text-muted-foreground mt-4">
+          <Text style={{ color: C.muted, marginTop: 16 }}>
             No usage meters are configured yet.
           </Text>
         )}
@@ -700,21 +1056,48 @@ function AccountSection() {
   };
 
   return (
-    <View className="border-border bg-card mt-4 rounded-lg border p-4">
-      <Text className="text-foreground mb-2 text-lg font-semibold">
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+        borderRadius: 8,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 18,
+          fontWeight: "600",
+          marginBottom: 8,
+        }}
+      >
         Account
       </Text>
-      <Text className="text-muted-foreground mb-4">
+      <Text style={{ color: C.muted, marginBottom: 16 }}>
         App Store review requires in-app account deletion when account creation
         is supported.
       </Text>
       <Pressable
         onPress={handleDeleteAccount}
         disabled={isPending}
-        className="bg-destructive rounded-md px-4 py-3"
+        style={{
+          backgroundColor: C.danger,
+          borderRadius: 6,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}
       >
-        <Text className="text-destructive-foreground text-center font-medium">
-          {isPending ? "Deleting…" : "Delete Account"}
+        <Text
+          style={{
+            color: C.dangerFg,
+            textAlign: "center",
+            fontWeight: "500",
+          }}
+        >
+          {isPending ? "Deleting..." : "Delete Account"}
         </Text>
       </Pressable>
     </View>
@@ -722,11 +1105,25 @@ function AccountSection() {
 }
 
 export default function SettingsScreen() {
+  "use no memo";
   return (
-    <SafeAreaView className="bg-background flex-1">
-      <Stack.Screen options={{ title: "Settings" }} />
-      <ScrollView className="flex-1 p-4">
-        <Text className="text-foreground mb-4 text-2xl font-bold">
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <Stack.Screen
+        options={{
+          title: "Settings",
+          headerStyle: { backgroundColor: C.bg },
+          headerTintColor: C.fg,
+        }}
+      />
+      <ScrollView style={{ flex: 1, padding: 16 }}>
+        <Text
+          style={{
+            color: C.fg,
+            fontSize: 24,
+            fontWeight: "bold",
+            marginBottom: 16,
+          }}
+        >
           Settings
         </Text>
         <PreferencesSection />
@@ -734,7 +1131,8 @@ export default function SettingsScreen() {
         <BillingUsageSection />
         <CollaborationSection />
         <AccountSection />
+        <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -1,10 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 import { trpc } from "~/utils/api";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
+
+const C = {
+  bg: "#141116",
+  fg: "#f9f7fb",
+  muted: "#8c8691",
+  card: "#1e1b24",
+  border: "#2f2a33",
+  primary: "#d66daa",
+  green: "#22c55e",
+  red: "#ef4444",
+} as const;
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -18,6 +34,7 @@ function truncateId(id: string) {
 }
 
 export default function SettleScreen() {
+  "use no memo";
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const workspaceId = getActiveWorkspaceId() ?? "";
 
@@ -30,25 +47,45 @@ export default function SettleScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="bg-background flex-1">
-        <Stack.Screen options={{ title: "Settle Up" }} />
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
-        </View>
-      </SafeAreaView>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Stack.Screen
+          options={{
+            title: "Settle Up",
+            headerStyle: { backgroundColor: C.bg },
+            headerTintColor: C.fg,
+          }}
+        />
+        <ActivityIndicator size="large" />
+      </View>
     );
   }
 
   if (!data) {
     return (
-      <SafeAreaView className="bg-background flex-1">
-        <Stack.Screen options={{ title: "Settle Up" }} />
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-muted-foreground">
-            Could not load settlement data.
-          </Text>
-        </View>
-      </SafeAreaView>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Stack.Screen
+          options={{
+            title: "Settle Up",
+            headerStyle: { backgroundColor: C.bg },
+            headerTintColor: C.fg,
+          }}
+        />
+        <Text style={{ color: C.muted }}>Could not load settlement data.</Text>
+      </View>
     );
   }
 
@@ -58,37 +95,66 @@ export default function SettleScreen() {
   };
 
   return (
-    <SafeAreaView className="bg-background flex-1">
-      <Stack.Screen options={{ title: "Settle Up" }} />
-      <ScrollView className="flex-1 px-4 pt-4">
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <Stack.Screen
+        options={{
+          title: "Settle Up",
+          headerStyle: { backgroundColor: C.bg },
+          headerTintColor: C.fg,
+        }}
+      />
+      <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
         {data.allSettled ? (
-          <View className="items-center py-12">
-            <Text className="text-foreground mb-2 text-xl font-bold">
+          <View style={{ alignItems: "center", paddingVertical: 48 }}>
+            <Text
+              style={{
+                color: C.fg,
+                fontSize: 20,
+                fontWeight: "bold",
+                marginBottom: 8,
+              }}
+            >
               All settled!
             </Text>
-            <Text className="text-muted-foreground text-center">
+            <Text style={{ color: C.muted, textAlign: "center" }}>
               Everyone is even. No payments needed.
             </Text>
           </View>
         ) : (
           <>
             {/* Balances */}
-            <View className="mb-6">
-              <Text className="text-foreground mb-3 text-lg font-semibold">
+            <View style={{ marginBottom: 24 }}>
+              <Text
+                style={{
+                  color: C.fg,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  marginBottom: 12,
+                }}
+              >
                 Balances
               </Text>
               {data.balances.map((b) => (
                 <View
                   key={b.userId}
-                  className="border-border mb-2 flex-row items-center justify-between rounded-lg border p-3"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 8,
+                  }}
                 >
-                  <Text className="text-foreground">
-                    {memberName(b.userId)}
-                  </Text>
+                  <Text style={{ color: C.fg }}>{memberName(b.userId)}</Text>
                   <Text
-                    className={`font-mono font-medium ${
-                      b.amountCents >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
+                    style={{
+                      color: b.amountCents >= 0 ? C.green : C.red,
+                      fontWeight: "500",
+                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    }}
                   >
                     {b.amountCents >= 0 ? "+" : ""}
                     {formatCurrency(b.amountCents)}
@@ -99,25 +165,48 @@ export default function SettleScreen() {
 
             {/* Suggested transactions */}
             {data.suggestedTransactions.length > 0 && (
-              <View className="mb-6">
-                <Text className="text-foreground mb-3 text-lg font-semibold">
+              <View style={{ marginBottom: 24 }}>
+                <Text
+                  style={{
+                    color: C.fg,
+                    fontSize: 18,
+                    fontWeight: "600",
+                    marginBottom: 12,
+                  }}
+                >
                   Suggested Payments
                 </Text>
                 {data.suggestedTransactions.map((tx, i) => (
                   <View
                     key={`${tx.fromUserId}-${tx.toUserId}-${i}`}
-                    className="border-border bg-card mb-2 rounded-lg border p-4"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      backgroundColor: C.card,
+                      borderRadius: 8,
+                      padding: 16,
+                      marginBottom: 8,
+                    }}
                   >
-                    <Text className="text-foreground text-base">
-                      <Text className="font-semibold">
+                    <Text style={{ color: C.fg, fontSize: 15 }}>
+                      <Text style={{ fontWeight: "600" }}>
                         {memberName(tx.fromUserId)}
                       </Text>
                       {" pays "}
-                      <Text className="font-semibold">
+                      <Text style={{ fontWeight: "600" }}>
                         {memberName(tx.toUserId)}
                       </Text>
                     </Text>
-                    <Text className="text-primary mt-1 font-mono text-lg font-bold">
+                    <Text
+                      style={{
+                        color: C.primary,
+                        fontSize: 18,
+                        fontWeight: "bold",
+                        marginTop: 4,
+                        fontFamily:
+                          Platform.OS === "ios" ? "Menlo" : "monospace",
+                      }}
+                    >
                       {formatCurrency(tx.amountCents)}
                     </Text>
                   </View>
@@ -126,7 +215,8 @@ export default function SettleScreen() {
             )}
           </>
         )}
+        <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
