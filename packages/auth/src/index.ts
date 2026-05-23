@@ -25,8 +25,8 @@ export function initAuth<
   productionUrl: string;
   secret: string | undefined;
 
-  discordClientId: string;
-  discordClientSecret: string;
+  discordClientId?: string;
+  discordClientSecret?: string;
   googleClientId?: string;
   googleClientSecret?: string;
   appleClientId?: string;
@@ -48,11 +48,6 @@ export function initAuth<
       ...(options.extraPlugins ?? []),
     ],
     socialProviders: {
-      discord: {
-        clientId: options.discordClientId,
-        clientSecret: options.discordClientSecret,
-        redirectURI: `${options.productionUrl}/api/auth/callback/discord`,
-      },
       ...(options.googleClientId && options.googleClientSecret
         ? {
             google: {
@@ -67,6 +62,15 @@ export function initAuth<
               clientId: options.appleClientId,
               clientSecret: options.appleClientSecret,
               appBundleIdentifier: options.appleBundleIdentifier,
+            },
+          }
+        : {}),
+      ...(options.discordClientId && options.discordClientSecret
+        ? {
+            discord: {
+              clientId: options.discordClientId,
+              clientSecret: options.discordClientSecret,
+              redirectURI: `${options.productionUrl}/api/auth/callback/discord`,
             },
           }
         : {}),

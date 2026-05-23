@@ -52,24 +52,6 @@ export default async function SignInPage() {
     redirect(res.url);
   }
 
-  async function signInWithDiscord() {
-    "use server";
-
-    const res = await auth.api.signInSocial({
-      body: {
-        provider: "discord",
-        callbackURL: "/",
-      },
-      headers: await headers(),
-    });
-
-    if (!res.url) {
-      throw new Error("No URL returned from signInSocial");
-    }
-
-    redirect(res.url);
-  }
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#0A0C10] px-4">
       <div className="w-full max-w-sm space-y-6 rounded-[4px] border border-[#21262D] bg-[#161B22] p-6">
@@ -117,14 +99,6 @@ export default async function SignInPage() {
               </button>
             </form>
           )}
-          <form action={signInWithDiscord}>
-            <button
-              className="flex h-10 w-full items-center justify-center rounded-[2px] border border-[#21262D] bg-[#0D1117] text-sm font-semibold text-[#8B949E] transition-colors hover:border-[#484F58] hover:text-[#C9D1D9]"
-              type="submit"
-            >
-              Sign in with Discord
-            </button>
-          </form>
         </div>
 
         <p className="text-center text-sm text-[#484F58]">

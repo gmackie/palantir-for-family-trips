@@ -54,11 +54,47 @@ function useDevAutoLogin() {
   }, []);
 }
 
+function SocialButton({
+  label,
+  onPress,
+  loading,
+}: {
+  label: string;
+  onPress: () => void;
+  loading: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      style={{
+        borderWidth: 1,
+        borderColor: "#2f2a33",
+        backgroundColor: "#0d0b0f",
+        width: "100%",
+        alignItems: "center",
+        borderRadius: 6,
+        paddingVertical: 12,
+        opacity: loading ? 0.5 : 1,
+      }}
+    >
+      {loading ? (
+        <ActivityIndicator color="#8c8691" size="small" />
+      ) : (
+        <Text style={{ color: "#8c8691", fontWeight: "600", fontSize: 15 }}>
+          {label}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
 function SignIn() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
   const handleSend = async () => {
     if (!email.trim()) return;
@@ -71,6 +107,18 @@ function SignIn() {
       setError(err instanceof Error ? err.message : "Failed to send link");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSocial = async (provider: "google" | "apple" | "discord") => {
+    setSocialLoading(provider);
+    setError(null);
+    try {
+      await authClient.signIn.social({ provider });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to sign in`);
+    } finally {
+      setSocialLoading(null);
     }
   };
 
@@ -120,39 +168,54 @@ function SignIn() {
   }
 
   return (
-    <View
-      style={{
-        flex: 1,
+    <ScrollView
+      contentContainerStyle={{
+        flexGrow: 1,
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 24,
+        paddingVertical: 40,
       }}
+      keyboardShouldPersistTaps="handled"
     >
       <Text
         style={{
-          color: "#f9f7fb",
-          fontSize: 30,
-          fontWeight: "bold",
+          color: "#58A6FF",
+          fontSize: 9,
+          fontWeight: "900",
+          letterSpacing: 2,
+          textTransform: "uppercase",
           marginBottom: 8,
         }}
       >
-        SORTIE DEV
+        Sortie
+      </Text>
+      <Text
+        style={{
+          color: "#f9f7fb",
+          fontSize: 28,
+          fontWeight: "800",
+          marginBottom: 8,
+        }}
+      >
+        Sign in
       </Text>
       <Text
         style={{
           color: "#8c8691",
           textAlign: "center",
           marginBottom: 32,
+          fontSize: 14,
         }}
       >
-        Sign in with your email to get started
+        Use a magic link or continue with a provider.
       </Text>
 
       <TextInput
         value={email}
         onChangeText={setEmail}
         placeholder="you@example.com"
-        placeholderTextColor="#888"
+        placeholderTextColor="#555"
         autoCapitalize="none"
         keyboardType="email-address"
         autoCorrect={false}
@@ -166,15 +229,9 @@ function SignIn() {
           paddingVertical: 12,
           fontSize: 16,
           width: "100%",
-          marginBottom: 16,
+          marginBottom: 12,
         }}
       />
-
-      {error && (
-        <Text style={{ color: "#ef4444", fontSize: 14, marginBottom: 12 }}>
-          {error}
-        </Text>
-      )}
 
       <Pressable
         onPress={() => void handleSend()}
@@ -184,19 +241,68 @@ function SignIn() {
           width: "100%",
           alignItems: "center",
           borderRadius: 6,
-          paddingHorizontal: 16,
           paddingVertical: 12,
+          opacity: loading || !email.trim() ? 0.5 : 1,
+          marginBottom: 24,
         }}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color="#141116" size="small" />
         ) : (
-          <Text style={{ color: "#141116", fontWeight: "600" }}>
+          <Text style={{ color: "#141116", fontWeight: "700", fontSize: 15 }}>
             Send magic link
           </Text>
         )}
       </Pressable>
-    </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          width: "100%",
+          marginBottom: 24,
+        }}
+      >
+        <View style={{ flex: 1, height: 1, backgroundColor: "#2f2a33" }} />
+        <Text
+          style={{
+            color: "#484f58",
+            fontSize: 11,
+            textTransform: "uppercase",
+            paddingHorizontal: 12,
+          }}
+        >
+          or
+        </Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: "#2f2a33" }} />
+      </View>
+
+      <View style={{ width: "100%", gap: 10 }}>
+        <SocialButton
+          label="Continue with Google"
+          onPress={() => void handleSocial("google")}
+          loading={socialLoading === "google"}
+        />
+        <SocialButton
+          label="Continue with Apple"
+          onPress={() => void handleSocial("apple")}
+          loading={socialLoading === "apple"}
+        />
+      </View>
+
+      {error && (
+        <Text
+          style={{
+            color: "#ef4444",
+            fontSize: 13,
+            marginTop: 16,
+            textAlign: "center",
+          }}
+        >
+          {error}
+        </Text>
+      )}
+    </ScrollView>
   );
 }
 

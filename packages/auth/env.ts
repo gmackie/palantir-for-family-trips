@@ -4,8 +4,8 @@ import { z } from "zod/v4";
 export function authEnv() {
   return createEnv({
     server: {
-      AUTH_DISCORD_ID: z.string().min(1),
-      AUTH_DISCORD_SECRET: z.string().min(1),
+      AUTH_DISCORD_ID: z.string().min(1).optional(),
+      AUTH_DISCORD_SECRET: z.string().min(1).optional(),
       AUTH_GOOGLE_ID: z.string().min(1).optional(),
       AUTH_GOOGLE_SECRET: z.string().min(1).optional(),
       AUTH_APPLE_ID: z.string().min(1).optional(),
