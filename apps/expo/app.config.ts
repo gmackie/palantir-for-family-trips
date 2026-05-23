@@ -36,6 +36,12 @@ const getBundleId = (): string => {
 const getSentryConfig = () => {
   if (!SENTRY_DSN) return null;
 
+  try {
+    require.resolve("@sentry/react-native/expo");
+  } catch {
+    return null;
+  }
+
   return [
     "@sentry/react-native/expo",
     {
