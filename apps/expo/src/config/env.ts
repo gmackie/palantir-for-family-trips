@@ -43,7 +43,7 @@ function getApiUrl(): string {
       );
     case "development":
     default:
-      return "https://trip.gmac.io";
+      return "https://sortie.gmac.io";
   }
 }
 

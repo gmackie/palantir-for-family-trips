@@ -1,7 +1,7 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 const APP_ENV = process.env.APP_ENV ?? "development";
-const API_URL = process.env.API_URL ?? "https://trip.gmac.io";
+const API_URL = process.env.API_URL ?? "https://sortie.gmac.io";
 const GOOGLE_MAPS_API_KEY =
   process.env.GOOGLE_MAPS_API_KEY ??
   process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??

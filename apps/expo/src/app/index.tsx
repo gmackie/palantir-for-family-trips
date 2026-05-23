@@ -29,9 +29,9 @@ function useDevAutoLogin() {
       let changed = false;
 
       const existing = await SecureStore.getItemAsync("expo_cookie");
-      if (!existing?.includes("nHwwBLRgZE4MQRsbm20yPgv6e9puGpb2")) {
+      if (!existing?.includes("zittKbe6POslLc4RLxYKXttzeXikb5HF")) {
         const token =
-          "nHwwBLRgZE4MQRsbm20yPgv6e9puGpb2.0PJnRaPtejB3cPYGSnREzkpJuVakXQcbKyhxhSOk1M8=";
+          "zittKbe6POslLc4RLxYKXttzeXikb5HF.sR1cE5BOOsKzer3704gDqYzPnIcyLh2u0VMih9Qdyn8=";
         const expires = new Date(Date.now() + 604800 * 1000).toISOString();
         const cookieData = JSON.stringify({
           "__Secure-better-auth.session_token": { value: token, expires },
