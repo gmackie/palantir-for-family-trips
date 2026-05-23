@@ -42,14 +42,8 @@ function getApiUrl(): string {
         "https://staging-api.yourapp.com"
       );
     case "development":
-    default: {
-      const debuggerHost = Constants.expoConfig?.hostUri;
-      const localhost = debuggerHost?.split(":")[0];
-      if (localhost) {
-        return `http://${localhost}:3000`;
-      }
-      return "http://localhost:3000";
-    }
+    default:
+      return "https://trip.gmac.io";
   }
 }
 

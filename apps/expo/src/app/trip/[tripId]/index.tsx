@@ -1,50 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { Stack, useLocalSearchParams } from "expo-router";
+import { ActivityIndicator, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { GroupTripDetail } from "~/components/trip/group-trip-detail";
+import { RoadTripDetail } from "~/components/trip/road-trip-detail";
 import { trpc } from "~/utils/api";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-const STATUS_COLORS: Record<string, string> = {
-  planning: "bg-yellow-500",
-  confirmed: "bg-blue-500",
-  active: "bg-green-500",
-  en_route: "bg-orange-500",
-  paused: "bg-yellow-600",
-  completed: "bg-gray-500",
-};
-
-function formatDate(value: string | null) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
-}
-
-const GROUP_TABS = [
-  { key: "expenses", label: "Expenses", path: "expenses" },
-  { key: "settle", label: "Settle", path: "settle" },
-  { key: "plan", label: "Plan", path: "polls" },
-  { key: "map", label: "Map", path: "map" },
-] as const;
-
-const ROAD_TRIP_TABS = [
-  { key: "map", label: "Route", path: "map" },
-  { key: "expenses", label: "Expenses", path: "expenses" },
-  { key: "new-expense", label: "Fuel Log", path: "new-expense" },
-  { key: "settle", label: "Settle", path: "settle" },
-] as const;
-
 export default function TripDetail() {
+  "use no memo";
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const router = useRouter();
   const workspaceId = getActiveWorkspaceId() ?? "";
 
   const { data: trip, isLoading } = useQuery(
@@ -56,9 +22,11 @@ export default function TripDetail() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="bg-background flex-1">
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#141116" }}>
         <Stack.Screen options={{ title: "Trip" }} />
-        <View className="flex-1 items-center justify-center">
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <ActivityIndicator size="large" />
         </View>
       </SafeAreaView>
@@ -67,84 +35,27 @@ export default function TripDetail() {
 
   if (!trip) {
     return (
-      <SafeAreaView className="bg-background flex-1">
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#141116" }}>
         <Stack.Screen options={{ title: "Trip" }} />
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-muted-foreground">Trip not found</Text>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <Text style={{ color: "#8c8691" }}>Trip not found</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  const isRoadTrip = (trip as any).tripMode === "roadtrip";
+
   return (
-    <SafeAreaView className="bg-background flex-1">
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#141116" }}>
       <Stack.Screen options={{ title: trip.name }} />
-      <ScrollView className="flex-1 px-4 pt-4">
-        {/* Trip header */}
-        <View className="mb-6">
-          <View className="mb-2 flex-row items-center gap-3">
-            <Text className="text-foreground text-2xl font-bold">
-              {trip.name}
-            </Text>
-            <View
-              className={`rounded-full px-2 py-0.5 ${STATUS_COLORS[trip.status] ?? "bg-gray-400"}`}
-            >
-              <Text className="text-xs font-medium capitalize text-white">
-                {trip.status}
-              </Text>
-            </View>
-          </View>
-
-          {trip.destinationName && (
-            <Text className="text-muted-foreground mb-1 text-base">
-              {trip.destinationName}
-            </Text>
-          )}
-
-          {(trip.startDate || trip.endDate) && (
-            <Text className="text-muted-foreground text-sm">
-              {formatDate(trip.startDate)}
-              {trip.startDate && trip.endDate ? " - " : ""}
-              {formatDate(trip.endDate)}
-            </Text>
-          )}
-        </View>
-
-        {/* Mode badge for road trips */}
-        {(trip as any).tripMode === "roadtrip" && (
-          <View className="mb-4 flex-row items-center gap-2">
-            <View className="rounded bg-orange-500/20 px-2 py-1">
-              <Text className="text-xs font-bold text-orange-400">
-                ROAD TRIP
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Tab navigation */}
-        <View className="flex-row gap-3">
-          {((trip as any).tripMode === "roadtrip"
-            ? ROAD_TRIP_TABS
-            : GROUP_TABS
-          ).map((tab) => (
-            <Pressable
-              key={tab.key}
-              onPress={() =>
-                router.push({
-                  pathname: `/trip/[tripId]/${tab.path}` as any,
-                  params: { tripId: tripId ?? "" },
-                })
-              }
-              className="bg-primary flex-1 items-center rounded-lg px-3 py-4"
-              style={{ minHeight: 56 }}
-            >
-              <Text className="text-primary-foreground font-semibold">
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+      {isRoadTrip ? (
+        <RoadTripDetail trip={trip} tripId={tripId ?? ""} />
+      ) : (
+        <GroupTripDetail trip={trip} tripId={tripId ?? ""} />
+      )}
     </SafeAreaView>
   );
 }

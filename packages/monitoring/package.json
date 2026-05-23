@@ -26,13 +26,13 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:^undefined",
+    "@gmacko/config": "workspace:*",
     "@sentry/nextjs": "^10.53.1",
     "@sentry/react-native": "^8.11.1"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:^undefined",
+    "@gmacko/tsconfig": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   },

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "@gmacko/db";
+import { and, asc, desc, eq, inArray } from "@gmacko/db";
 import {
   expenses,
   lineItemClaims,
@@ -201,15 +201,16 @@ export const expensesRouter = {
         typeof lineItems.$inferSelect
       >;
 
-      const claims = (await ctx.db
-        .select()
-        .from(lineItemClaims)
-        .where(
-          // Claim rows for any of this expense's line items
-          items.length > 0
-            ? eq(lineItems.expenseId, expense.id)
-            : eq(lineItemClaims.id, "__never__"),
-        )) as Array<typeof lineItemClaims.$inferSelect>;
+      const itemIds = items.map((i) => i.id);
+      const claims =
+        itemIds.length > 0
+          ? ((await ctx.db
+              .select()
+              .from(lineItemClaims)
+              .where(inArray(lineItemClaims.lineItemId, itemIds))) as Array<
+              typeof lineItemClaims.$inferSelect
+            >)
+          : [];
 
       // Build line-item-to-claimants map
       const claimantsByLineItem = new Map<string, string[]>();
@@ -461,6 +462,75 @@ export const expensesRouter = {
           lineTotalCents: input.lineTotalCents,
           sortOrder: input.sortOrder,
         })
+        .returning()) as Array<typeof lineItems.$inferSelect>;
+
+      return created;
+    }),
+
+  addLineItems: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        expenseId: z.string().min(1),
+        items: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(200),
+              quantity: z.number().positive().default(1),
+              unitPriceCents: z.number().int().nonnegative(),
+              lineTotalCents: z.number().int().nonnegative(),
+              sortOrder: z.number().int().nonnegative().default(0),
+            }),
+          )
+          .min(1)
+          .max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [expense] = (await ctx.db
+        .select()
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.id, input.expenseId),
+            eq(expenses.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<typeof expenses.$inferSelect>;
+
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found.",
+        });
+      }
+
+      if (expense.status !== "draft") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Line items can only be added to draft expenses.",
+        });
+      }
+
+      requireOrganizerOrSelf(
+        ctx.tripRole,
+        expense.payerUserId,
+        ctx.session.user.id,
+      );
+
+      const created = (await ctx.db
+        .insert(lineItems)
+        .values(
+          input.items.map((item) => ({
+            expenseId: input.expenseId,
+            name: item.name,
+            quantity: String(item.quantity),
+            unitPriceCents: item.unitPriceCents,
+            lineTotalCents: item.lineTotalCents,
+            sortOrder: item.sortOrder,
+          })),
+        )
         .returning()) as Array<typeof lineItems.$inferSelect>;
 
       return created;

@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { Stack, useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  DevSettings,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -15,18 +17,43 @@ import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-const STATUS_COLORS: Record<string, string> = {
-  planning: "bg-yellow-500",
-  confirmed: "bg-blue-500",
-  active: "bg-green-500",
-  completed: "bg-gray-500",
-};
-
 function formatDate(value: string | null) {
   if (!value) return "";
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
     new Date(value),
   );
+}
+
+function useDevAutoLogin() {
+  useEffect(() => {
+    if (!__DEV__) return;
+    void (async () => {
+      let changed = false;
+
+      const existing = await SecureStore.getItemAsync("expo_cookie");
+      if (!existing?.includes("nHwwBLRgZE4MQRsbm20yPgv6e9puGpb2")) {
+        const token =
+          "nHwwBLRgZE4MQRsbm20yPgv6e9puGpb2.0PJnRaPtejB3cPYGSnREzkpJuVakXQcbKyhxhSOk1M8=";
+        const expires = new Date(Date.now() + 604800 * 1000).toISOString();
+        const cookieData = JSON.stringify({
+          "__Secure-better-auth.session_token": { value: token, expires },
+        });
+        await SecureStore.setItemAsync("expo_cookie", cookieData);
+        changed = true;
+      }
+
+      const wsId = SecureStore.getItem("active_workspace_id");
+      if (wsId !== "c0e43b67-ba9f-4542-be41-42ee9232687d") {
+        SecureStore.setItem(
+          "active_workspace_id",
+          "c0e43b67-ba9f-4542-be41-42ee9232687d",
+        );
+        changed = true;
+      }
+
+      if (changed) DevSettings.reload();
+    })();
+  }, []);
 }
 
 function SignIn() {
@@ -55,7 +82,7 @@ function SignIn() {
         <Text className="text-foreground mb-2 text-2xl font-bold">
           Check your email
         </Text>
-        <Text className="text-muted-foreground mb-6 text-center">
+        <Text style={{ color: "#8c8691" }} className=" mb-6 text-center">
           We sent a magic link to {email}. Tap the link in your email to sign
           in.
         </Text>
@@ -75,9 +102,9 @@ function SignIn() {
   return (
     <View className="flex-1 items-center justify-center px-6">
       <Text className="text-foreground mb-2 text-3xl font-bold">
-        Trip Planner
+        SORTIE DEV
       </Text>
-      <Text className="text-muted-foreground mb-8 text-center">
+      <Text style={{ color: "#8c8691" }} className=" mb-8 text-center">
         Sign in with your email to get started
       </Text>
 
@@ -112,9 +139,9 @@ function SignIn() {
 }
 
 function TripList() {
-  const router = useRouter();
+  "use no memo";
   const workspaceId = getActiveWorkspaceId();
-
+  const router = useRouter();
   const { data: trips, isLoading } = useQuery(
     trpc.trips.list.queryOptions({
       workspaceId: workspaceId ?? "",
@@ -123,101 +150,103 @@ function TripList() {
 
   if (!workspaceId) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-muted-foreground text-center">
-          No workspace selected. Please set up your workspace in settings.
+      <View
+        style={{ alignItems: "center", justifyContent: "center", padding: 24 }}
+      >
+        <Text style={{ color: "#8c8691", textAlign: "center" }}>
+          No workspace selected.
         </Text>
-        <Link href="/settings" asChild>
-          <Pressable className="bg-primary mt-4 rounded-md px-4 py-2">
-            <Text className="text-primary-foreground font-medium">
-              Go to Settings
-            </Text>
-          </Pressable>
-        </Link>
+      </View>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View style={{ padding: 40, alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!trips || trips.length === 0) {
+    return (
+      <View style={{ padding: 16 }}>
+        <Text
+          style={{
+            color: "#f9f7fb",
+            fontSize: 24,
+            fontWeight: "bold",
+            marginBottom: 16,
+          }}
+        >
+          Your Trips
+        </Text>
+        <Text style={{ color: "#8c8691", textAlign: "center", marginTop: 40 }}>
+          No trips yet
+        </Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 px-4 pt-4">
-      <View className="mb-4 flex-row items-center justify-between">
-        <Text className="text-foreground text-2xl font-bold">Your Trips</Text>
-        <View className="flex-row gap-2">
-          <Link href="/settings" asChild>
-            <Pressable className="border-border rounded-md border px-3 py-2">
-              <Text className="text-foreground text-sm">Settings</Text>
-            </Pressable>
-          </Link>
-        </View>
-      </View>
-
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
-        </View>
-      ) : !trips || trips.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-muted-foreground mb-2 text-lg">
-            No trips yet
+    <ScrollView style={{ padding: 16 }}>
+      <Text
+        style={{
+          color: "#f9f7fb",
+          fontSize: 24,
+          fontWeight: "bold",
+          marginBottom: 16,
+        }}
+      >
+        Your Trips
+      </Text>
+      {trips.map((item) => (
+        <Pressable
+          key={item.id}
+          onPress={() =>
+            router.push({
+              pathname: "/trip/[tripId]",
+              params: { tripId: item.id },
+            })
+          }
+          style={{
+            backgroundColor: "#1e1b24",
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: "#2f2a33",
+          }}
+        >
+          <Text style={{ color: "#f9f7fb", fontSize: 18, fontWeight: "600" }}>
+            {item.name}
           </Text>
-          <Text className="text-muted-foreground text-center text-sm">
-            Create your first trip to get started planning.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={trips}
-          keyExtractor={(item) => item.id}
-          ItemSeparatorComponent={() => <View className="h-3" />}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/trip/[tripId]",
-                  params: { tripId: item.id },
-                })
-              }
-              className="border-border bg-card rounded-lg border p-4"
-            >
-              <View className="mb-2 flex-row items-center justify-between">
-                <Text className="text-foreground text-lg font-semibold">
-                  {item.name}
-                </Text>
-                <View
-                  className={`rounded-full px-2 py-0.5 ${STATUS_COLORS[item.status] ?? "bg-gray-400"}`}
-                >
-                  <Text className="text-xs font-medium capitalize text-white">
-                    {item.status}
-                  </Text>
-                </View>
-              </View>
-              {item.destinationName && (
-                <Text className="text-muted-foreground mb-1 text-sm">
-                  {item.destinationName}
-                </Text>
-              )}
-              {(item.startDate || item.endDate) && (
-                <Text className="text-muted-foreground text-xs">
-                  {formatDate(item.startDate)}
-                  {item.startDate && item.endDate ? " - " : ""}
-                  {formatDate(item.endDate)}
-                </Text>
-              )}
-            </Pressable>
+          {item.destinationName && (
+            <Text style={{ color: "#8c8691", fontSize: 14, marginTop: 4 }}>
+              {item.destinationName}
+            </Text>
           )}
-        />
-      )}
-    </View>
+          {(item.startDate || item.endDate) && (
+            <Text style={{ color: "#8c8691", fontSize: 12, marginTop: 4 }}>
+              {formatDate(item.startDate)}
+              {item.startDate && item.endDate ? " - " : ""}
+              {formatDate(item.endDate)}
+            </Text>
+          )}
+        </Pressable>
+      ))}
+    </ScrollView>
   );
 }
 
 export default function Index() {
   const { data: session, isPending } = authClient.useSession();
+  useDevAutoLogin();
 
   if (isPending) {
     return (
       <SafeAreaView className="bg-background flex-1">
-        <Stack.Screen options={{ title: "Trip Planner" }} />
+        <Stack.Screen options={{ title: "Sortie" }} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" />
         </View>
@@ -227,7 +256,7 @@ export default function Index() {
 
   return (
     <SafeAreaView className="bg-background flex-1">
-      <Stack.Screen options={{ title: "Trip Planner" }} />
+      <Stack.Screen options={{ title: "Sortie" }} />
       {session?.user ? <TripList /> : <SignIn />}
     </SafeAreaView>
   );

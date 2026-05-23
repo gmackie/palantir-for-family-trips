@@ -1,0 +1,53 @@
+diff --git a/ios/AppDelegates/EXReactRootViewFactory.mm b/ios/AppDelegates/EXReactRootViewFactory.mm
+index 1111111..2222222 100644
+--- a/ios/AppDelegates/EXReactRootViewFactory.mm
++++ b/ios/AppDelegates/EXReactRootViewFactory.mm
+@@ -24,11 +24,13 @@
+ }
+
+ #if TARGET_OS_IOS || TARGET_OS_TV
++// RN 0.85 changed viewWithModuleName:...devMenuConfiguration: to also require bundleConfiguration:.
++// Use the simpler overload that doesn't require either.
+ - (UIView *)viewWithModuleName:(NSString *)moduleName
+              initialProperties:(nullable NSDictionary *)initialProperties
+                  launchOptions:(nullable NSDictionary *)launchOptions
+-          devMenuConfiguration:(RCTDevMenuConfiguration *)devMenuConfiguration
+ {
++  // devMenuConfiguration parameter removed for RN 0.85 compat
+   if (self.reactDelegate != nil) {
+     return [((id<EXReactDelegateProtocol>)self.reactDelegate) createReactRootViewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions];
+   }
+-  return [super viewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions devMenuConfiguration:devMenuConfiguration];
++  return [super viewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions];
+ }
+
+ - (UIView *)superViewWithModuleName:(NSString *)moduleName
+@@ -42,8 +44,7 @@
+                devMenuConfiguration:(nullable RCTDevMenuConfiguration *)devMenuConfiguration
+ {
+   if (devMenuConfiguration == nil) {
+     devMenuConfiguration = [RCTDevMenuConfiguration defaultConfiguration];
+   }
+
+-  return [super viewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions devMenuConfiguration:devMenuConfiguration];
++  return [super viewWithModuleName:moduleName initialProperties:initialProperties launchOptions:launchOptions];
+ }
+ #else
+diff --git a/ios/AppDelegates/ExpoReactNativeFactory.swift b/ios/AppDelegates/ExpoReactNativeFactory.swift
+index 3333333..4444444 100644
+--- a/ios/AppDelegates/ExpoReactNativeFactory.swift
++++ b/ios/AppDelegates/ExpoReactNativeFactory.swift
+@@ -128,12 +128,10 @@
+ #endif
+     } else {
+ #if os(iOS) || os(tvOS)
++      // Use the simpler overload without devMenuConfiguration for RN 0.85 compat
+       rootView = rootViewFactory.view(
+         withModuleName: moduleName ?? defaultModuleName,
+         initialProperties: initialProps,
+-        launchOptions: launchOptions,
+-        devMenuConfiguration: self.devMenuConfiguration
++        launchOptions: launchOptions
+       )
+ #else
+       rootView = rootViewFactory.view(

@@ -12,6 +12,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { trpc } from "~/utils/api";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
+const C = {
+  bg: "#141116",
+  fg: "#f9f7fb",
+  muted: "#8c8691",
+  card: "#1e1b24",
+  border: "#2f2a33",
+  primary: "#d66daa",
+  primaryFg: "#141116",
+} as const;
+
 function formatCurrency(cents: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -27,11 +37,12 @@ function formatDate(value: Date | string | null) {
 }
 
 const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
-  draft: { bg: "bg-yellow-100", text: "text-yellow-800" },
-  finalized: { bg: "bg-green-100", text: "text-green-800" },
+  draft: { bg: "#fef9c3", text: "#854d0e" },
+  finalized: { bg: "#dcfce7", text: "#166534" },
 };
 
 export default function ExpenseList() {
+  "use no memo";
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const router = useRouter();
   const workspaceId = getActiveWorkspaceId() ?? "";
@@ -44,19 +55,28 @@ export default function ExpenseList() {
   );
 
   return (
-    <SafeAreaView className="bg-background flex-1">
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen options={{ title: "Expenses" }} />
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <ActivityIndicator size="large" />
         </View>
       ) : !expenses || expenses.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-muted-foreground mb-2 text-lg">
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <Text style={{ color: C.muted, fontSize: 18, marginBottom: 8 }}>
             No expenses yet
           </Text>
-          <Text className="text-muted-foreground text-center text-sm">
+          <Text style={{ color: C.muted, fontSize: 14, textAlign: "center" }}>
             Add your first expense to start tracking costs.
           </Text>
         </View>
@@ -65,11 +85,11 @@ export default function ExpenseList() {
           data={expenses}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
-          ItemSeparatorComponent={() => <View className="h-3" />}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           renderItem={({ item }) => {
             const badge = STATUS_BADGE[item.status] ?? {
-              bg: "bg-yellow-100",
-              text: "text-yellow-800",
+              bg: "#fef9c3",
+              text: "#854d0e",
             };
             return (
               <Pressable
@@ -79,28 +99,70 @@ export default function ExpenseList() {
                     params: { tripId: tripId ?? "", expenseId: item.id },
                   })
                 }
-                className="border-border bg-card rounded-lg border p-4"
+                style={{
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  backgroundColor: C.card,
+                  borderRadius: 8,
+                  padding: 16,
+                }}
               >
-                <View className="mb-1 flex-row items-center justify-between">
-                  <Text className="text-foreground text-base font-semibold">
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text
+                    style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}
+                  >
                     {item.merchant}
                   </Text>
-                  <Text className="text-foreground font-mono text-base font-medium">
+                  <Text
+                    style={{
+                      color: C.fg,
+                      fontSize: 16,
+                      fontWeight: "500",
+                      fontFamily: "Menlo",
+                    }}
+                  >
                     {formatCurrency(item.totalCents, item.currency)}
                   </Text>
                 </View>
-                <View className="flex-row items-center gap-2">
-                  <View className={`rounded-full px-2 py-0.5 ${badge.bg}`}>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <View
+                    style={{
+                      backgroundColor: badge.bg,
+                      borderRadius: 999,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                    }}
+                  >
                     <Text
-                      className={`text-xs font-medium capitalize ${badge.text}`}
+                      style={{
+                        color: badge.text,
+                        fontSize: 12,
+                        fontWeight: "500",
+                        textTransform: "capitalize",
+                      }}
                     >
                       {item.status}
                     </Text>
                   </View>
-                  <Text className="text-muted-foreground text-xs">
+                  <Text style={{ color: C.muted, fontSize: 12 }}>
                     {formatDate(item.occurredAt)}
                   </Text>
-                  <Text className="text-muted-foreground text-xs capitalize">
+                  <Text
+                    style={{
+                      color: C.muted,
+                      fontSize: 12,
+                      textTransform: "capitalize",
+                    }}
+                  >
                     {item.category}
                   </Text>
                 </View>
@@ -110,8 +172,15 @@ export default function ExpenseList() {
         />
       )}
 
-      {/* Floating "New expense" button */}
-      <View className="absolute bottom-8 left-0 right-0 items-center">
+      <View
+        style={{
+          position: "absolute",
+          bottom: 32,
+          left: 0,
+          right: 0,
+          alignItems: "center",
+        }}
+      >
         <Pressable
           onPress={() =>
             router.push({
@@ -119,10 +188,15 @@ export default function ExpenseList() {
               params: { tripId: tripId ?? "" },
             })
           }
-          className="bg-primary rounded-full px-6 py-4 shadow-lg"
-          style={{ minHeight: 48 }}
+          style={{
+            backgroundColor: C.primary,
+            borderRadius: 999,
+            paddingHorizontal: 24,
+            paddingVertical: 16,
+            minHeight: 48,
+          }}
         >
-          <Text className="text-primary-foreground font-semibold">
+          <Text style={{ color: C.primaryFg, fontWeight: "600" }}>
             + New Expense
           </Text>
         </Pressable>

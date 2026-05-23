@@ -21,8 +21,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:^undefined",
-    "@gmacko/vitest-config": "workspace:^undefined",
+    "@gmacko/tsconfig": "workspace:*",
+    "@gmacko/vitest-config": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vitest": "^4.1.7"

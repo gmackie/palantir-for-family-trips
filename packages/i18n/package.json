@@ -31,17 +31,17 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:^undefined",
+    "@gmacko/config": "workspace:*",
     "i18next": "^26.2.0",
     "next-intl": "^4.12.0",
     "react-i18next": "^17.0.8"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:^undefined",
+    "@gmacko/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
-    "expo-localization": "~55.0.15",
+    "expo-localization": "~56.0.6",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   },

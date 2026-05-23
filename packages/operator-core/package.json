@@ -29,8 +29,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/api": "workspace:^undefined",
-    "@gmacko/tsconfig": "workspace:^undefined",
+    "@gmacko/api": "workspace:*",
+    "@gmacko/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsup": "^8.5.1",

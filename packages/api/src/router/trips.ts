@@ -883,4 +883,30 @@ export const tripsRouter = {
         workspaceId: invite.workspaceId,
       };
     }),
+  listMembers: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      const members = (await ctx.db
+        .select({
+          userId: tripMembers.userId,
+          displayName: tripMembers.displayName,
+          role: tripMembers.role,
+          colorHex: tripMembers.colorHex,
+        })
+        .from(tripMembers)
+        .where(eq(tripMembers.tripId, ctx.tripId))
+        .orderBy(asc(tripMembers.joinedAt))) as Array<{
+        userId: string;
+        displayName: string | null;
+        role: string;
+        colorHex: string | null;
+      }>;
+
+      return members;
+    }),
 } satisfies TRPCRouterRecord;

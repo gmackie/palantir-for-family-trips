@@ -1,7 +1,7 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 const APP_ENV = process.env.APP_ENV ?? "development";
-const API_URL = process.env.API_URL ?? "http://localhost:3000";
+const API_URL = process.env.API_URL ?? "https://trip.gmac.io";
 const ASSOCIATED_DOMAIN =
   process.env.EXPO_PUBLIC_APP_DOMAIN ?? "change-me.example.com";
 
@@ -55,10 +55,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     [
       "expo-splash-screen",
       {
-        backgroundColor: "#E4E4E7",
+        backgroundColor: "#F0F4F8",
         image: "./assets/icon-light.png",
         dark: {
-          backgroundColor: "#18181B",
+          backgroundColor: "#0D1B2A",
           image: "./assets/icon-dark.png",
         },
       },
@@ -112,7 +112,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       adaptiveIcon: {
         foregroundImage: "./assets/icon-light.png",
-        backgroundColor: "#1F104A",
+        backgroundColor: "#0D1B2A",
       },
     },
     extra: {

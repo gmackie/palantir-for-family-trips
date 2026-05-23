@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -33,7 +35,47 @@ interface OcrResult {
   }>;
 }
 
+interface LineItemDraft {
+  key: string;
+  name: string;
+  quantity: number;
+  priceDollars: string;
+}
+
+const TIP_PRESETS = [
+  { label: "15%", multiplier: 0.15 },
+  { label: "18%", multiplier: 0.18 },
+  { label: "20%", multiplier: 0.2 },
+] as const;
+
+const C = {
+  bg: "#141116",
+  fg: "#f9f7fb",
+  muted: "#8c8691",
+  card: "#1e1b24",
+  border: "#2f2a33",
+  input: "#252128",
+  primary: "#d66daa",
+  primaryFg: "#141116",
+  accent: "#58A6FF",
+  danger: "#F85149",
+} as const;
+
+function centsToDisplay(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+function dollarsToCents(dollars: string): number {
+  const num = Number.parseFloat(dollars);
+  return Number.isNaN(num) ? 0 : Math.round(num * 100);
+}
+
+function makeKey() {
+  return Math.random().toString(36).slice(2);
+}
+
 export default function NewExpense() {
+  "use no memo";
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -41,16 +83,24 @@ export default function NewExpense() {
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
+  const [receiptMeta, setReceiptMeta] = useState<{
+    storageKey: string;
+    mimeType: string;
+    sizeBytes: number;
+  } | null>(null);
 
-  // Form state
   const [merchant, setMerchant] = useState("");
-  const [subtotalCents, setSubtotalCents] = useState("");
-  const [taxCents, setTaxCents] = useState("");
-  const [tipCents, setTipCents] = useState("");
-  const [totalCents, setTotalCents] = useState("");
+  const [subtotalDollars, setSubtotalDollars] = useState("");
+  const [taxDollars, setTaxDollars] = useState("");
+  const [tipDollars, setTipDollars] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const [lineItemDrafts, setLineItemDrafts] = useState<LineItemDraft[]>([]);
 
-  // Get segments for this trip to pick the first one
+  const subtotalCents = dollarsToCents(subtotalDollars);
+  const taxCents = dollarsToCents(taxDollars);
+  const tipCents = dollarsToCents(tipDollars);
+  const totalCents = subtotalCents + taxCents + tipCents;
+
   const { data: segments } = useQuery(
     trpc.trips.listSegments.queryOptions({
       workspaceId,
@@ -60,13 +110,17 @@ export default function NewExpense() {
 
   const createExpense = useMutation(
     trpc.expenses.create.mutationOptions({
-      onSuccess: async () => {
-        await queryClient.invalidateQueries(trpc.expenses.list.queryFilter());
-        router.back();
-      },
-      onError: (err) => {
-        Alert.alert("Error", err.message);
-      },
+      onError: (err) => Alert.alert("Error", err.message),
+    }),
+  );
+
+  const attachReceiptMutation = useMutation(
+    trpc.expenses.attachReceiptImage.mutationOptions({}),
+  );
+
+  const addLineItemsMutation = useMutation(
+    trpc.expenses.addLineItems.mutationOptions({
+      onError: (err) => Alert.alert("Error", `Line items: ${err.message}`),
     }),
   );
 
@@ -132,32 +186,98 @@ export default function NewExpense() {
       });
 
       if (response.ok) {
-        const data = (await response.json()) as OcrResult;
-        setOcrResult(data);
-        // Pre-fill form from OCR
-        if (data.merchant) setMerchant(data.merchant);
-        if (data.subtotalCents != null)
-          setSubtotalCents(String(data.subtotalCents));
-        if (data.taxCents != null) setTaxCents(String(data.taxCents));
-        if (data.tipCents != null) setTipCents(String(data.tipCents));
-        if (data.totalCents != null) setTotalCents(String(data.totalCents));
+        const data = (await response.json()) as {
+          storageKey?: string;
+          mimeType?: string;
+          sizeBytes?: number;
+          ocr?: OcrResult;
+        };
+        if (data.storageKey && data.mimeType && data.sizeBytes) {
+          setReceiptMeta({
+            storageKey: data.storageKey,
+            mimeType: data.mimeType,
+            sizeBytes: data.sizeBytes,
+          });
+        }
+        const ocr = data.ocr;
+        if (ocr) {
+          if (ocr.merchant) setMerchant(ocr.merchant);
+          if (ocr.subtotalCents != null)
+            setSubtotalDollars(centsToDisplay(ocr.subtotalCents));
+          if (ocr.taxCents != null) setTaxDollars(centsToDisplay(ocr.taxCents));
+          if (ocr.lineItems && ocr.lineItems.length > 0) {
+            setLineItemDrafts(
+              ocr.lineItems.map((item) => ({
+                key: makeKey(),
+                name: item.name,
+                quantity: item.quantity,
+                priceDollars: centsToDisplay(item.lineTotalCents),
+              })),
+            );
+          }
+        }
       }
     } catch (err) {
       console.error("Upload failed:", err);
+      Alert.alert(
+        "Upload Error",
+        "Failed to upload receipt. You can still enter details manually.",
+      );
     } finally {
       setUploading(false);
     }
   };
 
-  const parseCents = (value: string) => {
-    const num = Number.parseInt(value, 10);
-    return Number.isNaN(num) ? 0 : num;
-  };
+  const handleTipPreset = useCallback(
+    (index: number) => {
+      if (selectedPreset === index) {
+        setSelectedPreset(null);
+        setTipDollars("");
+        return;
+      }
+      setSelectedPreset(index);
+      const tip = subtotalCents * TIP_PRESETS[index]!.multiplier;
+      setTipDollars((Math.round(tip) / 100).toFixed(2));
+    },
+    [subtotalCents, selectedPreset],
+  );
 
-  const handleSubmit = () => {
+  const updateLineItem = useCallback(
+    (key: string, field: keyof LineItemDraft, value: string | number) => {
+      setLineItemDrafts((prev) =>
+        prev.map((item) =>
+          item.key === key ? { ...item, [field]: value } : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const removeLineItem = useCallback((key: string) => {
+    setLineItemDrafts((prev) => prev.filter((item) => item.key !== key));
+  }, []);
+
+  const addEmptyLineItem = useCallback(() => {
+    setLineItemDrafts((prev) => [
+      ...prev,
+      { key: makeKey(), name: "", quantity: 1, priceDollars: "" },
+    ]);
+  }, []);
+
+  const recalcSubtotalFromItems = useCallback(() => {
+    if (lineItemDrafts.length === 0) return;
+    const sum = lineItemDrafts.reduce(
+      (acc, item) => acc + dollarsToCents(item.priceDollars) * item.quantity,
+      0,
+    );
+    setSubtotalDollars(centsToDisplay(sum));
+    setSelectedPreset(null);
+  }, [lineItemDrafts]);
+
+  const handleSubmit = async () => {
     const segmentId = segments?.[0]?.id;
     if (!segmentId) {
-      Alert.alert("Error", "No trip segment found. Cannot create expense.");
+      Alert.alert("Error", "No trip segment found.");
       return;
     }
     if (!merchant.trim()) {
@@ -165,179 +285,524 @@ export default function NewExpense() {
       return;
     }
 
-    createExpense.mutate({
-      workspaceId,
-      tripId: tripId ?? "",
-      segmentId,
-      merchant: merchant.trim(),
-      occurredAt: new Date().toISOString(),
-      subtotalCents: parseCents(subtotalCents),
-      taxCents: parseCents(taxCents),
-      tipCents: parseCents(tipCents),
-      totalCents: parseCents(totalCents),
-    });
+    try {
+      const created = await createExpense.mutateAsync({
+        workspaceId,
+        tripId: tripId ?? "",
+        segmentId,
+        merchant: merchant.trim(),
+        occurredAt: new Date().toISOString(),
+        subtotalCents,
+        taxCents,
+        tipCents,
+        totalCents,
+      });
+
+      if (receiptMeta && created?.id) {
+        await attachReceiptMutation.mutateAsync({
+          workspaceId,
+          tripId: tripId ?? "",
+          expenseId: created.id,
+          ...receiptMeta,
+        });
+      }
+
+      if (lineItemDrafts.length > 0 && created?.id) {
+        const validItems = lineItemDrafts.filter(
+          (item) => item.name.trim() && dollarsToCents(item.priceDollars) > 0,
+        );
+        if (validItems.length > 0) {
+          await addLineItemsMutation.mutateAsync({
+            workspaceId,
+            tripId: tripId ?? "",
+            expenseId: created.id,
+            items: validItems.map((item, i) => ({
+              name: item.name.trim(),
+              quantity: item.quantity,
+              unitPriceCents: dollarsToCents(item.priceDollars),
+              lineTotalCents: dollarsToCents(item.priceDollars) * item.quantity,
+              sortOrder: i,
+            })),
+          });
+        }
+      }
+
+      await queryClient.invalidateQueries(trpc.expenses.list.queryFilter());
+      router.back();
+    } catch {
+      // errors handled by mutation onError
+    }
   };
 
+  const isPending = createExpense.isPending || addLineItemsMutation.isPending;
+
   return (
-    <SafeAreaView className="bg-background flex-1">
-      <Stack.Screen options={{ title: "New Expense" }} />
-      <ScrollView
-        className="flex-1 px-4 pt-4"
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+      <Stack.Screen
+        options={{
+          title: "New Expense",
+          headerStyle: { backgroundColor: "#0A0C10" },
+          headerTintColor: "#C9D1D9",
+        }}
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-        {/* Receipt photo section */}
-        <View className="mb-6">
-          <Text className="text-foreground mb-3 text-lg font-semibold">
-            Receipt Photo
-          </Text>
-          <View className="flex-row gap-3">
-            <Pressable
-              onPress={() => void handleTakePhoto()}
-              className="bg-primary flex-1 items-center rounded-md px-4 py-3"
-              style={{ minHeight: 48 }}
+        <ScrollView
+          style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Receipt capture */}
+          <View style={{ marginBottom: 20 }}>
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 8,
+              }}
             >
-              <Text className="text-primary-foreground font-medium">
-                Take Photo
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => void handlePickPhoto()}
-              className="border-border flex-1 items-center rounded-md border px-4 py-3"
-              style={{ minHeight: 48 }}
-            >
-              <Text className="text-foreground font-medium">
-                Choose from Library
-              </Text>
-            </Pressable>
+              Receipt
+            </Text>
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <Pressable
+                onPress={() => void handleTakePhoto()}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  backgroundColor: C.primary,
+                  borderRadius: 6,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  minHeight: 48,
+                }}
+              >
+                <Text style={{ color: C.primaryFg, fontWeight: "500" }}>
+                  Camera
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void handlePickPhoto()}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  minHeight: 48,
+                }}
+              >
+                <Text style={{ color: C.fg, fontWeight: "500" }}>Library</Text>
+              </Pressable>
+            </View>
+
+            {uploading && (
+              <View
+                style={{
+                  marginTop: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <ActivityIndicator size="small" color={C.accent} />
+                <Text style={{ color: C.muted, fontSize: 14 }}>
+                  Scanning receipt...
+                </Text>
+              </View>
+            )}
+
+            {photoUri && !uploading && (
+              <Pressable onPress={() => void handleTakePhoto()}>
+                <Image
+                  source={{ uri: photoUri }}
+                  style={{
+                    marginTop: 12,
+                    height: 160,
+                    width: "100%",
+                    borderRadius: 8,
+                  }}
+                  resizeMode="cover"
+                />
+                <Text
+                  style={{
+                    color: C.muted,
+                    fontSize: 12,
+                    textAlign: "center",
+                    marginTop: 4,
+                  }}
+                >
+                  Tap to retake
+                </Text>
+              </Pressable>
+            )}
           </View>
 
-          {uploading && (
-            <View className="mt-3 flex-row items-center gap-2">
-              <ActivityIndicator size="small" />
-              <Text className="text-muted-foreground text-sm">
-                Uploading and scanning receipt...
-              </Text>
-            </View>
-          )}
-
-          {photoUri && (
-            <Image
-              source={{ uri: photoUri }}
-              className="mt-3 h-48 w-full rounded-lg"
-              resizeMode="cover"
-            />
-          )}
-        </View>
-
-        {/* Expense form */}
-        <View className="gap-4">
-          <View>
-            <Text className="text-foreground mb-1 text-sm font-medium">
+          {/* Merchant */}
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 4,
+              }}
+            >
               Merchant
             </Text>
             <TextInput
-              className="border-input bg-background text-foreground rounded-md border px-3 py-3 text-base"
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                backgroundColor: C.input,
+                color: C.fg,
+                borderRadius: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 16,
+              }}
               value={merchant}
               onChangeText={setMerchant}
-              placeholder="Restaurant name, store, etc."
-              placeholderTextColor="#888"
+              placeholder="Restaurant, store, etc."
+              placeholderTextColor="#555"
             />
           </View>
 
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="text-foreground mb-1 text-sm font-medium">
-                Subtotal (cents)
+          {/* Line Items */}
+          <View style={{ marginBottom: 16 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                Line Items
               </Text>
-              <TextInput
-                className="border-input bg-background text-foreground rounded-md border px-3 py-3 font-mono text-base"
-                value={subtotalCents}
-                onChangeText={setSubtotalCents}
-                placeholder="0"
-                placeholderTextColor="#888"
-                keyboardType="numeric"
-              />
-            </View>
-            <View className="flex-1">
-              <Text className="text-foreground mb-1 text-sm font-medium">
-                Tax (cents)
-              </Text>
-              <TextInput
-                className="border-input bg-background text-foreground rounded-md border px-3 py-3 font-mono text-base"
-                value={taxCents}
-                onChangeText={setTaxCents}
-                placeholder="0"
-                placeholderTextColor="#888"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="text-foreground mb-1 text-sm font-medium">
-                Tip (cents)
-              </Text>
-              <TextInput
-                className="border-input bg-background text-foreground rounded-md border px-3 py-3 font-mono text-base"
-                value={tipCents}
-                onChangeText={setTipCents}
-                placeholder="0"
-                placeholderTextColor="#888"
-                keyboardType="numeric"
-              />
-            </View>
-            <View className="flex-1">
-              <Text className="text-foreground mb-1 text-sm font-medium">
-                Total (cents)
-              </Text>
-              <TextInput
-                className="border-input bg-background text-foreground rounded-md border px-3 py-3 font-mono text-base"
-                value={totalCents}
-                onChangeText={setTotalCents}
-                placeholder="0"
-                placeholderTextColor="#888"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          {/* OCR line items preview */}
-          {ocrResult?.lineItems && ocrResult.lineItems.length > 0 && (
-            <View className="border-border rounded-lg border p-3">
-              <Text className="text-foreground mb-2 text-sm font-semibold">
-                Detected Line Items
-              </Text>
-              {ocrResult.lineItems.map((item, i) => (
-                <View
-                  key={`${item.name}-${i}`}
-                  className="mb-1 flex-row items-center justify-between"
-                >
-                  <Text className="text-foreground text-sm">{item.name}</Text>
-                  <Text className="text-muted-foreground font-mono text-sm">
-                    {item.lineTotalCents}c
+              {lineItemDrafts.length > 0 && (
+                <Pressable onPress={recalcSubtotalFromItems}>
+                  <Text style={{ color: C.accent, fontSize: 12 }}>
+                    Recalc Subtotal
                   </Text>
+                </Pressable>
+              )}
+            </View>
+
+            {lineItemDrafts.map((item) => (
+              <View
+                key={item.key}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  backgroundColor: C.card,
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  marginBottom: 8,
+                }}
+              >
+                <TextInput
+                  style={{ flex: 1, color: C.fg, fontSize: 14 }}
+                  value={item.name}
+                  onChangeText={(v) => updateLineItem(item.key, "name", v)}
+                  placeholder="Item name"
+                  placeholderTextColor="#555"
+                />
+                <Text style={{ color: C.muted, fontSize: 14 }}>$</Text>
+                <TextInput
+                  style={{
+                    width: 80,
+                    color: C.fg,
+                    textAlign: "right",
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    fontSize: 14,
+                  }}
+                  value={item.priceDollars}
+                  onChangeText={(v) =>
+                    updateLineItem(item.key, "priceDollars", v)
+                  }
+                  placeholder="0.00"
+                  placeholderTextColor="#555"
+                  keyboardType="decimal-pad"
+                />
+                <Pressable
+                  onPress={() => removeLineItem(item.key)}
+                  style={{
+                    marginLeft: 4,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    minHeight: 32,
+                    minWidth: 32,
+                  }}
+                >
+                  <Text style={{ color: C.danger, fontSize: 18 }}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+
+            <Pressable
+              onPress={addEmptyLineItem}
+              style={{
+                alignItems: "center",
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: C.border,
+                borderStyle: "dashed",
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                minHeight: 44,
+              }}
+            >
+              <Text style={{ color: C.muted, fontSize: 14 }}>+ Add Item</Text>
+            </Pressable>
+          </View>
+
+          {/* Totals */}
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 8,
+              }}
+            >
+              Totals
+            </Text>
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}>
+                  Subtotal
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.input,
+                    borderRadius: 6,
+                    paddingHorizontal: 12,
+                  }}
+                >
+                  <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+                  <TextInput
+                    style={{
+                      flex: 1,
+                      color: C.fg,
+                      paddingVertical: 12,
+                      textAlign: "right",
+                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      fontSize: 16,
+                    }}
+                    value={subtotalDollars}
+                    onChangeText={(v) => {
+                      setSubtotalDollars(v);
+                      setSelectedPreset(null);
+                    }}
+                    placeholder="0.00"
+                    placeholderTextColor="#555"
+                    keyboardType="decimal-pad"
+                  />
                 </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}>
+                  Tax
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.input,
+                    borderRadius: 6,
+                    paddingHorizontal: 12,
+                  }}
+                >
+                  <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+                  <TextInput
+                    style={{
+                      flex: 1,
+                      color: C.fg,
+                      paddingVertical: 12,
+                      textAlign: "right",
+                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      fontSize: 16,
+                    }}
+                    value={taxDollars}
+                    onChangeText={setTaxDollars}
+                    placeholder="0.00"
+                    placeholderTextColor="#555"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Tip picker */}
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 8,
+              }}
+            >
+              Tip
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+              {TIP_PRESETS.map((preset, i) => (
+                <Pressable
+                  key={preset.label}
+                  onPress={() => handleTipPreset(i)}
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    borderRadius: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    minHeight: 44,
+                    ...(selectedPreset === i
+                      ? { backgroundColor: C.primary }
+                      : { borderWidth: 1, borderColor: C.border }),
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontWeight: "500",
+                      color: selectedPreset === i ? C.primaryFg : C.fg,
+                    }}
+                  >
+                    {preset.label}
+                  </Text>
+                </Pressable>
               ))}
             </View>
-          )}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: C.border,
+                backgroundColor: C.input,
+                borderRadius: 6,
+                paddingHorizontal: 12,
+              }}
+            >
+              <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+              <TextInput
+                style={{
+                  flex: 1,
+                  color: C.fg,
+                  paddingVertical: 12,
+                  textAlign: "right",
+                  fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                  fontSize: 16,
+                }}
+                value={tipDollars}
+                onChangeText={(v) => {
+                  setTipDollars(v);
+                  setSelectedPreset(null);
+                }}
+                placeholder="0.00"
+                placeholderTextColor="#555"
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
 
-          <Pressable
-            onPress={handleSubmit}
-            disabled={createExpense.isPending}
-            className="bg-primary mb-8 items-center rounded-md px-4 py-4"
-            style={{ minHeight: 48 }}
+          {/* Total display */}
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: C.border,
+              backgroundColor: C.card,
+              borderRadius: 8,
+              padding: 16,
+              marginBottom: 20,
+            }}
           >
-            {createExpense.isPending ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
+                Total
+              </Text>
+              <Text
+                style={{
+                  color: C.fg,
+                  fontSize: 24,
+                  fontWeight: "bold",
+                  fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                }}
+              >
+                ${centsToDisplay(totalCents)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Submit */}
+          <Pressable
+            onPress={() => void handleSubmit()}
+            disabled={isPending}
+            style={{
+              backgroundColor: C.primary,
+              alignItems: "center",
+              borderRadius: 6,
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+              marginBottom: 40,
+              minHeight: 48,
+              opacity: isPending ? 0.6 : 1,
+            }}
+          >
+            {isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="text-primary-foreground font-semibold">
-                Create Expense
+              <Text
+                style={{ color: C.primaryFg, fontSize: 16, fontWeight: "600" }}
+              >
+                Save Expense
               </Text>
             )}
           </Pressable>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
