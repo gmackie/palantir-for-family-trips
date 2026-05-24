@@ -23,7 +23,7 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "development",
-        "API_URL": "https://trip.gmac.io",
+        "API_URL": "https://sortie.gmac.io",
         "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_DEV}",
         "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_DEV}",
         "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"

@@ -29,6 +29,7 @@
     "@gmacko/i18n": "workspace:*",
     "@gmacko/monitoring": "workspace:*",
     "@legendapp/list": "^2.0.19",
+    "@react-native-community/netinfo": "^12.0.1",
     "@sentry/react-native": "^8.11.1",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "catalog:",
