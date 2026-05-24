@@ -6,9 +6,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import { Stack } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
   Alert,
+  DevSettings,
   Pressable,
   ScrollView,
   Text,
@@ -1030,6 +1032,90 @@ function BillingUsageSection() {
   );
 }
 
+function SignOutSection() {
+  const { data: session } = authClient.useSession();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = () => {
+    Alert.alert("Sign out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: async () => {
+          setSigningOut(true);
+          try {
+            await SecureStore.deleteItemAsync("expo_cookie");
+            await SecureStore.deleteItemAsync("active_workspace_id");
+            await authClient.signOut();
+          } catch {
+            // signOut may fail if session already expired
+          } finally {
+            setSigningOut(false);
+            if (__DEV__) DevSettings.reload();
+          }
+        },
+      },
+    ]);
+  };
+
+  return (
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+        borderRadius: 8,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 18,
+          fontWeight: "600",
+          marginBottom: 4,
+        }}
+      >
+        Signed in as
+      </Text>
+      {session?.user?.name && (
+        <Text style={{ color: C.fg, fontSize: 14, marginBottom: 2 }}>
+          {session.user.name}
+        </Text>
+      )}
+      {session?.user?.email && (
+        <Text style={{ color: C.muted, fontSize: 13, marginBottom: 16 }}>
+          {session.user.email}
+        </Text>
+      )}
+      <Pressable
+        onPress={handleSignOut}
+        disabled={signingOut}
+        style={{
+          borderWidth: 1,
+          borderColor: C.border,
+          borderRadius: 6,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          opacity: signingOut ? 0.5 : 1,
+        }}
+      >
+        <Text
+          style={{
+            color: C.danger,
+            textAlign: "center",
+            fontWeight: "500",
+          }}
+        >
+          {signingOut ? "Signing out..." : "Sign out"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function AccountSection() {
   const { mutate: deleteAccount, isPending } = useMutation(
     trpc.settings.deleteAccount.mutationOptions({
@@ -1126,6 +1212,7 @@ export default function SettingsScreen() {
         >
           Settings
         </Text>
+        <SignOutSection />
         <PreferencesSection />
         <ApiKeysSection />
         <BillingUsageSection />

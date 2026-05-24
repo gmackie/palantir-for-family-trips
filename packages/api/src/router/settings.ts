@@ -698,6 +698,77 @@ export const settingsRouter = {
     return { success: !!deletedUser };
   }),
 
+  joinDefaultWorkspace: protectedProcedure.mutation(async ({ ctx }) => {
+    const existingMembership = await ctx.db.query.workspaceMembership.findFirst(
+      {
+        where: eq(workspaceMembership.userId, ctx.session.user.id),
+        orderBy: (m, { asc }) => [asc(m.createdAt)],
+      },
+    );
+
+    if (existingMembership) {
+      const ws = await ctx.db.query.workspace.findFirst({
+        where: eq(workspace.id, existingMembership.workspaceId),
+      });
+      return {
+        workspaceId: existingMembership.workspaceId,
+        workspaceName: ws?.name ?? null,
+        workspaceSlug: ws?.slug ?? null,
+      };
+    }
+
+    const settings = await ctx.db.query.applicationSettings.findFirst();
+    const defaultWorkspaceId = settings?.initialWorkspaceId;
+
+    if (defaultWorkspaceId) {
+      await ctx.db.insert(workspaceMembership).values({
+        workspaceId: defaultWorkspaceId,
+        userId: ctx.session.user.id,
+        role: "member",
+      });
+      const ws = await ctx.db.query.workspace.findFirst({
+        where: eq(workspace.id, defaultWorkspaceId),
+      });
+      return {
+        workspaceId: defaultWorkspaceId,
+        workspaceName: ws?.name ?? null,
+        workspaceSlug: ws?.slug ?? null,
+      };
+    }
+
+    const firstWorkspace = await ctx.db.query.workspace.findFirst({
+      orderBy: (w, { asc }) => [asc(w.createdAt)],
+    });
+
+    if (firstWorkspace) {
+      await ctx.db.insert(workspaceMembership).values({
+        workspaceId: firstWorkspace.id,
+        userId: ctx.session.user.id,
+        role: "member",
+      });
+      return {
+        workspaceId: firstWorkspace.id,
+        workspaceName: firstWorkspace.name,
+        workspaceSlug: firstWorkspace.slug,
+      };
+    }
+
+    const { ensurePersonalWorkspace } = await import(
+      "../workspace/ensure-personal"
+    );
+    const created = await ensurePersonalWorkspace({
+      userId: ctx.session.user.id,
+      userName: ctx.session.user.name ?? "",
+      userEmail: ctx.session.user.email ?? "",
+      db: ctx.db,
+    });
+    return {
+      workspaceId: created.workspaceId,
+      workspaceName: created.workspaceName,
+      workspaceSlug: created.workspaceSlug,
+    };
+  }),
+
   listMyWorkspaces: protectedProcedure.query(async ({ ctx }) => {
     const memberships = await ctx.db
       .select({
