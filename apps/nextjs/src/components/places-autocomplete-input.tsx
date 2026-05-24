@@ -107,7 +107,7 @@ export function PlacesAutocompleteInput({
         defaultValue={defaultValue}
         placeholder={placeholder}
         autoComplete="off"
-        className="h-9 w-full rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 text-sm text-[#C9D1D9] placeholder-[#484F58] outline-none focus:border-[#58A6FF]"
+        className="h-11 w-full rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 text-sm text-[#C9D1D9] placeholder-[#484F58] outline-none focus:border-[#58A6FF]"
       />
       <input
         ref={latRef}

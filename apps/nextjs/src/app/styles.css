@@ -23,8 +23,14 @@
   * {
     @apply border-border;
   }
+  :root {
+    color-scheme: dark;
+  }
   body {
     letter-spacing: var(--tracking-normal);
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
   }
 }
 

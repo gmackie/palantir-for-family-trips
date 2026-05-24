@@ -55,7 +55,7 @@ export default async function TripsPage() {
           </div>
           <Link
             href="/trips/new"
-            className="inline-flex h-9 items-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 px-5 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20"
+            className="inline-flex h-11 items-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 px-5 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20"
           >
             Create Trip
           </Link>
@@ -72,7 +72,7 @@ export default async function TripsPage() {
             <div className="mt-6">
               <Link
                 href="/trips/new"
-                className="inline-flex h-9 items-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 px-5 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20"
+                className="inline-flex h-11 items-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 px-5 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20"
               >
                 Create your first trip
               </Link>
