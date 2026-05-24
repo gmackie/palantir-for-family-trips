@@ -130,7 +130,7 @@ export function TripDashboard(props: {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0A0C10] text-[#C9D1D9]">
+    <div className="flex min-h-screen flex-col text-[#C9D1D9]">
       {/* ── Top bar ── */}
       <header className="flex items-center gap-4 border-b border-[#21262D] px-4 py-2">
         <Link

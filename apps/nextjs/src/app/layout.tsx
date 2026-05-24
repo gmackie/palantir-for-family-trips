@@ -1,5 +1,5 @@
 import { cn } from "@gmacko/ui";
-import { ThemeProvider, ThemeToggle } from "@gmacko/ui/theme";
+import { ThemeProvider } from "@gmacko/ui/theme";
 import { Toaster } from "@gmacko/ui/toast";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -14,28 +14,23 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   ),
-  title: "Gmacko App",
+  title: "Sortie",
   description:
-    "A SaaS-first template with public launch controls, workspace onboarding, and optional product layers.",
+    "Plan together. Split everything. Group trip coordination with shared itineraries, receipt OCR, and real-time settlement.",
   openGraph: {
-    title: "Gmacko App",
+    title: "Sortie",
     description:
-      "A SaaS-first template with public launch controls, workspace onboarding, and optional product layers.",
+      "Plan together. Split everything. Group trip coordination with shared itineraries, receipt OCR, and real-time settlement.",
     url: env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-    siteName: "Gmacko App",
+    siteName: "Sortie",
   },
   twitter: {
     card: "summary_large_image",
-    site: "@jullerino",
-    creator: "@jullerino",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
+  themeColor: "#0A0C10",
 };
 
 const geistSans = Geist({
@@ -49,7 +44,14 @@ const geistMono = Geist_Mono({
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `localStorage.setItem("theme-mode","dark");document.documentElement.className="dark"`,
+          }}
+        />
+      </head>
       <body
         className={cn(
           "bg-background text-foreground min-h-screen font-sans antialiased",
@@ -61,9 +63,6 @@ export default function RootLayout(props: { children: React.ReactNode }) {
           <Providers>
             <TRPCReactProvider>{props.children}</TRPCReactProvider>
           </Providers>
-          <div className="absolute right-4 bottom-4">
-            <ThemeToggle />
-          </div>
           <Toaster />
         </ThemeProvider>
       </body>

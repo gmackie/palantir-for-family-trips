@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
 import { Label } from "@gmacko/ui/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTransition } from "react";
@@ -25,12 +24,6 @@ export function PreferencesSection() {
       },
     }),
   );
-
-  const handleThemeChange = (theme: "light" | "dark" | "system") => {
-    startTransition(() => {
-      updatePreferences.mutate({ theme });
-    });
-  };
 
   const handleNotificationToggle = (type: "email" | "push") => {
     if (!preferences) return;
@@ -65,23 +58,6 @@ export function PreferencesSection() {
       <h2 className="mb-4 text-xl font-semibold">Preferences</h2>
 
       <div className="space-y-6">
-        <div>
-          <Label className="mb-2 block">Theme</Label>
-          <div className="flex gap-2">
-            {(["light", "dark", "system"] as const).map((theme) => (
-              <Button
-                key={theme}
-                variant={preferences?.theme === theme ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleThemeChange(theme)}
-                disabled={isPending}
-              >
-                {theme.charAt(0).toUpperCase() + theme.slice(1)}
-              </Button>
-            ))}
-          </div>
-        </div>
-
         <div>
           <Label className="mb-2 block">Notifications</Label>
           <div className="flex flex-col gap-2">

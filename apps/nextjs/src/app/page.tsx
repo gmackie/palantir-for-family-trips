@@ -11,7 +11,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[#0A0C10] px-6">
+    <main className="flex min-h-screen flex-col items-center justify-center px-6">
       {/* Hero */}
       <div className="max-w-2xl space-y-6 text-center">
         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">

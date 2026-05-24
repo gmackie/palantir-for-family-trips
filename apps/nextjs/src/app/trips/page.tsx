@@ -41,7 +41,7 @@ export default async function TripsPage() {
   });
 
   return (
-    <main className="min-h-screen bg-[#0A0C10] px-4 py-10 sm:px-8">
+    <main className="min-h-screen px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

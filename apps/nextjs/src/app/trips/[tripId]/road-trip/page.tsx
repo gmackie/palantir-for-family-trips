@@ -212,7 +212,7 @@ export default async function RoadTripPage(props: {
 
   if (!hasRoute) {
     return (
-      <div className="flex h-screen flex-col bg-[#0A0C10]">
+      <div className="flex h-screen flex-col bg-background">
         <RoutePlannerForm
           tripId={trip.id}
           workspaceId={workspace.id}

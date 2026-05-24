@@ -108,7 +108,7 @@ export default async function TripDashboardPage(props: {
   const allSettled = (settlementSummary as any)?.allSettled ?? false;
 
   return (
-    <main className="min-h-screen bg-[#0A0C10] text-[#C9D1D9] font-mono">
+    <main className="min-h-screen text-[#C9D1D9] font-mono">
       {/* Top bar */}
       <header className="border-b border-[#21262D] px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">

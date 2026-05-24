@@ -318,7 +318,7 @@ export function RoadTripDashboard(props: {
     }));
 
   return (
-    <div className="flex h-screen flex-col bg-[#0A0C10] text-[#C9D1D9]">
+    <div className="flex h-screen flex-col text-[#C9D1D9]">
       {/* ── Header bar ── */}
       <header className="flex shrink-0 items-center gap-4 border-b border-[#21262D] px-4 py-2">
         <Link

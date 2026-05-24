@@ -53,7 +53,7 @@ export default async function SignInPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[#0A0C10] px-4">
+    <main className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6 rounded-[4px] border border-[#21262D] bg-[#161B22] p-6">
         <div className="space-y-2">
           <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
