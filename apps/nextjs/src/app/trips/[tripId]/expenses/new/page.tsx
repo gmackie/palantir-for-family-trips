@@ -5,7 +5,7 @@ import { Field, FieldContent, FieldGroup, FieldLabel } from "@gmacko/ui/field";
 import { Input } from "@gmacko/ui/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
@@ -33,8 +33,6 @@ export default function NewExpensePage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-
   // Fetch workspace context to get workspaceId
   const workspaceQuery = useQuery(
     trpc.settings.getWorkspaceContext.queryOptions(),
@@ -50,9 +48,11 @@ export default function NewExpensePage() {
   );
 
   const createExpense = useMutation(trpc.expenses.create.mutationOptions());
-
-  const attachReceipt = useMutation(
-    trpc.expenses.attachReceiptImage.mutationOptions(),
+  const addLineItems = useMutation(
+    trpc.expenses.addLineItems.mutationOptions(),
+  );
+  const updateExpense = useMutation(
+    trpc.expenses.updateDraft.mutationOptions(),
   );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -94,7 +94,6 @@ export default function NewExpensePage() {
         totalCents,
       });
 
-      // Upload receipt if present
       if (receiptFile && expense.id) {
         try {
           const uploadForm = new FormData();
@@ -110,21 +109,56 @@ export default function NewExpensePage() {
 
           if (uploadRes.ok) {
             const uploadData = (await uploadRes.json()) as {
-              storageKey: string;
-              mimeType: string;
-              sizeBytes: number;
+              ocr?: {
+                sanitized: {
+                  merchant: string;
+                  subtotalCents: number;
+                  taxCents: number;
+                  tipCents: number;
+                  totalCents: number;
+                  lineItems: Array<{
+                    name: string;
+                    quantity: number;
+                    unitPriceCents: number;
+                    lineTotalCents: number;
+                  }>;
+                };
+                confidence: number;
+                warnings: string[];
+              } | null;
+              ocrError?: string;
             };
-            await attachReceipt.mutateAsync({
-              workspaceId,
-              tripId,
-              expenseId: expense.id,
-              storageKey: uploadData.storageKey,
-              mimeType: uploadData.mimeType,
-              sizeBytes: uploadData.sizeBytes,
-            });
+
+            if (uploadData.ocr?.sanitized.lineItems.length) {
+              const ocr = uploadData.ocr.sanitized;
+              await addLineItems.mutateAsync({
+                workspaceId,
+                tripId,
+                expenseId: expense.id,
+                items: ocr.lineItems.map((item, i) => ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  unitPriceCents: item.unitPriceCents,
+                  lineTotalCents: item.lineTotalCents,
+                  sortOrder: i,
+                })),
+              });
+
+              if (uploadData.ocr.confidence >= 0.8) {
+                await updateExpense.mutateAsync({
+                  workspaceId,
+                  tripId,
+                  expenseId: expense.id,
+                  subtotalCents: ocr.subtotalCents,
+                  taxCents: ocr.taxCents,
+                  tipCents: ocr.tipCents,
+                  totalCents: ocr.totalCents,
+                });
+              }
+            }
           }
         } catch {
-          // Receipt upload is optional; don't block navigation
+          // Receipt upload/OCR is optional; don't block navigation
         }
       }
 
@@ -158,7 +192,6 @@ export default function NewExpensePage() {
       )}
 
       <form
-        ref={formRef}
         onSubmit={handleSubmit}
         className="bg-card mt-8 rounded-3xl border p-6 shadow-sm"
       >
@@ -196,7 +229,7 @@ export default function NewExpensePage() {
                   id="category"
                   name="category"
                   defaultValue="general"
-                  className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                  className="border-input bg-background h-11 w-full rounded-md border px-3 text-sm"
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat.value} value={cat.value}>
@@ -220,7 +253,7 @@ export default function NewExpensePage() {
                   id="segmentId"
                   name="segmentId"
                   required
-                  className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                  className="border-input bg-background h-11 w-full rounded-md border px-3 text-sm"
                 >
                   {segments.map((seg) => (
                     <option key={seg.id} value={seg.id}>

@@ -43,9 +43,11 @@ export class GeminiReceiptExtractor {
   private readonly modelName: string;
 
   constructor(options: { apiKey?: string; model?: string } = {}) {
-    const apiKey = options.apiKey ?? process.env.GOOGLE_AI_API_KEY;
-    if (!apiKey)
-      throw new Error("GOOGLE_AI_API_KEY is required for Gemini OCR");
+    const apiKey =
+      options.apiKey ??
+      process.env.GEMINI_API_KEY ??
+      process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is required for Gemini OCR");
     this.client = new GoogleGenerativeAI(apiKey);
     this.modelName = options.model ?? "gemini-2.5-flash-lite";
   }
