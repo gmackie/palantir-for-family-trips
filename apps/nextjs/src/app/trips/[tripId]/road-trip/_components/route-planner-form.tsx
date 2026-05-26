@@ -114,7 +114,7 @@ export function RoutePlannerForm(props: {
               type="date"
               required
               defaultValue={props.defaultStartDate ?? "2026-06-05"}
-              className="h-9 w-full rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 text-sm text-[#C9D1D9] outline-none focus:border-[#58A6FF] [color-scheme:dark]"
+              className="h-11 w-full rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 text-sm text-[#C9D1D9] outline-none focus:border-[#58A6FF] [color-scheme:dark]"
             />
           </div>
 
@@ -123,7 +123,7 @@ export function RoutePlannerForm(props: {
           <button
             type="submit"
             disabled={isPending}
-            className="h-9 w-full rounded-[2px] bg-[#58A6FF] text-sm font-semibold text-[#0A0C10] transition-colors hover:bg-[#79B8FF] disabled:opacity-50"
+            className="h-11 w-full rounded-[2px] bg-[#58A6FF] text-sm font-semibold text-[#0A0C10] transition-colors hover:bg-[#79B8FF] disabled:opacity-50"
           >
             {isPending ? "Planning route..." : "Plan Route"}
           </button>
@@ -133,7 +133,7 @@ export function RoutePlannerForm(props: {
           type="button"
           onClick={handleDelete}
           disabled={isDeleting}
-          className="h-9 w-full rounded-[2px] border border-[#F85149]/30 text-sm font-semibold text-[#F85149] transition-colors hover:bg-[#F85149]/10 disabled:opacity-50"
+          className="h-11 w-full rounded-[2px] border border-[#F85149]/30 text-sm font-semibold text-[#F85149] transition-colors hover:bg-[#F85149]/10 disabled:opacity-50"
         >
           {isDeleting ? "Deleting..." : "Delete Trip"}
         </button>

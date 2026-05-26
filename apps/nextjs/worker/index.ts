@@ -42,9 +42,16 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+interface ScheduledEvent {
+  cron: string;
+  scheduledTime: number;
+}
+
 const imageConfig: ImageConfig = {};
 
 export default {
+  async scheduled(_event: ScheduledEvent, _env: Env, _ctx: ExecutionContext) {},
+
   async fetch(
     request: Request,
     env: Env,

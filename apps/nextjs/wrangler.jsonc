@@ -3,6 +3,8 @@
   "name": "sortie-gmac-io",
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat"],
+  "placement": { "mode": "smart" },
+  "triggers": { "crons": ["*/5 * * * *"] },
   "build": {
     "command": "pnpm prebuild:vinext && VINEXT=1 pnpm with-env vinext build",
     "cwd": ".",

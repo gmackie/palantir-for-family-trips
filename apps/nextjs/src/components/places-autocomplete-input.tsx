@@ -3,7 +3,6 @@
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 import { useEffect, useRef } from "react";
 
-/** Shared flag so setOptions is only called once per page load. */
 declare global {
   // eslint-disable-next-line no-var
   var __placesLoaderConfigured: boolean | undefined;
@@ -30,15 +29,15 @@ export function PlacesAutocompleteInput({
   required,
   apiKey,
 }: PlacesAutocompleteInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const latRef = useRef<HTMLInputElement>(null);
   const lngRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
-    if (!apiKey || !inputRef.current) return;
+    if (!apiKey || !containerRef.current) return;
 
     let cancelled = false;
+    let element: google.maps.places.PlaceAutocompleteElement | null = null;
 
     async function init() {
       try {
@@ -47,37 +46,33 @@ export function PlacesAutocompleteInput({
           globalThis.__placesLoaderConfigured = true;
         }
 
-        const placesLib = (await importLibrary(
-          "places",
-        )) as google.maps.PlacesLibrary;
+        await importLibrary("places");
+        if (cancelled || !containerRef.current) return;
 
-        if (cancelled || !inputRef.current) return;
-
-        const autocomplete = new placesLib.Autocomplete(inputRef.current, {
-          types: ["(cities)"],
-          fields: ["formatted_address", "geometry", "name"],
+        element = new google.maps.places.PlaceAutocompleteElement({
+          includedPrimaryTypes: ["(cities)"],
         });
 
-        autocompleteRef.current = autocomplete;
+        element.name = name;
+        element.placeholder = placeholder ?? "";
+        element.noInputIcon = true;
+        if (defaultValue) element.value = defaultValue;
 
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (!place.geometry?.location) return;
+        containerRef.current.appendChild(element);
 
-          const lat = place.geometry.location.lat();
-          const lng = place.geometry.location.lng();
+        element.addEventListener("gmp-select", async (e) => {
+          const place = e.placePrediction.toPlace();
+          await place.fetchFields({
+            fields: ["formattedAddress", "location"],
+          });
 
-          if (latRef.current) latRef.current.value = String(lat);
-          if (lngRef.current) lngRef.current.value = String(lng);
-
-          // Update visible input with the formatted address
-          if (inputRef.current) {
-            inputRef.current.value =
-              place.formatted_address ?? place.name ?? "";
-          }
+          if (latRef.current && place.location)
+            latRef.current.value = String(place.location.lat());
+          if (lngRef.current && place.location)
+            lngRef.current.value = String(place.location.lng());
         });
       } catch {
-        // Silently fail -- the input still works as a plain text field
+        // Silently fail — container stays empty, hidden inputs still work
       }
     }
 
@@ -85,30 +80,30 @@ export function PlacesAutocompleteInput({
 
     return () => {
       cancelled = true;
+      element?.remove();
     };
-  }, [apiKey]);
+  }, [apiKey, name, placeholder, defaultValue]);
 
   return (
     <div className="space-y-1">
       {label && (
-        <label
-          htmlFor={name}
-          className="text-[10px] font-black uppercase tracking-[0.15em] text-[#8B949E]"
-        >
+        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[#8B949E]">
           {label}
         </label>
       )}
-      <input
-        ref={inputRef}
-        id={name}
-        name={name}
-        type="text"
-        required={required}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-        autoComplete="off"
-        className="h-11 w-full rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 text-sm text-[#C9D1D9] placeholder-[#484F58] outline-none focus:border-[#58A6FF]"
-      />
+      <div ref={containerRef} className="gmp-autocomplete-container">
+        {/* Fallback for SSR / before JS loads */}
+        <noscript>
+          <input
+            name={name}
+            type="text"
+            defaultValue={defaultValue}
+            placeholder={placeholder}
+            required={required}
+            className="h-11 w-full rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 text-sm text-[#C9D1D9] placeholder-[#484F58] outline-none focus:border-[#58A6FF]"
+          />
+        </noscript>
+      </div>
       <input
         ref={latRef}
         type="hidden"
