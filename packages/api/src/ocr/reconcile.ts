@@ -63,14 +63,16 @@ export function reconcileReceipt(
   const merchantResult = stripCardDigits(extraction.merchant);
   if (merchantResult.hadPII) piiScrubbed = true;
 
-  const sanitizedLineItems = extraction.lineItems.map((item) => {
-    const nameResult = stripCardDigits(item.name);
-    if (nameResult.hadPII) piiScrubbed = true;
-    return {
-      ...item,
-      name: nameResult.cleaned,
-    };
-  });
+  const sanitizedLineItems = extraction.lineItems
+    .filter((item) => item.lineTotalCents > 0 || item.unitPriceCents > 0)
+    .map((item) => {
+      const nameResult = stripCardDigits(item.name);
+      if (nameResult.hadPII) piiScrubbed = true;
+      return {
+        ...item,
+        name: nameResult.cleaned,
+      };
+    });
 
   if (piiScrubbed) {
     warnings.push("Card number patterns were redacted from the receipt.");

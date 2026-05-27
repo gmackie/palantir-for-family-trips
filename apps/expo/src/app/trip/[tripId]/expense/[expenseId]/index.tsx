@@ -1,11 +1,11 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -14,25 +14,8 @@ import {
 
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
+import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
-
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  primaryFg: "#141116",
-  green: "#3FB950",
-  greenBg: "rgba(63,185,80,0.2)",
-  yellowBg: "rgba(234,179,8,0.2)",
-  yellow: "#eab308",
-  accent: "#58A6FF",
-  chipBg: "#30363D",
-  chipText: "#C9D1D9",
-  modalBg: "#161B22",
-} as const;
 
 function formatCurrency(cents: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
@@ -55,6 +38,7 @@ export default function ExpenseDetail() {
     tripId: string;
     expenseId: string;
   }>();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const workspaceId = getActiveWorkspaceId() ?? "";
@@ -109,6 +93,16 @@ export default function ExpenseDetail() {
     }),
   );
 
+  const deleteMutation = useMutation(
+    trpc.expenses.delete.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(trpc.expenses.list.queryFilter());
+        router.back();
+      },
+      onError: (err) => Alert.alert("Error", err.message),
+    }),
+  );
+
   const memberName = (userId: string) => {
     const member = members?.find((m) => m.userId === userId);
     return member?.displayName ?? userId.slice(0, 8) + "...";
@@ -131,7 +125,7 @@ export default function ExpenseDetail() {
             headerTintColor: C.fg,
           }}
         />
-        <ActivityIndicator size="large" color={C.accent} />
+        <ActivityIndicator size="large" color={C.info} />
       </View>
     );
   }
@@ -168,8 +162,6 @@ export default function ExpenseDetail() {
   const isOrganizer =
     members?.find((m) => m.userId === currentUserId)?.role === "organizer";
 
-  const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
-
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
@@ -185,8 +177,8 @@ export default function ExpenseDetail() {
           style={{
             borderWidth: 1,
             borderColor: C.border,
-            backgroundColor: C.card,
-            borderRadius: 8,
+            backgroundColor: C.surface,
+            borderRadius: R.md,
             padding: 16,
             marginBottom: 16,
           }}
@@ -211,15 +203,15 @@ export default function ExpenseDetail() {
             </Text>
             <View
               style={{
-                backgroundColor: isFinalized ? C.greenBg : C.yellowBg,
-                borderRadius: 4,
+                backgroundColor: isFinalized ? C.successBg : C.warningBg,
+                borderRadius: R.sm,
                 paddingHorizontal: 8,
                 paddingVertical: 2,
               }}
             >
               <Text
                 style={{
-                  color: isFinalized ? C.green : C.yellow,
+                  color: isFinalized ? C.success : C.warning,
                   fontSize: 12,
                   fontWeight: "600",
                   textTransform: "uppercase",
@@ -234,7 +226,7 @@ export default function ExpenseDetail() {
             style={{
               color: C.muted,
               fontSize: 14,
-              textTransform: "capitalize",
+              textTransform: "uppercase",
               marginBottom: 4,
             }}
           >
@@ -309,9 +301,9 @@ export default function ExpenseDetail() {
             }}
             disabled={finalizeMutation.isPending}
             style={{
-              backgroundColor: C.green,
+              backgroundColor: C.success,
               opacity: finalizeMutation.isPending ? 0.6 : 1,
-              borderRadius: 6,
+              borderRadius: R.md,
               alignItems: "center",
               paddingHorizontal: 16,
               paddingVertical: 12,
@@ -320,9 +312,9 @@ export default function ExpenseDetail() {
             }}
           >
             {finalizeMutation.isPending ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={C.white} />
             ) : (
-              <Text style={{ color: "#fff", fontWeight: "600" }}>
+              <Text style={{ color: C.white, fontWeight: "600" }}>
                 Finalize for Claiming
               </Text>
             )}
@@ -353,8 +345,8 @@ export default function ExpenseDetail() {
                   style={{
                     borderWidth: 1,
                     borderColor: C.border,
-                    backgroundColor: C.card,
-                    borderRadius: 8,
+                    backgroundColor: C.surface,
+                    borderRadius: R.md,
                     padding: 12,
                     marginBottom: 8,
                   }}
@@ -410,19 +402,19 @@ export default function ExpenseDetail() {
                         }
                         style={{
                           marginLeft: 12,
-                          borderRadius: 6,
+                          borderRadius: R.md,
                           paddingHorizontal: 16,
                           paddingVertical: 8,
                           minHeight: 44,
                           minWidth: 80,
                           justifyContent: "center",
                           alignItems: "center",
-                          backgroundColor: claimed ? C.green : C.chipBg,
+                          backgroundColor: claimed ? C.success : C.chipBg,
                         }}
                       >
                         <Text
                           style={{
-                            color: "#fff",
+                            color: C.white,
                             fontSize: 14,
                             fontWeight: "500",
                             textAlign: "center",
@@ -448,7 +440,7 @@ export default function ExpenseDetail() {
                           key={uid}
                           style={{
                             backgroundColor: C.chipBg,
-                            borderRadius: 4,
+                            borderRadius: R.sm,
                             paddingHorizontal: 8,
                             paddingVertical: 2,
                           }}
@@ -464,9 +456,13 @@ export default function ExpenseDetail() {
                   {isFinalized && isOrganizer && (
                     <Pressable
                       onPress={() => setAssigningItemId(item.id)}
-                      style={{ marginTop: 8 }}
+                      style={{
+                        marginTop: 4,
+                        minHeight: 44,
+                        justifyContent: "center",
+                      }}
                     >
-                      <Text style={{ color: C.accent, fontSize: 12 }}>
+                      <Text style={{ color: C.info, fontSize: 13 }}>
                         Assign to members...
                       </Text>
                     </Pressable>
@@ -482,8 +478,8 @@ export default function ExpenseDetail() {
             style={{
               borderWidth: 1,
               borderColor: C.border,
-              backgroundColor: C.card,
-              borderRadius: 8,
+              backgroundColor: C.surface,
+              borderRadius: R.md,
               padding: 24,
               alignItems: "center",
               marginBottom: 16,
@@ -501,8 +497,8 @@ export default function ExpenseDetail() {
             style={{
               borderWidth: 1,
               borderColor: C.border,
-              backgroundColor: C.card,
-              borderRadius: 8,
+              backgroundColor: C.surface,
+              borderRadius: R.md,
               padding: 16,
               marginBottom: 32,
             }}
@@ -550,6 +546,43 @@ export default function ExpenseDetail() {
             )}
           </View>
         )}
+
+        {/* Delete */}
+        <Pressable
+          onPress={() =>
+            Alert.alert(
+              "Delete Expense",
+              `Delete "${expense.merchant}"? This cannot be undone.`,
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () =>
+                    deleteMutation.mutate({
+                      workspaceId,
+                      tripId: tripId ?? "",
+                      expenseId: expenseId ?? "",
+                    }),
+                },
+              ],
+            )
+          }
+          disabled={deleteMutation.isPending}
+          style={{
+            borderWidth: 1,
+            borderColor: C.criticalBg,
+            borderRadius: R.md,
+            alignItems: "center",
+            paddingVertical: 12,
+            minHeight: 48,
+            opacity: deleteMutation.isPending ? 0.6 : 1,
+          }}
+        >
+          <Text style={{ color: C.critical, fontSize: 14 }}>
+            Delete Expense
+          </Text>
+        </Pressable>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -638,9 +671,9 @@ function MemberAssignModal({
       >
         <View
           style={{
-            backgroundColor: C.modalBg,
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
+            backgroundColor: C.surface,
+            borderTopLeftRadius: R.md,
+            borderTopRightRadius: R.md,
             paddingHorizontal: 16,
             paddingBottom: 40,
             paddingTop: 20,
@@ -657,17 +690,31 @@ function MemberAssignModal({
             <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
               Assign to Members
             </Text>
-            <Pressable onPress={onClose}>
+            <Pressable
+              onPress={onClose}
+              style={{
+                minHeight: 44,
+                minWidth: 44,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text>
             </Pressable>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-            <Pressable onPress={selectAll}>
-              <Text style={{ color: C.accent, fontSize: 12 }}>Select All</Text>
+          <View style={{ flexDirection: "row", gap: 12, marginBottom: 4 }}>
+            <Pressable
+              onPress={selectAll}
+              style={{ minHeight: 44, justifyContent: "center" }}
+            >
+              <Text style={{ color: C.info, fontSize: 13 }}>Select All</Text>
             </Pressable>
-            <Pressable onPress={selectNone}>
-              <Text style={{ color: C.accent, fontSize: 12 }}>Select None</Text>
+            <Pressable
+              onPress={selectNone}
+              style={{ minHeight: 44, justifyContent: "center" }}
+            >
+              <Text style={{ color: C.info, fontSize: 13 }}>Select None</Text>
             </Pressable>
           </View>
 
@@ -691,23 +738,15 @@ function MemberAssignModal({
                     style={{
                       width: 20,
                       height: 20,
-                      borderRadius: 4,
+                      borderRadius: R.sm,
                       marginRight: 12,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: isSelected ? C.accent : C.chipBg,
+                      backgroundColor: isSelected ? C.info : C.chipBg,
                     }}
                   >
                     {isSelected && (
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "bold",
-                        }}
-                      >
-                        ✓
-                      </Text>
+                      <Ionicons name="checkmark" size={14} color={C.white} />
                     )}
                   </View>
                   <Text style={{ color: C.fg, fontSize: 16, flex: 1 }}>
@@ -729,8 +768,8 @@ function MemberAssignModal({
             onPress={() => onAssign(Array.from(selected))}
             disabled={isPending}
             style={{
-              backgroundColor: C.primary,
-              borderRadius: 6,
+              backgroundColor: C.info,
+              borderRadius: R.md,
               alignItems: "center",
               paddingVertical: 12,
               marginTop: 16,
@@ -739,9 +778,9 @@ function MemberAssignModal({
             }}
           >
             {isPending ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={C.white} />
             ) : (
-              <Text style={{ color: C.primaryFg, fontWeight: "600" }}>
+              <Text style={{ color: C.white, fontWeight: "600" }}>
                 Assign ({selected.size} member
                 {selected.size !== 1 ? "s" : ""})
               </Text>

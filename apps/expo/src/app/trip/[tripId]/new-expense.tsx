@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -17,6 +18,7 @@ import {
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { getBaseUrl } from "~/utils/base-url";
+import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 interface OcrResult {
@@ -46,19 +48,6 @@ const TIP_PRESETS = [
   { label: "20%", multiplier: 0.2 },
 ] as const;
 
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  input: "#252128",
-  primary: "#d66daa",
-  primaryFg: "#141116",
-  accent: "#58A6FF",
-  danger: "#F85149",
-} as const;
-
 function centsToDisplay(cents: number): string {
   return (cents / 100).toFixed(2);
 }
@@ -74,7 +63,10 @@ function makeKey() {
 
 export default function NewExpense() {
   "use no memo";
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { tripId, type } = useLocalSearchParams<{
+    tripId: string;
+    type?: string;
+  }>();
   const router = useRouter();
   const queryClient = useQueryClient();
   const workspaceId = getActiveWorkspaceId() ?? "";
@@ -87,16 +79,19 @@ export default function NewExpense() {
     sizeBytes: number;
   } | null>(null);
 
+  const expenseType = type === "gas" ? "gas" : "regular";
   const [merchant, setMerchant] = useState("");
   const [subtotalDollars, setSubtotalDollars] = useState("");
   const [taxDollars, setTaxDollars] = useState("");
   const [tipDollars, setTipDollars] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [lineItemDrafts, setLineItemDrafts] = useState<LineItemDraft[]>([]);
+  const [gallons, setGallons] = useState("");
+  const [pricePerGallon, setPricePerGallon] = useState("");
 
   const subtotalCents = dollarsToCents(subtotalDollars);
-  const taxCents = dollarsToCents(taxDollars);
-  const tipCents = dollarsToCents(tipDollars);
+  const taxCents = expenseType === "gas" ? 0 : dollarsToCents(taxDollars);
+  const tipCents = expenseType === "gas" ? 0 : dollarsToCents(tipDollars);
   const totalCents = subtotalCents + taxCents + tipCents;
 
   const { data: segments } = useQuery(
@@ -135,6 +130,7 @@ export default function NewExpense() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
       quality: 0.8,
+      exif: false,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -147,6 +143,7 @@ export default function NewExpense() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
+      exif: false,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -158,68 +155,152 @@ export default function NewExpense() {
   const uploadReceipt = async (uri: string) => {
     setUploading(true);
     try {
-      const formData = new FormData();
-      const filename = uri.split("/").pop() ?? "receipt.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
-
-      formData.append("file", {
+      const resized = await ImageManipulator.manipulateAsync(
         uri,
-        name: filename,
-        type,
-      } as unknown as Blob);
+        [{ resize: { width: 1200 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      const finalUri = resized.uri;
+      const filename = "receipt.jpg";
+      const type = "image/jpeg";
 
       const cookies = authClient.getCookie();
-      const headers: Record<string, string> = {
-        "Content-Type": "multipart/form-data",
-      };
-      if (cookies) {
-        headers.Cookie = cookies;
-      }
 
-      const response = await fetch(`${getBaseUrl()}/api/receipts/upload`, {
-        method: "POST",
-        headers,
-        body: formData,
+      const uploadUrl = `${getBaseUrl()}/api/receipts/scan`;
+      console.log(
+        `[upload] POST ${uploadUrl}, cookie=${cookies ? cookies.length + " chars" : "none"}`,
+      );
+
+      const response = await new Promise<{
+        ok: boolean;
+        status: number;
+        text: string;
+      }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", uploadUrl);
+        if (cookies) xhr.setRequestHeader("Cookie", cookies);
+        xhr.onload = () => {
+          console.log(
+            `[upload] status=${xhr.status}, body=${xhr.responseText.substring(0, 200)}`,
+          );
+          resolve({
+            ok: xhr.status >= 200 && xhr.status < 300,
+            status: xhr.status,
+            text: xhr.responseText,
+          });
+        };
+        xhr.onerror = () =>
+          reject(new Error(`XHR network error, status=${xhr.status}`));
+
+        const formData = new FormData();
+        formData.append("file", {
+          uri: finalUri,
+          name: filename,
+          type,
+        } as unknown as Blob);
+        xhr.send(formData);
       });
 
-      if (response.ok) {
-        const data = (await response.json()) as {
-          storageKey?: string;
-          mimeType?: string;
-          sizeBytes?: number;
-          ocr?: OcrResult;
-        };
-        if (data.storageKey && data.mimeType && data.sizeBytes) {
-          setReceiptMeta({
-            storageKey: data.storageKey,
-            mimeType: data.mimeType,
-            sizeBytes: data.sizeBytes,
-          });
-        }
-        const ocr = data.ocr;
-        if (ocr) {
-          if (ocr.merchant) setMerchant(ocr.merchant);
-          if (ocr.subtotalCents != null)
-            setSubtotalDollars(centsToDisplay(ocr.subtotalCents));
-          if (ocr.taxCents != null) setTaxDollars(centsToDisplay(ocr.taxCents));
-          if (ocr.lineItems && ocr.lineItems.length > 0) {
-            setLineItemDrafts(
-              ocr.lineItems.map((item) => ({
-                key: makeKey(),
-                name: item.name,
-                quantity: item.quantity,
-                priceDollars: centsToDisplay(item.lineTotalCents),
-              })),
-            );
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(response.text);
+      } catch {
+        Alert.alert(
+          "Upload Error",
+          `Server returned ${response.status}: ${response.text.substring(0, 200)}`,
+        );
+        return;
+      }
+
+      console.log(
+        `[upload] response: ${JSON.stringify(data).substring(0, 500)}`,
+      );
+
+      if (!response.ok) {
+        Alert.alert(
+          "Upload Error",
+          (data.error as string) ?? `Server returned ${response.status}`,
+        );
+        return;
+      }
+
+      if (data.storageKey && data.mimeType && data.sizeBytes) {
+        setReceiptMeta({
+          storageKey: data.storageKey as string,
+          mimeType: data.mimeType as string,
+          sizeBytes: data.sizeBytes as number,
+        });
+      }
+
+      if (data.ocrError) {
+        Alert.alert("OCR Failed", `${data.ocrError}`);
+        return;
+      }
+
+      const ocr = data.ocr as OcrResult | null | undefined;
+      if (!ocr) {
+        Alert.alert(
+          "No OCR Data",
+          `Server response had no OCR results. Keys: ${Object.keys(data).join(", ")}`,
+        );
+        return;
+      }
+
+      const itemCount = ocr.lineItems?.length ?? 0;
+      if (ocr.merchant) setMerchant(ocr.merchant);
+
+      if (expenseType === "gas") {
+        const fuelItem = ocr.lineItems?.find((item) =>
+          /\b(gal|gallon|fuel|gas|diesel|unleaded|regular|premium|super)\b/i.test(
+            item.name,
+          ),
+        );
+        if (fuelItem && fuelItem.unitPriceCents > 0) {
+          setPricePerGallon(centsToDisplay(fuelItem.unitPriceCents));
+          const totalForFuel =
+            fuelItem.lineTotalCents || (ocr.subtotalCents ?? 0);
+          if (totalForFuel > 0) {
+            const computedGallons = totalForFuel / fuelItem.unitPriceCents;
+            setGallons(computedGallons.toFixed(3));
           }
         }
+      }
+
+      if (ocr.taxCents != null)
+        setTaxDollars(centsToDisplay(Math.round(ocr.taxCents)));
+      if (ocr.lineItems && ocr.lineItems.length > 0) {
+        setLineItemDrafts(
+          ocr.lineItems.map((item) => ({
+            key: makeKey(),
+            name: item.name,
+            quantity: item.quantity,
+            priceDollars: centsToDisplay(item.lineTotalCents),
+          })),
+        );
+        const itemsSum = ocr.lineItems.reduce(
+          (sum, item) => sum + (item.lineTotalCents ?? 0),
+          0,
+        );
+        if (itemsSum > 0) {
+          setSubtotalDollars(centsToDisplay(itemsSum));
+        } else if (ocr.subtotalCents != null) {
+          setSubtotalDollars(centsToDisplay(Math.round(ocr.subtotalCents)));
+        }
+      } else if (ocr.subtotalCents != null) {
+        setSubtotalDollars(centsToDisplay(Math.round(ocr.subtotalCents)));
+      }
+
+      if (itemCount === 0 && !ocr.merchant) {
+        Alert.alert(
+          "No Items Detected",
+          `OCR returned: ${JSON.stringify(ocr).substring(0, 300)}`,
+        );
       }
     } catch (err) {
       console.error("Upload failed:", err);
       Alert.alert(
         "Upload Error",
-        "Failed to upload receipt. You can still enter details manually.",
+        `${err instanceof Error ? err.message : String(err)}`,
       );
     } finally {
       setUploading(false);
@@ -318,7 +399,9 @@ export default function NewExpense() {
               name: item.name.trim(),
               quantity: item.quantity,
               unitPriceCents: dollarsToCents(item.priceDollars),
-              lineTotalCents: dollarsToCents(item.priceDollars) * item.quantity,
+              lineTotalCents: Math.round(
+                dollarsToCents(item.priceDollars) * item.quantity,
+              ),
               sortOrder: i,
             })),
           });
@@ -338,7 +421,7 @@ export default function NewExpense() {
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
         options={{
-          title: "New Expense",
+          title: expenseType === "gas" ? "Gas Fill-Up" : "New Expense",
           headerStyle: { backgroundColor: C.bg },
           headerTintColor: C.fg,
         }}
@@ -371,14 +454,14 @@ export default function NewExpense() {
                 style={{
                   flex: 1,
                   alignItems: "center",
-                  backgroundColor: C.primary,
-                  borderRadius: 6,
+                  backgroundColor: C.info,
+                  borderRadius: R.md,
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   minHeight: 48,
                 }}
               >
-                <Text style={{ color: C.primaryFg, fontWeight: "500" }}>
+                <Text style={{ color: C.white, fontWeight: "500" }}>
                   Camera
                 </Text>
               </Pressable>
@@ -387,7 +470,7 @@ export default function NewExpense() {
                 style={{
                   flex: 1,
                   alignItems: "center",
-                  borderRadius: 6,
+                  borderRadius: R.md,
                   borderWidth: 1,
                   borderColor: C.border,
                   paddingHorizontal: 16,
@@ -408,7 +491,7 @@ export default function NewExpense() {
                   gap: 8,
                 }}
               >
-                <ActivityIndicator size="small" color={C.accent} />
+                <ActivityIndicator size="small" color={C.info} />
                 <Text style={{ color: C.muted, fontSize: 14 }}>
                   Scanning receipt...
                 </Text>
@@ -423,7 +506,7 @@ export default function NewExpense() {
                     marginTop: 12,
                     height: 160,
                     width: "100%",
-                    borderRadius: 8,
+                    borderRadius: R.md,
                   }}
                   resizeMode="cover"
                 />
@@ -461,7 +544,7 @@ export default function NewExpense() {
                 borderColor: C.border,
                 backgroundColor: C.input,
                 color: C.fg,
-                borderRadius: 6,
+                borderRadius: R.md,
                 paddingHorizontal: 12,
                 paddingVertical: 12,
                 fontSize: 16,
@@ -469,20 +552,13 @@ export default function NewExpense() {
               value={merchant}
               onChangeText={setMerchant}
               placeholder="Restaurant, store, etc."
-              placeholderTextColor="#555"
+              placeholderTextColor={C.placeholder}
             />
           </View>
 
-          {/* Line Items */}
-          <View style={{ marginBottom: 16 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 8,
-              }}
-            >
+          {/* Gas details */}
+          {expenseType === "gas" && (
+            <View style={{ marginBottom: 16 }}>
               <Text
                 style={{
                   color: C.muted,
@@ -490,263 +566,375 @@ export default function NewExpense() {
                   fontWeight: "600",
                   textTransform: "uppercase",
                   letterSpacing: 1,
-                }}
-              >
-                Line Items
-              </Text>
-              {lineItemDrafts.length > 0 && (
-                <Pressable onPress={recalcSubtotalFromItems}>
-                  <Text style={{ color: C.accent, fontSize: 12 }}>
-                    Recalc Subtotal
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-
-            {lineItemDrafts.map((item) => (
-              <View
-                key={item.key}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  backgroundColor: C.card,
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
                   marginBottom: 8,
                 }}
               >
-                <TextInput
-                  style={{ flex: 1, color: C.fg, fontSize: 14 }}
-                  value={item.name}
-                  onChangeText={(v) => updateLineItem(item.key, "name", v)}
-                  placeholder="Item name"
-                  placeholderTextColor="#555"
-                />
-                <Text style={{ color: C.muted, fontSize: 14 }}>$</Text>
-                <TextInput
-                  style={{
-                    width: 80,
-                    color: C.fg,
-                    textAlign: "right",
-                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                    fontSize: 14,
-                  }}
-                  value={item.priceDollars}
-                  onChangeText={(v) =>
-                    updateLineItem(item.key, "priceDollars", v)
-                  }
-                  placeholder="0.00"
-                  placeholderTextColor="#555"
-                  keyboardType="decimal-pad"
-                />
-                <Pressable
-                  onPress={() => removeLineItem(item.key)}
-                  style={{
-                    marginLeft: 4,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    minHeight: 32,
-                    minWidth: 32,
-                  }}
-                >
-                  <Text style={{ color: C.danger, fontSize: 18 }}>×</Text>
-                </Pressable>
-              </View>
-            ))}
-
-            <Pressable
-              onPress={addEmptyLineItem}
-              style={{
-                alignItems: "center",
-                borderRadius: 6,
-                borderWidth: 1,
-                borderColor: C.border,
-                borderStyle: "dashed",
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                minHeight: 44,
-              }}
-            >
-              <Text style={{ color: C.muted, fontSize: 14 }}>+ Add Item</Text>
-            </Pressable>
-          </View>
-
-          {/* Totals */}
-          <View style={{ marginBottom: 16 }}>
-            <Text
-              style={{
-                color: C.muted,
-                fontSize: 11,
-                fontWeight: "600",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                marginBottom: 8,
-              }}
-            >
-              Totals
-            </Text>
-
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}>
-                  Subtotal
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    backgroundColor: C.input,
-                    borderRadius: 6,
-                    paddingHorizontal: 12,
-                  }}
-                >
-                  <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
-                  <TextInput
-                    style={{
-                      flex: 1,
-                      color: C.fg,
-                      paddingVertical: 12,
-                      textAlign: "right",
-                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                      fontSize: 16,
-                    }}
-                    value={subtotalDollars}
-                    onChangeText={(v) => {
-                      setSubtotalDollars(v);
-                      setSelectedPreset(null);
-                    }}
-                    placeholder="0.00"
-                    placeholderTextColor="#555"
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}>
-                  Tax
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    backgroundColor: C.input,
-                    borderRadius: 6,
-                    paddingHorizontal: 12,
-                  }}
-                >
-                  <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
-                  <TextInput
-                    style={{
-                      flex: 1,
-                      color: C.fg,
-                      paddingVertical: 12,
-                      textAlign: "right",
-                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                      fontSize: 16,
-                    }}
-                    value={taxDollars}
-                    onChangeText={setTaxDollars}
-                    placeholder="0.00"
-                    placeholderTextColor="#555"
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Tip picker */}
-          <View style={{ marginBottom: 16 }}>
-            <Text
-              style={{
-                color: C.muted,
-                fontSize: 11,
-                fontWeight: "600",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                marginBottom: 8,
-              }}
-            >
-              Tip
-            </Text>
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
-              {TIP_PRESETS.map((preset, i) => (
-                <Pressable
-                  key={preset.label}
-                  onPress={() => handleTipPreset(i)}
-                  style={{
-                    flex: 1,
-                    alignItems: "center",
-                    borderRadius: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
-                    minHeight: 44,
-                    ...(selectedPreset === i
-                      ? { backgroundColor: C.primary }
-                      : { borderWidth: 1, borderColor: C.border }),
-                  }}
-                >
+                Fuel
+              </Text>
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flex: 1 }}>
                   <Text
+                    style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}
+                  >
+                    Gallons
+                  </Text>
+                  <TextInput
                     style={{
-                      fontWeight: "500",
-                      color: selectedPreset === i ? C.primaryFg : C.fg,
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      backgroundColor: C.input,
+                      color: C.fg,
+                      borderRadius: R.md,
+                      paddingHorizontal: 12,
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      fontFamily: mono,
+                      textAlign: "right",
+                    }}
+                    value={gallons}
+                    onChangeText={(v) => {
+                      setGallons(v);
+                      const gal = Number.parseFloat(v);
+                      const ppg = Number.parseFloat(pricePerGallon);
+                      if (!Number.isNaN(gal) && !Number.isNaN(ppg)) {
+                        setSubtotalDollars((gal * ppg).toFixed(2));
+                      }
+                    }}
+                    placeholder="0.000"
+                    placeholderTextColor={C.placeholder}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}
+                  >
+                    $/gallon
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      backgroundColor: C.input,
+                      borderRadius: R.md,
+                      paddingHorizontal: 12,
                     }}
                   >
-                    {preset.label}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        color: C.fg,
+                        paddingVertical: 12,
+                        textAlign: "right",
+                        fontFamily: mono,
+                        fontSize: 16,
+                      }}
+                      value={pricePerGallon}
+                      onChangeText={(v) => {
+                        setPricePerGallon(v);
+                        const gal = Number.parseFloat(gallons);
+                        const ppg = Number.parseFloat(v);
+                        if (!Number.isNaN(gal) && !Number.isNaN(ppg)) {
+                          setSubtotalDollars((gal * ppg).toFixed(2));
+                        }
+                      }}
+                      placeholder="0.000"
+                      placeholderTextColor={C.placeholder}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+              </View>
             </View>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: C.border,
-                backgroundColor: C.input,
-                borderRadius: 6,
-                paddingHorizontal: 12,
-              }}
-            >
-              <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
-              <TextInput
+          )}
+
+          {/* Line Items (non-gas only) */}
+          {expenseType !== "gas" && (
+            <View style={{ marginBottom: 16 }}>
+              <View
                 style={{
-                  flex: 1,
-                  color: C.fg,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: C.muted,
+                    fontSize: 11,
+                    fontWeight: "600",
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  Line Items
+                </Text>
+                {lineItemDrafts.length > 0 && (
+                  <Pressable onPress={recalcSubtotalFromItems}>
+                    <Text style={{ color: C.info, fontSize: 12 }}>
+                      Recalc Subtotal
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {lineItemDrafts.map((item) => (
+                <View
+                  key={item.key}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.surface,
+                    borderRadius: R.md,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <TextInput
+                    style={{ flex: 1, color: C.fg, fontSize: 14 }}
+                    value={item.name}
+                    onChangeText={(v) => updateLineItem(item.key, "name", v)}
+                    placeholder="Item name"
+                    placeholderTextColor={C.placeholder}
+                  />
+                  <Text style={{ color: C.muted, fontSize: 14 }}>$</Text>
+                  <TextInput
+                    style={{
+                      width: 80,
+                      color: C.fg,
+                      textAlign: "right",
+                      fontFamily: mono,
+                      fontSize: 14,
+                    }}
+                    value={item.priceDollars}
+                    onChangeText={(v) =>
+                      updateLineItem(item.key, "priceDollars", v)
+                    }
+                    placeholder="0.00"
+                    placeholderTextColor={C.placeholder}
+                    keyboardType="decimal-pad"
+                  />
+                  <Pressable
+                    onPress={() => removeLineItem(item.key)}
+                    style={{
+                      marginLeft: 4,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      minHeight: 44,
+                      minWidth: 44,
+                    }}
+                  >
+                    <Text style={{ color: C.critical, fontSize: 18 }}>×</Text>
+                  </Pressable>
+                </View>
+              ))}
+
+              <Pressable
+                onPress={addEmptyLineItem}
+                style={{
+                  alignItems: "center",
+                  borderRadius: R.md,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  borderStyle: "dashed",
+                  paddingHorizontal: 12,
                   paddingVertical: 12,
-                  textAlign: "right",
-                  fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                  fontSize: 16,
+                  minHeight: 44,
                 }}
-                value={tipDollars}
-                onChangeText={(v) => {
-                  setTipDollars(v);
-                  setSelectedPreset(null);
-                }}
-                placeholder="0.00"
-                placeholderTextColor="#555"
-                keyboardType="decimal-pad"
-              />
+              >
+                <Text style={{ color: C.muted, fontSize: 14 }}>+ Add Item</Text>
+              </Pressable>
             </View>
-          </View>
+          )}
+
+          {/* Totals (non-gas only) */}
+          {expenseType !== "gas" && (
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  marginBottom: 8,
+                }}
+              >
+                Totals
+              </Text>
+
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}
+                  >
+                    Subtotal
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      backgroundColor: C.input,
+                      borderRadius: R.md,
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        color: C.fg,
+                        paddingVertical: 12,
+                        textAlign: "right",
+                        fontFamily: mono,
+                        fontSize: 16,
+                      }}
+                      value={subtotalDollars}
+                      onChangeText={(v) => {
+                        setSubtotalDollars(v);
+                        setSelectedPreset(null);
+                      }}
+                      placeholder="0.00"
+                      placeholderTextColor={C.placeholder}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}
+                  >
+                    Tax
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      backgroundColor: C.input,
+                      borderRadius: R.md,
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        color: C.fg,
+                        paddingVertical: 12,
+                        textAlign: "right",
+                        fontFamily: mono,
+                        fontSize: 16,
+                      }}
+                      value={taxDollars}
+                      onChangeText={setTaxDollars}
+                      placeholder="0.00"
+                      placeholderTextColor={C.placeholder}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Tip picker (non-gas only) */}
+          {expenseType !== "gas" && (
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  marginBottom: 8,
+                }}
+              >
+                Tip
+              </Text>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+                {TIP_PRESETS.map((preset, i) => (
+                  <Pressable
+                    key={preset.label}
+                    onPress={() => handleTipPreset(i)}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      borderRadius: R.md,
+                      paddingHorizontal: 12,
+                      paddingVertical: 12,
+                      minHeight: 44,
+                      ...(selectedPreset === i
+                        ? { backgroundColor: C.info }
+                        : { borderWidth: 1, borderColor: C.border }),
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontWeight: "500",
+                        color: selectedPreset === i ? C.white : C.fg,
+                      }}
+                    >
+                      {preset.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  backgroundColor: C.input,
+                  borderRadius: R.md,
+                  paddingHorizontal: 12,
+                }}
+              >
+                <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+                <TextInput
+                  style={{
+                    flex: 1,
+                    color: C.fg,
+                    paddingVertical: 12,
+                    textAlign: "right",
+                    fontFamily: mono,
+                    fontSize: 16,
+                  }}
+                  value={tipDollars}
+                  onChangeText={(v) => {
+                    setTipDollars(v);
+                    setSelectedPreset(null);
+                  }}
+                  placeholder="0.00"
+                  placeholderTextColor={C.placeholder}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          )}
 
           {/* Total display */}
           <View
             style={{
               borderWidth: 1,
               borderColor: C.border,
-              backgroundColor: C.card,
-              borderRadius: 8,
+              backgroundColor: C.surface,
+              borderRadius: R.md,
               padding: 16,
               marginBottom: 20,
             }}
@@ -766,7 +954,7 @@ export default function NewExpense() {
                   color: C.fg,
                   fontSize: 24,
                   fontWeight: "bold",
-                  fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                  fontFamily: mono,
                 }}
               >
                 ${centsToDisplay(totalCents)}
@@ -779,9 +967,9 @@ export default function NewExpense() {
             onPress={() => void handleSubmit()}
             disabled={isPending}
             style={{
-              backgroundColor: C.primary,
+              backgroundColor: C.info,
               alignItems: "center",
-              borderRadius: 6,
+              borderRadius: R.md,
               paddingHorizontal: 16,
               paddingVertical: 16,
               marginBottom: 40,
@@ -790,11 +978,9 @@ export default function NewExpense() {
             }}
           >
             {isPending ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={C.white} />
             ) : (
-              <Text
-                style={{ color: C.primaryFg, fontSize: 16, fontWeight: "600" }}
-              >
+              <Text style={{ color: C.white, fontSize: 16, fontWeight: "600" }}>
                 Save Expense
               </Text>
             )}

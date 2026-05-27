@@ -1,26 +1,28 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { trpc } from "~/utils/api";
+import { C as DC, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  primary: "#d66daa",
-  primaryFg: "#141116",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  accent: "#58A6FF",
+  bg: DC.bg,
+  fg: DC.fg,
+  muted: DC.muted,
+  primary: DC.info,
+  primaryFg: DC.white,
+  card: DC.surface,
+  border: DC.border,
+  accent: DC.info,
 } as const;
 
 const STATUS_COLORS: Record<string, string> = {
-  planning: "#eab308",
-  confirmed: "#3b82f6",
-  active: "#22c55e",
-  completed: "#6b7280",
+  planning: DC.warning,
+  confirmed: DC.info,
+  active: DC.success,
+  completed: C.muted,
 };
 
 function formatDate(value: string | null) {
@@ -60,12 +62,37 @@ interface Trip {
 }
 
 const TABS = [
-  { key: "expenses", label: "Expenses", icon: "💰", path: "expenses" },
-  { key: "settle", label: "Settle Up", icon: "🤝", path: "settle" },
-  { key: "schedule", label: "Schedule", icon: "📅", path: "segments" },
-  { key: "members", label: "Members", icon: "👥", path: "members" },
-  { key: "plan", label: "Plan", icon: "📋", path: "polls" },
-  { key: "map", label: "Map", icon: "📍", path: "map" },
+  {
+    key: "expenses",
+    label: "Expenses",
+    icon: "receipt-outline" as const,
+    path: "expenses",
+  },
+  {
+    key: "settle",
+    label: "Settle Up",
+    icon: "swap-horizontal-outline" as const,
+    path: "settle",
+  },
+  {
+    key: "schedule",
+    label: "Schedule",
+    icon: "calendar-outline" as const,
+    path: "segments",
+  },
+  {
+    key: "members",
+    label: "Members",
+    icon: "people-outline" as const,
+    path: "members",
+  },
+  {
+    key: "plan",
+    label: "Plan",
+    icon: "clipboard-outline" as const,
+    path: "polls",
+  },
+  { key: "map", label: "Map", icon: "map-outline" as const, path: "map" },
 ] as const;
 
 function StatCard({
@@ -84,7 +111,7 @@ function StatCard({
           color: color ?? C.fg,
           fontSize: 20,
           fontWeight: "800",
-          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+          fontFamily: mono,
         }}
       >
         {value}
@@ -155,18 +182,18 @@ export function GroupTripDetail({
           </Text>
           <View
             style={{
-              backgroundColor: STATUS_COLORS[trip.status] ?? "#9ca3af",
-              borderRadius: 999,
+              backgroundColor: STATUS_COLORS[trip.status] ?? C.muted,
+              borderRadius: R.sm,
               paddingHorizontal: 10,
               paddingVertical: 3,
             }}
           >
             <Text
               style={{
-                color: "#fff",
+                color: DC.white,
                 fontSize: 12,
                 fontWeight: "600",
-                textTransform: "capitalize",
+                textTransform: "uppercase",
               }}
             >
               {trip.status}
@@ -175,13 +202,13 @@ export function GroupTripDetail({
         </View>
 
         {trip.destinationName && (
-          <Text style={{ color: C.muted, fontSize: 16, marginBottom: 4 }}>
+          <Text style={{ color: C.muted, fontSize: 15, marginBottom: 4 }}>
             {trip.destinationName}
           </Text>
         )}
 
         {(trip.startDate || trip.endDate) && (
-          <Text style={{ color: C.muted, fontSize: 14 }}>
+          <Text style={{ color: C.muted, fontSize: 15 }}>
             {formatDate(trip.startDate)}
             {trip.startDate && trip.endDate ? " – " : ""}
             {formatDate(trip.endDate)}
@@ -194,7 +221,7 @@ export function GroupTripDetail({
         style={{
           flexDirection: "row",
           backgroundColor: C.card,
-          borderRadius: 12,
+          borderRadius: R.md,
           borderWidth: 1,
           borderColor: C.border,
           paddingVertical: 14,
@@ -230,7 +257,7 @@ export function GroupTripDetail({
             style={{
               width: "47%",
               backgroundColor: C.card,
-              borderRadius: 12,
+              borderRadius: R.md,
               borderWidth: 1,
               borderColor: C.border,
               paddingVertical: 20,
@@ -239,8 +266,8 @@ export function GroupTripDetail({
               gap: 8,
             }}
           >
-            <Text style={{ fontSize: 28 }}>{tab.icon}</Text>
-            <Text style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}>
+            <Ionicons name={tab.icon} size={24} color={C.muted} />
+            <Text style={{ color: C.fg, fontSize: 15, fontWeight: "600" }}>
               {tab.label}
             </Text>
           </Pressable>
@@ -257,7 +284,7 @@ export function GroupTripDetail({
         }
         style={{
           backgroundColor: C.primary,
-          borderRadius: 12,
+          borderRadius: R.md,
           paddingVertical: 16,
           alignItems: "center",
           marginTop: 20,

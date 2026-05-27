@@ -8,17 +8,8 @@ import {
   View,
 } from "react-native";
 import { trpc } from "~/utils/api";
+import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
-
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  primaryFg: "#141116",
-} as const;
 
 function formatCurrency(cents: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
@@ -35,8 +26,8 @@ function formatDate(value: Date | string | null) {
 }
 
 const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
-  draft: { bg: "#fef9c3", text: "#854d0e" },
-  finalized: { bg: "#dcfce7", text: "#166534" },
+  draft: { bg: C.warningBg, text: C.warning },
+  finalized: { bg: C.successBg, text: C.success },
 };
 
 export default function ExpenseList() {
@@ -80,7 +71,7 @@ export default function ExpenseList() {
           <Text style={{ color: C.muted, fontSize: 18, marginBottom: 8 }}>
             No expenses yet
           </Text>
-          <Text style={{ color: C.muted, fontSize: 14, textAlign: "center" }}>
+          <Text style={{ color: C.muted, fontSize: 15, textAlign: "center" }}>
             Add your first expense to start tracking costs.
           </Text>
         </View>
@@ -89,11 +80,11 @@ export default function ExpenseList() {
           data={expenses}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item }) => {
             const badge = STATUS_BADGE[item.status] ?? {
-              bg: "#fef9c3",
-              text: "#854d0e",
+              bg: C.warningBg,
+              text: C.warning,
             };
             return (
               <Pressable
@@ -106,8 +97,8 @@ export default function ExpenseList() {
                 style={{
                   borderWidth: 1,
                   borderColor: C.border,
-                  backgroundColor: C.card,
-                  borderRadius: 8,
+                  backgroundColor: C.surface,
+                  borderRadius: R.md,
                   padding: 16,
                 }}
               >
@@ -120,16 +111,16 @@ export default function ExpenseList() {
                   }}
                 >
                   <Text
-                    style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}
+                    style={{ color: C.fg, fontSize: 15, fontWeight: "600" }}
                   >
                     {item.merchant}
                   </Text>
                   <Text
                     style={{
                       color: C.fg,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: "500",
-                      fontFamily: "Menlo",
+                      fontFamily: mono,
                     }}
                   >
                     {formatCurrency(item.totalCents, item.currency)}
@@ -141,7 +132,7 @@ export default function ExpenseList() {
                   <View
                     style={{
                       backgroundColor: badge.bg,
-                      borderRadius: 999,
+                      borderRadius: R.sm,
                       paddingHorizontal: 8,
                       paddingVertical: 2,
                     }}
@@ -149,9 +140,10 @@ export default function ExpenseList() {
                     <Text
                       style={{
                         color: badge.text,
-                        fontSize: 12,
-                        fontWeight: "500",
-                        textTransform: "capitalize",
+                        fontSize: 11,
+                        fontWeight: "600",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
                       }}
                     >
                       {item.status}
@@ -164,7 +156,8 @@ export default function ExpenseList() {
                     style={{
                       color: C.muted,
                       fontSize: 12,
-                      textTransform: "capitalize",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
                     }}
                   >
                     {item.category}
@@ -193,14 +186,14 @@ export default function ExpenseList() {
             })
           }
           style={{
-            backgroundColor: C.primary,
-            borderRadius: 999,
+            backgroundColor: C.info,
+            borderRadius: R.md,
             paddingHorizontal: 24,
             paddingVertical: 16,
             minHeight: 48,
           }}
         >
-          <Text style={{ color: C.primaryFg, fontWeight: "600" }}>
+          <Text style={{ color: C.white, fontWeight: "600", fontSize: 15 }}>
             + New Expense
           </Text>
         </Pressable>

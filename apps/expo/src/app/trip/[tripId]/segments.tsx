@@ -1,33 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, Text, View } from "react-native";
 
 import { trpc } from "~/utils/api";
+import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  accent: "#58A6FF",
-} as const;
-
 const SEGMENT_COLORS = [
-  "#d66daa",
-  "#58A6FF",
-  "#22c55e",
-  "#eab308",
-  "#f97316",
-  "#a78bfa",
+  C.info, // #58A6FF
+  "#79C0FF",
+  "#56D364",
+  "#D2A8FF",
+  "#7EE787",
+  "#A5D6FF",
 ];
 
 function formatDate(value: string | null) {
@@ -90,7 +75,7 @@ export default function SegmentsScreen() {
           <Text style={{ color: C.muted, fontSize: 18, marginBottom: 8 }}>
             No segments yet
           </Text>
-          <Text style={{ color: C.muted, fontSize: 14, textAlign: "center" }}>
+          <Text style={{ color: C.muted, fontSize: 15, textAlign: "center" }}>
             Trip segments will appear here once added.
           </Text>
         </View>
@@ -119,8 +104,8 @@ export default function SegmentsScreen() {
                 style={{
                   borderWidth: 1,
                   borderColor: C.border,
-                  backgroundColor: C.card,
-                  borderRadius: 12,
+                  backgroundColor: C.surface,
+                  borderRadius: R.md,
                   overflow: "hidden",
                 }}
               >
@@ -155,8 +140,7 @@ export default function SegmentsScreen() {
                           color: color,
                           fontSize: 12,
                           fontWeight: "800",
-                          fontFamily:
-                            Platform.OS === "ios" ? "Menlo" : "monospace",
+                          fontFamily: mono,
                         }}
                       >
                         {index + 1}
@@ -175,7 +159,7 @@ export default function SegmentsScreen() {
                   </View>
 
                   {item.destinationName && (
-                    <Text style={{ color: C.muted, fontSize: 14 }}>
+                    <Text style={{ color: C.muted, fontSize: 15 }}>
                       {item.destinationName}
                     </Text>
                   )}
@@ -183,10 +167,9 @@ export default function SegmentsScreen() {
                   {dateRange ? (
                     <Text
                       style={{
-                        color: C.accent,
+                        color: C.info,
                         fontSize: 13,
-                        fontFamily:
-                          Platform.OS === "ios" ? "Menlo" : "monospace",
+                        fontFamily: mono,
                       }}
                     >
                       {dateRange}
@@ -198,8 +181,7 @@ export default function SegmentsScreen() {
                       style={{
                         color: C.muted,
                         fontSize: 12,
-                        fontFamily:
-                          Platform.OS === "ios" ? "Menlo" : "monospace",
+                        fontFamily: mono,
                       }}
                     >
                       {item.distanceMiles} mi

@@ -125,6 +125,16 @@ async function getWorkspaceScope(ctx: SettingsContext) {
 }
 
 export const settingsRouter = {
+  debugAuth: publicProcedure.query(async ({ ctx }) => {
+    const session = ctx.session;
+    return {
+      hasSession: !!session,
+      userEmail: session?.user?.email ?? null,
+      sessionId: session?.session?.id ?? null,
+      apiKeyAuth: !!ctx.apiKeyAuth,
+    };
+  }),
+
   getLaunchState: publicProcedure.query(async ({ ctx }) => {
     const settings = await ctx.db.query.applicationSettings.findFirst();
     const defaults = getLaunchDefaults();

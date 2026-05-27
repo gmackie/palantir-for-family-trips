@@ -10,22 +10,14 @@ import {
 } from "react-native";
 
 import { trpc } from "~/utils/api";
+import { C, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-} as const;
-
 const RESPONSE_STYLES: Record<string, { bg: string; text: string }> = {
-  yes: { bg: "#22c55e", text: "#fff" },
-  no: { bg: "#ef4444", text: "#fff" },
-  maybe: { bg: "#eab308", text: "#000" },
-  prefer: { bg: "#3b82f6", text: "#fff" },
+  yes: { bg: C.success, text: C.white },
+  no: { bg: C.critical, text: C.white },
+  maybe: { bg: C.warning, text: "#000" },
+  prefer: { bg: C.info, text: C.white },
 };
 
 export default function PollsScreen() {
@@ -96,7 +88,7 @@ export default function PollsScreen() {
           <Text style={{ color: C.muted, fontSize: 18, marginBottom: 8 }}>
             No polls yet
           </Text>
-          <Text style={{ color: C.muted, fontSize: 14, textAlign: "center" }}>
+          <Text style={{ color: C.muted, fontSize: 15, textAlign: "center" }}>
             Polls help your group decide on dates, activities, and more.
           </Text>
         </View>
@@ -118,8 +110,8 @@ export default function PollsScreen() {
                 style={{
                   borderWidth: 1,
                   borderColor: C.border,
-                  backgroundColor: C.card,
-                  borderRadius: 8,
+                  backgroundColor: C.surface,
+                  borderRadius: R.md,
                   overflow: "hidden",
                 }}
               >
@@ -136,7 +128,7 @@ export default function PollsScreen() {
                   >
                     <View style={{ flex: 1 }}>
                       <Text
-                        style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}
+                        style={{ color: C.fg, fontSize: 15, fontWeight: "600" }}
                       >
                         {poll.title}
                       </Text>
@@ -169,7 +161,7 @@ export default function PollsScreen() {
                         style={{
                           borderWidth: 1,
                           borderColor: C.border,
-                          borderRadius: 6,
+                          borderRadius: R.md,
                           padding: 12,
                           marginBottom: 12,
                         }}
@@ -195,7 +187,7 @@ export default function PollsScreen() {
                           <Text
                             style={{
                               color: C.muted,
-                              fontSize: 14,
+                              fontSize: 15,
                               marginBottom: 8,
                             }}
                           >
@@ -227,10 +219,10 @@ export default function PollsScreen() {
                                 disabled={voteMutation.isPending}
                                 style={{
                                   backgroundColor: style.bg,
-                                  borderRadius: 6,
+                                  borderRadius: R.md,
                                   paddingHorizontal: 12,
                                   paddingVertical: 8,
-                                  minHeight: 36,
+                                  minHeight: 44,
                                   justifyContent: "center",
                                 }}
                               >
@@ -240,7 +232,7 @@ export default function PollsScreen() {
                                     fontSize: 12,
                                     fontWeight: "600",
                                     textAlign: "center",
-                                    textTransform: "capitalize",
+                                    textTransform: "uppercase",
                                   }}
                                 >
                                   {response}

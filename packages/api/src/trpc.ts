@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "@gmacko/db";
 import { db } from "@gmacko/db/client";
-import { apiKeys, user } from "@gmacko/db/schema";
+import { apiKeys, session as sessionTable, user } from "@gmacko/db/schema";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
 import superjson from "superjson";
@@ -80,6 +80,95 @@ async function validateApiKey(key: string): Promise<ApiKeyAuth | null> {
   };
 }
 
+function extractAllSessionTokens(cookieHeader: string): string[] {
+  const prefixes = [
+    "__Secure-better-auth.session_token=",
+    "better-auth.session_token=",
+  ];
+  const tokens: string[] = [];
+
+  for (const p of prefixes) {
+    let searchFrom = 0;
+    while (true) {
+      const idx = cookieHeader.indexOf(p, searchFrom);
+      if (idx === -1) break;
+      const start = idx + p.length;
+      const end = cookieHeader.indexOf(";", start);
+      let value = cookieHeader
+        .slice(start, end === -1 ? undefined : end)
+        .trim();
+      try {
+        if (value.includes("%")) value = decodeURIComponent(value);
+      } catch {}
+      const dotPos = value.lastIndexOf(".");
+      const token = dotPos > 0 ? value.substring(0, dotPos) : value;
+      if (token) tokens.push(token);
+      searchFrom = start;
+    }
+  }
+
+  return tokens;
+}
+
+async function expoSessionFallback(cookieHeader: string): Promise<AuthSession> {
+  const tokens = extractAllSessionTokens(cookieHeader);
+  if (tokens.length === 0) {
+    console.log("[expo-fallback] no tokens extracted from cookie");
+    return null;
+  }
+
+  console.log(`[expo-fallback] found ${tokens.length} token(s), trying each`);
+
+  for (const token of tokens) {
+    try {
+      const [sessionRow] = await db
+        .select()
+        .from(sessionTable)
+        .where(eq(sessionTable.token, token))
+        .limit(1);
+
+      if (!sessionRow) continue;
+      if (sessionRow.expiresAt < new Date()) continue;
+
+      const [userRow] = await db
+        .select()
+        .from(user)
+        .where(eq(user.id, sessionRow.userId))
+        .limit(1);
+
+      if (!userRow) continue;
+
+      console.log(`[expo-fallback] session valid for ${userRow.email}`);
+      return {
+        user: {
+          id: userRow.id,
+          name: userRow.name,
+          email: userRow.email,
+          emailVerified: userRow.emailVerified,
+          createdAt: userRow.createdAt,
+          updatedAt: userRow.updatedAt,
+          image: userRow.image,
+        },
+        session: {
+          id: sessionRow.id,
+          createdAt: sessionRow.createdAt,
+          updatedAt: sessionRow.updatedAt,
+          userId: sessionRow.userId,
+          expiresAt: sessionRow.expiresAt,
+          token: sessionRow.token,
+          ipAddress: sessionRow.ipAddress,
+          userAgent: sessionRow.userAgent,
+        },
+      };
+    } catch (err) {
+      console.error(`[expo-fallback] DB error for token: ${err}`);
+    }
+  }
+
+  console.log("[expo-fallback] no valid session found for any token");
+  return null;
+}
+
 export const createTRPCContext = async (opts: {
   headers: Headers;
   authApi: AuthApi;
@@ -110,15 +199,32 @@ export const createTRPCContext = async (opts: {
     }
   }
 
-  const session = await opts.authApi.getSession({
+  const source = opts.headers.get("x-trpc-source");
+  const cookieHeader = opts.headers.get("cookie");
+
+  let session = await opts.authApi.getSession({
     headers: opts.headers,
   });
+
+  let fallbackAttempted = false;
+
+  if (!session && source === "expo-react" && cookieHeader) {
+    fallbackAttempted = true;
+    console.log(
+      `[tRPC ctx] expo getSession returned NULL — trying fallback with cookie (${cookieHeader.length} chars)`,
+    );
+    session = await expoSessionFallback(cookieHeader);
+  }
 
   return {
     authApi: opts.authApi,
     session,
     apiKeyAuth: null as ApiKeyAuth | null,
     db,
+    _expoAuthDiag:
+      !session && source === "expo-react"
+        ? `fallback=${fallbackAttempted}, cookie_len=${cookieHeader?.length ?? 0}, cookie_start=${cookieHeader?.substring(0, 80) ?? "none"}`
+        : undefined,
   };
 };
 /**
@@ -198,7 +304,11 @@ export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
     if (!ctx.session?.user) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
+      const diag = (ctx as Record<string, unknown>)._expoAuthDiag;
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: diag ? `UNAUTHORIZED [${diag}]` : "UNAUTHORIZED",
+      });
     }
     return next({
       ctx: {

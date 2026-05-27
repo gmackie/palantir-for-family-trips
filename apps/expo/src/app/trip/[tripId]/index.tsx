@@ -5,6 +5,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { GroupTripDetail } from "~/components/trip/group-trip-detail";
 import { RoadTripDetail } from "~/components/trip/road-trip-detail";
 import { trpc } from "~/utils/api";
+import { C } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 export default function TripDetail() {
@@ -21,7 +22,7 @@ export default function TripDetail() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#141116" }}>
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
         <Stack.Screen options={{ title: "Trip" }} />
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
@@ -34,12 +35,12 @@ export default function TripDetail() {
 
   if (!trip) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#141116" }}>
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
         <Stack.Screen options={{ title: "Trip" }} />
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <Text style={{ color: "#8c8691" }}>Trip not found</Text>
+          <Text style={{ color: C.muted }}>Trip not found</Text>
         </View>
       </View>
     );
@@ -48,10 +49,14 @@ export default function TripDetail() {
   const isRoadTrip = (trip as any).tripMode === "roadtrip";
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#141116" }}>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen options={{ title: trip.name }} />
       {isRoadTrip ? (
-        <RoadTripDetail trip={trip} tripId={tripId ?? ""} />
+        <RoadTripDetail
+          trip={trip}
+          tripId={tripId ?? ""}
+          workspaceId={workspaceId}
+        />
       ) : (
         <GroupTripDetail trip={trip} tripId={tripId ?? ""} />
       )}

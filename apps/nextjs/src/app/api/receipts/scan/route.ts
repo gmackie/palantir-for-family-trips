@@ -1,6 +1,8 @@
-import { appRouter, createTRPCContext } from "@gmacko/api";
 import { extractAndReconcileReceipt } from "@gmacko/api/ocr";
+import { eq } from "@gmacko/db";
+import { db } from "@gmacko/db/client";
 import { getR2Bucket } from "@gmacko/db/runtime";
+import { session as sessionTable, user as userTable } from "@gmacko/db/schema";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { auth, getSession } from "~/auth/server";
@@ -16,57 +18,88 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/gif",
 ]);
 
+async function getSessionWithFallback(request: NextRequest) {
+  const session = await getSession();
+  if (session?.user) return session;
+
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) return null;
+
+  const prefix = "__Secure-better-auth.session_token=";
+  const prefixAlt = "better-auth.session_token=";
+  const tokens: string[] = [];
+
+  for (const p of [prefix, prefixAlt]) {
+    let searchFrom = 0;
+    while (true) {
+      const idx = cookieHeader.indexOf(p, searchFrom);
+      if (idx === -1) break;
+      const start = idx + p.length;
+      const end = cookieHeader.indexOf(";", start);
+      let value = cookieHeader
+        .slice(start, end === -1 ? undefined : end)
+        .trim();
+      try {
+        if (value.includes("%")) value = decodeURIComponent(value);
+      } catch {}
+      const dotPos = value.lastIndexOf(".");
+      const token = dotPos > 0 ? value.substring(0, dotPos) : value;
+      if (token) tokens.push(token);
+      searchFrom = start;
+    }
+  }
+
+  for (const token of tokens) {
+    const [row] = await db
+      .select()
+      .from(sessionTable)
+      .where(eq(sessionTable.token, token))
+      .limit(1);
+    if (!row || row.expiresAt < new Date()) continue;
+
+    const [u] = await db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, row.userId))
+      .limit(1);
+    if (!u) continue;
+
+    return { user: u, session: row };
+  }
+
+  return null;
+}
+
 /**
- * POST /api/receipts/upload
+ * POST /api/receipts/scan
  *
- * Multipart form with:
- * - `file`: image blob (required)
- * - `workspaceId`: string (required)
- * - `tripId`: string (required)
- * - `expenseId`: string (required — attach to this draft expense)
- *
- * Stores the image via local disk (DEV_MODE=local) or UploadThing,
- * runs OCR via the configured provider, reconciles, and attaches
- * the image + returns the OCR draft to the client.
- *
- * The client is expected to have already created a draft expense
- * via `trpc.expenses.create()` and passes its ID here.
+ * Lightweight receipt upload + OCR. No expense ID required.
+ * Used by the Expo mobile app's "new expense" flow where the
+ * expense doesn't exist yet at capture time.
  */
 export async function POST(request: NextRequest) {
-  const session = await getSession();
+  const session = await getSessionWithFallback(request);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const formData = await request.formData();
   const file = formData.get("file");
-  const workspaceId = formData.get("workspaceId");
-  const tripId = formData.get("tripId");
-  const expenseId = formData.get("expenseId");
 
-  if (
-    !(file instanceof File) ||
-    typeof workspaceId !== "string" ||
-    typeof tripId !== "string" ||
-    typeof expenseId !== "string"
-  ) {
-    return NextResponse.json(
-      { error: "Missing or invalid form fields" },
-      { status: 400 },
-    );
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: "Missing file field" }, { status: 400 });
   }
 
   const mimeType = file.type;
   if (!ALLOWED_MIME_TYPES.has(mimeType)) {
     return NextResponse.json(
-      { error: `Unsupported mime type ${mimeType}` },
+      { error: `Unsupported mime type: ${mimeType}` },
       { status: 400 },
     );
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
-  // Store the image first so we can persist its key even if OCR fails
   const r2 = getR2Bucket() as Parameters<typeof storeReceiptImage>[0]["r2"];
   let stored;
   try {
@@ -81,35 +114,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Attach the storage key via the tRPC mutation (enforces trip membership)
-  const caller = appRouter.createCaller(
-    await createTRPCContext({
-      headers: new Headers(request.headers),
-      authApi: auth.api,
-    }),
-  );
-
-  try {
-    await caller.expenses.attachReceiptImage({
-      workspaceId,
-      tripId,
-      expenseId,
-      storageKey: stored.storageKey,
-      mimeType: stored.mimeType,
-      sizeBytes: stored.sizeBytes,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to attach receipt",
-      },
-      { status: 400 },
-    );
-  }
-
-  // Run OCR and reconciliation. If this fails, we still return the storage
-  // key — the user can edit the draft manually.
   let ocr;
   try {
     const result = await extractAndReconcileReceipt({

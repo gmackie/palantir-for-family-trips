@@ -14,7 +14,8 @@
       "env": {
         "SENTRY_ORG": "${SENTRY_ORG}",
         "SENTRY_PROJECT": "${SENTRY_PROJECT_MOBILE}",
-        "SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}"
+        "SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}",
+        "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
       }
     },
     "development": {

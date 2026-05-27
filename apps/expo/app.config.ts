@@ -129,6 +129,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       APP_ENV,
       API_URL,
+      GOOGLE_MAPS_API_KEY,
       SENTRY_DSN,
       POSTHOG_KEY,
       POSTHOG_HOST,

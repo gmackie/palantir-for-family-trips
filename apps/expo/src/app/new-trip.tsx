@@ -12,21 +12,8 @@ import {
   View,
 } from "react-native";
 import { trpc } from "~/utils/api";
+import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
-
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  primaryFg: "#141116",
-  accent: "#58A6FF",
-  orange: "#fb923c",
-  orangeBg: "rgba(249,115,22,0.15)",
-  danger: "#F85149",
-} as const;
 
 type TripMode = "destination" | "roadtrip";
 
@@ -50,8 +37,8 @@ function StepIndicator({ current }: { current: Step }) {
           style={{
             width: i <= idx ? 32 : 8,
             height: 4,
-            borderRadius: 2,
-            backgroundColor: i <= idx ? C.primary : C.border,
+            borderRadius: R.sm,
+            backgroundColor: i <= idx ? C.info : C.border,
           }}
         />
       ))}
@@ -82,10 +69,10 @@ function ModeStep({
       <Pressable
         onPress={() => onChange("destination")}
         style={{
-          backgroundColor: value === "destination" ? C.card : "transparent",
+          backgroundColor: value === "destination" ? C.surface : "transparent",
           borderWidth: 2,
-          borderColor: value === "destination" ? C.primary : C.border,
-          borderRadius: 12,
+          borderColor: value === "destination" ? C.info : C.border,
+          borderRadius: R.md,
           padding: 20,
           gap: 6,
         }}
@@ -93,7 +80,7 @@ function ModeStep({
         <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
           Group Trip
         </Text>
-        <Text style={{ color: C.muted, fontSize: 14 }}>
+        <Text style={{ color: C.muted, fontSize: 15 }}>
           Fixed destination, shared expenses, group coordination
         </Text>
       </Pressable>
@@ -101,10 +88,10 @@ function ModeStep({
       <Pressable
         onPress={() => onChange("roadtrip")}
         style={{
-          backgroundColor: value === "roadtrip" ? C.card : "transparent",
+          backgroundColor: value === "roadtrip" ? C.surface : "transparent",
           borderWidth: 2,
-          borderColor: value === "roadtrip" ? C.orange : C.border,
-          borderRadius: 12,
+          borderColor: value === "roadtrip" ? C.warning : C.border,
+          borderRadius: R.md,
           padding: 20,
           gap: 6,
         }}
@@ -115,15 +102,15 @@ function ModeStep({
           </Text>
           <View
             style={{
-              backgroundColor: C.orangeBg,
-              borderRadius: 4,
+              backgroundColor: C.warningBg,
+              borderRadius: R.md,
               paddingHorizontal: 6,
               paddingVertical: 2,
             }}
           >
             <Text
               style={{
-                color: C.orange,
+                color: C.warning,
                 fontSize: 10,
                 fontWeight: "bold",
                 letterSpacing: 0.5,
@@ -133,7 +120,7 @@ function ModeStep({
             </Text>
           </View>
         </View>
-        <Text style={{ color: C.muted, fontSize: 14 }}>
+        <Text style={{ color: C.muted, fontSize: 15 }}>
           Route-based with fuel tracking and waypoints
         </Text>
       </Pressable>
@@ -187,12 +174,12 @@ function DetailsStep({
               ? "Seattle to Des Moines"
               : "Family Reunion 2026"
           }
-          placeholderTextColor="#555"
+          placeholderTextColor={C.placeholder}
           style={{
-            backgroundColor: C.card,
+            backgroundColor: C.surface,
             borderWidth: 1,
             borderColor: C.border,
-            borderRadius: 8,
+            borderRadius: R.md,
             padding: 14,
             color: C.fg,
             fontSize: 16,
@@ -217,12 +204,12 @@ function DetailsStep({
           value={destination}
           onChangeText={onDestinationChange}
           placeholder="Omaha, NE"
-          placeholderTextColor="#555"
+          placeholderTextColor={C.placeholder}
           style={{
-            backgroundColor: C.card,
+            backgroundColor: C.surface,
             borderWidth: 1,
             borderColor: C.border,
-            borderRadius: 8,
+            borderRadius: R.md,
             padding: 14,
             color: C.fg,
             fontSize: 16,
@@ -279,16 +266,16 @@ function DatesStep({
             value={startDate}
             onChangeText={onStartDateChange}
             placeholder="2026-06-10"
-            placeholderTextColor="#555"
+            placeholderTextColor={C.placeholder}
             style={{
-              backgroundColor: C.card,
+              backgroundColor: C.surface,
               borderWidth: 1,
               borderColor: C.border,
-              borderRadius: 8,
+              borderRadius: R.md,
               padding: 14,
               color: C.fg,
               fontSize: 15,
-              fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+              fontFamily: mono,
             }}
             keyboardType="numbers-and-punctuation"
           />
@@ -309,16 +296,16 @@ function DatesStep({
             value={endDate}
             onChangeText={onEndDateChange}
             placeholder="2026-06-15"
-            placeholderTextColor="#555"
+            placeholderTextColor={C.placeholder}
             style={{
-              backgroundColor: C.card,
+              backgroundColor: C.surface,
               borderWidth: 1,
               borderColor: C.border,
-              borderRadius: 8,
+              borderRadius: R.md,
               padding: 14,
               color: C.fg,
               fontSize: 15,
-              fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+              fontFamily: mono,
             }}
             keyboardType="numbers-and-punctuation"
           />
@@ -341,12 +328,12 @@ function DatesStep({
           value={tz}
           onChangeText={onTzChange}
           placeholder="America/Chicago"
-          placeholderTextColor="#555"
+          placeholderTextColor={C.placeholder}
           style={{
-            backgroundColor: C.card,
+            backgroundColor: C.surface,
             borderWidth: 1,
             borderColor: C.border,
-            borderRadius: 8,
+            borderRadius: R.md,
             padding: 14,
             color: C.fg,
             fontSize: 16,
@@ -476,7 +463,7 @@ export default function NewTripScreen() {
           )}
 
           {error && (
-            <Text style={{ color: C.danger, fontSize: 14, marginTop: 16 }}>
+            <Text style={{ color: C.critical, fontSize: 15, marginTop: 16 }}>
               {error}
             </Text>
           )}
@@ -503,7 +490,7 @@ export default function NewTripScreen() {
               flex: 1,
               borderWidth: 1,
               borderColor: C.border,
-              borderRadius: 12,
+              borderRadius: R.md,
               paddingVertical: 16,
               alignItems: "center",
             }}
@@ -517,19 +504,19 @@ export default function NewTripScreen() {
             disabled={createTrip.isPending}
             style={{
               flex: 2,
-              backgroundColor: isLastStep ? C.accent : C.primary,
-              borderRadius: 12,
+              backgroundColor: C.info,
+              borderRadius: R.md,
               paddingVertical: 16,
               alignItems: "center",
               opacity: createTrip.isPending ? 0.6 : 1,
             }}
           >
             {createTrip.isPending ? (
-              <ActivityIndicator color={C.primaryFg} />
+              <ActivityIndicator color={C.white} />
             ) : (
               <Text
                 style={{
-                  color: isLastStep ? "#fff" : C.primaryFg,
+                  color: C.white,
                   fontSize: 16,
                   fontWeight: "700",
                 }}

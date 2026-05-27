@@ -1,26 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
-import {
-  ActivityIndicator,
-  Platform,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 
 import { trpc } from "~/utils/api";
+import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
-
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  green: "#22c55e",
-  red: "#ef4444",
-} as const;
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -143,7 +127,7 @@ export default function SettleScreen() {
                     justifyContent: "space-between",
                     borderWidth: 1,
                     borderColor: C.border,
-                    borderRadius: 8,
+                    borderRadius: R.md,
                     padding: 12,
                     marginBottom: 8,
                   }}
@@ -151,9 +135,9 @@ export default function SettleScreen() {
                   <Text style={{ color: C.fg }}>{memberName(b.userId)}</Text>
                   <Text
                     style={{
-                      color: b.amountCents >= 0 ? C.green : C.red,
+                      color: b.amountCents >= 0 ? C.success : C.critical,
                       fontWeight: "500",
-                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      fontFamily: mono,
                     }}
                   >
                     {b.amountCents >= 0 ? "+" : ""}
@@ -182,8 +166,8 @@ export default function SettleScreen() {
                     style={{
                       borderWidth: 1,
                       borderColor: C.border,
-                      backgroundColor: C.card,
-                      borderRadius: 8,
+                      backgroundColor: C.surface,
+                      borderRadius: R.md,
                       padding: 16,
                       marginBottom: 8,
                     }}
@@ -199,12 +183,11 @@ export default function SettleScreen() {
                     </Text>
                     <Text
                       style={{
-                        color: C.primary,
+                        color: C.info,
                         fontSize: 18,
                         fontWeight: "bold",
                         marginTop: 4,
-                        fontFamily:
-                          Platform.OS === "ios" ? "Menlo" : "monospace",
+                        fontFamily: mono,
                       }}
                     >
                       {formatCurrency(tx.amountCents)}

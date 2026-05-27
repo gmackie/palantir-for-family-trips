@@ -35,6 +35,30 @@ interface Env {
     connectionString?: string | null;
   };
   R2?: R2Bucket;
+  [key: string]: unknown;
+}
+
+const SECRET_KEYS = [
+  "AUTH_SECRET",
+  "AUTH_GOOGLE_ID",
+  "AUTH_GOOGLE_SECRET",
+  "AUTH_APPLE_ID",
+  "AUTH_APPLE_SECRET",
+  "AUTH_APPLE_BUNDLE_ID",
+  "AUTH_DISCORD_ID",
+  "AUTH_DISCORD_SECRET",
+  "GEMINI_API_KEY",
+  "GOOGLE_ROUTES_API_KEY",
+  "RESEND_API_KEY",
+] as const;
+
+function syncEnvSecrets(env: Env) {
+  for (const key of SECRET_KEYS) {
+    const val = env[key];
+    if (typeof val === "string" && val) {
+      (process.env as Record<string, string>)[key] = val;
+    }
+  }
 }
 
 interface ExecutionContext {
@@ -57,6 +81,34 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    syncEnvSecrets(env);
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/auth-debug") {
+      const cookieHeader = request.headers.get("cookie");
+      return new Response(
+        JSON.stringify({
+          hasCookie: !!cookieHeader,
+          cookiePreview: cookieHeader
+            ? cookieHeader.substring(0, 120) + "..."
+            : null,
+          cookieNames: cookieHeader
+            ? cookieHeader
+                .split(";")
+                .map((c) => c.trim().split("=")[0])
+                .filter(Boolean)
+            : [],
+          hasHyperdrive: !!env.HYPERDRIVE?.connectionString,
+          timestamp: new Date().toISOString(),
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    }
+
+    console.log(
+      `[worker] ${request.method} ${url.pathname} cookie=${request.headers.has("cookie") ? "YES" : "NO"} source=${request.headers.get("x-trpc-source") ?? "-"}`,
+    );
+
     return runWithDatabaseRuntime(
       {
         databaseUrl:

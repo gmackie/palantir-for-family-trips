@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -14,37 +15,25 @@ import {
 } from "react-native";
 
 import { trpc } from "~/utils/api";
+import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  primaryFg: "#141116",
-  accent: "#58A6FF",
-  success: "#22c55e",
-  warning: "#eab308",
-} as const;
-
 const ROLE_BADGE: Record<string, { bg: string; text: string }> = {
-  organizer: { bg: "#d66daa33", text: "#d66daa" },
-  member: { bg: "#2f2a33", text: "#8c8691" },
+  organizer: { bg: C.infoBg, text: C.info },
+  member: { bg: C.border, text: C.muted },
 };
 
 const MEMBER_COLORS = [
-  "#d66daa",
-  "#58A6FF",
-  "#22c55e",
-  "#eab308",
-  "#f97316",
-  "#a78bfa",
-  "#34d399",
-  "#fb7185",
-  "#60a5fa",
-  "#fbbf24",
+  C.info, // #58A6FF
+  "#79C0FF", // light blue
+  "#56D364", // cool green
+  "#D2A8FF", // cool purple
+  "#7EE787", // mint
+  "#A5D6FF", // pale blue
+  "#BC8CFF", // violet
+  "#6CB6FF", // sky
+  "#9ECBFF", // ice blue
+  "#B1BAC4", // silver
 ];
 
 function getInitials(name: string | null): string {
@@ -77,8 +66,8 @@ function MemberRow({
         flexDirection: "row",
         alignItems: "center",
         padding: 16,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         borderWidth: 1,
         borderColor: C.border,
         gap: 12,
@@ -101,7 +90,7 @@ function MemberRow({
             color: color,
             fontSize: 14,
             fontWeight: "700",
-            fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+            fontFamily: mono,
           }}
         >
           {getInitials(member.displayName)}
@@ -109,14 +98,14 @@ function MemberRow({
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}>
+        <Text style={{ color: C.fg, fontSize: 15, fontWeight: "600" }}>
           {member.displayName ?? "Unnamed"}
         </Text>
         <Text
           style={{
             color: C.muted,
             fontSize: 12,
-            fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+            fontFamily: mono,
           }}
         >
           {member.userId.slice(0, 8)}
@@ -126,7 +115,7 @@ function MemberRow({
       <View
         style={{
           backgroundColor: badge.bg,
-          borderRadius: 999,
+          borderRadius: R.sm,
           paddingHorizontal: 8,
           paddingVertical: 3,
         }}
@@ -170,8 +159,8 @@ function InviteRow({
         alignItems: "center",
         padding: 12,
         paddingLeft: 16,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         borderWidth: 1,
         borderColor: C.border,
         borderStyle: "dashed",
@@ -191,17 +180,19 @@ function InviteRow({
           justifyContent: "center",
         }}
       >
-        <Text style={{ fontSize: 16 }}>
-          {isAccepted ? "✓" : isExpired ? "✕" : "✉"}
-        </Text>
+        <Ionicons
+          name={isAccepted ? "checkmark" : isExpired ? "close" : "mail-outline"}
+          size={16}
+          color={statusColor}
+        />
       </View>
 
       <View style={{ flex: 1 }}>
         <Text
           style={{
             color: C.fg,
-            fontSize: 14,
-            fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+            fontSize: 15,
+            fontFamily: mono,
           }}
         >
           {invite.email}
@@ -211,7 +202,7 @@ function InviteRow({
       <View
         style={{
           backgroundColor: `${statusColor}22`,
-          borderRadius: 999,
+          borderRadius: R.sm,
           paddingHorizontal: 6,
           paddingVertical: 2,
         }}
@@ -310,7 +301,7 @@ export default function MembersScreen() {
             paddingHorizontal: 24,
           }}
         >
-          <Text style={{ color: C.muted, fontSize: 16, marginBottom: 8 }}>
+          <Text style={{ color: C.muted, fontSize: 15, marginBottom: 8 }}>
             Could not load members
           </Text>
           <Text
@@ -318,7 +309,7 @@ export default function MembersScreen() {
               color: C.muted,
               fontSize: 13,
               textAlign: "center",
-              fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+              fontFamily: mono,
             }}
           >
             {membersError.message}
@@ -358,12 +349,12 @@ export default function MembersScreen() {
                       color: C.fg,
                       fontSize: 32,
                       fontWeight: "800",
-                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      fontFamily: mono,
                     }}
                   >
                     {memberCount}
                   </Text>
-                  <Text style={{ color: C.muted, fontSize: 14 }}>
+                  <Text style={{ color: C.muted, fontSize: 15 }}>
                     {memberCount === 1 ? "member" : "members"}
                     {pendingCount > 0 && ` · ${pendingCount} pending`}
                   </Text>
@@ -385,7 +376,7 @@ export default function MembersScreen() {
                   paddingVertical: 40,
                 }}
               >
-                <Text style={{ color: C.muted, fontSize: 16 }}>
+                <Text style={{ color: C.muted, fontSize: 15 }}>
                   No members yet
                 </Text>
               </View>
@@ -401,7 +392,7 @@ export default function MembersScreen() {
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: C.card,
+            backgroundColor: C.surface,
             borderTopWidth: 1,
             borderTopColor: C.border,
             padding: 16,
@@ -425,7 +416,7 @@ export default function MembersScreen() {
               value={inviteEmail}
               onChangeText={setInviteEmail}
               placeholder="name@example.com"
-              placeholderTextColor="#555"
+              placeholderTextColor={C.placeholder}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -435,11 +426,11 @@ export default function MembersScreen() {
                 backgroundColor: C.bg,
                 borderWidth: 1,
                 borderColor: C.border,
-                borderRadius: 8,
+                borderRadius: R.md,
                 padding: 12,
                 color: C.fg,
                 fontSize: 15,
-                fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                fontFamily: mono,
               }}
             />
             <Pressable
@@ -454,22 +445,23 @@ export default function MembersScreen() {
               }}
               disabled={sendInvite.isPending || !inviteEmail.trim()}
               style={{
-                backgroundColor: C.primary,
-                borderRadius: 8,
+                backgroundColor: C.info,
+                borderRadius: R.md,
                 paddingHorizontal: 16,
+                minHeight: 44,
                 alignItems: "center",
                 justifyContent: "center",
                 opacity: sendInvite.isPending || !inviteEmail.trim() ? 0.5 : 1,
               }}
             >
               {sendInvite.isPending ? (
-                <ActivityIndicator color={C.primaryFg} size="small" />
+                <ActivityIndicator color={C.white} size="small" />
               ) : (
                 <Text
                   style={{
-                    color: C.primaryFg,
+                    color: C.white,
                     fontWeight: "700",
-                    fontSize: 14,
+                    fontSize: 15,
                   }}
                 >
                   Send
@@ -481,6 +473,10 @@ export default function MembersScreen() {
             onPress={() => {
               setShowInviteField(false);
               setInviteEmail("");
+            }}
+            style={{
+              minHeight: 44,
+              justifyContent: "center",
             }}
           >
             <Text
@@ -507,14 +503,14 @@ export default function MembersScreen() {
           <Pressable
             onPress={() => setShowInviteField(true)}
             style={{
-              backgroundColor: C.primary,
-              borderRadius: 999,
+              backgroundColor: C.info,
+              borderRadius: R.md,
               paddingHorizontal: 24,
               paddingVertical: 16,
               minHeight: 48,
             }}
           >
-            <Text style={{ color: C.primaryFg, fontWeight: "600" }}>
+            <Text style={{ color: C.white, fontWeight: "600", fontSize: 15 }}>
               + Invite Member
             </Text>
           </Pressable>

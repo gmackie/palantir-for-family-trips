@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { ErrorBoundary } from "~/components/error-boundary";
 import { queryClient } from "~/utils/api";
+import { C } from "~/utils/design";
 import { Providers } from "../providers";
 
 export default function RootLayout() {
@@ -14,11 +15,11 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerStyle: {
-                backgroundColor: "#141116",
+                backgroundColor: C.bg,
               },
-              headerTintColor: "#f9f7fb",
+              headerTintColor: C.fg,
               contentStyle: {
-                backgroundColor: "#141116",
+                backgroundColor: C.bg,
               },
             }}
           />

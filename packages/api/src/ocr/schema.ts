@@ -60,11 +60,17 @@ export const receiptExtractionSchema = z.object({
           .number()
           .int()
           .nonnegative()
+          .nullable()
+          .default(0)
+          .transform((v) => v ?? 0)
           .describe("Price per single unit in minor units"),
         lineTotalCents: z
           .number()
           .int()
           .nonnegative()
+          .nullable()
+          .default(0)
+          .transform((v) => v ?? 0)
           .describe(
             "Total for this line (quantity * unit price) in minor units",
           ),

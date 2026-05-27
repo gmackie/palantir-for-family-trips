@@ -64,15 +64,15 @@ function cumulativeDistances(points: LatLng[]): number[] {
   return dists;
 }
 
-function sunsetHour(date: Date, lat: number, lng: number): number {
-  const times = SunCalc.getTimes(date, lat, lng);
-  return times.sunset.getHours() + times.sunset.getMinutes() / 60;
+function sunsetTime(date: Date, lat: number, lng: number): Date {
+  return SunCalc.getTimes(date, lat, lng).sunset;
 }
 
-function sunriseHour(date: Date, lat: number, lng: number): number {
-  const times = SunCalc.getTimes(date, lat, lng);
-  return times.sunrise.getHours() + times.sunrise.getMinutes() / 60;
+function sunriseTime(date: Date, lat: number, lng: number): Date {
+  return SunCalc.getTimes(date, lat, lng).sunrise;
 }
+
+const MS_PER_HOUR = 3_600_000;
 
 interface AutoSplitSegment {
   name: string;
@@ -103,19 +103,18 @@ function autoSplitRoute(
 
   while (segStart < points.length - 1) {
     const startPoint = points[segStart]!;
-    const startHour =
-      sunriseHour(currentDate, startPoint.lat, startPoint.lng) + PACK_UP_HOURS;
-    let currentHour = startHour;
+    const sunrise = sunriseTime(currentDate, startPoint.lat, startPoint.lng);
+    const departureMs = sunrise.getTime() + PACK_UP_HOURS * MS_PER_HOUR;
     let segEnd = segStart;
 
     for (let i = segStart + 1; i < points.length; i++) {
       const pt = points[i]!;
       const segDist = cumDist[i]! - cumDist[segStart]!;
       const drivingHours = segDist / AVG_SPEED_MPH;
-      currentHour = startHour + drivingHours;
+      const arrivalMs = departureMs + drivingHours * MS_PER_HOUR;
 
-      const sunset = sunsetHour(currentDate, pt.lat, pt.lng);
-      const hoursUntilSunset = sunset - currentHour;
+      const sunset = sunsetTime(currentDate, pt.lat, pt.lng);
+      const hoursUntilSunset = (sunset.getTime() - arrivalMs) / MS_PER_HOUR;
 
       if (
         drivingHours >= MAX_DRIVING_HOURS ||
@@ -376,23 +375,25 @@ export const routePlannerRouter = {
       }),
     )
     .query(async ({ ctx }) => {
-      const segments = await ctx.db
-        .select()
+      const rows = await ctx.db
+        .select({
+          distanceMiles: tripSegments.distanceMiles,
+          durationMinutes: tripSegments.durationMinutes,
+        })
         .from(tripSegments)
-        .where(eq(tripSegments.tripId, ctx.tripId))
-        .orderBy(asc(tripSegments.sortOrder));
+        .where(eq(tripSegments.tripId, ctx.tripId));
 
-      const totalMiles = segments.reduce(
+      const totalMiles = rows.reduce(
         (sum, s) => sum + (s.distanceMiles ? Number(s.distanceMiles) : 0),
         0,
       );
-      const totalMinutes = segments.reduce(
+      const totalMinutes = rows.reduce(
         (sum, s) => sum + (s.durationMinutes ?? 0),
         0,
       );
 
       return {
-        segments,
+        segmentCount: rows.length,
         totalMiles: Math.round(totalMiles * 10) / 10,
         totalMinutes,
       };

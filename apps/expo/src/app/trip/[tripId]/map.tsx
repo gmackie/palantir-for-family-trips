@@ -11,17 +11,69 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 import { trpc } from "~/utils/api";
+import { C, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  accent: "#58A6FF",
-} as const;
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#0A0C10" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0A0C10" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8B949E" }] },
+  {
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#30363D" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#161B22" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#30363D" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#1C2128" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#30363D" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#0D1117" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#58A6FF" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#161B22" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8B949E" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#161B22" }],
+  },
+  {
+    featureType: "landscape.man_made",
+    elementType: "geometry",
+    stylers: [{ color: "#0D1117" }],
+  },
+];
 
 const PIN_COLORS: Record<string, string> = {
   lodging: "#3b82f6",
@@ -32,67 +84,6 @@ const PIN_COLORS: Record<string, string> = {
   tickets: "#eab308",
   custom: "#6b7280",
 };
-
-const PIN_ICONS: Record<string, string> = {
-  lodging: "🏠",
-  activity: "🎯",
-  meal: "🍽️",
-  transit: "🚗",
-  drinks: "🍺",
-  tickets: "🎟️",
-  custom: "📍",
-};
-
-const DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#1d1d2b" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1d1d2b" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8c8691" }] },
-  {
-    featureType: "administrative.locality",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#c4b8d0" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#2a2735" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#1e1b24" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#3c3550" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#141120" }],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#4a4460" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "geometry",
-    stylers: [{ color: "#252233" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#6b6278" }],
-  },
-  {
-    featureType: "transit",
-    elementType: "geometry",
-    stylers: [{ color: "#252233" }],
-  },
-];
 
 export default function MapScreen() {
   "use no memo";
@@ -181,15 +172,15 @@ export default function MapScreen() {
           <Pressable
             onPress={() => setSelectedSegmentId(null)}
             style={{
-              backgroundColor: !selectedSegmentId ? C.accent : C.card,
-              borderRadius: 16,
+              backgroundColor: !selectedSegmentId ? C.info : C.surface,
+              borderRadius: R.md,
               paddingHorizontal: 12,
               paddingVertical: 6,
             }}
           >
             <Text
               style={{
-                color: !selectedSegmentId ? "#fff" : C.muted,
+                color: !selectedSegmentId ? C.white : C.muted,
                 fontSize: 12,
                 fontWeight: "600",
               }}
@@ -203,15 +194,15 @@ export default function MapScreen() {
               onPress={() => setSelectedSegmentId(seg.id)}
               style={{
                 backgroundColor:
-                  selectedSegmentId === seg.id ? C.accent : C.card,
-                borderRadius: 16,
+                  selectedSegmentId === seg.id ? C.info : C.surface,
+                borderRadius: R.md,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
               }}
             >
               <Text
                 style={{
-                  color: selectedSegmentId === seg.id ? "#fff" : C.muted,
+                  color: selectedSegmentId === seg.id ? C.white : C.muted,
                   fontSize: 12,
                   fontWeight: "600",
                 }}
@@ -230,7 +221,7 @@ export default function MapScreen() {
         initialRegion={defaultRegion}
         showsUserLocation
         showsCompass
-        customMapStyle={DARK_MAP_STYLE}
+        customMapStyle={darkMapStyle}
       >
         {/* Segment destination markers */}
         {(segments ?? [])
@@ -245,7 +236,7 @@ export default function MapScreen() {
               }}
               title={seg.name}
               description={seg.destinationName ?? undefined}
-              pinColor={C.accent}
+              pinColor={C.info}
             />
           ))}
 
@@ -272,8 +263,8 @@ export default function MapScreen() {
           position: "absolute",
           bottom: Platform.OS === "ios" ? 40 : 20,
           left: 16,
-          backgroundColor: "rgba(20,17,22,0.9)",
-          borderRadius: 8,
+          backgroundColor: "rgba(10,12,16,0.9)",
+          borderRadius: R.md,
           paddingHorizontal: 12,
           paddingVertical: 8,
           flexDirection: "row",

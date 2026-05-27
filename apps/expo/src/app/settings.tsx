@@ -18,29 +18,13 @@ import {
   View,
 } from "react-native";
 
-import { trpc } from "~/utils/api";
+import { queryClient, trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
+import { C, mono, R } from "~/utils/design";
 import { setLocale } from "~/utils/i18n";
 
 const PERMISSIONS = ["read", "write", "delete", "admin"] as const;
 const COLLABORATION_ROLES = ["member", "admin"] as const;
-
-const C = {
-  bg: "#141116",
-  fg: "#f9f7fb",
-  muted: "#8c8691",
-  card: "#1e1b24",
-  border: "#2f2a33",
-  primary: "#d66daa",
-  primaryFg: "#141116",
-  danger: "#ef4444",
-  dangerFg: "#ffffff",
-  green: "#22c55e",
-  greenBg: "#052e16",
-  greenText: "#86efac",
-  greenMuted: "#4ade80",
-  inputBg: "#0d0b0f",
-} as const;
 
 function formatMoney(amountInCents: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
@@ -106,8 +90,8 @@ function PreferencesSection() {
         style={{
           borderWidth: 1,
           borderColor: C.border,
-          backgroundColor: C.card,
-          borderRadius: 8,
+          backgroundColor: C.surface,
+          borderRadius: R.md,
           padding: 16,
         }}
       >
@@ -124,8 +108,8 @@ function PreferencesSection() {
       style={{
         borderWidth: 1,
         borderColor: C.border,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         padding: 16,
       }}
     >
@@ -143,7 +127,7 @@ function PreferencesSection() {
       <Text
         style={{
           color: C.fg,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: "500",
           marginBottom: 8,
         }}
@@ -158,15 +142,16 @@ function PreferencesSection() {
               key={theme}
               onPress={() => handleThemeChange(theme)}
               style={{
-                backgroundColor: active ? C.primary : C.bg,
+                backgroundColor: active ? C.info : C.bg,
                 borderWidth: active ? 0 : 1,
                 borderColor: C.border,
-                borderRadius: 6,
+                borderRadius: R.md,
                 paddingHorizontal: 16,
-                paddingVertical: 8,
+                minHeight: 44,
+                justifyContent: "center",
               }}
             >
-              <Text style={{ color: active ? C.primaryFg : C.fg }}>
+              <Text style={{ color: active ? C.white : C.fg }}>
                 {theme.charAt(0).toUpperCase() + theme.slice(1)}
               </Text>
             </Pressable>
@@ -177,7 +162,7 @@ function PreferencesSection() {
       <Text
         style={{
           color: C.fg,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: "500",
           marginBottom: 8,
         }}
@@ -199,15 +184,16 @@ function PreferencesSection() {
               key={lang}
               onPress={() => handleLanguageChange(lang)}
               style={{
-                backgroundColor: active ? C.primary : C.bg,
+                backgroundColor: active ? C.info : C.bg,
                 borderWidth: active ? 0 : 1,
                 borderColor: C.border,
-                borderRadius: 6,
+                borderRadius: R.md,
                 paddingHorizontal: 16,
-                paddingVertical: 8,
+                minHeight: 44,
+                justifyContent: "center",
               }}
             >
-              <Text style={{ color: active ? C.primaryFg : C.fg }}>
+              <Text style={{ color: active ? C.white : C.fg }}>
                 {lang.toUpperCase()}
               </Text>
             </Pressable>
@@ -218,7 +204,7 @@ function PreferencesSection() {
       <Text
         style={{
           color: C.fg,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: "500",
           marginBottom: 8,
         }}
@@ -228,40 +214,46 @@ function PreferencesSection() {
       <View style={{ gap: 8 }}>
         <Pressable
           onPress={() => toggleNotification("email")}
-          style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            minHeight: 44,
+          }}
         >
           <View
             style={{
-              width: 20,
-              height: 20,
-              borderRadius: 4,
-              borderWidth: 1,
-              borderColor: preferences?.emailNotifications
-                ? C.primary
-                : C.border,
-              backgroundColor: preferences?.emailNotifications
-                ? C.primary
-                : C.bg,
+              width: 22,
+              height: 22,
+              borderRadius: R.sm,
+              borderWidth: 2,
+              borderColor: preferences?.emailNotifications ? C.info : C.border,
+              backgroundColor: preferences?.emailNotifications ? C.info : C.bg,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           />
           <Text style={{ color: C.fg }}>Email notifications</Text>
         </Pressable>
         <Pressable
           onPress={() => toggleNotification("push")}
-          style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            minHeight: 44,
+          }}
         >
           <View
             style={{
-              width: 20,
-              height: 20,
-              borderRadius: 4,
-              borderWidth: 1,
-              borderColor: preferences?.pushNotifications
-                ? C.primary
-                : C.border,
-              backgroundColor: preferences?.pushNotifications
-                ? C.primary
-                : C.bg,
+              width: 22,
+              height: 22,
+              borderRadius: R.sm,
+              borderWidth: 2,
+              borderColor: preferences?.pushNotifications ? C.info : C.border,
+              backgroundColor: preferences?.pushNotifications ? C.info : C.bg,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           />
           <Text style={{ color: C.fg }}>Push notifications</Text>
@@ -355,8 +347,8 @@ function ApiKeysSection() {
       style={{
         borderWidth: 1,
         borderColor: C.border,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         padding: 16,
         marginTop: 16,
       }}
@@ -376,13 +368,14 @@ function ApiKeysSection() {
           <Pressable
             onPress={() => setShowCreateForm(true)}
             style={{
-              backgroundColor: C.primary,
-              borderRadius: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 4,
+              backgroundColor: C.info,
+              borderRadius: R.md,
+              paddingHorizontal: 16,
+              minHeight: 44,
+              justifyContent: "center",
             }}
           >
-            <Text style={{ color: C.primaryFg }}>New Key</Text>
+            <Text style={{ color: C.white, fontWeight: "500" }}>New Key</Text>
           </Pressable>
         )}
       </View>
@@ -391,17 +384,17 @@ function ApiKeysSection() {
         <View
           style={{
             marginBottom: 16,
-            borderRadius: 8,
+            borderRadius: R.md,
             borderWidth: 1,
-            borderColor: C.green,
-            backgroundColor: C.greenBg,
+            borderColor: C.success,
+            backgroundColor: C.successBg,
             padding: 12,
           }}
         >
           <Text
             style={{
               fontWeight: "500",
-              color: C.greenText,
+              color: C.success,
               marginBottom: 4,
             }}
           >
@@ -410,7 +403,7 @@ function ApiKeysSection() {
           <Text
             style={{
               fontSize: 12,
-              color: C.greenMuted,
+              color: C.success,
               marginBottom: 8,
             }}
           >
@@ -420,22 +413,27 @@ function ApiKeysSection() {
             onPress={() => void copyToClipboard(newKey)}
             style={{
               backgroundColor: C.bg,
-              borderRadius: 4,
-              padding: 8,
+              borderRadius: R.md,
+              padding: 12,
+              minHeight: 44,
+              justifyContent: "center",
             }}
           >
             <Text
               style={{
                 color: C.fg,
                 fontSize: 12,
-                fontFamily: "Menlo",
+                fontFamily: mono,
               }}
             >
               {newKey}
             </Text>
           </Pressable>
-          <Pressable onPress={() => setNewKey(null)} style={{ marginTop: 8 }}>
-            <Text style={{ fontSize: 14, color: C.greenMuted }}>Dismiss</Text>
+          <Pressable
+            onPress={() => setNewKey(null)}
+            style={{ marginTop: 8, minHeight: 44, justifyContent: "center" }}
+          >
+            <Text style={{ fontSize: 15, color: C.success }}>Dismiss</Text>
           </Pressable>
         </View>
       )}
@@ -445,7 +443,7 @@ function ApiKeysSection() {
           style={{
             borderWidth: 1,
             borderColor: C.border,
-            borderRadius: 8,
+            borderRadius: R.md,
             padding: 12,
             marginBottom: 16,
           }}
@@ -458,20 +456,20 @@ function ApiKeysSection() {
             value={newKeyName}
             onChangeText={setNewKeyName}
             placeholder="Key name"
-            placeholderTextColor="#888"
+            placeholderTextColor={C.placeholder}
             style={{
               borderWidth: 1,
               borderColor: C.border,
-              backgroundColor: C.inputBg,
+              backgroundColor: C.bg,
               color: C.fg,
-              borderRadius: 6,
+              borderRadius: R.md,
               paddingHorizontal: 12,
               paddingVertical: 8,
               marginBottom: 12,
             }}
           />
 
-          <Text style={{ color: C.fg, fontSize: 14, marginBottom: 8 }}>
+          <Text style={{ color: C.fg, fontSize: 15, marginBottom: 8 }}>
             Permissions
           </Text>
           <View
@@ -486,26 +484,33 @@ function ApiKeysSection() {
               <Pressable
                 key={permission}
                 onPress={() => togglePermission(permission)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  minHeight: 44,
+                }}
               >
                 <View
                   style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 4,
-                    borderWidth: 1,
+                    width: 22,
+                    height: 22,
+                    borderRadius: R.sm,
+                    borderWidth: 2,
                     borderColor: selectedPermissions.includes(permission)
-                      ? C.primary
+                      ? C.info
                       : C.border,
                     backgroundColor: selectedPermissions.includes(permission)
-                      ? C.primary
+                      ? C.info
                       : C.bg,
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 />
                 <Text
                   style={{
                     color: C.fg,
-                    textTransform: "capitalize",
+                    textTransform: "uppercase",
                   }}
                 >
                   {permission}
@@ -523,13 +528,14 @@ function ApiKeysSection() {
                 selectedPermissions.length === 0
               }
               style={{
-                backgroundColor: C.primary,
-                borderRadius: 6,
+                backgroundColor: C.info,
+                borderRadius: R.md,
                 paddingHorizontal: 16,
-                paddingVertical: 8,
+                minHeight: 44,
+                justifyContent: "center",
               }}
             >
-              <Text style={{ color: C.primaryFg }}>Create</Text>
+              <Text style={{ color: C.white, fontWeight: "500" }}>Create</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -540,9 +546,10 @@ function ApiKeysSection() {
               style={{
                 borderWidth: 1,
                 borderColor: C.border,
-                borderRadius: 6,
+                borderRadius: R.md,
                 paddingHorizontal: 16,
-                paddingVertical: 8,
+                minHeight: 44,
+                justifyContent: "center",
               }}
             >
               <Text style={{ color: C.fg }}>Cancel</Text>
@@ -563,7 +570,7 @@ function ApiKeysSection() {
               style={{
                 borderWidth: 1,
                 borderColor: C.border,
-                borderRadius: 8,
+                borderRadius: R.md,
                 padding: 12,
                 flexDirection: "row",
                 alignItems: "center",
@@ -587,13 +594,16 @@ function ApiKeysSection() {
                 onPress={() => handleRevokeKey(key.id, key.name)}
                 disabled={isRevoking}
                 style={{
-                  backgroundColor: C.danger,
-                  borderRadius: 6,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
+                  backgroundColor: C.critical,
+                  borderRadius: R.md,
+                  paddingHorizontal: 16,
+                  minHeight: 44,
+                  justifyContent: "center",
                 }}
               >
-                <Text style={{ color: C.dangerFg }}>Revoke</Text>
+                <Text style={{ color: C.white, fontWeight: "500" }}>
+                  Revoke
+                </Text>
               </Pressable>
             </View>
           ))}
@@ -660,8 +670,8 @@ function CollaborationSection() {
       style={{
         borderWidth: 1,
         borderColor: C.border,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         padding: 16,
         marginTop: 16,
       }}
@@ -686,7 +696,7 @@ function CollaborationSection() {
       <Text
         style={{
           color: C.fg,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: "500",
           marginBottom: 8,
         }}
@@ -697,15 +707,15 @@ function CollaborationSection() {
         value={inviteEmail}
         onChangeText={setInviteEmail}
         placeholder="teammate@example.com"
-        placeholderTextColor="#888"
+        placeholderTextColor={C.placeholder}
         autoCapitalize="none"
         keyboardType="email-address"
         style={{
           borderWidth: 1,
           borderColor: C.border,
-          backgroundColor: C.inputBg,
+          backgroundColor: C.bg,
           color: C.fg,
-          borderRadius: 6,
+          borderRadius: R.md,
           paddingHorizontal: 12,
           paddingVertical: 8,
           marginBottom: 12,
@@ -715,7 +725,7 @@ function CollaborationSection() {
       <Text
         style={{
           color: C.fg,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: "500",
           marginBottom: 8,
         }}
@@ -737,18 +747,19 @@ function CollaborationSection() {
               key={role}
               onPress={() => setInviteRole(role)}
               style={{
-                backgroundColor: active ? C.primary : C.bg,
+                backgroundColor: active ? C.info : C.bg,
                 borderWidth: active ? 0 : 1,
                 borderColor: C.border,
-                borderRadius: 6,
+                borderRadius: R.md,
                 paddingHorizontal: 16,
-                paddingVertical: 8,
+                minHeight: 44,
+                justifyContent: "center",
               }}
             >
               <Text
                 style={{
-                  color: active ? C.primaryFg : C.fg,
-                  textTransform: "capitalize",
+                  color: active ? C.white : C.fg,
+                  textTransform: "uppercase",
                 }}
               >
                 {role}
@@ -762,8 +773,8 @@ function CollaborationSection() {
         onPress={handleCreateInvite}
         disabled={isCreatingInvite || inviteEmail.trim().length === 0}
         style={{
-          backgroundColor: C.primary,
-          borderRadius: 6,
+          backgroundColor: C.info,
+          borderRadius: R.md,
           paddingHorizontal: 16,
           paddingVertical: 12,
           marginBottom: 16,
@@ -771,7 +782,7 @@ function CollaborationSection() {
       >
         <Text
           style={{
-            color: C.primaryFg,
+            color: C.white,
             textAlign: "center",
             fontWeight: "500",
           }}
@@ -783,7 +794,7 @@ function CollaborationSection() {
       <Text
         style={{
           color: C.fg,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: "500",
           marginBottom: 8,
         }}
@@ -800,14 +811,14 @@ function CollaborationSection() {
               style={{
                 borderWidth: 1,
                 borderColor: C.border,
-                borderRadius: 8,
+                borderRadius: R.md,
                 padding: 12,
               }}
             >
               <Text style={{ color: C.fg, fontWeight: "500" }}>
                 {invite.email}
               </Text>
-              <Text style={{ color: C.muted, textTransform: "capitalize" }}>
+              <Text style={{ color: C.muted, textTransform: "uppercase" }}>
                 {invite.role}
               </Text>
             </View>
@@ -832,8 +843,8 @@ function BillingUsageSection() {
         style={{
           borderWidth: 1,
           borderColor: C.border,
-          backgroundColor: C.card,
-          borderRadius: 8,
+          backgroundColor: C.surface,
+          borderRadius: R.md,
           padding: 16,
           marginTop: 16,
         }}
@@ -855,8 +866,8 @@ function BillingUsageSection() {
       style={{
         borderWidth: 1,
         borderColor: C.border,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         padding: 16,
         marginTop: 16,
       }}
@@ -880,7 +891,7 @@ function BillingUsageSection() {
         style={{
           borderWidth: 1,
           borderColor: C.border,
-          borderRadius: 8,
+          borderRadius: R.md,
           padding: 12,
           marginBottom: 16,
         }}
@@ -910,7 +921,7 @@ function BillingUsageSection() {
         style={{
           borderWidth: 1,
           borderColor: C.border,
-          borderRadius: 8,
+          borderRadius: R.md,
           padding: 12,
           marginBottom: 16,
         }}
@@ -922,12 +933,12 @@ function BillingUsageSection() {
               style={{
                 color: C.fg,
                 marginTop: 8,
-                textTransform: "capitalize",
+                textTransform: "uppercase",
               }}
             >
               {data.billing.subscription.status.replaceAll("_", " ")}
             </Text>
-            <Text style={{ color: C.muted, textTransform: "capitalize" }}>
+            <Text style={{ color: C.muted, textTransform: "uppercase" }}>
               Provider: {data.billing.subscription.provider}
             </Text>
             <Text style={{ color: C.muted }}>
@@ -946,7 +957,7 @@ function BillingUsageSection() {
         style={{
           borderWidth: 1,
           borderColor: C.border,
-          borderRadius: 8,
+          borderRadius: R.md,
           padding: 12,
         }}
       >
@@ -960,14 +971,14 @@ function BillingUsageSection() {
                   style={{
                     borderWidth: 1,
                     borderColor: C.border,
-                    borderRadius: 6,
+                    borderRadius: R.md,
                     padding: 12,
                   }}
                 >
                   <Text style={{ color: C.fg, fontWeight: "500" }}>
                     {limit.key}
                   </Text>
-                  <Text style={{ color: C.muted, textTransform: "capitalize" }}>
+                  <Text style={{ color: C.muted, textTransform: "uppercase" }}>
                     {limit.period.replaceAll("_", " ")}
                   </Text>
                   <Text style={{ color: C.fg, marginTop: 4 }}>
@@ -993,7 +1004,7 @@ function BillingUsageSection() {
                   style={{
                     borderWidth: 1,
                     borderColor: C.border,
-                    borderRadius: 6,
+                    borderRadius: R.md,
                     padding: 12,
                   }}
                 >
@@ -1045,15 +1056,16 @@ function SignOutSection() {
         onPress: async () => {
           setSigningOut(true);
           try {
-            await SecureStore.deleteItemAsync("expo_cookie");
-            await SecureStore.deleteItemAsync("active_workspace_id");
             await authClient.signOut();
           } catch {
             // signOut may fail if session already expired
-          } finally {
-            setSigningOut(false);
-            if (__DEV__) DevSettings.reload();
           }
+          await SecureStore.deleteItemAsync("expo_cookie");
+          await SecureStore.deleteItemAsync("expo_session_data");
+          await SecureStore.deleteItemAsync("active_workspace_id");
+          queryClient.clear();
+          setSigningOut(false);
+          if (__DEV__) DevSettings.reload();
         },
       },
     ]);
@@ -1064,8 +1076,8 @@ function SignOutSection() {
       style={{
         borderWidth: 1,
         borderColor: C.border,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         padding: 16,
         marginTop: 16,
       }}
@@ -1081,7 +1093,7 @@ function SignOutSection() {
         Signed in as
       </Text>
       {session?.user?.name && (
-        <Text style={{ color: C.fg, fontSize: 14, marginBottom: 2 }}>
+        <Text style={{ color: C.fg, fontSize: 15, marginBottom: 2 }}>
           {session.user.name}
         </Text>
       )}
@@ -1096,7 +1108,7 @@ function SignOutSection() {
         style={{
           borderWidth: 1,
           borderColor: C.border,
-          borderRadius: 6,
+          borderRadius: R.md,
           paddingHorizontal: 16,
           paddingVertical: 12,
           opacity: signingOut ? 0.5 : 1,
@@ -1104,7 +1116,7 @@ function SignOutSection() {
       >
         <Text
           style={{
-            color: C.danger,
+            color: C.critical,
             textAlign: "center",
             fontWeight: "500",
           }}
@@ -1146,8 +1158,8 @@ function AccountSection() {
       style={{
         borderWidth: 1,
         borderColor: C.border,
-        backgroundColor: C.card,
-        borderRadius: 8,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
         padding: 16,
         marginTop: 16,
       }}
@@ -1170,15 +1182,15 @@ function AccountSection() {
         onPress={handleDeleteAccount}
         disabled={isPending}
         style={{
-          backgroundColor: C.danger,
-          borderRadius: 6,
+          backgroundColor: C.critical,
+          borderRadius: R.md,
           paddingHorizontal: 16,
           paddingVertical: 12,
         }}
       >
         <Text
           style={{
-            color: C.dangerFg,
+            color: C.white,
             textAlign: "center",
             fontWeight: "500",
           }}

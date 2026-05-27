@@ -404,6 +404,44 @@ export const expensesRouter = {
       return updated;
     }),
 
+  delete: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        expenseId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [existing] = (await ctx.db
+        .select()
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.id, input.expenseId),
+            eq(expenses.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<typeof expenses.$inferSelect>;
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found.",
+        });
+      }
+
+      requireOrganizerOrSelf(
+        ctx.tripRole,
+        existing.payerUserId,
+        ctx.session.user.id,
+      );
+
+      await ctx.db.delete(expenses).where(eq(expenses.id, input.expenseId));
+
+      return { deleted: true };
+    }),
+
   /**
    * Add a line item to a draft expense.
    */
