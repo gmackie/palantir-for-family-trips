@@ -94,7 +94,7 @@
     "production": {
       "ios": {
         "appleId": "${APPLE_ID}",
-        "ascAppId": "${ASC_APP_ID}",
+        "ascAppId": "6775057200",
         "appleTeamId": "${APPLE_TEAM_ID}"
       },
       "android": {
@@ -105,7 +105,7 @@
     "beta": {
       "ios": {
         "appleId": "${APPLE_ID}",
-        "ascAppId": "${ASC_APP_ID}",
+        "ascAppId": "6775057200",
         "appleTeamId": "${APPLE_TEAM_ID}"
       },
       "android": {

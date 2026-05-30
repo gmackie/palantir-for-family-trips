@@ -29,7 +29,9 @@ const getBundleId = (): string => {
   const base = "com.gmacko.sortie";
   switch (APP_ENV) {
     case "production":
-      return base;
+      // com.gmacko.sortie was held by a Sign-in-with-Apple Service ID; the
+      // production ASC app (ASC id 6775057200, "Sortey") uses com.gmacko.sortey.
+      return "com.gmacko.sortey";
     case "staging":
       return `${base}.beta`;
     default:
@@ -137,7 +139,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         projectId: "5f21337f-9f48-4b0c-8d02-656e4a08dc86",
       },
     },
-    owner: process.env.EXPO_OWNER,
+    owner: "gmacko",
     experiments: {
       tsconfigPaths: true,
       typedRoutes: true,
