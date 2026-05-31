@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   DevSettings,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -277,11 +278,13 @@ function SignIn() {
           onPress={() => void handleSocial("google")}
           loading={socialLoading === "google"}
         />
-        <SocialButton
-          label="Continue with Apple"
-          onPress={() => void handleSocial("apple")}
-          loading={socialLoading === "apple"}
-        />
+        {Platform.OS === "ios" && (
+          <SocialButton
+            label="Continue with Apple"
+            onPress={() => void handleSocial("apple")}
+            loading={socialLoading === "apple"}
+          />
+        )}
       </View>
 
       {error && (

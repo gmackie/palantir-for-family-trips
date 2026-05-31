@@ -68,6 +68,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
   ];
 
+  plugins.push([
+    "expo-share-intent",
+    {
+      iosShareExtensionName: "SorteyShare",
+      iosActivationRules: {
+        NSExtensionActivationSupportsImageWithMaxCount: 20,
+      },
+    },
+  ] as [string, Record<string, unknown>]);
+
   if (sentryPlugin) {
     plugins.push(sentryPlugin as [string, Record<string, unknown>]);
   }
