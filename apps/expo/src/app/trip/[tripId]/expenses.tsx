@@ -1,12 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { useCallback, useState } from "react";
+import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { SkeletonList } from "~/components/skeleton";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
@@ -36,12 +32,21 @@ export default function ExpenseList() {
   const router = useRouter();
   const workspaceId = getActiveWorkspaceId() ?? "";
 
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
   const { data: expenses, isLoading } = useQuery(
     trpc.expenses.list.queryOptions({
       workspaceId,
       tripId: tripId ?? "",
     }),
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries(trpc.expenses.list.queryFilter());
+    setRefreshing(false);
+  }, [queryClient]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -54,11 +59,7 @@ export default function ExpenseList() {
       />
 
       {isLoading ? (
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <ActivityIndicator size="large" />
-        </View>
+        <SkeletonList count={5} />
       ) : !expenses || expenses.length === 0 ? (
         <View
           style={{
@@ -80,6 +81,13 @@ export default function ExpenseList() {
           data={expenses}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void onRefresh()}
+              tintColor={C.muted}
+            />
+          }
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item }) => {
             const badge = STATUS_BADGE[item.status] ?? {

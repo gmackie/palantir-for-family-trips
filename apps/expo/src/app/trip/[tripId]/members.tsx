@@ -8,6 +8,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   Share,
@@ -15,6 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
@@ -234,6 +236,7 @@ export default function MembersScreen() {
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [showInviteField, setShowInviteField] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const {
     data: members,
@@ -525,6 +528,20 @@ export default function MembersScreen() {
                   <Ionicons name="copy-outline" size={16} color={C.muted} />
                 </Pressable>
                 <Pressable
+                  onPress={() => setShowQR(true)}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderRadius: R.md,
+                    minHeight: 44,
+                    minWidth: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="qr-code-outline" size={20} color={C.fg} />
+                </Pressable>
+                <Pressable
                   onPress={() => {
                     const link = `${APP_URL}/invite/${sendInvite.data!.token}`;
                     void Share.share({
@@ -614,6 +631,62 @@ export default function MembersScreen() {
             </Text>
           </Pressable>
         </View>
+      )}
+
+      {/* QR Code Modal */}
+      {sendInvite.data?.token && (
+        <Modal
+          visible={showQR}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowQR(false)}
+        >
+          <Pressable
+            onPress={() => setShowQR(false)}
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.8)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: R.md,
+                padding: 32,
+                alignItems: "center",
+                gap: 16,
+              }}
+            >
+              <QRCode
+                value={`${APP_URL}/invite/${sendInvite.data.token}`}
+                size={220}
+                backgroundColor="#fff"
+                color="#000"
+              />
+              <Text
+                style={{
+                  color: "#000",
+                  fontSize: 14,
+                  fontWeight: "600",
+                  textAlign: "center",
+                }}
+              >
+                Scan to join trip
+              </Text>
+              <Text
+                style={{
+                  color: "#666",
+                  fontSize: 12,
+                  textAlign: "center",
+                }}
+              >
+                Open camera and point at this code
+              </Text>
+            </View>
+          </Pressable>
+        </Modal>
       )}
     </View>
   );

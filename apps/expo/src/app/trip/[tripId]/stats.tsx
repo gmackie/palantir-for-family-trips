@@ -163,15 +163,36 @@ export default function StatsScreen() {
       (a, b) => b.totalCents - a.totalCents,
     );
 
-    const byCategory: Record<string, number> = {};
+    const byMerchant: Record<string, number> = {};
     for (const exp of expenses) {
       const cat = exp.merchant ?? "Other";
-      byCategory[cat] = (byCategory[cat] ?? 0) + (exp.totalCents ?? 0);
+      byMerchant[cat] = (byMerchant[cat] ?? 0) + (exp.totalCents ?? 0);
     }
-    const categoryRanking = Object.entries(byCategory)
+    const merchantRanking = Object.entries(byMerchant)
       .map(([name, cents]) => ({ name, totalCents: cents }))
       .sort((a, b) => b.totalCents - a.totalCents)
       .slice(0, 10);
+
+    const CATEGORY_LABELS: Record<string, string> = {
+      meal: "Meals",
+      transit: "Transit",
+      lodging: "Lodging",
+      activity: "Activities",
+      drinks: "Drinks",
+      tickets: "Tickets",
+      general: "General",
+      fuel: "Fuel",
+      camping: "Camping",
+    };
+    const byExpenseCategory: Record<string, number> = {};
+    for (const exp of expenses) {
+      const label = CATEGORY_LABELS[exp.category] ?? exp.category;
+      byExpenseCategory[label] =
+        (byExpenseCategory[label] ?? 0) + (exp.totalCents ?? 0);
+    }
+    const categoryRanking = Object.entries(byExpenseCategory)
+      .map(([name, cents]) => ({ name, totalCents: cents }))
+      .sort((a, b) => b.totalCents - a.totalCents);
 
     const avgExpenseCents =
       expenseCount > 0 ? Math.round(totalCents / expenseCount) : 0;
@@ -189,6 +210,7 @@ export default function StatsScreen() {
       avgExpenseCents,
       payerRanking,
       categoryRanking,
+      merchantRanking,
       largestExpense,
     };
   }, [expenses, members]);
@@ -369,7 +391,7 @@ export default function StatsScreen() {
           </View>
         )}
 
-        {/* By merchant */}
+        {/* By category */}
         {stats.categoryRanking.length > 0 && (
           <View>
             <Text
@@ -382,7 +404,7 @@ export default function StatsScreen() {
                 marginBottom: 10,
               }}
             >
-              By Merchant
+              By Category
             </Text>
             {stats.categoryRanking.map((c, i) => (
               <BarRow
@@ -390,6 +412,33 @@ export default function StatsScreen() {
                 label={c.name}
                 value={c.totalCents}
                 maxValue={stats.categoryRanking[0]!.totalCents}
+                color={COLORS[i % COLORS.length]!}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* By merchant */}
+        {stats.merchantRanking.length > 0 && (
+          <View>
+            <Text
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 10,
+              }}
+            >
+              Top Merchants
+            </Text>
+            {stats.merchantRanking.map((c, i) => (
+              <BarRow
+                key={c.name}
+                label={c.name}
+                value={c.totalCents}
+                maxValue={stats.merchantRanking[0]!.totalCents}
                 color={COLORS[(i + 3) % COLORS.length]!}
               />
             ))}

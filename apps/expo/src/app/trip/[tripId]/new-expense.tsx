@@ -94,6 +94,7 @@ export default function NewExpense() {
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
     null,
   );
+  const [currency, setCurrency] = useState("USD");
 
   const subtotalCents = dollarsToCents(subtotalDollars);
   const taxCents = expenseType === "gas" ? 0 : dollarsToCents(taxDollars);
@@ -378,6 +379,7 @@ export default function NewExpense() {
         taxCents,
         tipCents,
         totalCents,
+        currency,
       });
 
       if (receiptMeta && created?.id) {
@@ -890,6 +892,46 @@ export default function NewExpense() {
               </Pressable>
             </View>
           )}
+
+          {/* Currency */}
+          <View style={{ marginBottom: 12 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginHorizontal: -4 }}
+            >
+              {(["USD", "EUR", "GBP", "CAD", "AUD", "MXN", "JPY"] as const).map(
+                (c) => (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCurrency(c)}
+                    style={{
+                      marginHorizontal: 4,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: R.md,
+                      minHeight: 32,
+                      justifyContent: "center",
+                      ...(currency === c
+                        ? { backgroundColor: C.info }
+                        : { borderWidth: 1, borderColor: C.border }),
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: currency === c ? C.white : C.muted,
+                        fontSize: 12,
+                        fontWeight: "600",
+                        fontFamily: mono,
+                      }}
+                    >
+                      {c}
+                    </Text>
+                  </Pressable>
+                ),
+              )}
+            </ScrollView>
+          </View>
 
           {/* Subtotal + Tax (non-gas) */}
           {expenseType !== "gas" && (
