@@ -24,7 +24,7 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "development",
-        "API_URL": "https://sortie.gmac.io",
+        "API_URL": "https://sortey.app",
         "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_DEV}",
         "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_DEV}",
         "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
@@ -78,8 +78,8 @@
       "autoIncrement": true,
       "env": {
         "APP_ENV": "production",
-        "API_URL": "https://sortie.gmac.io",
-        "EXPO_PUBLIC_APP_DOMAIN": "sortie.gmac.io"
+        "API_URL": "https://sortey.app",
+        "EXPO_PUBLIC_APP_DOMAIN": "sortey.app"
       },
       "ios": {
         "enterpriseProvisioning": "universal"

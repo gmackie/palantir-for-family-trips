@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { and, asc, desc, eq, isNull } from "@gmacko/db";
+import { and, asc, desc, eq, isNull, sql } from "@gmacko/db";
 import {
   segmentMembers,
   tripInvites,
@@ -14,6 +14,7 @@ import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
+import { sendPushToTripMembers } from "../notifications/send";
 import { protectedProcedure, publicProcedure } from "../trpc";
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
@@ -752,7 +753,8 @@ export const tripsRouter = {
       }),
     )
     .query(async ({ ctx }) => {
-      return ctx.db
+      const userId = ctx.session.user.id;
+      const rows = await ctx.db
         .select({
           id: tripSegments.id,
           tripId: tripSegments.tripId,
@@ -769,10 +771,14 @@ export const tripsRouter = {
           durationMinutes: tripSegments.durationMinutes,
           startDate: tripSegments.startDate,
           endDate: tripSegments.endDate,
+          memberCount: sql<number>`(SELECT count(*) FROM segment_member WHERE segment_id = ${tripSegments.id})::int`,
+          isMember: sql<boolean>`EXISTS(SELECT 1 FROM segment_member WHERE segment_id = ${tripSegments.id} AND user_id = ${userId})`,
         })
         .from(tripSegments)
         .where(eq(tripSegments.tripId, ctx.tripId))
         .orderBy(asc(tripSegments.sortOrder));
+
+      return rows.filter((r) => r.isMember || r.memberCount === 0);
     }),
 
   acceptInvite: protectedProcedure
@@ -878,6 +884,14 @@ export const tripsRouter = {
           );
       });
 
+      void sendPushToTripMembers(ctx.db, {
+        tripId: invite.tripId,
+        excludeUserId: ctx.session.user.id,
+        title: "New Member",
+        body: `${ctx.session.user.name ?? ctx.session.user.email ?? "Someone"} joined the trip`,
+        data: { tripId: invite.tripId, screen: "members" },
+      });
+
       return {
         tripId: invite.tripId,
         workspaceId: invite.workspaceId,
@@ -908,5 +922,212 @@ export const tripsRouter = {
       }>;
 
       return members;
+    }),
+
+  updateMyProfile: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        displayName: z.string().min(1).max(120).optional(),
+        venmoHandle: z.string().max(80).optional(),
+        colorHex: z.string().max(16).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updates: Record<string, unknown> = {};
+      if (input.displayName !== undefined)
+        updates.displayName = input.displayName;
+      if (input.venmoHandle !== undefined)
+        updates.venmoHandle = input.venmoHandle;
+      if (input.colorHex !== undefined) updates.colorHex = input.colorHex;
+
+      if (Object.keys(updates).length === 0) return null;
+
+      const [updated] = (await ctx.db
+        .update(tripMembers)
+        .set(updates)
+        .where(
+          and(
+            eq(tripMembers.tripId, ctx.tripId),
+            eq(tripMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .returning()) as Array<typeof tripMembers.$inferSelect>;
+
+      return updated ?? null;
+    }),
+
+  createSegment: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        name: z.string().min(1).max(160),
+        destinationName: z.string().max(160).optional(),
+        startDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        endDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db
+        .select({
+          maxSort: sql<number>`coalesce(max(${tripSegments.sortOrder}), -1)`,
+        })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, ctx.tripId));
+      const nextSort = (existing[0]?.maxSort ?? -1) + 1;
+
+      const [created] = (await ctx.db
+        .insert(tripSegments)
+        .values({
+          tripId: ctx.tripId,
+          name: input.name,
+          destinationName: input.destinationName ?? null,
+          startDate: input.startDate ?? null,
+          endDate: input.endDate ?? null,
+          sortOrder: nextSort,
+        })
+        .returning()) as Array<typeof tripSegments.$inferSelect>;
+
+      if (!created) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create segment.",
+        });
+      }
+
+      await ctx.db.insert(segmentMembers).values({
+        segmentId: created.id,
+        userId: ctx.session.user.id,
+      });
+
+      return created;
+    }),
+
+  listSegmentMembers: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        segmentId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const members = (await ctx.db
+        .select({
+          userId: segmentMembers.userId,
+          displayName: tripMembers.displayName,
+          colorHex: tripMembers.colorHex,
+        })
+        .from(segmentMembers)
+        .innerJoin(
+          tripMembers,
+          and(
+            eq(tripMembers.userId, segmentMembers.userId),
+            eq(tripMembers.tripId, ctx.tripId),
+          ),
+        )
+        .where(eq(segmentMembers.segmentId, input.segmentId))) as Array<{
+        userId: string;
+        displayName: string | null;
+        colorHex: string | null;
+      }>;
+      return members;
+    }),
+
+  joinSegment: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        segmentId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [seg] = await ctx.db
+        .select({ id: tripSegments.id })
+        .from(tripSegments)
+        .where(
+          and(
+            eq(tripSegments.id, input.segmentId),
+            eq(tripSegments.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1);
+      if (!seg) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Segment not found.",
+        });
+      }
+
+      await ctx.db
+        .insert(segmentMembers)
+        .values({ segmentId: input.segmentId, userId: ctx.session.user.id })
+        .onConflictDoNothing();
+
+      return { joined: true };
+    }),
+
+  leaveSegment: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        segmentId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(segmentMembers)
+        .where(
+          and(
+            eq(segmentMembers.segmentId, input.segmentId),
+            eq(segmentMembers.userId, ctx.session.user.id),
+          ),
+        );
+      return { left: true };
+    }),
+
+  addToSegment: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        segmentId: z.string().uuid(),
+        userId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [isTripMember] = await ctx.db
+        .select({ userId: tripMembers.userId })
+        .from(tripMembers)
+        .where(
+          and(
+            eq(tripMembers.tripId, ctx.tripId),
+            eq(tripMembers.userId, input.userId),
+          ),
+        )
+        .limit(1);
+      if (!isTripMember) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "User is not a member of this trip.",
+        });
+      }
+
+      await ctx.db
+        .insert(segmentMembers)
+        .values({ segmentId: input.segmentId, userId: input.userId })
+        .onConflictDoNothing();
+
+      return { added: true };
     }),
 } satisfies TRPCRouterRecord;

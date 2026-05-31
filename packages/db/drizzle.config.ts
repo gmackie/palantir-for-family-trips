@@ -10,4 +10,6 @@ export default {
   dialect: "postgresql",
   dbCredentials: { url: process.env.DATABASE_URL },
   casing: "snake_case",
+  tablesFilter: ["!spatial_ref_sys"],
+  extensionsFilters: ["postgis"],
 } satisfies Config;

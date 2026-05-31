@@ -57,7 +57,7 @@ export default async function SignInPage() {
       <div className="w-full max-w-sm space-y-6 rounded-[4px] border border-[#21262D] bg-[#161B22] p-6">
         <div className="space-y-2">
           <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
-            Sortie
+            Sortey
           </p>
           <h1 className="text-2xl font-black tracking-tight text-[#C9D1D9]">
             Sign in

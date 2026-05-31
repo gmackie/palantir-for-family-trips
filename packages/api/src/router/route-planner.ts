@@ -7,6 +7,7 @@ import SunCalc from "suncalc";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { protectedProcedure } from "../trpc";
 
 const MAX_DRIVING_HOURS = 12;
 const PACK_UP_HOURS = 1;
@@ -397,5 +398,69 @@ export const routePlannerRouter = {
         totalMiles: Math.round(totalMiles * 10) / 10,
         totalMinutes,
       };
+    }),
+
+  searchPlaces: protectedProcedure
+    .input(z.object({ query: z.string().min(2).max(200) }))
+    .query(async ({ input }) => {
+      const apiKey =
+        process.env.GOOGLE_ROUTES_API_KEY ??
+        process.env.GOOGLE_MAPS_API_KEY ??
+        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Google Maps API key not configured",
+        });
+      }
+
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input.query)}&key=${apiKey}`,
+      );
+      const data = (await res.json()) as {
+        status?: string;
+        error_message?: string;
+        results?: Array<{
+          place_id: string;
+          formatted_address: string;
+          geometry: { location: { lat: number; lng: number } };
+          address_components?: Array<{
+            long_name: string;
+            types: string[];
+          }>;
+        }>;
+      };
+
+      if (
+        data.status &&
+        data.status !== "OK" &&
+        data.status !== "ZERO_RESULTS"
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Geocoding API: ${data.status}`,
+        });
+      }
+
+      return (data.results ?? []).slice(0, 5).map((r) => {
+        const locality = r.address_components?.find((c) =>
+          c.types.includes("locality"),
+        );
+        const admin = r.address_components?.find((c) =>
+          c.types.includes("administrative_area_level_1"),
+        );
+        const name =
+          locality?.long_name ?? r.formatted_address.split(",")[0] ?? "";
+        const shortAddr = admin
+          ? `${name}, ${admin.long_name}`
+          : r.formatted_address;
+        return {
+          name,
+          address: shortAddr,
+          lat: r.geometry.location.lat,
+          lng: r.geometry.location.lng,
+          placeId: r.place_id,
+        };
+      });
     }),
 } satisfies TRPCRouterRecord;

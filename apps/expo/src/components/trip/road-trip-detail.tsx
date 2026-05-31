@@ -128,6 +128,12 @@ export function RoadTripDetail({
       path: "segments",
     },
     {
+      key: "lodging",
+      label: "Lodging",
+      icon: "bed-outline",
+      path: "lodging",
+    },
+    {
       key: "expenses",
       label: "Expenses",
       icon: "receipt-outline",

@@ -80,6 +80,30 @@ export const userPreferences = pgTable("user_preferences", (t) => ({
     .$onUpdateFn(() => sql`now()`),
 }));
 
+export const pushTokens = pgTable(
+  "push_token",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    token: t.varchar({ length: 255 }).notNull(),
+    platform: t.varchar({ length: 10 }).notNull().default("ios"),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  }),
+  (table) => [
+    unique("push_token_user_token_unique").on(table.userId, table.token),
+  ],
+);
+
 export const apiKeys = pgTable("api_keys", (t) => ({
   id: t.uuid().notNull().primaryKey().defaultRandom(),
   userId: t
@@ -433,6 +457,111 @@ export const settlements = pgTable("settlement", (t) => ({
   updatedAt: t
     .timestamp({ mode: "date", withTimezone: true })
     .$onUpdateFn(() => sql`now()`),
+}));
+
+// ═══════════════════════════════════════════════════════
+// PHOTOS
+// ═══════════════════════════════════════════════════════
+
+export const tripPhotos = pgTable("trip_photo", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  segmentId: t
+    .uuid()
+    .references(() => tripSegments.id, { onDelete: "set null" }),
+  userId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  storageKey: t.varchar({ length: 512 }).notNull(),
+  caption: t.varchar({ length: 500 }),
+  lat: t.numeric(),
+  lng: t.numeric(),
+  takenAt: t.timestamp({ mode: "date", withTimezone: true }),
+  uploadedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}));
+
+export const photoReactionEnum = [
+  "heart",
+  "fire",
+  "laugh",
+  "wow",
+  "sad",
+] as const;
+export type PhotoReaction = (typeof photoReactionEnum)[number];
+
+export const photoReactions = pgTable(
+  "photo_reaction",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    photoId: t
+      .uuid()
+      .notNull()
+      .references(() => tripPhotos.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    reaction: t.text().$type<PhotoReaction>().notNull(),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  }),
+  (table) => [
+    unique("photo_reaction_photo_user_unique").on(table.photoId, table.userId),
+  ],
+);
+
+// ═══════════════════════════════════════════════════════
+// ITINERARY
+// ═══════════════════════════════════════════════════════
+
+export const itineraryEventCategoryEnum = [
+  "meal",
+  "activity",
+  "transport",
+  "lodging",
+  "free_time",
+  "meeting_point",
+  "other",
+] as const;
+export type ItineraryEventCategory =
+  (typeof itineraryEventCategoryEnum)[number];
+
+export const itineraryEvents = pgTable("itinerary_event", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  segmentId: t
+    .uuid()
+    .references(() => tripSegments.id, { onDelete: "set null" }),
+  title: t.varchar({ length: 200 }).notNull(),
+  description: t.text(),
+  category: t.text().$type<ItineraryEventCategory>().notNull().default("other"),
+  location: t.varchar({ length: 300 }),
+  lat: t.numeric(),
+  lng: t.numeric(),
+  startsAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  endsAt: t.timestamp({ mode: "date", withTimezone: true }),
+  allDay: t.boolean().notNull().default(false),
+  createdByUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  sortOrder: t.integer().notNull().default(0),
+  createdAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .defaultNow()
+    .notNull(),
 }));
 
 // ═══════════════════════════════════════════════════════
@@ -1139,6 +1268,34 @@ export const gpsTrackPoints = pgTable("gps_track_point", (t) => ({
   speed: t.numeric(),
   recordedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
 }));
+
+export const memberLocations = pgTable(
+  "member_location",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    lat: t.numeric().notNull(),
+    lng: t.numeric().notNull(),
+    heading: t.numeric(),
+    speed: t.numeric(),
+    accuracy: t.numeric(),
+    sharingEnabled: t.boolean().notNull().default(false),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  }),
+  (table) => [
+    unique("member_location_trip_user_unique").on(table.tripId, table.userId),
+  ],
+);
 
 export const CreateUserPreferencesSchema = createInsertSchema(userPreferences, {
   theme: z.enum(["light", "dark", "system"]).default("system"),

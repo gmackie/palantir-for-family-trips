@@ -12,6 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { sendPushToTripMembers } from "../notifications/send";
 
 function requireOrganizer(tripRole: "organizer" | "member") {
   if (tripRole !== "organizer") {
@@ -58,6 +59,14 @@ export const planningRouter = {
           message: "Failed to create poll.",
         });
       }
+
+      void sendPushToTripMembers(ctx.db, {
+        tripId: ctx.tripId,
+        excludeUserId: ctx.session.user.id,
+        title: "New Poll",
+        body: created.title,
+        data: { tripId: ctx.tripId, screen: "polls" },
+      });
 
       return created;
     }),
@@ -343,6 +352,14 @@ export const planningRouter = {
           message: "Failed to create proposal.",
         });
       }
+
+      void sendPushToTripMembers(ctx.db, {
+        tripId: ctx.tripId,
+        excludeUserId: ctx.session.user.id,
+        title: "New Proposal",
+        body: created.title,
+        data: { tripId: ctx.tripId, screen: "polls" },
+      });
 
       return created;
     }),

@@ -1,12 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Constants from "expo-constants";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -28,56 +26,45 @@ interface Place {
   placeId: string;
 }
 
-const GOOGLE_API_KEY =
-  Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY ??
-  process.env.GOOGLE_MAPS_API_KEY ??
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
-  "";
-
 function usePlacesSearch() {
   const [results, setResults] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const queryClient = useQueryClient();
 
-  const search = useCallback((query: string) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (query.length < 3) {
-      setResults([]);
-      return;
-    }
-    timerRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}`,
-        );
-        const data = (await res.json()) as {
-          results: Array<{
-            place_id: string;
-            name: string;
-            formatted_address: string;
-            geometry: { location: { lat: number; lng: number } };
-          }>;
-        };
-        setResults(
-          (data.results ?? []).slice(0, 5).map((r) => ({
-            name: r.name,
-            address: r.formatted_address,
-            lat: r.geometry.location.lat,
-            lng: r.geometry.location.lng,
-            placeId: r.place_id,
-          })),
-        );
-      } catch {
+  const search = useCallback(
+    (query: string) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (query.length < 3) {
         setResults([]);
-      } finally {
-        setLoading(false);
+        setError(null);
+        return;
       }
-    }, 400);
-  }, []);
+      timerRef.current = setTimeout(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const data = await queryClient.fetchQuery(
+            trpc.routePlanner.searchPlaces.queryOptions({ query }),
+          );
+          setResults(data);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Search failed");
+          setResults([]);
+        } finally {
+          setLoading(false);
+        }
+      }, 400);
+    },
+    [queryClient],
+  );
 
-  const clear = useCallback(() => setResults([]), []);
-  return { results, loading, search, clear };
+  const clear = useCallback(() => {
+    setResults([]);
+    setError(null);
+  }, []);
+  return { results, loading, error, search, clear };
 }
 
 function PlaceInput({
@@ -94,11 +81,12 @@ function PlaceInput({
   placeholder: string;
 }) {
   const [text, setText] = useState(value?.name ?? "");
-  const [focused, setFocused] = useState(false);
-  const { results, loading, search, clear } = usePlacesSearch();
+  const { results, loading, error, search, clear } = usePlacesSearch();
+  const showDropdown =
+    !value && (results.length > 0 || loading || error !== null);
 
   return (
-    <View style={{ gap: 6, zIndex: focused ? 10 : 1 }}>
+    <View style={{ gap: 6 }}>
       <Text
         style={{
           color: C.muted,
@@ -118,10 +106,9 @@ function PlaceInput({
             setText(t);
             search(t);
           }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 200)}
           placeholder={placeholder}
           placeholderTextColor={C.placeholder}
+          autoCorrect={false}
           style={{
             flex: 1,
             backgroundColor: C.surface,
@@ -164,20 +151,24 @@ function PlaceInput({
         </View>
       )}
 
-      {focused && !value && (results.length > 0 || loading) && (
+      {showDropdown && (
         <View
           style={{
             backgroundColor: C.surface,
             borderWidth: 1,
-            borderColor: C.border,
+            borderColor: C.info,
             borderRadius: R.md,
-            maxHeight: 200,
             overflow: "hidden",
           }}
         >
           {loading && (
-            <View style={{ padding: 12, alignItems: "center" }}>
-              <ActivityIndicator size="small" color={C.muted} />
+            <View style={{ padding: 14, alignItems: "center" }}>
+              <ActivityIndicator size="small" color={C.info} />
+            </View>
+          )}
+          {error && (
+            <View style={{ padding: 14 }}>
+              <Text style={{ color: C.critical, fontSize: 13 }}>{error}</Text>
             </View>
           )}
           {results.map((place) => (
@@ -188,11 +179,13 @@ function PlaceInput({
                 setText(place.name);
                 clear();
               }}
-              style={{
-                padding: 12,
+              style={({ pressed }) => ({
+                padding: 14,
                 borderBottomWidth: 1,
                 borderBottomColor: C.border,
-              }}
+                backgroundColor: pressed ? C.bg : C.surface,
+                minHeight: 52,
+              })}
             >
               <Text
                 style={{ color: C.fg, fontSize: 14, fontWeight: "600" }}
@@ -273,7 +266,7 @@ export default function PlanRouteScreen() {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
         >
           <Text
             style={{

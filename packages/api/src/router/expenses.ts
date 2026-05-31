@@ -11,9 +11,9 @@ import { triggerEvent } from "@gmacko/realtime";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
-
 import { tripProcedure } from "../auth/guards";
 import { computeExpenseShares } from "../expenses/shares";
+import { sendPushToTripMembers } from "../notifications/send";
 
 const expenseCategoryEnum = z.enum([
   "meal",
@@ -127,6 +127,14 @@ export const expensesRouter = {
           message: "Failed to create expense.",
         });
       }
+
+      void sendPushToTripMembers(ctx.db, {
+        tripId: ctx.tripId,
+        excludeUserId: ctx.session.user.id,
+        title: "New Expense",
+        body: `${created.merchant} — $${((created.totalCents ?? 0) / 100).toFixed(2)}`,
+        data: { tripId: ctx.tripId, screen: "expenses" },
+      });
 
       return created;
     }),

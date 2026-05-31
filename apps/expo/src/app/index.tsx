@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -25,6 +26,15 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
     new Date(value),
   );
+}
+
+function getDaysUntilTrip(dateStr: string): number | null {
+  const target = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.ceil(
+    (target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  return diff;
 }
 
 function SocialButton({
@@ -92,18 +102,8 @@ function SignIn() {
 
       await authClient.signIn.social({ provider, callbackURL: "/" });
       const cookie = authClient.getCookie();
-      console.log(
-        `[SignIn] post-OAuth cookie=${cookie ? cookie.substring(0, 120) : "EMPTY"}`,
-      );
       if (!cookie || !cookie.includes("session_token")) {
-        console.log(
-          "[SignIn] no session cookie after OAuth — forcing getSession",
-        );
         await authClient.getSession();
-        const refreshed = authClient.getCookie();
-        console.log(
-          `[SignIn] post-refresh cookie=${refreshed ? refreshed.substring(0, 120) : "EMPTY"}`,
-        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to sign in`);
@@ -182,7 +182,7 @@ function SignIn() {
           marginBottom: 8,
         }}
       >
-        Sortie
+        Sortey
       </Text>
       <Text
         style={{
@@ -456,53 +456,117 @@ function TripList({
   }
 
   if (!trips || trips.length === 0) {
+    const features = [
+      {
+        icon: "receipt-outline" as const,
+        title: "Split expenses",
+        desc: "Scan receipts, claim items, settle up with Venmo",
+      },
+      {
+        icon: "calendar-outline" as const,
+        title: "Plan together",
+        desc: "Polls, proposals, and a shared itinerary",
+      },
+      {
+        icon: "map-outline" as const,
+        title: "Stay coordinated",
+        desc: "Live map, location sharing, and lodging info",
+      },
+    ];
     return (
-      <View style={{ flex: 1 }}>
+      <ScrollView style={{ flex: 1 }}>
         <UserHeader user={user} />
-        <View style={{ padding: 16, flex: 1 }}>
+        <View style={{ padding: 20, paddingTop: 32 }}>
           <Text
             style={{
               color: C.fg,
-              fontSize: 24,
-              fontWeight: "bold",
-              marginBottom: 16,
+              fontSize: 28,
+              fontWeight: "800",
+              marginBottom: 8,
             }}
           >
-            Your Trips
+            Welcome to Sortey
           </Text>
-          <View
+          <Text
             style={{
-              alignItems: "center",
-              justifyContent: "center",
-              marginTop: 60,
-              gap: 16,
+              color: C.muted,
+              fontSize: 16,
+              lineHeight: 24,
+              marginBottom: 32,
             }}
           >
-            <Text style={{ color: C.muted, textAlign: "center" }}>
-              No trips yet
-            </Text>
-            <Pressable
-              onPress={() => router.push("/new-trip")}
-              style={{
-                backgroundColor: C.info,
-                borderRadius: R.md,
-                paddingVertical: 14,
-                paddingHorizontal: 28,
-              }}
-            >
-              <Text
+            Plan together. Split everything.
+          </Text>
+
+          <View style={{ gap: 16, marginBottom: 32 }}>
+            {features.map((f) => (
+              <View
+                key={f.title}
                 style={{
-                  color: C.white,
-                  fontSize: 16,
-                  fontWeight: "700",
+                  flexDirection: "row",
+                  gap: 14,
+                  alignItems: "flex-start",
                 }}
               >
-                + New Trip
-              </Text>
-            </Pressable>
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: `${C.info}15`,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name={f.icon} size={18} color={C.info} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: C.fg,
+                      fontSize: 16,
+                      fontWeight: "600",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {f.title}
+                  </Text>
+                  <Text style={{ color: C.muted, fontSize: 14 }}>{f.desc}</Text>
+                </View>
+              </View>
+            ))}
           </View>
+
+          <Pressable
+            onPress={() => router.push("/new-trip")}
+            style={{
+              backgroundColor: C.info,
+              borderRadius: R.md,
+              paddingVertical: 16,
+              alignItems: "center",
+              flexDirection: "row",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <Ionicons name="add-circle" size={20} color={C.white} />
+            <Text style={{ color: C.white, fontSize: 16, fontWeight: "700" }}>
+              Create Your First Trip
+            </Text>
+          </Pressable>
+
+          <Text
+            style={{
+              color: C.muted,
+              fontSize: 13,
+              textAlign: "center",
+              marginTop: 16,
+            }}
+          >
+            Got an invite link? Open it to join an existing trip.
+          </Text>
         </View>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -541,41 +605,121 @@ function TripList({
             </Text>
           </Pressable>
         </View>
-        {trips.map((item) => (
-          <Pressable
-            key={item.id}
-            onPress={() =>
-              router.push({
-                pathname: "/trip/[tripId]",
-                params: { tripId: item.id },
-              })
-            }
-            style={{
-              backgroundColor: C.surface,
-              borderRadius: R.md,
-              padding: 16,
-              marginBottom: 12,
-              borderWidth: 1,
-              borderColor: C.border,
-            }}
-          >
-            <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
-              {item.name}
-            </Text>
-            {item.destinationName && (
-              <Text style={{ color: C.muted, fontSize: 14, marginTop: 4 }}>
-                {item.destinationName}
-              </Text>
-            )}
-            {(item.startDate || item.endDate) && (
-              <Text style={{ color: C.muted, fontSize: 12, marginTop: 4 }}>
-                {formatDate(item.startDate)}
-                {item.startDate && item.endDate ? " - " : ""}
-                {formatDate(item.endDate)}
-              </Text>
-            )}
-          </Pressable>
-        ))}
+        {trips.map((item) => {
+          const daysUntil = item.startDate
+            ? getDaysUntilTrip(item.startDate)
+            : null;
+          return (
+            <Pressable
+              key={item.id}
+              onPress={() =>
+                router.push({
+                  pathname: "/trip/[tripId]",
+                  params: { tripId: item.id },
+                })
+              }
+              style={{
+                backgroundColor: C.surface,
+                borderRadius: R.md,
+                padding: 16,
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: C.border,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: C.fg,
+                      fontSize: 18,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {item.name}
+                  </Text>
+                  {item.destinationName && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        marginTop: 4,
+                      }}
+                    >
+                      <Ionicons
+                        name="location-outline"
+                        size={12}
+                        color={C.muted}
+                      />
+                      <Text style={{ color: C.muted, fontSize: 14 }}>
+                        {item.destinationName}
+                      </Text>
+                    </View>
+                  )}
+                  {(item.startDate || item.endDate) && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        marginTop: 4,
+                      }}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={12}
+                        color={C.muted}
+                      />
+                      <Text
+                        style={{
+                          color: C.muted,
+                          fontSize: 13,
+                          fontFamily: mono,
+                        }}
+                      >
+                        {formatDate(item.startDate)}
+                        {item.startDate && item.endDate ? " – " : ""}
+                        {formatDate(item.endDate)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {daysUntil !== null && daysUntil >= 0 && (
+                  <View
+                    style={{
+                      backgroundColor: `${C.info}15`,
+                      borderRadius: R.sm,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: C.info,
+                        fontSize: 12,
+                        fontWeight: "700",
+                        fontFamily: mono,
+                      }}
+                    >
+                      {daysUntil === 0
+                        ? "TODAY"
+                        : daysUntil === 1
+                          ? "1 DAY"
+                          : `${daysUntil}d`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
     </ScrollView>
   );
@@ -608,7 +752,6 @@ function WorkspaceGate({
               .join(", ")
           : "NONE";
         const info = `cookie_names=[${cookieNames}] cookie_len=${cookie?.length ?? 0} cookie_preview=${cookie ? cookie.substring(0, 100) : "EMPTY"}`;
-        console.log(`[WorkspaceGate] AUTH FAILED: ${info}`);
         setDebugInfo(info);
       },
     }),
@@ -623,18 +766,12 @@ function WorkspaceGate({
     function attempt() {
       if (cancelled) return;
       const cookie = authClient.getCookie();
-      console.log(
-        `[WorkspaceGate] attempt=${retriesRef.current} cookie=${cookie ? cookie.substring(0, 80) + "..." : "EMPTY"}`,
-      );
       if (!cookie && retriesRef.current < 5) {
         retriesRef.current += 1;
         timer = setTimeout(attempt, 400);
         return;
       }
       if (!cookie) {
-        console.log(
-          "[WorkspaceGate] No cookie after retries — stale session cache, forcing sign-out",
-        );
         setNoCookie(true);
         return;
       }
@@ -837,7 +974,7 @@ export default function Index() {
   if (isPending) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg }}>
-        <Stack.Screen options={{ title: "Sortie" }} />
+        <Stack.Screen options={{ title: "Sortey" }} />
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
@@ -849,7 +986,7 @@ export default function Index() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <Stack.Screen options={{ title: "Sortie" }} />
+      <Stack.Screen options={{ title: "Sortey" }} />
       {session?.user ? <WorkspaceGate user={session.user} /> : <SignIn />}
     </View>
   );

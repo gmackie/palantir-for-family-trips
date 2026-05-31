@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Clipboard from "expo-clipboard";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Share,
   Text,
   TextInput,
   View,
@@ -17,6 +19,8 @@ import {
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
+
+const APP_URL = "https://sortey.app";
 
 const ROLE_BADGE: Record<string, { bg: string; text: string }> = {
   organizer: { bg: C.infoBg, text: C.info },
@@ -397,96 +401,161 @@ export default function MembersScreen() {
             borderTopColor: C.border,
             padding: 16,
             paddingBottom: 36,
-            gap: 12,
+            gap: 16,
           }}
         >
-          <Text
-            style={{
-              color: C.muted,
-              fontSize: 11,
-              fontWeight: "600",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-            }}
-          >
-            Invite by email
-          </Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <TextInput
-              value={inviteEmail}
-              onChangeText={setInviteEmail}
-              placeholder="name@example.com"
-              placeholderTextColor={C.placeholder}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoFocus
+          <View style={{ gap: 8 }}>
+            <Text
               style={{
-                flex: 1,
-                backgroundColor: C.bg,
-                borderWidth: 1,
-                borderColor: C.border,
-                borderRadius: R.md,
-                padding: 12,
-                color: C.fg,
-                fontSize: 15,
-                fontFamily: mono,
-              }}
-            />
-            <Pressable
-              onPress={() => {
-                if (inviteEmail.trim()) {
-                  sendInvite.mutate({
-                    workspaceId,
-                    tripId: tripId ?? "",
-                    email: inviteEmail.trim(),
-                  });
-                }
-              }}
-              disabled={sendInvite.isPending || !inviteEmail.trim()}
-              style={{
-                backgroundColor: C.info,
-                borderRadius: R.md,
-                paddingHorizontal: 16,
-                minHeight: 44,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: sendInvite.isPending || !inviteEmail.trim() ? 0.5 : 1,
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 1,
               }}
             >
-              {sendInvite.isPending ? (
-                <ActivityIndicator color={C.white} size="small" />
-              ) : (
-                <Text
+              Invite by email
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TextInput
+                value={inviteEmail}
+                onChangeText={setInviteEmail}
+                placeholder="name@example.com"
+                placeholderTextColor={C.placeholder}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+                style={{
+                  flex: 1,
+                  backgroundColor: C.bg,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  borderRadius: R.md,
+                  padding: 12,
+                  color: C.fg,
+                  fontSize: 15,
+                  fontFamily: mono,
+                }}
+              />
+              <Pressable
+                onPress={() => {
+                  if (inviteEmail.trim()) {
+                    sendInvite.mutate({
+                      workspaceId,
+                      tripId: tripId ?? "",
+                      email: inviteEmail.trim(),
+                    });
+                  }
+                }}
+                disabled={sendInvite.isPending || !inviteEmail.trim()}
+                style={{
+                  backgroundColor: C.info,
+                  borderRadius: R.md,
+                  paddingHorizontal: 16,
+                  minHeight: 44,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity:
+                    sendInvite.isPending || !inviteEmail.trim() ? 0.5 : 1,
+                }}
+              >
+                {sendInvite.isPending ? (
+                  <ActivityIndicator color={C.white} size="small" />
+                ) : (
+                  <Text
+                    style={{
+                      color: C.white,
+                      fontWeight: "700",
+                      fontSize: 15,
+                    }}
+                  >
+                    Send
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          {sendInvite.data?.token && (
+            <View style={{ gap: 8 }}>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                Or share this link
+              </Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable
+                  onPress={() => {
+                    const link = `${APP_URL}/invite/${sendInvite.data.token}`;
+                    void Clipboard.setStringAsync(link);
+                    Alert.alert("Copied", "Invite link copied to clipboard");
+                  }}
                   style={{
-                    color: C.white,
-                    fontWeight: "700",
-                    fontSize: 15,
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    backgroundColor: C.bg,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderRadius: R.md,
+                    padding: 12,
+                    minHeight: 44,
                   }}
                 >
-                  Send
-                </Text>
-              )}
-            </Pressable>
-          </View>
+                  <Ionicons name="link-outline" size={16} color={C.info} />
+                  <Text
+                    style={{
+                      color: C.fg,
+                      fontSize: 13,
+                      fontFamily: mono,
+                      flex: 1,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {APP_URL}/invite/...
+                  </Text>
+                  <Ionicons name="copy-outline" size={16} color={C.muted} />
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    const link = `${APP_URL}/invite/${sendInvite.data!.token}`;
+                    void Share.share({
+                      message: `Join my trip on Sortey! ${link}`,
+                      url: link,
+                    });
+                  }}
+                  style={{
+                    backgroundColor: C.info,
+                    borderRadius: R.md,
+                    minHeight: 44,
+                    minWidth: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="share-outline" size={20} color={C.white} />
+                </Pressable>
+              </View>
+            </View>
+          )}
+
           <Pressable
             onPress={() => {
               setShowInviteField(false);
               setInviteEmail("");
             }}
-            style={{
-              minHeight: 44,
-              justifyContent: "center",
-            }}
+            style={{ minHeight: 44, justifyContent: "center" }}
           >
-            <Text
-              style={{
-                color: C.muted,
-                fontSize: 13,
-                textAlign: "center",
-              }}
-            >
-              Cancel
+            <Text style={{ color: C.muted, fontSize: 13, textAlign: "center" }}>
+              Done
             </Text>
           </Pressable>
         </View>
@@ -495,23 +564,53 @@ export default function MembersScreen() {
           style={{
             position: "absolute",
             bottom: 32,
-            left: 0,
-            right: 0,
-            alignItems: "center",
+            left: 16,
+            right: 16,
+            flexDirection: "row",
+            gap: 12,
           }}
         >
           <Pressable
             onPress={() => setShowInviteField(true)}
             style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
               backgroundColor: C.info,
               borderRadius: R.md,
-              paddingHorizontal: 24,
               paddingVertical: 16,
-              minHeight: 48,
+              minHeight: 52,
             }}
           >
+            <Ionicons name="person-add-outline" size={18} color={C.white} />
             <Text style={{ color: C.white, fontWeight: "600", fontSize: 15 }}>
-              + Invite Member
+              Invite
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              void Share.share({
+                message: `Join my trip on Sortey! ${APP_URL}/trips`,
+              });
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: C.border,
+              borderRadius: R.md,
+              paddingHorizontal: 20,
+              paddingVertical: 16,
+              minHeight: 52,
+            }}
+          >
+            <Ionicons name="share-outline" size={18} color={C.fg} />
+            <Text style={{ color: C.fg, fontWeight: "600", fontSize: 15 }}>
+              Share
             </Text>
           </Pressable>
         </View>

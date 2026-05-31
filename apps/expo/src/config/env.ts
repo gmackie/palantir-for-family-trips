@@ -43,7 +43,7 @@ function getApiUrl(): string {
       );
     case "development":
     default:
-      return "https://sortie.gmac.io";
+      return "https://sortey.app";
   }
 }
 

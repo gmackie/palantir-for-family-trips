@@ -3,7 +3,11 @@ import { authRouter } from "./router/auth";
 import { corridorRouter } from "./router/corridor";
 import { expensesRouter } from "./router/expenses";
 import { fuelLogsRouter } from "./router/fuel-logs";
+import { itineraryRouter } from "./router/itinerary";
+import { locationRouter } from "./router/location";
 import { lodgingRouter } from "./router/lodging";
+import { notificationsRouter } from "./router/notifications";
+import { photosRouter } from "./router/photos";
 import { pinsRouter } from "./router/pins";
 import { planningRouter } from "./router/planning";
 import { postRouter } from "./router/post";
@@ -20,7 +24,11 @@ export const appRouter = createTRPCRouter({
   corridor: corridorRouter,
   expenses: expensesRouter,
   fuelLogs: fuelLogsRouter,
+  itinerary: itineraryRouter,
+  location: locationRouter,
   lodging: lodgingRouter,
+  notifications: notificationsRouter,
+  photos: photosRouter,
   pins: pinsRouter,
   planning: planningRouter,
   post: postRouter,

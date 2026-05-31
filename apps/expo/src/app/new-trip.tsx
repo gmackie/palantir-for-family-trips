@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
@@ -17,7 +18,64 @@ import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 type TripMode = "destination" | "roadtrip";
 
-const STEPS = ["mode", "details", "dates"] as const;
+const TEMPLATES = [
+  {
+    key: "blank",
+    label: "Start from scratch",
+    icon: "add-circle-outline" as const,
+    color: C.muted,
+    mode: "destination" as TripMode,
+    name: "",
+    destination: "",
+  },
+  {
+    key: "reunion",
+    label: "Family Reunion",
+    icon: "people-outline" as const,
+    color: "#F472B6",
+    mode: "destination" as TripMode,
+    name: "Family Reunion",
+    destination: "",
+  },
+  {
+    key: "beach",
+    label: "Beach Vacation",
+    icon: "sunny-outline" as const,
+    color: "#FBBF24",
+    mode: "destination" as TripMode,
+    name: "Beach Trip",
+    destination: "",
+  },
+  {
+    key: "roadtrip",
+    label: "Road Trip",
+    icon: "car-outline" as const,
+    color: "#A78BFA",
+    mode: "roadtrip" as TripMode,
+    name: "Road Trip",
+    destination: "",
+  },
+  {
+    key: "ski",
+    label: "Ski Trip",
+    icon: "snow-outline" as const,
+    color: "#6CB6FF",
+    mode: "destination" as TripMode,
+    name: "Ski Trip",
+    destination: "",
+  },
+  {
+    key: "bachelor",
+    label: "Bachelor/ette",
+    icon: "sparkles-outline" as const,
+    color: "#D2A8FF",
+    mode: "destination" as TripMode,
+    name: "",
+    destination: "",
+  },
+] as const;
+
+const STEPS = ["template", "mode", "details", "dates"] as const;
 type Step = (typeof STEPS)[number];
 
 function StepIndicator({ current }: { current: Step }) {
@@ -355,7 +413,7 @@ export default function NewTripScreen() {
   const queryClient = useQueryClient();
   const workspaceId = getActiveWorkspaceId() ?? "";
 
-  const [step, setStep] = useState<Step>("mode");
+  const [step, setStep] = useState<Step>("template");
   const [tripMode, setTripMode] = useState<TripMode>("destination");
   const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
@@ -384,7 +442,9 @@ export default function NewTripScreen() {
   const stepIdx = STEPS.indexOf(step);
 
   function handleNext() {
-    if (step === "mode") {
+    if (step === "template") {
+      setStep("mode");
+    } else if (step === "mode") {
       setStep("details");
     } else if (step === "details") {
       if (name.trim().length < 2) {
@@ -439,6 +499,73 @@ export default function NewTripScreen() {
         >
           <StepIndicator current={step} />
 
+          {step === "template" && (
+            <View style={{ gap: 12 }}>
+              <Text
+                style={{
+                  color: C.fg,
+                  fontSize: 22,
+                  fontWeight: "bold",
+                  marginBottom: 4,
+                }}
+              >
+                Start a trip
+              </Text>
+              <Text style={{ color: C.muted, fontSize: 15, marginBottom: 8 }}>
+                Pick a template or start from scratch.
+              </Text>
+              {TEMPLATES.map((t) => (
+                <Pressable
+                  key={t.key}
+                  onPress={() => {
+                    if (t.name) setName(t.name);
+                    if (t.destination) setDestination(t.destination);
+                    setTripMode(t.mode);
+                    if (t.key === "blank") {
+                      setStep("mode");
+                    } else {
+                      setStep("details");
+                    }
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.surface,
+                    borderRadius: R.md,
+                    padding: 16,
+                    minHeight: 56,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: `${t.color}22`,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name={t.icon} size={20} color={t.color} />
+                  </View>
+                  <Text
+                    style={{
+                      color: C.fg,
+                      fontSize: 16,
+                      fontWeight: "500",
+                      flex: 1,
+                    }}
+                  >
+                    {t.label}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color={C.muted} />
+                </Pressable>
+              ))}
+            </View>
+          )}
           {step === "mode" && (
             <ModeStep value={tripMode} onChange={setTripMode} />
           )}

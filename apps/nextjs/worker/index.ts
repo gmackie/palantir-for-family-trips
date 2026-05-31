@@ -1,3 +1,4 @@
+import { wrapFetch } from "@forgegraph/otel/workers";
 import { runWithDatabaseRuntime } from "@gmacko/db/runtime";
 import handler from "vinext/server/app-router-entry";
 import type { ImageConfig } from "vinext/server/image-optimization";
@@ -35,6 +36,10 @@ interface Env {
     connectionString?: string | null;
   };
   R2?: R2Bucket;
+  FG_APP?: string;
+  FG_STAGE?: string;
+  OTEL_ENDPOINT?: string;
+  OTEL_DISABLED?: string;
   [key: string]: unknown;
 }
 
@@ -50,6 +55,7 @@ const SECRET_KEYS = [
   "GEMINI_API_KEY",
   "GOOGLE_ROUTES_API_KEY",
   "RESEND_API_KEY",
+  "ANTHROPIC_API_KEY",
 ] as const;
 
 function syncEnvSecrets(env: Env) {
@@ -73,14 +79,8 @@ interface ScheduledEvent {
 
 const imageConfig: ImageConfig = {};
 
-export default {
-  async scheduled(_event: ScheduledEvent, _env: Env, _ctx: ExecutionContext) {},
-
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<Response> {
+const instrumentedFetch = wrapFetch(
+  async (request: Request, env: Env, ctx: ExecutionContext) => {
     syncEnvSecrets(env);
     const url = new URL(request.url);
 
@@ -104,10 +104,6 @@ export default {
         { headers: { "content-type": "application/json" } },
       );
     }
-
-    console.log(
-      `[worker] ${request.method} ${url.pathname} cookie=${request.headers.has("cookie") ? "YES" : "NO"} source=${request.headers.get("x-trpc-source") ?? "-"}`,
-    );
 
     return runWithDatabaseRuntime(
       {
@@ -153,4 +149,10 @@ export default {
       },
     );
   },
+  { serviceName: "sortey" },
+);
+
+export default {
+  async scheduled(_event: ScheduledEvent, _env: Env, _ctx: ExecutionContext) {},
+  fetch: instrumentedFetch,
 };

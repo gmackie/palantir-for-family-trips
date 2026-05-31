@@ -117,7 +117,7 @@ async function fetchCategory(
   const body = new URLSearchParams({ data: query });
   const res = await fetch(OVERPASS_URL, {
     method: "POST",
-    headers: { "User-Agent": "Sortie/1.0 (trip-planner)" },
+    headers: { "User-Agent": "Sortey/1.0 (trip-planner)" },
     body,
   });
 

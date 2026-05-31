@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sortie-gmac-io",
+  "name": "sortey-app",
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat"],
   "placement": { "mode": "smart" },
@@ -13,7 +13,7 @@
   "main": "./worker/index.ts",
   "routes": [
     {
-      "pattern": "sortie.gmac.io",
+      "pattern": "sortey.app",
       "custom_domain": true
     }
   ],
@@ -27,9 +27,10 @@
   },
   "vars": {
     "APP_ENV": "production",
-    "APP_URL": "https://sortie.gmac.io",
-    "NEXT_PUBLIC_APP_URL": "https://sortie.gmac.io",
-    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCV5J1xb6BWFdk_WKYjJfD1QbehJdtjqrc"
+    "FG_APP": "sortey",
+    "APP_URL": "https://sortey.app",
+    "NEXT_PUBLIC_APP_URL": "https://sortey.app",
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCzOuctt2rEHJ4IjXftBoUfa3Byph4LURY"
   },
   "env": {
     "staging": {

@@ -26,6 +26,7 @@
     "with-env": "dotenv -e ../../.env --"
   },
   "dependencies": {
+    "@forgegraph/otel": "^0.1.1",
     "@gmacko/analytics": "workspace:*",
     "@gmacko/api": "workspace:*",
     "@gmacko/auth": "workspace:*",

@@ -1,8 +1,9 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -43,6 +44,7 @@ interface LineItemDraft {
 }
 
 const TIP_PRESETS = [
+  { label: "None", multiplier: 0 },
   { label: "15%", multiplier: 0.15 },
   { label: "18%", multiplier: 0.18 },
   { label: "20%", multiplier: 0.2 },
@@ -73,6 +75,7 @@ export default function NewExpense() {
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [ocrApplied, setOcrApplied] = useState(false);
   const [receiptMeta, setReceiptMeta] = useState<{
     storageKey: string;
     mimeType: string;
@@ -88,6 +91,9 @@ export default function NewExpense() {
   const [lineItemDrafts, setLineItemDrafts] = useState<LineItemDraft[]>([]);
   const [gallons, setGallons] = useState("");
   const [pricePerGallon, setPricePerGallon] = useState("");
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
+    null,
+  );
 
   const subtotalCents = dollarsToCents(subtotalDollars);
   const taxCents = expenseType === "gas" ? 0 : dollarsToCents(taxDollars);
@@ -100,6 +106,12 @@ export default function NewExpense() {
       tripId: tripId ?? "",
     }),
   );
+
+  useEffect(() => {
+    if (!selectedSegmentId && segments && segments.length > 0) {
+      setSelectedSegmentId(segments[0]!.id);
+    }
+  }, [segments, selectedSegmentId]);
 
   const createExpense = useMutation(
     trpc.expenses.create.mutationOptions({
@@ -154,6 +166,7 @@ export default function NewExpense() {
 
   const uploadReceipt = async (uri: string) => {
     setUploading(true);
+    setOcrApplied(false);
     try {
       const resized = await ImageManipulator.manipulateAsync(
         uri,
@@ -165,11 +178,7 @@ export default function NewExpense() {
       const type = "image/jpeg";
 
       const cookies = authClient.getCookie();
-
       const uploadUrl = `${getBaseUrl()}/api/receipts/scan`;
-      console.log(
-        `[upload] POST ${uploadUrl}, cookie=${cookies ? cookies.length + " chars" : "none"}`,
-      );
 
       const response = await new Promise<{
         ok: boolean;
@@ -180,9 +189,6 @@ export default function NewExpense() {
         xhr.open("POST", uploadUrl);
         if (cookies) xhr.setRequestHeader("Cookie", cookies);
         xhr.onload = () => {
-          console.log(
-            `[upload] status=${xhr.status}, body=${xhr.responseText.substring(0, 200)}`,
-          );
           resolve({
             ok: xhr.status >= 200 && xhr.status < 300,
             status: xhr.status,
@@ -212,10 +218,6 @@ export default function NewExpense() {
         return;
       }
 
-      console.log(
-        `[upload] response: ${JSON.stringify(data).substring(0, 500)}`,
-      );
-
       if (!response.ok) {
         Alert.alert(
           "Upload Error",
@@ -241,7 +243,7 @@ export default function NewExpense() {
       if (!ocr) {
         Alert.alert(
           "No OCR Data",
-          `Server response had no OCR results. Keys: ${Object.keys(data).join(", ")}`,
+          "Could not read the receipt. You can still enter details manually.",
         );
         return;
       }
@@ -290,14 +292,15 @@ export default function NewExpense() {
         setSubtotalDollars(centsToDisplay(Math.round(ocr.subtotalCents)));
       }
 
-      if (itemCount === 0 && !ocr.merchant) {
+      if (itemCount > 0 || ocr.merchant) {
+        setOcrApplied(true);
+      } else {
         Alert.alert(
           "No Items Detected",
-          `OCR returned: ${JSON.stringify(ocr).substring(0, 300)}`,
+          "Could not find line items on the receipt. You can enter them manually below.",
         );
       }
     } catch (err) {
-      console.error("Upload failed:", err);
       Alert.alert(
         "Upload Error",
         `${err instanceof Error ? err.message : String(err)}`,
@@ -343,24 +346,24 @@ export default function NewExpense() {
     ]);
   }, []);
 
-  const recalcSubtotalFromItems = useCallback(() => {
+  useEffect(() => {
     if (lineItemDrafts.length === 0) return;
     const sum = lineItemDrafts.reduce(
       (acc, item) => acc + dollarsToCents(item.priceDollars) * item.quantity,
       0,
     );
-    setSubtotalDollars(centsToDisplay(sum));
-    setSelectedPreset(null);
+    if (sum > 0) {
+      setSubtotalDollars(centsToDisplay(sum));
+    }
   }, [lineItemDrafts]);
 
   const handleSubmit = async () => {
-    const segmentId = segments?.[0]?.id;
-    if (!segmentId) {
-      Alert.alert("Error", "No trip segment found.");
+    if (!selectedSegmentId) {
+      Alert.alert("Missing info", "Please select a trip segment.");
       return;
     }
     if (!merchant.trim()) {
-      Alert.alert("Error", "Merchant name is required.");
+      Alert.alert("Missing info", "Please enter a merchant name.");
       return;
     }
 
@@ -368,7 +371,7 @@ export default function NewExpense() {
       const created = await createExpense.mutateAsync({
         workspaceId,
         tripId: tripId ?? "",
-        segmentId,
+        segmentId: selectedSegmentId,
         merchant: merchant.trim(),
         occurredAt: new Date().toISOString(),
         subtotalCents,
@@ -417,6 +420,9 @@ export default function NewExpense() {
 
   const isPending = createExpense.isPending || addLineItemsMutation.isPending;
 
+  const hasMultipleSegments = (segments?.length ?? 0) > 1;
+  const selectedSegment = segments?.find((s) => s.id === selectedSegmentId);
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
@@ -434,95 +440,215 @@ export default function NewExpense() {
           style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Receipt capture */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                color: C.muted,
-                fontSize: 11,
-                fontWeight: "600",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                marginBottom: 8,
-              }}
-            >
-              Receipt
-            </Text>
-            <View style={{ flexDirection: "row", gap: 12 }}>
+          {/* Hero receipt capture */}
+          {!photoUri && !uploading && (
+            <View style={{ marginBottom: 24 }}>
               <Pressable
                 onPress={() => void handleTakePhoto()}
                 style={{
-                  flex: 1,
-                  alignItems: "center",
-                  backgroundColor: C.info,
+                  backgroundColor: C.surface,
+                  borderWidth: 1,
+                  borderColor: C.border,
                   borderRadius: R.md,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  minHeight: 48,
+                  paddingVertical: 32,
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
-                <Text style={{ color: C.white, fontWeight: "500" }}>
-                  Camera
+                <Ionicons name="camera-outline" size={36} color={C.info} />
+                <Text style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}>
+                  Scan Receipt
+                </Text>
+                <Text style={{ color: C.muted, fontSize: 13 }}>
+                  Auto-fills merchant, items, and totals
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => void handlePickPhoto()}
                 style={{
-                  flex: 1,
+                  marginTop: 8,
+                  paddingVertical: 10,
                   alignItems: "center",
-                  borderRadius: R.md,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  minHeight: 48,
                 }}
               >
-                <Text style={{ color: C.fg, fontWeight: "500" }}>Library</Text>
+                <Text style={{ color: C.muted, fontSize: 13 }}>
+                  or choose from photo library
+                </Text>
               </Pressable>
             </View>
+          )}
 
-            {uploading && (
-              <View
-                style={{
-                  marginTop: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <ActivityIndicator size="small" color={C.info} />
-                <Text style={{ color: C.muted, fontSize: 14 }}>
-                  Scanning receipt...
-                </Text>
-              </View>
-            )}
+          {uploading && (
+            <View
+              style={{
+                backgroundColor: C.surface,
+                borderWidth: 1,
+                borderColor: C.info,
+                borderRadius: R.md,
+                padding: 24,
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 24,
+              }}
+            >
+              <ActivityIndicator size="large" color={C.info} />
+              <Text style={{ color: C.fg, fontSize: 15, fontWeight: "600" }}>
+                Reading receipt...
+              </Text>
+              <Text style={{ color: C.muted, fontSize: 13 }}>
+                This takes a few seconds
+              </Text>
+            </View>
+          )}
 
-            {photoUri && !uploading && (
+          {photoUri && !uploading && (
+            <View style={{ marginBottom: 20 }}>
               <Pressable onPress={() => void handleTakePhoto()}>
                 <Image
                   source={{ uri: photoUri }}
                   style={{
-                    marginTop: 12,
-                    height: 160,
+                    height: 120,
                     width: "100%",
                     borderRadius: R.md,
                   }}
                   resizeMode="cover"
                 />
-                <Text
+                {ocrApplied && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      backgroundColor: C.successBg,
+                      borderRadius: R.md,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={14}
+                      color={C.success}
+                    />
+                    <Text
+                      style={{
+                        color: C.success,
+                        fontSize: 11,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Scanned
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: 16,
+                  marginTop: 8,
+                }}
+              >
+                <Pressable
+                  onPress={() => void handleTakePhoto()}
                   style={{
-                    color: C.muted,
-                    fontSize: 12,
-                    textAlign: "center",
-                    marginTop: 4,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    paddingVertical: 4,
                   }}
                 >
-                  Tap to retake
-                </Text>
-              </Pressable>
-            )}
-          </View>
+                  <Ionicons name="camera-outline" size={14} color={C.muted} />
+                  <Text style={{ color: C.muted, fontSize: 12 }}>Retake</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => void handlePickPhoto()}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Ionicons name="images-outline" size={14} color={C.muted} />
+                  <Text style={{ color: C.muted, fontSize: 12 }}>Library</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Segment picker */}
+          {hasMultipleSegments && segments && (
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  color: C.muted,
+                  fontSize: 11,
+                  fontWeight: "600",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  marginBottom: 8,
+                }}
+              >
+                Trip Segment
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginHorizontal: -4 }}
+              >
+                {segments.map((seg) => {
+                  const active = seg.id === selectedSegmentId;
+                  return (
+                    <Pressable
+                      key={seg.id}
+                      onPress={() => setSelectedSegmentId(seg.id)}
+                      style={{
+                        marginHorizontal: 4,
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: R.md,
+                        minHeight: 44,
+                        justifyContent: "center",
+                        ...(active
+                          ? { backgroundColor: C.info }
+                          : {
+                              borderWidth: 1,
+                              borderColor: C.border,
+                              backgroundColor: C.surface,
+                            }),
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: active ? C.white : C.fg,
+                          fontSize: 14,
+                          fontWeight: "600",
+                        }}
+                        numberOfLines={1}
+                      >
+                        {seg.name}
+                      </Text>
+                      {seg.startDate && (
+                        <Text
+                          style={{
+                            color: active ? "rgba(255,255,255,0.7)" : C.muted,
+                            fontSize: 11,
+                          }}
+                        >
+                          {seg.startDate}
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Merchant */}
           <View style={{ marginBottom: 16 }}>
@@ -541,7 +667,7 @@ export default function NewExpense() {
             <TextInput
               style={{
                 borderWidth: 1,
-                borderColor: C.border,
+                borderColor: merchant ? C.border : C.border,
                 backgroundColor: C.input,
                 color: C.fg,
                 borderRadius: R.md,
@@ -551,7 +677,7 @@ export default function NewExpense() {
               }}
               value={merchant}
               onChangeText={setMerchant}
-              placeholder="Restaurant, store, etc."
+              placeholder="Restaurant, store, gas station..."
               placeholderTextColor={C.placeholder}
             />
           </View>
@@ -654,112 +780,6 @@ export default function NewExpense() {
           {/* Line Items (non-gas only) */}
           {expenseType !== "gas" && (
             <View style={{ marginBottom: 16 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    color: C.muted,
-                    fontSize: 11,
-                    fontWeight: "600",
-                    textTransform: "uppercase",
-                    letterSpacing: 1,
-                  }}
-                >
-                  Line Items
-                </Text>
-                {lineItemDrafts.length > 0 && (
-                  <Pressable onPress={recalcSubtotalFromItems}>
-                    <Text style={{ color: C.info, fontSize: 12 }}>
-                      Recalc Subtotal
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-
-              {lineItemDrafts.map((item) => (
-                <View
-                  key={item.key}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    backgroundColor: C.surface,
-                    borderRadius: R.md,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <TextInput
-                    style={{ flex: 1, color: C.fg, fontSize: 14 }}
-                    value={item.name}
-                    onChangeText={(v) => updateLineItem(item.key, "name", v)}
-                    placeholder="Item name"
-                    placeholderTextColor={C.placeholder}
-                  />
-                  <Text style={{ color: C.muted, fontSize: 14 }}>$</Text>
-                  <TextInput
-                    style={{
-                      width: 80,
-                      color: C.fg,
-                      textAlign: "right",
-                      fontFamily: mono,
-                      fontSize: 14,
-                    }}
-                    value={item.priceDollars}
-                    onChangeText={(v) =>
-                      updateLineItem(item.key, "priceDollars", v)
-                    }
-                    placeholder="0.00"
-                    placeholderTextColor={C.placeholder}
-                    keyboardType="decimal-pad"
-                  />
-                  <Pressable
-                    onPress={() => removeLineItem(item.key)}
-                    style={{
-                      marginLeft: 4,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      minHeight: 44,
-                      minWidth: 44,
-                    }}
-                  >
-                    <Text style={{ color: C.critical, fontSize: 18 }}>×</Text>
-                  </Pressable>
-                </View>
-              ))}
-
-              <Pressable
-                onPress={addEmptyLineItem}
-                style={{
-                  alignItems: "center",
-                  borderRadius: R.md,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  borderStyle: "dashed",
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  minHeight: 44,
-                }}
-              >
-                <Text style={{ color: C.muted, fontSize: 14 }}>+ Add Item</Text>
-              </Pressable>
-            </View>
-          )}
-
-          {/* Totals (non-gas only) */}
-          {expenseType !== "gas" && (
-            <View style={{ marginBottom: 16 }}>
               <Text
                 style={{
                   color: C.muted,
@@ -770,13 +790,121 @@ export default function NewExpense() {
                   marginBottom: 8,
                 }}
               >
-                Totals
+                Line Items
+                {lineItemDrafts.length > 0 && (
+                  <Text style={{ color: C.muted, fontWeight: "400" }}>
+                    {" "}
+                    ({lineItemDrafts.length})
+                  </Text>
+                )}
               </Text>
 
+              {lineItemDrafts.map((item) => (
+                <View
+                  key={item.key}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.surface,
+                    borderRadius: R.md,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    marginBottom: 8,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <TextInput
+                      style={{ flex: 1, color: C.fg, fontSize: 14 }}
+                      value={item.name}
+                      onChangeText={(v) => updateLineItem(item.key, "name", v)}
+                      placeholder="Item name"
+                      placeholderTextColor={C.placeholder}
+                    />
+                    <Text style={{ color: C.muted, fontSize: 14 }}>$</Text>
+                    <TextInput
+                      style={{
+                        width: 80,
+                        color: C.fg,
+                        textAlign: "right",
+                        fontFamily: mono,
+                        fontSize: 14,
+                      }}
+                      value={item.priceDollars}
+                      onChangeText={(v) =>
+                        updateLineItem(item.key, "priceDollars", v)
+                      }
+                      placeholder="0.00"
+                      placeholderTextColor={C.placeholder}
+                      keyboardType="decimal-pad"
+                    />
+                    <Pressable
+                      onPress={() => removeLineItem(item.key)}
+                      style={{
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: 44,
+                        minWidth: 36,
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={18} color={C.muted} />
+                    </Pressable>
+                  </View>
+                  {item.quantity > 1 && (
+                    <Text
+                      style={{
+                        color: C.muted,
+                        fontSize: 12,
+                        marginTop: 2,
+                        fontFamily: mono,
+                      }}
+                    >
+                      qty {item.quantity}
+                    </Text>
+                  )}
+                </View>
+              ))}
+
+              <Pressable
+                onPress={addEmptyLineItem}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  borderRadius: R.md,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  borderStyle: "dashed",
+                  paddingVertical: 12,
+                  minHeight: 44,
+                }}
+              >
+                <Ionicons name="add-circle-outline" size={16} color={C.muted} />
+                <Text style={{ color: C.muted, fontSize: 14 }}>Add Item</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Subtotal + Tax (non-gas) */}
+          {expenseType !== "gas" && (
+            <View style={{ marginBottom: 16 }}>
               <View style={{ flexDirection: "row", gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text
-                    style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}
+                    style={{
+                      color: C.muted,
+                      fontSize: 11,
+                      fontWeight: "600",
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      marginBottom: 4,
+                    }}
                   >
                     Subtotal
                   </Text>
@@ -814,7 +942,14 @@ export default function NewExpense() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text
-                    style={{ color: C.muted, fontSize: 12, marginBottom: 4 }}
+                    style={{
+                      color: C.muted,
+                      fontSize: 11,
+                      fontWeight: "600",
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      marginBottom: 4,
+                    }}
                   >
                     Tax
                   </Text>
@@ -875,7 +1010,7 @@ export default function NewExpense() {
                       flex: 1,
                       alignItems: "center",
                       borderRadius: R.md,
-                      paddingHorizontal: 12,
+                      paddingHorizontal: 8,
                       paddingVertical: 12,
                       minHeight: 44,
                       ...(selectedPreset === i
@@ -886,49 +1021,64 @@ export default function NewExpense() {
                     <Text
                       style={{
                         fontWeight: "500",
+                        fontSize: 14,
                         color: selectedPreset === i ? C.white : C.fg,
                       }}
                     >
                       {preset.label}
                     </Text>
+                    {selectedPreset === i && tipCents > 0 && (
+                      <Text
+                        style={{
+                          color: "rgba(255,255,255,0.7)",
+                          fontSize: 11,
+                          fontFamily: mono,
+                          marginTop: 2,
+                        }}
+                      >
+                        ${centsToDisplay(tipCents)}
+                      </Text>
+                    )}
                   </Pressable>
                 ))}
               </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  backgroundColor: C.input,
-                  borderRadius: R.md,
-                  paddingHorizontal: 12,
-                }}
-              >
-                <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
-                <TextInput
+              {selectedPreset === null && (
+                <View
                   style={{
-                    flex: 1,
-                    color: C.fg,
-                    paddingVertical: 12,
-                    textAlign: "right",
-                    fontFamily: mono,
-                    fontSize: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.input,
+                    borderRadius: R.md,
+                    paddingHorizontal: 12,
                   }}
-                  value={tipDollars}
-                  onChangeText={(v) => {
-                    setTipDollars(v);
-                    setSelectedPreset(null);
-                  }}
-                  placeholder="0.00"
-                  placeholderTextColor={C.placeholder}
-                  keyboardType="decimal-pad"
-                />
-              </View>
+                >
+                  <Text style={{ color: C.muted, fontSize: 16 }}>$</Text>
+                  <TextInput
+                    style={{
+                      flex: 1,
+                      color: C.fg,
+                      paddingVertical: 12,
+                      textAlign: "right",
+                      fontFamily: mono,
+                      fontSize: 16,
+                    }}
+                    value={tipDollars}
+                    onChangeText={(v) => {
+                      setTipDollars(v);
+                      setSelectedPreset(null);
+                    }}
+                    placeholder="Custom tip amount"
+                    placeholderTextColor={C.placeholder}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              )}
             </View>
           )}
 
-          {/* Total display */}
+          {/* Total breakdown */}
           <View
             style={{
               borderWidth: 1,
@@ -937,8 +1087,75 @@ export default function NewExpense() {
               borderRadius: R.md,
               padding: 16,
               marginBottom: 20,
+              gap: 8,
             }}
           >
+            {expenseType !== "gas" && subtotalCents > 0 && (
+              <>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Text style={{ color: C.muted, fontSize: 14 }}>Subtotal</Text>
+                  <Text
+                    style={{
+                      color: C.muted,
+                      fontSize: 14,
+                      fontFamily: mono,
+                    }}
+                  >
+                    ${centsToDisplay(subtotalCents)}
+                  </Text>
+                </View>
+                {taxCents > 0 && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text style={{ color: C.muted, fontSize: 14 }}>Tax</Text>
+                    <Text
+                      style={{
+                        color: C.muted,
+                        fontSize: 14,
+                        fontFamily: mono,
+                      }}
+                    >
+                      ${centsToDisplay(taxCents)}
+                    </Text>
+                  </View>
+                )}
+                {tipCents > 0 && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text style={{ color: C.muted, fontSize: 14 }}>Tip</Text>
+                    <Text
+                      style={{
+                        color: C.muted,
+                        fontSize: 14,
+                        fontFamily: mono,
+                      }}
+                    >
+                      ${centsToDisplay(tipCents)}
+                    </Text>
+                  </View>
+                )}
+                <View
+                  style={{
+                    borderTopWidth: 1,
+                    borderTopColor: C.border,
+                    paddingTop: 8,
+                  }}
+                />
+              </>
+            )}
             <View
               style={{
                 flexDirection: "row",
@@ -960,29 +1177,49 @@ export default function NewExpense() {
                 ${centsToDisplay(totalCents)}
               </Text>
             </View>
+            {selectedSegment && hasMultipleSegments && (
+              <Text style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
+                Filed under {selectedSegment.name}
+              </Text>
+            )}
           </View>
 
           {/* Submit */}
           <Pressable
             onPress={() => void handleSubmit()}
-            disabled={isPending}
+            disabled={isPending || !merchant.trim() || totalCents === 0}
             style={{
               backgroundColor: C.info,
+              flexDirection: "row",
               alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
               borderRadius: R.md,
-              paddingHorizontal: 16,
               paddingVertical: 16,
               marginBottom: 40,
-              minHeight: 48,
-              opacity: isPending ? 0.6 : 1,
+              minHeight: 52,
+              opacity:
+                isPending || !merchant.trim() || totalCents === 0 ? 0.5 : 1,
             }}
           >
             {isPending ? (
-              <ActivityIndicator color={C.white} />
+              <>
+                <ActivityIndicator color={C.white} />
+                <Text
+                  style={{ color: C.white, fontSize: 16, fontWeight: "600" }}
+                >
+                  Saving...
+                </Text>
+              </>
             ) : (
-              <Text style={{ color: C.white, fontSize: 16, fontWeight: "600" }}>
-                Save Expense
-              </Text>
+              <>
+                <Ionicons name="checkmark-circle" size={20} color={C.white} />
+                <Text
+                  style={{ color: C.white, fontSize: 16, fontWeight: "600" }}
+                >
+                  Save Expense
+                </Text>
+              </>
             )}
           </Pressable>
         </ScrollView>

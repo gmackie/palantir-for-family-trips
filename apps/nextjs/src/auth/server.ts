@@ -37,11 +37,11 @@ export const auth = initAuth({
         await sendEmail(
           {
             to: email,
-            subject: "Sign in to Sortie",
-            html: `<p>Open the button below to sign in.</p><p><a href="${url}">Sign in to Sortie</a></p>`,
-            text: `Sign in to Sortie: ${url}`,
+            subject: "Sign in to Sortey",
+            html: `<p>Open the button below to sign in.</p><p><a href="${url}">Sign in to Sortey</a></p>`,
+            text: `Sign in to Sortey: ${url}`,
           },
-          "Sortie <noreply@gmac.io>",
+          "Sortey <noreply@gmac.io>",
         );
       },
     }),

@@ -1,7 +1,7 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
 const APP_ENV = process.env.APP_ENV ?? "development";
-const API_URL = process.env.API_URL ?? "https://sortie.gmac.io";
+const API_URL = process.env.API_URL ?? "https://sortey.app";
 const GOOGLE_MAPS_API_KEY =
   process.env.GOOGLE_MAPS_API_KEY ??
   process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
@@ -16,27 +16,17 @@ const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
 const getAppName = (): string => {
   switch (APP_ENV) {
     case "production":
-      return "Sortie";
+      return "Sortey";
     case "staging":
-      return "Sortie (Beta)";
+      return "Sortey (Beta)";
     default:
-      return "Sortie (Dev)";
+      return "Sortey (Dev)";
   }
 };
 
 const getBundleId = (): string => {
-  // Scaffold note: replace these app identifiers and domains before store submission.
-  const base = "com.gmacko.sortie";
-  switch (APP_ENV) {
-    case "production":
-      // com.gmacko.sortie was held by a Sign-in-with-Apple Service ID; the
-      // production ASC app (ASC id 6775057200, "Sortey") uses com.gmacko.sortey.
-      return "com.gmacko.sortey";
-    case "staging":
-      return `${base}.beta`;
-    default:
-      return `${base}.dev`;
-  }
+  if (APP_ENV === "production") return "com.gmacko.sortey";
+  return "com.gmacko.sortey.dev";
 };
 
 const getSentryConfig = () => {
@@ -86,7 +76,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: getAppName(),
     slug: "sortie",
-    scheme: "sortie",
+    scheme: "sortey",
     version: "0.1.0",
     orientation: "portrait",
     icon: "./assets/icon-light.png",

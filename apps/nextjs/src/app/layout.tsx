@@ -14,15 +14,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   ),
-  title: "Sortie",
+  title: "Sortey",
   description:
     "Plan together. Split everything. Group trip coordination with shared itineraries, receipt OCR, and real-time settlement.",
   openGraph: {
-    title: "Sortie",
+    title: "Sortey",
     description:
       "Plan together. Split everything. Group trip coordination with shared itineraries, receipt OCR, and real-time settlement.",
     url: env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-    siteName: "Sortie",
+    siteName: "Sortey",
   },
   twitter: {
     card: "summary_large_image",
