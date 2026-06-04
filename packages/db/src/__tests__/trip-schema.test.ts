@@ -19,6 +19,8 @@ describe("Trip workspace schema", () => {
       "planning",
       "confirmed",
       "active",
+      "en_route",
+      "paused",
       "completed",
     ]);
     expect(tripClaimModeEnum).toEqual(["organizer", "tap"]);

@@ -1226,8 +1226,8 @@ describe("settings billing overview", () => {
           enabled: true,
         },
         emailDelivery: {
-          enabled: false,
-          provider: "none",
+          enabled: true,
+          provider: "resend",
         },
       },
     );
