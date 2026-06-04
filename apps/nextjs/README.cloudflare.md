@@ -29,3 +29,4 @@ pnpm --filter @sortey/nextjs deploy:cloudflare:production
 
 - This lane is experimental and should not replace the default ForgeGraph + Nix path by accident.
 - `build:vinext` prebuilds the Next app's workspace dependencies before invoking `vinext`.
+- Configure `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in `.env` or the deploy environment before `build:vinext`/`wrangler deploy`; do not commit it in `apps/nextjs/wrangler.jsonc`.

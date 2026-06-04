@@ -312,7 +312,7 @@ Items 14-18 from the MVP scope. Build if time allows before June 5.
 | `BETTER_AUTH_SECRET` | Session signing | `openssl rand -base64 32` |
 | `RESEND_API_KEY` | Email delivery | resend.com → API Keys |
 | `GOOGLE_AI_API_KEY` | Receipt OCR (Gemini) | ai.google.dev → API Keys (free) |
-| `GOOGLE_MAPS_API_KEY` | Maps | Already in wrangler.jsonc |
+| `GOOGLE_MAPS_API_KEY` | Maps | Set via `.env` / deployment environment |
 
 **Removed (no longer needed):**
 - ~~ANTHROPIC_API_KEY~~ — replaced by Gemini
