@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/email",
+  "name": "@sortey/email",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,12 +18,12 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
+    "@sortey/config": "workspace:*",
     "resend": "^6.12.3"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

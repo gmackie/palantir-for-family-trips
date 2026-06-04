@@ -65,8 +65,8 @@ Create router in `packages/api/src/router/`:
 // packages/api/src/router/your-feature.ts
 import { z } from "zod/v4";
 
-import { eq } from "@gmacko/db";
-import { yourTable } from "@gmacko/db/schema";
+import { eq } from "@sortey/db";
+import { yourTable } from "@sortey/db/schema";
 
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -144,8 +144,8 @@ pnpm ui-add button card dialog form input
 // apps/nextjs/src/app/your-feature/_components/create-form.tsx
 "use client";
 
-import { Button } from "@gmacko/ui/button";
-import { Input } from "@gmacko/ui/input";
+import { Button } from "@sortey/ui/button";
+import { Input } from "@sortey/ui/input";
 import { api } from "~/trpc/react";
 
 export function CreateForm() {
@@ -244,7 +244,7 @@ export const integrations = {
 2. Check flag before initializing:
 
 ```typescript
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 
 if (integrations.yourFeature) {
   // Initialize feature

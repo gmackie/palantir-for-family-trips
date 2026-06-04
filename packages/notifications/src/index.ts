@@ -1,4 +1,4 @@
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";

@@ -188,7 +188,7 @@ This project uses [Better Auth](https://www.better-auth.com) for authentication.
 
 ```bash
 # Generate the Better Auth schema
-pnpm --filter @gmacko/auth generate
+pnpm --filter @sortey/auth generate
 ```
 
 This command runs the Better Auth CLI with the following configuration:
@@ -200,7 +200,7 @@ The generation process:
 
 1. Reads the Better Auth configuration from `packages/auth/script/auth-cli.ts`
 2. Generates the appropriate database schema based on your auth setup
-3. Outputs a Drizzle-compatible schema file to the `@gmacko/db` package
+3. Outputs a Drizzle-compatible schema file to the `@sortey/db` package
 
 > **Note**: The `auth-cli.ts` file is placed in the `script/` directory (instead of `src/`) to prevent accidental imports from other parts of the codebase. This file is exclusively for CLI schema generation and should **not** be used directly in your application. For runtime authentication, use the configuration from `packages/auth/src/index.ts`.
 
@@ -211,9 +211,9 @@ For more information about the Better Auth CLI, see the [official documentation]
 Expo development should prefer development builds plus Expo Orbit over long-term Expo Go usage.
 
 ```bash
-pnpm --filter @gmacko/expo build:device:ios
-pnpm --filter @gmacko/expo dev:client
-pnpm --filter @gmacko/expo check:app-store
+pnpm --filter @sortey/expo build:device:ios
+pnpm --filter @sortey/expo dev:client
+pnpm --filter @sortey/expo check:app-store
 ```
 
 Orbit gives you a cleaner device/simulator install loop once the development build exists. `check:app-store` fails fast if the scaffold still contains placeholder App Store metadata, Expo project IDs, or associated-domain values.
@@ -279,7 +279,7 @@ The generator sets up the `package.json`, `tsconfig.json` and a `index.ts`, as w
 Run Storybook from the web app workspace:
 
 ```bash
-pnpm --filter @gmacko/nextjs storybook
+pnpm --filter @sortey/nextjs storybook
 ```
 
 Shared component stories live in `packages/ui/src/**/*.stories.tsx`.
@@ -316,10 +316,10 @@ If you scaffold with `--vinext`, the generated Next app gets an explicit Workers
 From the generated repo root:
 
 ```bash
-pnpm --filter @gmacko/nextjs dev:vinext
-CI=1 pnpm --filter @gmacko/nextjs build:vinext
-pnpm --filter @gmacko/nextjs deploy:cloudflare:staging
-pnpm --filter @gmacko/nextjs deploy:cloudflare:production
+pnpm --filter @sortey/nextjs dev:vinext
+CI=1 pnpm --filter @sortey/nextjs build:vinext
+pnpm --filter @sortey/nextjs deploy:cloudflare:staging
+pnpm --filter @sortey/nextjs deploy:cloudflare:production
 ```
 
 Notes:

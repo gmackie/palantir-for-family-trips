@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/auth",
+  "name": "@sortey/auth",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@better-auth/expo": "catalog:",
-    "@gmacko/db": "workspace:*",
+    "@sortey/db": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "catalog:",
     "zod": "catalog:"
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@better-auth/cli": "catalog:",
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

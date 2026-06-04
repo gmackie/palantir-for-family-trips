@@ -4,8 +4,8 @@ This folder manages the versioning and changelogs for publishable packages in th
 
 ## Publishable Packages
 
-- `@gmacko/mcp-server` - MCP server for AI assistants
-- `@gmacko/trpc-client` - Vanilla tRPC client for external consumers
+- `@sortey/mcp-server` - MCP server for AI assistants
+- `@sortey/trpc-client` - Vanilla tRPC client for external consumers
 
 ## Usage
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
-import { Input } from "@gmacko/ui/input";
-import { Label } from "@gmacko/ui/label";
+import { Button } from "@sortey/ui/button";
+import { Input } from "@sortey/ui/input";
+import { Label } from "@sortey/ui/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useTransition } from "react";
 

@@ -1,8 +1,8 @@
-import { extractAndReconcileReceipt } from "@gmacko/api/ocr";
-import { eq } from "@gmacko/db";
-import { db } from "@gmacko/db/client";
-import { getR2Bucket } from "@gmacko/db/runtime";
-import { session as sessionTable, user as userTable } from "@gmacko/db/schema";
+import { extractAndReconcileReceipt } from "@sortey/api/ocr";
+import { eq } from "@sortey/db";
+import { db } from "@sortey/db/client";
+import { getR2Bucket } from "@sortey/db/runtime";
+import { session as sessionTable, user as userTable } from "@sortey/db/schema";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { auth, getSession } from "~/auth/server";

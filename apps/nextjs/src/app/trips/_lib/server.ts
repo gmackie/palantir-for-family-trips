@@ -1,5 +1,5 @@
-import { appRouter, createTRPCContext } from "@gmacko/api";
-import { ensurePersonalWorkspace } from "@gmacko/api/workspace";
+import { appRouter, createTRPCContext } from "@sortey/api";
+import { ensurePersonalWorkspace } from "@sortey/api/workspace";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 

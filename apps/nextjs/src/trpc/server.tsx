@@ -1,5 +1,5 @@
-import type { AppRouter } from "@gmacko/api";
-import { appRouter, createTRPCContext } from "@gmacko/api";
+import type { AppRouter } from "@sortey/api";
+import { appRouter, createTRPCContext } from "@sortey/api";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type { TRPCQueryOptions } from "@trpc/tanstack-react-query";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";

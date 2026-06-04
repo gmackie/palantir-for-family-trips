@@ -1,7 +1,7 @@
 "use client";
 
-import type { AppRouter } from "@gmacko/api";
-import { Button } from "@gmacko/ui/button";
+import type { AppRouter } from "@sortey/api";
+import { Button } from "@sortey/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import Link from "next/link";

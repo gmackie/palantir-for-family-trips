@@ -1,6 +1,6 @@
-import { asc, eq } from "@gmacko/db";
-import { tripSegments, trips } from "@gmacko/db/schema";
 import { decode, encode } from "@googlemaps/polyline-codec";
+import { asc, eq } from "@sortey/db";
+import { tripSegments, trips } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import SunCalc from "suncalc";

@@ -49,14 +49,14 @@ This is a T3 Turbo monorepo fork with:
 
 All integrations follow this pattern:
 
-1. Check `integrations.<name>` from `@gmacko/config`
+1. Check `integrations.<name>` from `@sortey/config`
 2. If disabled: no initialization, no env vars required, no runtime code
 3. If enabled: wrap with provider, require env vars
 
 Example:
 
 ```typescript
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 
 if (integrations.posthog) {
   // Initialize PostHog

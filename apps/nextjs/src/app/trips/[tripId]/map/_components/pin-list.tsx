@@ -1,8 +1,8 @@
 "use client";
 
-import type { AppRouter } from "@gmacko/api";
-import { Button } from "@gmacko/ui/button";
-import { Input } from "@gmacko/ui/input";
+import type { AppRouter } from "@sortey/api";
+import { Button } from "@sortey/ui/button";
+import { Input } from "@sortey/ui/input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { useEffect, useState } from "react";

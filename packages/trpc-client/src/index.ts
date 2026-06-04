@@ -1,12 +1,12 @@
 /**
- * @gmacko/trpc-client
+ * @sortey/trpc-client
  *
  * A vanilla tRPC client for external consumers to interact with the API.
  * Supports both API key authentication and cookie-based session authentication.
  *
  * @example
  * ```ts
- * import { createClient } from "@gmacko/trpc-client";
+ * import { createClient } from "@sortey/trpc-client";
  *
  * // With API key
  * const client = createClient({
@@ -27,6 +27,6 @@
 export type { TRPCClient } from "./client";
 export { type CreateClientOptions, createClient } from "./client";
 
-// Re-export types from @gmacko/api for convenience
-// Users can import these directly if they have @gmacko/api installed
+// Re-export types from @sortey/api for convenience
+// Users can import these directly if they have @sortey/api installed
 export type { AppRouter, RouterInputs, RouterOutputs } from "./types";

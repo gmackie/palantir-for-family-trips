@@ -1,7 +1,7 @@
 "use client";
 
-import { integrations } from "@gmacko/config";
-import { captureException } from "@gmacko/monitoring/web";
+import { integrations } from "@sortey/config";
+import { captureException } from "@sortey/monitoring/web";
 import { useEffect } from "react";
 
 interface GlobalErrorProps {

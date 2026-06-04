@@ -1,4 +1,4 @@
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import Constants from "expo-constants";
 import { PostHogProvider as PHProvider, PostHog } from "posthog-react-native";
 import type { ReactNode } from "react";

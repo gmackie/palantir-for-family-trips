@@ -1,5 +1,5 @@
-import { and, eq, gte, lte } from "@gmacko/db";
-import { importedPois, poiCache } from "@gmacko/db/schema";
+import { and, eq, gte, lte } from "@sortey/db";
+import { importedPois, poiCache } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 

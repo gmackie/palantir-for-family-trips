@@ -157,7 +157,7 @@ jobs:
         working-directory: /tmp/e2e-test/test-app-default
 
       - name: Run Next.js build
-        run: pnpm --filter @gmacko/nextjs build
+        run: pnpm --filter @sortey/nextjs build
         working-directory: /tmp/e2e-test/test-app-default
 
   e2e-operators:
@@ -301,7 +301,7 @@ jobs:
         working-directory: /tmp/e2e-test/test-app-minimal
 
       - name: Run Next.js build
-        run: pnpm --filter @gmacko/nextjs build
+        run: pnpm --filter @sortey/nextjs build
         working-directory: /tmp/e2e-test/test-app-minimal
 
   e2e-custom-scope:
@@ -459,21 +459,21 @@ jobs:
         working-directory: /tmp/e2e-test/test-app-full
 
       - name: Run Next.js build
-        run: pnpm --filter @gmacko/nextjs build
+        run: pnpm --filter @sortey/nextjs build
         working-directory: /tmp/e2e-test/test-app-full
 
       - name: Run TanStack Start build
-        run: pnpm --filter @gmacko/tanstack-start build
+        run: pnpm --filter @sortey/tanstack-start build
         working-directory: /tmp/e2e-test/test-app-full
 
       - name: Run Expo typecheck
-        run: pnpm --filter @gmacko/expo typecheck
+        run: pnpm --filter @sortey/expo typecheck
         working-directory: /tmp/e2e-test/test-app-full
 
       - name: Run Expo dev-client smoke checks
         run: |
-          pnpm --filter @gmacko/expo exec expo start --dev-client --help
-          pnpm --filter @gmacko/expo exec expo config --json >/tmp/e2e-test/expo-config.json
+          pnpm --filter @sortey/expo exec expo start --dev-client --help
+          pnpm --filter @sortey/expo exec expo config --json >/tmp/e2e-test/expo-config.json
           grep '"name"' /tmp/e2e-test/expo-config.json || (echo "Expo config did not resolve" && exit 1)
         working-directory: /tmp/e2e-test/test-app-full
 
@@ -542,7 +542,7 @@ jobs:
         working-directory: /tmp/e2e-test/test-app-vinext
 
       - name: Run vinext build
-        run: pnpm --filter @gmacko/nextjs build:vinext
+        run: pnpm --filter @sortey/nextjs build:vinext
         working-directory: /tmp/e2e-test/test-app-vinext
         env:
           CI: "true"
@@ -555,7 +555,7 @@ jobs:
           echo "fake-wrangler $@"
           EOF
           chmod +x /tmp/fake-bin/wrangler
-          PATH="/tmp/fake-bin:$PATH" pnpm --filter @gmacko/nextjs deploy:cloudflare:staging | tee /tmp/e2e-test/vinext-deploy.log
+          PATH="/tmp/fake-bin:$PATH" pnpm --filter @sortey/nextjs deploy:cloudflare:staging | tee /tmp/e2e-test/vinext-deploy.log
           grep 'fake-wrangler deploy --env staging' /tmp/e2e-test/vinext-deploy.log || (echo "Cloudflare deploy script did not invoke wrangler correctly" && exit 1)
         working-directory: /tmp/e2e-test/test-app-vinext
 

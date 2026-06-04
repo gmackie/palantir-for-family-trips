@@ -43,7 +43,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: pnpm -F @gmacko/nextjs exec playwright install --with-deps chromium
+        run: pnpm -F @sortey/nextjs exec playwright install --with-deps chromium
 
       - name: Build application
         run: pnpm build

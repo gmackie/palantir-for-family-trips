@@ -1,7 +1,7 @@
 import "server-only";
 
-import { initAuth } from "@gmacko/auth";
-import { sendEmail } from "@gmacko/email";
+import { initAuth } from "@sortey/auth";
+import { sendEmail } from "@sortey/email";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { headers } from "next/headers";

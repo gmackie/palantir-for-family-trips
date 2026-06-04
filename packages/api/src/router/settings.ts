@@ -1,6 +1,6 @@
-import { canManageWorkspace, isPlatformAdminRole } from "@gmacko/auth";
-import { integrations, platformPrimitives, saasFeatures } from "@gmacko/config";
-import { and, eq, isNull } from "@gmacko/db";
+import { canManageWorkspace, isPlatformAdminRole } from "@sortey/auth";
+import { integrations, platformPrimitives, saasFeatures } from "@sortey/config";
+import { and, eq, isNull } from "@sortey/db";
 import {
   apiKeys,
   billingPlanLimit,
@@ -13,7 +13,7 @@ import {
   workspaceMembership,
   workspaceSubscription,
   workspaceUsageRollup,
-} from "@gmacko/db/schema";
+} from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { createHash, randomBytes } from "crypto";

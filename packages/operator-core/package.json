@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/operator-core",
+  "name": "@sortey/operator-core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -25,12 +25,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gmacko/trpc-client": "workspace:^0.1.0"
+    "@sortey/trpc-client": "workspace:^0.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/api": "workspace:*",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/api": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsup": "^8.5.1",

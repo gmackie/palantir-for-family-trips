@@ -87,11 +87,11 @@ The plan's infrastructure tier is strong. The template ground truth, phase decom
 
 **E-1. Cross-trip auth bleed (CRITICAL security).** Plan uses `requireTripMember(tripId)` as a helper function. Helpers are opt-in — one forgotten call = full data breach. Fix: enforce as tRPC middleware chain `protectedProcedure → workspaceProcedure(wsId) → tripProcedure(tripId)` so individual routers cannot forget. Centralize in `packages/api/src/auth/guards.ts`.
 
-**E-2. `@gmacko/storage` already exists with UploadThing.** Phase 3.2 tells engineers to build a parallel `packages/api/src/storage/` with `LocalDiskStorage`/`S3Storage`. That's a contradiction — the template already ships `@gmacko/storage`. Decide in Phase 3.0 whether to extend `@gmacko/storage` with an S3 backend (right for ForgeGraph bucket) or adopt UploadThing. Do not invent a parallel path.
+**E-2. `@sortey/storage` already exists with UploadThing.** Phase 3.2 tells engineers to build a parallel `packages/api/src/storage/` with `LocalDiskStorage`/`S3Storage`. That's a contradiction — the template already ships `@sortey/storage`. Decide in Phase 3.0 whether to extend `@sortey/storage` with an S3 backend (right for ForgeGraph bucket) or adopt UploadThing. Do not invent a parallel path.
 
 **E-3. Magic link plan has real bugs.** `apps/nextjs/src/auth/server.ts` already passes `extraPlugins: [nextCookies()]`. `nextCookies()` **must remain last** in the plugin array (Better Auth requirement for Server Actions cookie capture). Correct shape: `[magicLink({...}), nextCookies()]`. Also missing: adding `magicLinkClient()` to `apps/nextjs/src/auth/client.ts` or `authClient.signIn.magicLink` is `undefined`.
 
-**E-4. Use `@gmacko/realtime` (Pusher) for tap-to-claim, not polling.** Template ships Pusher broadcast primitives. Plan says "polling, no websockets v1" — leaving value on the table AND guaranteeing bad UX (2–5s lag between tap and partner seeing it → double-claims become the norm). Fix: channel per expense `private-expense-${expenseId}`, server triggers `line-item:claimed` events, client subscribes and invalidates TanStack Query. Polling as a 3s fallback when realtime disabled.
+**E-4. Use `@sortey/realtime` (Pusher) for tap-to-claim, not polling.** Template ships Pusher broadcast primitives. Plan says "polling, no websockets v1" — leaving value on the table AND guaranteeing bad UX (2–5s lag between tap and partner seeing it → double-claims become the norm). Fix: channel per expense `private-expense-${expenseId}`, server triggers `line-item:claimed` events, client subscribes and invalidates TanStack Query. Polling as a 3s fallback when realtime disabled.
 
 **E-5. Currency mixing = P0 bug.** Plan says "USD only v1" but OCR of a Tokyo receipt will happily extract JPY amounts into `subtotalCents` as if dollars. Silent data corruption. Fix: reject non-USD receipts at OCR time with currency detection, OR store currency per expense and refuse to mix in settlement.
 
@@ -130,9 +130,9 @@ The plan's infrastructure tier is strong. The template ground truth, phase decom
 
 **DX-1. Path typo in Phases 2–5 (CRITICAL).** Plan Phase 0.5 correctly uses `apps/nextjs/src/app/...`. Phases 2.4, 3.7, 4.5, 5.5 write `apps/nextjs/app/app/...` — wrong path (no `src/`) AND a double `/app/app/` typo. Copy-paste will silently place files where Next.js cannot find them. Fix: global replace throughout Phases 2–5.
 
-**DX-2. `bun test` throughout plan but template uses Vitest + pnpm.** Referenced in Phases 2 and 3. Copy-paste = immediate failure. Fix: global replace `bun test` → `pnpm -F @gmacko/api test` (or correct workspace filter).
+**DX-2. `bun test` throughout plan but template uses Vitest + pnpm.** Referenced in Phases 2 and 3. Copy-paste = immediate failure. Fix: global replace `bun test` → `pnpm -F @sortey/api test` (or correct workspace filter).
 
-**DX-3. Missing `docs/ai/COOKBOOK.md` (highest-leverage DX fix).** A fresh Claude session given Phase 2 will guess wrong about: (a) where to register a new tRPC router in `@gmacko/api`, (b) Drizzle's functional `pgTable` syntax (plan uses pseudo-syntax), (c) `@tanstack/react-form` against a tRPC mutation, (d) `pnpm -F @gmacko/ui ui-add` for shadcn primitives, (e) the trip-guard composition. Five worked examples, one doc.
+**DX-3. Missing `docs/ai/COOKBOOK.md` (highest-leverage DX fix).** A fresh Claude session given Phase 2 will guess wrong about: (a) where to register a new tRPC router in `@sortey/api`, (b) Drizzle's functional `pgTable` syntax (plan uses pseudo-syntax), (c) `@tanstack/react-form` against a tRPC mutation, (d) `pnpm -F @sortey/ui ui-add` for shadcn primitives, (e) the trip-guard composition. Five worked examples, one doc.
 
 **DX-4. Missing `docs/ai/LOCAL_DEV.md`.** Need exact sequence: Node 24 (nvm/fnm/flake), `corepack enable`, `docker compose up -d postgres`, env file checklist, `db:migrate`, `auth:generate`, `dev:next`. `scripts/doctor.sh` doesn't check `BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY`, `STORAGE_*`, `GOOGLE_MAPS_API_KEY` — extend it.
 
@@ -142,7 +142,7 @@ The plan's infrastructure tier is strong. The template ground truth, phase decom
 
 **DX-7. Template sync untracked.** Phase 0.1 snapshots the template but doesn't record the upstream SHA. Add `docs/ai/TEMPLATE_SNAPSHOT.md` with SHA + `scripts/sync-template.sh` that diffs upstream at a target SHA against tracked paths.
 
-**DX-8. Workspace onboarding cost for solo users (conditional on Option B).** "You must first create a workspace to create a trip" is a product smell. Fix: auto-create a personal workspace on first sign-in, hide the workspace surface behind `@gmacko/flags` until a second workspace exists.
+**DX-8. Workspace onboarding cost for solo users (conditional on Option B).** "You must first create a workspace to create a trip" is a product smell. Fix: auto-create a personal workspace on first sign-in, hide the workspace surface behind `@sortey/flags` until a second workspace exists.
 
 ---
 
@@ -154,7 +154,7 @@ Findings that appeared in multiple independent voices:
 
 **T-2. "Option B needs more scaffolding than the plan admits."** CEO wants Option A (flip). Eng says B is viable only if `workspaceProcedure → tripProcedure` middleware chain lands first. DX says B adds onboarding friction for solo users. Three reviewers, three different angles, same conclusion: **the plan's Workspace commitment is under-specified.**
 
-**T-3. "Template has more than you think."** Eng found `@gmacko/storage` already exists; Eng found `@gmacko/realtime` already ships Pusher; DX found `@gmacko/email` already uses Resend. **Phase 3 planning under-leverages what's already built.**
+**T-3. "Template has more than you think."** Eng found `@sortey/storage` already exists; Eng found `@sortey/realtime` already ships Pusher; DX found `@sortey/email` already uses Resend. **Phase 3 planning under-leverages what's already built.**
 
 ---
 
@@ -168,8 +168,8 @@ The following were auto-decided under the /autoplan 6 principles and will be app
 | A2 | Global replace `bun test` → correct pnpm filter | P5 explicit | mechanical bug |
 | A3 | Enforce `nextCookies()` last in `extraPlugins` array | P5 explicit | Better Auth hard requirement |
 | A4 | Add `magicLinkClient()` to `apps/nextjs/src/auth/client.ts` | P1 completeness | without this the signin API is `undefined` |
-| A5 | Phase 3.2: extend `@gmacko/storage` rather than build parallel path | P4 DRY | duplicate functionality rejected |
-| A6 | Use `@gmacko/realtime` (Pusher) for tap-to-claim; polling only as fallback | P1 completeness | realtime ships in template |
+| A5 | Phase 3.2: extend `@sortey/storage` rather than build parallel path | P4 DRY | duplicate functionality rejected |
+| A6 | Use `@sortey/realtime` (Pusher) for tap-to-claim; polling only as fallback | P1 completeness | realtime ships in template |
 | A7 | Cross-trip auth via tRPC middleware chain, not helper function | P1 completeness, P5 explicit | helper = opt-in = breach risk |
 | A8 | Store `currency` per expense and refuse cross-currency settlement | P1 completeness | silent data corruption is P0 |
 | A9 | Deterministic settlement: sort by `(amount DESC, userId ASC)`, memoize per balances-hash | P5 explicit | non-determinism is user confusion |

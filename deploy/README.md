@@ -99,14 +99,14 @@ This template now leaves preview infrastructure implementation to ForgeGraph ins
 
 ### Preview Configuration API
 
-Use `@gmacko/config/preview` in your application:
+Use `@sortey/config/preview` in your application:
 
 ```typescript
 import {
   getPreviewConfig,
   getPreviewFeatureFlags,
   isPreviewEnvironment,
-} from "@gmacko/config/preview";
+} from "@sortey/config/preview";
 
 // Check if in preview
 if (isPreviewEnvironment()) {

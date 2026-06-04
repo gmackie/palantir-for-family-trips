@@ -12,35 +12,35 @@
 
 ```bash
 # All unit tests
-pnpm -F @gmacko/api test
+pnpm -F @sortey/api test
 
 # Single test file
-pnpm -F @gmacko/api test src/calc/expense-shares.test.ts
+pnpm -F @sortey/api test src/calc/expense-shares.test.ts
 
 # Watch mode
-pnpm -F @gmacko/api test --watch
+pnpm -F @sortey/api test --watch
 
 # With coverage
-pnpm -F @gmacko/api test --coverage
+pnpm -F @sortey/api test --coverage
 ```
 
 ### E2E tests (Playwright)
 
 ```bash
 # All e2e tests (headless)
-pnpm -F @gmacko/nextjs e2e
+pnpm -F @sortey/nextjs e2e
 
 # Single spec
-pnpm -F @gmacko/nextjs e2e -g "create trip"
+pnpm -F @sortey/nextjs e2e -g "create trip"
 
 # With visible browser
-pnpm -F @gmacko/nextjs e2e --headed
+pnpm -F @sortey/nextjs e2e --headed
 
 # Interactive UI mode (best for debugging)
-pnpm -F @gmacko/nextjs e2e:ui
+pnpm -F @sortey/nextjs e2e:ui
 
 # Generate trace for debugging
-pnpm -F @gmacko/nextjs e2e --trace on
+pnpm -F @sortey/nextjs e2e --trace on
 # Open trace: npx playwright show-trace test-results/<test>/trace.zip
 ```
 
@@ -48,10 +48,10 @@ pnpm -F @gmacko/nextjs e2e --trace on
 
 ```bash
 # Dev mode
-pnpm -F @gmacko/nextjs storybook
+pnpm -F @sortey/nextjs storybook
 
 # Build for CI
-pnpm -F @gmacko/nextjs storybook:build
+pnpm -F @sortey/nextjs storybook:build
 ```
 
 ## Claude API Mocking
@@ -65,7 +65,7 @@ For tests that would call the Anthropic API (receipt OCR):
 // keyed by image hash
 
 // To run with live OCR (costs money):
-// RUN_LIVE_OCR=1 pnpm -F @gmacko/api test
+// RUN_LIVE_OCR=1 pnpm -F @sortey/api test
 ```
 
 TODO: Add `vi.mock` recipe for `@anthropic-ai/sdk` after Phase 3.

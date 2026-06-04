@@ -540,15 +540,15 @@ To keep implementation deterministic, pick and document these constants:
 ### Provider Assembly — Next.js (`apps/nextjs/src/app/layout.tsx`)
 
 ```tsx
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 
 // Conditional imports (tree-shaken when disabled)
 const SentryProvider = integrations.sentry 
-  ? (await import("@gmacko/monitoring/web")).SentryProvider 
+  ? (await import("@sortey/monitoring/web")).SentryProvider 
   : ({ children }: { children: React.ReactNode }) => children;
 
 const PostHogProvider = integrations.posthog
-  ? (await import("@gmacko/analytics/web")).PostHogProvider
+  ? (await import("@sortey/analytics/web")).PostHogProvider
   : ({ children }: { children: React.ReactNode }) => children;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -571,7 +571,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ### Provider Assembly — Expo (`apps/expo/App.tsx`)
 
 ```tsx
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 
 export default function App() {
   useEffect(() => {
@@ -596,7 +596,7 @@ export default function App() {
 ```ts
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 
 export const env = createEnv({
   server: {

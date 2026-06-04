@@ -1,4 +1,4 @@
-import { initSentryWeb } from "@gmacko/monitoring/web";
+import { initSentryWeb } from "@sortey/monitoring/web";
 
 import { env } from "~/env";
 

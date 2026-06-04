@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@gmacko/ui/dropdown-menu";
+} from "@sortey/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 

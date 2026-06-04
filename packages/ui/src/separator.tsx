@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@gmacko/ui";
+import { cn } from "@sortey/ui";
 import { Separator as SeparatorPrimitive } from "radix-ui";
 
 export function Separator({

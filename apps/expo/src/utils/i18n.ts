@@ -1,10 +1,10 @@
-import type { Locale, Messages } from "@gmacko/i18n/native";
+import type { Locale, Messages } from "@sortey/i18n/native";
 import {
   changeLocaleNative,
   defaultLocale,
   getDeviceLocale,
   initI18nNative,
-} from "@gmacko/i18n/native";
+} from "@sortey/i18n/native";
 import * as SecureStore from "expo-secure-store";
 
 const LOCALE_KEY = "user_locale";

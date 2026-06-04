@@ -1,4 +1,4 @@
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import Stripe from "stripe";
 
 let stripeClient: Stripe | null = null;

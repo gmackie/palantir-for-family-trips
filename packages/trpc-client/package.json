@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/trpc-client",
+  "name": "@sortey/trpc-client",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -29,18 +29,18 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/api": "workspace:*",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/api": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsup": "^8.5.1",
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@gmacko/api": "workspace:*"
+    "@sortey/api": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@gmacko/api": {
+    "@sortey/api": {
       "optional": true
     }
   }

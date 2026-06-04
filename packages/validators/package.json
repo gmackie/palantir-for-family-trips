@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/validators",
+  "name": "@sortey/validators",
   "private": true,
   "type": "module",
   "exports": {
@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

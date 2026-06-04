@@ -1,6 +1,6 @@
 "use client";
 
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import type { ReactNode } from "react";

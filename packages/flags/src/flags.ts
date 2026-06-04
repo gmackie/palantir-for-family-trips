@@ -6,7 +6,7 @@
  * environment, and percentage rollouts.
  *
  * Usage:
- *   import { flags, getFlag, isEnabled } from "@gmacko/flags";
+ *   import { flags, getFlag, isEnabled } from "@sortey/flags";
  *
  *   // Get flag value
  *   const value = getFlag("newDashboard");

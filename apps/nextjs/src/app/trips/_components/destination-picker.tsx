@@ -5,7 +5,7 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
-} from "@gmacko/ui/field";
+} from "@sortey/ui/field";
 
 import { PlacesAutocompleteInput } from "~/components/places-autocomplete-input";
 

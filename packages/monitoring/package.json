@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/monitoring",
+  "name": "@sortey/monitoring",
   "private": true,
   "type": "module",
   "exports": {
@@ -26,13 +26,13 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
     "@sentry/nextjs": "^10.53.1",
-    "@sentry/react-native": "^8.11.1"
+    "@sentry/react-native": "^8.11.1",
+    "@sortey/config": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   },

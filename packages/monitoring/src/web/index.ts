@@ -1,5 +1,5 @@
-import { integrations } from "@gmacko/config";
 import * as Sentry from "@sentry/nextjs";
+import { integrations } from "@sortey/config";
 
 export interface SentryWebConfig {
   dsn: string;

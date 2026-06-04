@@ -1,4 +1,4 @@
-import { initAuth } from "@gmacko/auth";
+import { initAuth } from "@sortey/auth";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 
 import { env } from "~/env";

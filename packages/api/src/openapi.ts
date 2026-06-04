@@ -1,4 +1,4 @@
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import type { OpenAPIV3 } from "openapi-types";
 
 import type { ApiVersion } from "./versioning";

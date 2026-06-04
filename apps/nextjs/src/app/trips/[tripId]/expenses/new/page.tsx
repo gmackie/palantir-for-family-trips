@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
-import { Field, FieldContent, FieldGroup, FieldLabel } from "@gmacko/ui/field";
-import { Input } from "@gmacko/ui/input";
+import { Button } from "@sortey/ui/button";
+import { Field, FieldContent, FieldGroup, FieldLabel } from "@sortey/ui/field";
+import { Input } from "@sortey/ui/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";

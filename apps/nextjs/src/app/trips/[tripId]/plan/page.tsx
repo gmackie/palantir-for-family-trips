@@ -1,4 +1,4 @@
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import { TRPCError } from "@trpc/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";

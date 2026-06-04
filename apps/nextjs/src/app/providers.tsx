@@ -1,7 +1,7 @@
 "use client";
 
-import { PostHogProvider } from "@gmacko/analytics/web";
-import { integrations } from "@gmacko/config";
+import { PostHogProvider } from "@sortey/analytics/web";
+import { integrations } from "@sortey/config";
 import type { ReactNode } from "react";
 
 import { env } from "~/env";

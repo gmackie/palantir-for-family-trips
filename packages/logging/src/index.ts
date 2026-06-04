@@ -1,4 +1,4 @@
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import pino from "pino";
 
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";

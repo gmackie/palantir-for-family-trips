@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/payments",
+  "name": "@sortey/payments",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,12 +18,12 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
+    "@sortey/config": "workspace:*",
     "stripe": "^22.1.1"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

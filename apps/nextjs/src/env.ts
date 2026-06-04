@@ -1,4 +1,4 @@
-import { authEnv } from "@gmacko/auth/env";
+import { authEnv } from "@sortey/auth/env";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod/v4";
 

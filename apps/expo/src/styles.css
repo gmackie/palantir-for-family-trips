@@ -4,5 +4,5 @@
 
 @import "nativewind/theme";
 
-@import "@gmacko/tailwind-config/theme";
+@import "@sortey/tailwind-config/theme";
 @import "./native-theme.css";

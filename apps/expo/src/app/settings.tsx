@@ -2,7 +2,7 @@ import {
   supportedLocales,
   useLocaleNative,
   useTranslationsNative,
-} from "@gmacko/i18n/native";
+} from "@sortey/i18n/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import { Stack } from "expo-router";

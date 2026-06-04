@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "@gmacko/db";
+import { and, asc, desc, eq, inArray } from "@sortey/db";
 import {
   expenses,
   lineItemClaims,
@@ -6,8 +6,8 @@ import {
   receiptImages,
   tripMembers,
   tripSegments,
-} from "@gmacko/db/schema";
-import { triggerEvent } from "@gmacko/realtime";
+} from "@sortey/db/schema";
+import { triggerEvent } from "@sortey/realtime";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

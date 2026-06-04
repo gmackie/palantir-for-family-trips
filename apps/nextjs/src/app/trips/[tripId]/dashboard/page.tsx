@@ -1,4 +1,4 @@
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

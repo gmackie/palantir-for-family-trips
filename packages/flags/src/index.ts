@@ -1,5 +1,5 @@
 /**
- * @gmacko/flags - Runtime Feature Flags
+ * @sortey/flags - Runtime Feature Flags
  *
  * A type-safe runtime feature flags system for create-gmacko-app.
  *
@@ -8,13 +8,13 @@
  * - Type definitions for flags
  *
  * Additional entry points:
- * - @gmacko/flags/react - React hooks and components
- * - @gmacko/flags/server - Server-side helpers for tRPC
+ * - @sortey/flags/react - React hooks and components
+ * - @sortey/flags/server - Server-side helpers for tRPC
  *
  * @example
  * ```ts
  * // Basic usage
- * import { isEnabled, getFlag, getAllFlags } from "@gmacko/flags";
+ * import { isEnabled, getFlag, getAllFlags } from "@sortey/flags";
  *
  * // Check if a feature is enabled
  * if (isEnabled("newDashboard", { userId: "user-123" })) {

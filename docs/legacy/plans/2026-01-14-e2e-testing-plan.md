@@ -429,7 +429,7 @@ High-level job steps:
 2. Create Neon branch from `e2e-base`
 3. Export `DATABASE_URL`
 4. Run `pnpm db:migrate` (optional if base is always current; recommended for safety)
-5. Run Playwright smoke/full (`pnpm -F @gmacko/nextjs e2e`)
+5. Run Playwright smoke/full (`pnpm -F @sortey/nextjs e2e`)
 6. Always upload Playwright artifacts
 7. Always delete Neon branch
 
@@ -480,7 +480,7 @@ jobs:
         run: pnpm db:migrate
 
       - name: Run Playwright
-        run: pnpm -F @gmacko/nextjs e2e
+        run: pnpm -F @sortey/nextjs e2e
         env:
           E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}
 
@@ -554,8 +554,8 @@ From repo root:
 
 - Smoke: `pnpm e2e:web -- --grep @smoke`
 - Full: `E2E_TIER=full pnpm e2e:web`
-- UI mode: `pnpm -F @gmacko/nextjs e2e:ui`
-- Headed: `pnpm -F @gmacko/nextjs e2e:headed`
+- UI mode: `pnpm -F @sortey/nextjs e2e:ui`
+- Headed: `pnpm -F @sortey/nextjs e2e:headed`
 
 Recommended local env:
 
@@ -625,7 +625,7 @@ For local staging DB:
 
 A more sophisticated approach is a full "test harness mode":
 
-- a dedicated `@gmacko/testkit` package with factories + reset APIs
+- a dedicated `@sortey/testkit` package with factories + reset APIs
 - per-test database reset using transactional tests or schema cloning
 - nightly real OAuth validation against Discord in a separate non-blocking workflow
 

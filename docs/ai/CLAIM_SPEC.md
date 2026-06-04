@@ -130,7 +130,7 @@ Each claimable row must support all of these states:
 
 ## Realtime Behavior
 
-Primary transport is `@gmacko/realtime`.
+Primary transport is `@sortey/realtime`.
 
 - Channel: `private-expense-${expenseId}`
 - Primary event: `line-item:claimed`

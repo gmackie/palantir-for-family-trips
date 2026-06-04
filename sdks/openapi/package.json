@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/openapi-spec",
+  "name": "@sortey/openapi-spec",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,7 +7,7 @@
     "clean": "rm -f openapi.json"
   },
   "dependencies": {
-    "@gmacko/api": "workspace:*"
+    "@sortey/api": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

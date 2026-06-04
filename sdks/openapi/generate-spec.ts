@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 
-import type { OpenApiConfig } from "@gmacko/api/openapi";
+import type { OpenApiConfig } from "@sortey/api/openapi";
 import {
   generateAllVersionedSpecs,
   generateApiDocument,
   getAvailableApiVersions,
-} from "@gmacko/api/openapi";
+} from "@sortey/api/openapi";
 /**
  * OpenAPI spec generation script
  *

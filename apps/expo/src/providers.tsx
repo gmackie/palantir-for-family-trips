@@ -1,9 +1,9 @@
-import { PostHogNativeProvider } from "@gmacko/analytics/native";
-import { integrations } from "@gmacko/config";
-import en from "@gmacko/i18n/messages/en.json";
-import es from "@gmacko/i18n/messages/es.json";
-import { I18nNativeProvider } from "@gmacko/i18n/native";
-import { initSentryNative } from "@gmacko/monitoring/native";
+import { PostHogNativeProvider } from "@sortey/analytics/native";
+import { integrations } from "@sortey/config";
+import en from "@sortey/i18n/messages/en.json";
+import es from "@sortey/i18n/messages/es.json";
+import { I18nNativeProvider } from "@sortey/i18n/native";
+import { initSentryNative } from "@sortey/monitoring/native";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 

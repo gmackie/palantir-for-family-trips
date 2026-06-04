@@ -1,5 +1,5 @@
 {
-  "extends": "@gmacko/tsconfig/compiled-package.json",
+  "extends": "@sortey/tsconfig/compiled-package.json",
   "compilerOptions": {
     "outDir": "./dist"
   },

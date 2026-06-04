@@ -1,4 +1,4 @@
-import * as Api from "@gmacko/api";
+import * as Api from "@sortey/api";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import {

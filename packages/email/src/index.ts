@@ -1,6 +1,6 @@
 declare const process: { env: Record<string, string | undefined> };
 
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import { Resend } from "resend";
 
 let resendClient: Resend | null = null;

@@ -1,5 +1,5 @@
-import { and, eq } from "@gmacko/db";
-import { vanProfiles } from "@gmacko/db/schema";
+import { and, eq } from "@sortey/db";
+import { vanProfiles } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

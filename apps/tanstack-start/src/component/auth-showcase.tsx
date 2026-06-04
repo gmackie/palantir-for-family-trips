@@ -1,4 +1,4 @@
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 
 import { authClient } from "~/auth/client";

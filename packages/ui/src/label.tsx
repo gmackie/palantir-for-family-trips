@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@gmacko/ui";
+import { cn } from "@sortey/ui";
 import { Label as LabelPrimitive } from "radix-ui";
 
 export function Label({

@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/tanstack-start",
+  "name": "@sortey/tanstack-start",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -15,10 +15,10 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/geist-mono": "^5.2.8",
-    "@gmacko/api": "workspace:*",
-    "@gmacko/auth": "workspace:*",
-    "@gmacko/db": "workspace:*",
-    "@gmacko/ui": "workspace:*",
+    "@sortey/api": "workspace:*",
+    "@sortey/auth": "workspace:*",
+    "@sortey/db": "workspace:*",
+    "@sortey/ui": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -38,8 +38,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tailwind-config": "workspace:*",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tailwind-config": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",

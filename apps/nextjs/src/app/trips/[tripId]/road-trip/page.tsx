@@ -1,5 +1,5 @@
-import { appRouter, createTRPCContext } from "@gmacko/api";
-import type { TripStatus } from "@gmacko/db/schema";
+import { appRouter, createTRPCContext } from "@sortey/api";
+import type { TripStatus } from "@sortey/db/schema";
 import { TRPCError } from "@trpc/server";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";

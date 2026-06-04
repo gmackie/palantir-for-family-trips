@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 
-import type { AppRouter } from "@gmacko/api";
-import { ThemeProvider, ThemeToggle } from "@gmacko/ui/theme";
-import { Toaster } from "@gmacko/ui/toast";
+import type { AppRouter } from "@sortey/api";
+import { ThemeProvider, ThemeToggle } from "@sortey/ui/theme";
+import { Toaster } from "@sortey/ui/toast";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,

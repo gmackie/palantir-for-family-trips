@@ -12,18 +12,18 @@ The sibling directory `../create-gmacko-app` is the template. Observed facts fro
 - Lint/format: **Biome + oxlint**
 - Pre-commit: `lefthook.yml`
 - Next.js: **16.2.1**, **React 19**
-- Tailwind config lives in a workspace package: **`@gmacko/tailwind-config`**
+- Tailwind config lives in a workspace package: **`@sortey/tailwind-config`**
 
 **Data**
 - ORM: **Drizzle 0.45 + postgres.js 3.4** + `drizzle-zod` for inferred schemas
-- DB package `@gmacko/db` has `src/schema.ts`, `src/auth-schema.ts` (generated), `src/client.ts`, `src/seed.ts`, `__tests__/`, `drizzle.config.ts`, `vitest.config.ts`
+- DB package `@sortey/db` has `src/schema.ts`, `src/auth-schema.ts` (generated), `src/client.ts`, `src/seed.ts`, `__tests__/`, `drizzle.config.ts`, `vitest.config.ts`
 - Schema uses the functional `pgTable("name", (t) => ({...}))` style with `drizzle-zod`'s `createInsertSchema`
 - Scripts: `pnpm db:generate|migrate|push|check|seed|studio`, `pnpm auth:generate`
 
 **Auth (critical discovery)**
-- `@gmacko/auth` exports an `initAuth({...})` factory that takes `extraPlugins`
+- `@sortey/auth` exports an `initAuth({...})` factory that takes `extraPlugins`
 - Currently wired for **Discord OAuth** + optional Apple + `@better-auth/expo` + `oAuthProxy`
-- **Magic link is NOT enabled.** It must be added via `extraPlugins` when `initAuth` is called from `apps/nextjs/src/auth/server.ts` (preferred — no fork), or by editing `@gmacko/auth`. Prefer the former.
+- **Magic link is NOT enabled.** It must be added via `extraPlugins` when `initAuth` is called from `apps/nextjs/src/auth/server.ts` (preferred — no fork), or by editing `@sortey/auth`. Prefer the former.
 - Auth consumers in the Next.js app live at `apps/nextjs/src/auth/client.ts` and `apps/nextjs/src/auth/server.ts`
 - Route handler is already mounted at `apps/nextjs/src/app/api/auth/[...all]/`
 
@@ -33,13 +33,13 @@ The sibling directory `../create-gmacko-app` is the template. Observed facts fro
 - Example domain table present: `Post` (with `CreatePostSchema`) and `userPreferences`
 
 **UI**
-- `@gmacko/ui` structure: **flat files in `packages/ui/src/`**, one component per file: `button.tsx`, `button.stories.tsx`, `input.tsx`, `dropdown-menu.tsx`, `field.tsx`, `label.tsx`, `separator.tsx`, `theme.tsx`, `toast.tsx`
+- `@sortey/ui` structure: **flat files in `packages/ui/src/`**, one component per file: `button.tsx`, `button.stories.tsx`, `input.tsx`, `dropdown-menu.tsx`, `field.tsx`, `label.tsx`, `separator.tsx`, `theme.tsx`, `toast.tsx`
 - `index.ts` barrel + per-component subpath exports in `package.json` (`./button`, `./input`, etc.)
-- **Shadcn is configured** — `packages/ui/components.json` exists; add primitives via `pnpm -F @gmacko/ui ui-add`
+- **Shadcn is configured** — `packages/ui/components.json` exists; add primitives via `pnpm -F @sortey/ui ui-add`
 - Icon library: `@radix-ui/react-icons` + `radix-ui` primitives; `class-variance-authority` + `tailwind-merge` for variants; `sonner` for toasts
 
 **Storybook (confirmed present)**
-- Storybook runs **inside `apps/nextjs`**, not `packages/ui`. Scripts: `pnpm -F @gmacko/nextjs storybook` (dev on 6006) and `storybook:build`.
+- Storybook runs **inside `apps/nextjs`**, not `packages/ui`. Scripts: `pnpm -F @sortey/nextjs storybook` (dev on 6006) and `storybook:build`.
 - Addons: `@storybook/addon-a11y`, `@storybook/addon-docs`, `@storybook/nextjs-vite`
 - **Story convention** (from `button.stories.tsx`): plain object `meta` with `title: "UI/<Name>"`, `component`, `tags: ["autodocs"]`, default `args`. Named exports are variants — `export const Primary = {}`, `export const Outline = { args: { variant: "outline" } }`. No explicit `Meta<typeof X>` / `StoryObj<typeof X>` typing.
 - Stories live **next to the component** (flat, not in a `stories/` folder)
@@ -48,17 +48,17 @@ The sibling directory `../create-gmacko-app` is the template. Observed facts fro
 - Routes under `apps/nextjs/src/app/` (note: `src/app/`, not root `app/`)
 - Route-private components use the `_components/` convention (e.g., `src/app/settings/_components/`, `src/app/admin/_components/`)
 - Existing routes: `/`, `/settings`, `/admin` (+ `/admin/users`), `/pricing`, `/contact`, `/privacy`, `/changelog`, `/faq`, `/terms`, `/api/auth/[...all]`, `/api/trpc/[trpc]`, `/api/health/ready`, `/api/health/live`
-- **tRPC is the router pattern**: `src/trpc/` client setup, route handler at `src/app/api/trpc/[trpc]/`, backed by `@gmacko/api`
+- **tRPC is the router pattern**: `src/trpc/` client setup, route handler at `src/app/api/trpc/[trpc]/`, backed by `@sortey/api`
 - Form library: **TanStack Form** (`@tanstack/react-form`)
 - Data fetching: **TanStack Query** (`@tanstack/react-query`) + `@trpc/tanstack-react-query`
 - Monitoring: **Sentry** is pre-configured (`sentry.client.config.ts`, `sentry.edge.config.ts`, `sentry.server.config.ts`, `@sentry/nextjs`)
 - i18n: **next-intl** pre-wired (`src/i18n/`)
 - Env: `@t3-oss/env-nextjs` with `src/env.ts`
 - Middleware: `src/middleware.ts` exists
-- E2E: **Playwright** configured (`playwright.config.ts`, `e2e/`) — scripts: `pnpm -F @gmacko/nextjs e2e|e2e:ui|e2e:headed`
+- E2E: **Playwright** configured (`playwright.config.ts`, `e2e/`) — scripts: `pnpm -F @sortey/nextjs e2e|e2e:ui|e2e:headed`
 
 **Other packages in the template**
-- `@gmacko/api` (tRPC routers), `@gmacko/validators`, `@gmacko/storage`, `@gmacko/realtime`, `@gmacko/notifications`, `@gmacko/email`, `@gmacko/analytics`, `@gmacko/flags`, `@gmacko/i18n`, `@gmacko/logging`, `@gmacko/monitoring`, `@gmacko/config`, `@gmacko/payments`, `@gmacko/billing`, `@gmacko/purchases`, `@gmacko/settings`, `@gmacko/operator-core`, `@gmacko/mcp-server`, `@gmacko/trpc-cli`, `@gmacko/trpc-client`
+- `@sortey/api` (tRPC routers), `@sortey/validators`, `@sortey/storage`, `@sortey/realtime`, `@sortey/notifications`, `@sortey/email`, `@sortey/analytics`, `@sortey/flags`, `@sortey/i18n`, `@sortey/logging`, `@sortey/monitoring`, `@sortey/config`, `@sortey/payments`, `@sortey/billing`, `@sortey/purchases`, `@sortey/settings`, `@sortey/operator-core`, `@sortey/mcp-server`, `@sortey/trpc-cli`, `@sortey/trpc-client`
 
 **Apps**
 - `apps/nextjs` — command-center dashboard (desktop/tablet), planning, settlement overview
@@ -81,13 +81,13 @@ The template ships a multi-tenant **Workspace** model with roles and billing. We
 
 **DECIDED: Option B** (confirmed after /autoplan review). A Workspace is the long-lived social unit (family or friend group); a Trip is a bounded event with its own invite list that defaults to all workspace members but can be a subset. This matches the user's mental model: "workspaces have many trips."
 
-**Required guard scaffolding (Eng review finding E-1, CRITICAL):** Option B only works if authorization is enforced via a tRPC middleware chain, NOT helper functions. Helpers are opt-in and a single forgotten call = cross-trip data breach. Phase 2.0 must land `protectedProcedure → workspaceProcedure(wsId) → tripProcedure(tripId)` in `packages/api/src/auth/guards.ts` before any trip router code. Additionally: auto-create a personal workspace on first sign-in so solo users never see the workspace surface, gated behind `@gmacko/flags`.
+**Required guard scaffolding (Eng review finding E-1, CRITICAL):** Option B only works if authorization is enforced via a tRPC middleware chain, NOT helper functions. Helpers are opt-in and a single forgotten call = cross-trip data breach. Phase 2.0 must land `protectedProcedure → workspaceProcedure(wsId) → tripProcedure(tripId)` in `packages/api/src/auth/guards.ts` before any trip router code. Additionally: auto-create a personal workspace on first sign-in so solo users never see the workspace surface, gated behind `@sortey/flags`.
 
 ## Guiding Constraints
 
 - **Use the template as-is**. Do not fork it, do not relocate its packages, do not replace its conventions (Biome vs Prettier, Drizzle vs Prisma, pnpm vs bun). Any deviation must be called out as a conscious override with a reason.
-- **Shared React components live in `@gmacko/ui`** (`packages/ui`) with their stories next to them. App-specific wiring lives in `apps/nextjs` (web) and `apps/expo` (mobile).
-- **Server routers and server-only logic live in `@gmacko/api`**. Both `apps/nextjs` and `apps/expo` consume the same tRPC API. Database schema extensions live in `@gmacko/db`.
+- **Shared React components live in `@sortey/ui`** (`packages/ui`) with their stories next to them. App-specific wiring lives in `apps/nextjs` (web) and `apps/expo` (mobile).
+- **Server routers and server-only logic live in `@sortey/api`**. Both `apps/nextjs` and `apps/expo` consume the same tRPC API. Database schema extensions live in `@sortey/db`.
 - **Trip auth is enforced via tRPC middleware chain** (`protectedProcedure → workspaceProcedure → tripProcedure`), NOT helper functions. This is non-negotiable per Eng review E-1.
 - **Visual parity first**: the existing Palantir dashboard must look and behave identically after Phase 0. No redesigns until the migration is green.
 - **Schema migrations are forward-only** via `drizzle-kit generate` / `migrate`. Every migration that touches seed-relevant tables updates `packages/db/src/seed.ts` in the same commit.
@@ -155,7 +155,7 @@ Phase 2P (pre-trip planning) can land in parallel with Phase 2.5 since they don'
 
 ## Phase 0 — Adopt create-gmacko-app Template + Port Dashboard
 
-**Goal**: replace the Vite SPA with the create-gmacko-app template in-place, port the existing dashboard components into `@gmacko/ui` and `apps/nextjs`, keep visual parity. No new features.
+**Goal**: replace the Vite SPA with the create-gmacko-app template in-place, port the existing dashboard components into `@sortey/ui` and `apps/nextjs`, keep visual parity. No new features.
 
 ### Tasks
 
@@ -184,7 +184,7 @@ This must be done as separate, verifiable commits. Not one giant commit.
 - `pnpm turbo run build`
 All four must pass against the untouched template before porting any dashboard code. If any fail, stop and fix — do not move on.
 
-0.3 **Port dashboard components into `@gmacko/ui`** (flat files, matching template convention)
+0.3 **Port dashboard components into `@sortey/ui`** (flat files, matching template convention)
 
 Each becomes a flat file in `packages/ui/src/`, with a co-located story. **No folders per component** — match the template.
 
@@ -203,7 +203,7 @@ Each becomes a flat file in `packages/ui/src/`, with a co-located story. **No fo
 - Add per-component subpath exports to `packages/ui/package.json` (`"./command-map": "./src/command-map.tsx"`, etc.) matching the existing pattern for `button`, `input`, etc.
 - Fixtures live in a single file: `packages/ui/src/__fixtures__/trip.ts` (matches the `__tests__` convention the template uses in `packages/db/src/`)
 
-**Shadcn primitives**: if any dashboard component needs a primitive that `@gmacko/ui` doesn't already export (`select`, `tabs`, `dialog`, `tooltip`, `badge`, etc.), add them via `pnpm -F @gmacko/ui ui-add <name>` rather than hand-writing them. Do not duplicate Radix primitives.
+**Shadcn primitives**: if any dashboard component needs a primitive that `@sortey/ui` doesn't already export (`select`, `tabs`, `dialog`, `tooltip`, `badge`, etc.), add them via `pnpm -F @sortey/ui ui-add <name>` rather than hand-writing them. Do not duplicate Radix primitives.
 
 0.4 **Design tokens**
 - `DESIGN.md` remains the source of truth. Phase 0 preserves the existing Palantir aesthetic rather than redesigning it; later phases may extend the document for mobile/accessibility without changing the migration goal.
@@ -212,7 +212,7 @@ Each becomes a flat file in `packages/ui/src/`, with a co-located story. **No fo
 
 0.5 **Wire the dashboard into `apps/nextjs`** (using `src/app/` layout)
 - Inspect `apps/nextjs/src/app/layout.tsx` and the existing `_components/` patterns first. Do not remove or rename template routes (`/settings`, `/admin`, `/pricing`, etc.).
-- Add `apps/nextjs/src/app/demo/page.tsx` — unauthenticated, composes the ported `@gmacko/ui` dashboard components with fixture data from `apps/nextjs/src/app/demo/_components/trip-fixture.ts` (ported from `src/tripData.js`).
+- Add `apps/nextjs/src/app/demo/page.tsx` — unauthenticated, composes the ported `@sortey/ui` dashboard components with fixture data from `apps/nextjs/src/app/demo/_components/trip-fixture.ts` (ported from `src/tripData.js`).
 - Add `apps/nextjs/src/app/demo/_components/` for demo-only wiring if needed (e.g., a client-side persistence hook).
 - Port `src/usePersistedTripState.js` to `apps/nextjs/src/app/demo/_components/use-persisted-trip-state.ts`. Stays client-side (`localStorage`) — no DB hookup until Phase 6 folds it into the authenticated trip view.
 - Port `src/publishConfig.js` to `apps/nextjs/src/app/demo/_components/publish-config.ts`.
@@ -241,7 +241,7 @@ Create the following files as stubs (table of contents only, content filled by l
 
 0.A **Unified `DEV_MODE=local` toggle (A23)**
 - When `DEV_MODE=local` is set in `.env`:
-  - Email: console log transport (regardless of `@gmacko/email` provider)
+  - Email: console log transport (regardless of `@sortey/email` provider)
   - Storage: local disk at `.data/receipts/`
   - OCR: `OCR_PROVIDER=fixture` reading canned JSON from `packages/api/src/ocr/__fixtures__/*.json` keyed by image hash (no Claude API calls, no cost)
 - Document in `docs/ai/LOCAL_DEV.md`
@@ -252,19 +252,19 @@ Create the following files as stubs (table of contents only, content filled by l
 - `pnpm doctor` reports no errors
 - `pnpm format:check` clean (Biome)
 - `pnpm turbo run typecheck` passes across all workspaces
-- `pnpm turbo run build` builds `@gmacko/ui` and `@gmacko/nextjs`
-- `pnpm -F @gmacko/nextjs storybook` starts Storybook on :6006 and shows all 6 ported dashboard stories under "Dashboard/..." alongside the existing "UI/Button" etc.
+- `pnpm turbo run build` builds `@sortey/ui` and `@sortey/nextjs`
+- `pnpm -F @sortey/nextjs storybook` starts Storybook on :6006 and shows all 6 ported dashboard stories under "Dashboard/..." alongside the existing "UI/Button" etc.
 - `pnpm dev:next` serves the app on localhost and `/demo` renders the ported dashboard with visual density matching `docs/screenshots/dashboard-overview.png`
 - **Visual regression snapshot gate (A15)**: take a Playwright screenshot of `/demo` and commit it as `e2e/__screenshots__/demo-baseline.png`. Phase 6 uses this for comparison.
 - The old `src/`, `index.html`, `vite.config.js`, `postcss.config.js` are gone
 - `DESIGN.md` remains the source of truth, and Phase 0 does not introduce a redesign beyond the documented system
-- `pnpm -F @gmacko/nextjs e2e` still passes whatever Playwright tests the template ships with (we haven't broken the template's golden paths)
+- `pnpm -F @sortey/nextjs e2e` still passes whatever Playwright tests the template ships with (we haven't broken the template's golden paths)
 - `docs/ai/LOCAL_DEV.md`, `COOKBOOK.md`, `ERROR_PLAYBOOK.md`, `TESTING.md`, `TEMPLATE_SNAPSHOT.md` exist as stubs
 - `CLAUDE.md` references the new docs
 
 ### Out of scope for Phase 0
 
-- Any new tables in `@gmacko/db` (template's schema ships as-is)
+- Any new tables in `@sortey/db` (template's schema ships as-is)
 - Any new routes under authenticated paths
 - Map/expense/group features — all Phase 2+
 - Magic link auth (Phase 1)
@@ -273,7 +273,7 @@ Create the following files as stubs (table of contents only, content filled by l
 
 ## Phase 1 — Enable Magic-Link Auth
 
-**Goal**: add Better Auth's magic-link plugin via `extraPlugins` (no fork of `@gmacko/auth`), wire delivery through `@gmacko/email`, add development-only local auth shortcuts, and keep all template routes working. Schema changes are minimal — just whatever Better Auth's magic-link plugin requires on the verifications table (which `auth-schema.ts` already has).
+**Goal**: add Better Auth's magic-link plugin via `extraPlugins` (no fork of `@sortey/auth`), wire delivery through `@sortey/email`, add development-only local auth shortcuts, and keep all template routes working. Schema changes are minimal — just whatever Better Auth's magic-link plugin requires on the verifications table (which `auth-schema.ts` already has).
 
 **Out of scope**: adding any new domain tables. `trips` lives in Phase 2 because the Trip-vs-Workspace decision must be committed before we touch the schema.
 
@@ -282,7 +282,7 @@ Create the following files as stubs (table of contents only, content filled by l
 - `apps/nextjs/src/auth/server.ts` — how is `initAuth` called today? Where does the Discord secret come from?
 - `apps/nextjs/src/env.ts` — what env vars does the app already require?
 - `packages/email/src/index.ts` — what's the public API for sending an email? Does it have a dev-mode log transport, or do we need to add one?
-- `packages/notifications/src/index.ts` — does this wrap `@gmacko/email`, or is it a different channel (push, in-app)? Use whichever is right for transactional email.
+- `packages/notifications/src/index.ts` — does this wrap `@sortey/email`, or is it a different channel (push, in-app)? Use whichever is right for transactional email.
 - `docker-compose.yml` — confirm Postgres service exists and note the port.
 - `packages/db/src/auth-schema.ts` — confirm `verification` table exists (Better Auth magic link uses it directly; no new tables should be needed).
 
@@ -298,11 +298,11 @@ Create the following files as stubs (table of contents only, content filled by l
 - **CRITICAL: `nextCookies()` must remain LAST in the extraPlugins array** (Better Auth requirement for Server Actions cookie capture). The existing code has `extraPlugins: [nextCookies()]`. Correct shape after adding magic link: `extraPlugins: [magicLink({ sendMagicLink: async ({ email, url }) => { ... } }), nextCookies()]`
 - **Also add `magicLinkClient()` to `apps/nextjs/src/auth/client.ts`** — without this, `authClient.signIn.magicLink` is `undefined` at runtime
 - `sendMagicLink` implementation:
-  - Import the email sender from `@gmacko/email`
-  - In dev (detected via `env.NODE_ENV === "development"`): log the URL to the console with a visible banner (`console.log("\n\n🔗 MAGIC LINK for <email>:\n" + url + "\n\n")`). Do this regardless of whether `@gmacko/email` has its own log transport, because we want the link visible in `pnpm dev:next` output.
+  - Import the email sender from `@sortey/email`
+  - In dev (detected via `env.NODE_ENV === "development"`): log the URL to the console with a visible banner (`console.log("\n\n🔗 MAGIC LINK for <email>:\n" + url + "\n\n")`). Do this regardless of whether `@sortey/email` has its own log transport, because we want the link visible in `pnpm dev:next` output.
   - **Dev bypass**: add a `/api/dev/auto-login` route (gated on `NODE_ENV === 'development'`) that auto-creates a session for a given email without sending a magic link. Lets developers skip the email flow entirely during local iteration. Also expose `/api/dev/last-magic-link` returning the last generated URL for Playwright automation.
-  - In non-dev: call `@gmacko/email`'s send function with a minimal HTML template (subject `"Sign in to Trip Command Center"`, one-button link)
-- If `@gmacko/email` requires a transport that isn't configured yet, guard the non-dev branch with a TODO referencing Phase 7 and fail loudly rather than silently swallowing
+  - In non-dev: call `@sortey/email`'s send function with a minimal HTML template (subject `"Sign in to Trip Command Center"`, one-button link)
+- If `@sortey/email` requires a transport that isn't configured yet, guard the non-dev branch with a TODO referencing Phase 7 and fail loudly rather than silently swallowing
 - **Exact dev-route contract**
   - `apps/nextjs/src/app/api/dev/auto-login/route.ts` handles `POST` with `{ email: string }`
   - `apps/nextjs/src/app/api/dev/last-magic-link/route.ts` handles `GET`
@@ -329,7 +329,7 @@ Create the following files as stubs (table of contents only, content filled by l
 - `authClient.signIn.magicLink(...)` exists in the browser and successfully submits
 - Server auth still works after adding magic link because `nextCookies()` remains last in `extraPlugins`
 - `POST /api/dev/auto-login` and `GET /api/dev/last-magic-link` work locally and are unavailable outside development
-- `pnpm -F @gmacko/nextjs e2e` passes (the template's existing e2e tests must not regress)
+- `pnpm -F @sortey/nextjs e2e` passes (the template's existing e2e tests must not regress)
 - `/demo` still renders the legacy dashboard without auth
 - Running `pnpm auth:generate && pnpm db:generate` produces no schema diff — confirms we didn't accidentally fork the auth schema
 
@@ -346,7 +346,7 @@ Create the following files as stubs (table of contents only, content filled by l
   - `workspaceProcedure(wsId)` — tRPC middleware that reads `ctx.userId`, verifies workspace membership, injects `ctx.workspaceId` and `ctx.workspaceRole`
   - `tripProcedure(tripId)` — tRPC middleware (child of `workspaceProcedure`) that verifies trip membership within the workspace, injects `ctx.tripId` and `ctx.tripRole`
   - Every trip router below MUST use `tripProcedure`, not a helper function. This is enforced by having no exported helper function — the only path to a trip-scoped context is the middleware chain.
-- Auto-create a **personal workspace** on first sign-in (Better Auth `onLogin` hook or tRPC middleware). Gate the workspace switcher UI behind `@gmacko/flags` (`WORKSPACES_VISIBLE`) so solo users never see it.
+- Auto-create a **personal workspace** on first sign-in (Better Auth `onLogin` hook or tRPC middleware). Gate the workspace switcher UI behind `@sortey/flags` (`WORKSPACES_VISIBLE`) so solo users never see it.
 - Workspace switcher UX (simple for now): dropdown in the nav showing workspace name + members, with a "Create workspace" action.
 
 2.1 **Schema additions in `packages/db/src/schema/`**
@@ -541,7 +541,7 @@ tripInvites: id, tripId (fk), email (citext), token (text unique, ≥128 bits vi
 2.3 **API routers in `packages/api/src/routers/`** (all scoped via `tripProcedure`)
 - `trips.ts`: `create`, `list` (trips in the user's workspace), `get`, `update` (organizer only), `setGroupMode`, `setClaimMode`
 - `members.ts`: `listForTrip`, `updateSelf` (displayName, color, venmoHandle), `removeMember` (organizer only)
-- `invites.ts`: `create` (organizer only — takes email, generates invite token, emails via `@gmacko/email`), `accept` (token — also auto-provisions workspace membership in a transaction), `listPending` (organizer only)
+- `invites.ts`: `create` (organizer only — takes email, generates invite token, emails via `@sortey/email`), `accept` (token — also auto-provisions workspace membership in a transaction), `listPending` (organizer only)
 
 2.4 **Lodging management**
 - `packages/api/src/routers/lodgings.ts` (scoped via `tripProcedure`): `create`, `update`, `delete`, `listForSegment`, `assignGuests`
@@ -611,7 +611,7 @@ Every component gets stories for Default + Empty + Loading states (A27 states ma
 - Invite acceptance auto-provisions workspace membership in a single transaction
 - Organizer can flip group mode on/off; the toggle is hidden for non-organizers
 - Only trip members can load the trip dashboard — a non-member gets a 403 (enforced by `tripProcedure` middleware, NOT a helper)
-- `pnpm -F @gmacko/api test` passes — tests cover: create trip, workspace-scoped listing, membership guard (positive + negative), group-mode toggle authorization, invite token generation (≥128 bits entropy), invite acceptance + workspace auto-provision
+- `pnpm -F @sortey/api test` passes — tests cover: create trip, workspace-scoped listing, membership guard (positive + negative), group-mode toggle authorization, invite token generation (≥128 bits entropy), invite acceptance + workspace auto-provision
 
 ---
 
@@ -681,7 +681,7 @@ A trip has a `status` field that gates which features are available:
 - `plan/lock-in/page.tsx` — the "lock it in" wizard
 
 2P.7 **Realtime for planning**
-- `@gmacko/realtime` Pusher channel per trip: `private-trip-${tripId}`
+- `@sortey/realtime` Pusher channel per trip: `private-trip-${tripId}`
 - Events: `poll:voted`, `proposal:created`, `proposal:reacted`, `room:assigned`, `transport:joined`
 - All planning views subscribe and invalidate TanStack Query on events — so when someone votes or reacts, everyone sees it live
 
@@ -694,7 +694,7 @@ A trip has a `status` field that gates which features are available:
 - Ground transport auto-suggests grouping when two arrivals are within 2 hours
 - "Lock it in" wizard converts winning dates → trip dates, winning lodging → lodging record, booked flights → memberTransits, and transitions trip to `confirmed`
 - After confirmation, the trip dashboard switches from planning view to itinerary/expense view
-- `pnpm -F @gmacko/api test` passes for poll voting logic (date overlap, ranked winner, tied results), proposal auto-conversion, and trip lifecycle transitions
+- `pnpm -F @sortey/api test` passes for poll voting logic (date overlap, ranked winner, tied results), proposal auto-conversion, and trip lifecycle transitions
 
 ---
 
@@ -707,7 +707,7 @@ A trip has a `status` field that gates which features are available:
 2.5a **Write `docs/ai/CLAIM_SPEC.md` (A25)**
 A 1-2 page interaction spec covering:
 - Mental model: tap-to-claim is per-expense default (from trip settings), not a global mode
-- Tap mode: row with name + price left, claimants' color chips right, 44px full-row tap affordance, show claimants live. Double-claim auto-shares (cooperation, not conflict). Optimistic UI with reconciliation via `@gmacko/realtime` Pusher.
+- Tap mode: row with name + price left, claimants' color chips right, 44px full-row tap affordance, show claimants live. Double-claim auto-shares (cooperation, not conflict). Optimistic UI with reconciliation via `@sortey/realtime` Pusher.
 - Organizer mode: popover button showing member chips; tap to toggle
 - Pass-the-phone: top bar "Claiming as: [me v]" lets you switch the acting user without signing out (one device shared at a restaurant table)
 - Unclaimed items resolution: after finalize (or grace period), organizer gets "Resolve unclaimed" — split among all or assign to payer
@@ -739,9 +739,9 @@ A 1-2 page interaction spec covering:
 
 ### Investigate Before Coding (mandatory, A5)
 
-Read `packages/storage/src/index.ts` first. The template ships `@gmacko/storage` with UploadThing. Decide: extend `@gmacko/storage` with an S3 backend for ForgeGraph (preferred), or adopt UploadThing. Do NOT build a parallel `packages/api/src/storage/`.
+Read `packages/storage/src/index.ts` first. The template ships `@sortey/storage` with UploadThing. Decide: extend `@sortey/storage` with an S3 backend for ForgeGraph (preferred), or adopt UploadThing. Do NOT build a parallel `packages/api/src/storage/`.
 
-Read `packages/realtime/src/index.ts`. The template ships `@gmacko/realtime` with Pusher broadcast primitives. Use it for tap-to-claim live updates (A6).
+Read `packages/realtime/src/index.ts`. The template ships `@sortey/realtime` with Pusher broadcast primitives. Use it for tap-to-claim live updates (A6).
 
 ### Tasks
 
@@ -774,11 +774,11 @@ lineItemClaims: id, lineItemId (fk), userId (fk), createdAt
 ```
 
 3.2 **Object storage (A5)**
-- Extend `@gmacko/storage` with an S3-compatible backend (for ForgeGraph-managed bucket). Do NOT create a parallel `packages/api/src/storage/`.
+- Extend `@sortey/storage` with an S3-compatible backend (for ForgeGraph-managed bucket). Do NOT create a parallel `packages/api/src/storage/`.
 - In `DEV_MODE=local`: write to `.data/receipts/` (local disk)
 - Receipt image ACLs: private bucket, served via signed URLs scoped to trip membership
 - Retention policy: raw images deleted 90 days after trip `endDate`; extracted fields permanent (A16)
-- `apps/nextjs/src/app/api/receipts/upload/route.ts` — accepts multipart image, stores via `@gmacko/storage`, returns the storage key. Per-user rate limit: 5 uploads/minute (A17 defense against abuse).
+- `apps/nextjs/src/app/api/receipts/upload/route.ts` — accepts multipart image, stores via `@sortey/storage`, returns the storage key. Per-user rate limit: 5 uploads/minute (A17 defense against abuse).
 
 3.3 **OCR pipeline (A17, A18, A19)**
 - `packages/api/src/ocr/receipt-extractor.ts` — function `extractReceipt(imageBytes: Buffer): Promise<ReceiptExtraction>`:
@@ -799,7 +799,7 @@ lineItemClaims: id, lineItemId (fk), userId (fk), createdAt
 - `updateDraft` — edit OCR-extracted fields before finalizing
 - `finalize` — lock the totals and open for claiming. **Refuse if any line items have mixed currencies vs. the trip's settlement currency (A8).**
 - `addLineItem`, `updateLineItem`, `removeLineItem`
-- `claimLineItem(lineItemId)` — adds `ctx.userId` to `lineItemClaims`; **triggers `@gmacko/realtime` Pusher event on channel `private-expense-${expenseId}` → `line-item:claimed` (A6)**
+- `claimLineItem(lineItemId)` — adds `ctx.userId` to `lineItemClaims`; **triggers `@sortey/realtime` Pusher event on channel `private-expense-${expenseId}` → `line-item:claimed` (A6)**
 - `unclaimLineItem(lineItemId)` — same realtime event → `line-item:unclaimed`
 - `assignLineItem(lineItemId, userIds[])` — organizer-assigns mode
 
@@ -822,7 +822,7 @@ lineItemClaims: id, lineItemId (fk), userId (fk), createdAt
 Every component gets stories for: Default, Empty, Loading, Error, **OCR-pending** (A27 states matrix).
 
 3.7 **Realtime tap-to-claim (A6)**
-- Client subscribes to `private-expense-${expenseId}` via `@gmacko/realtime`'s Pusher client
+- Client subscribes to `private-expense-${expenseId}` via `@sortey/realtime`'s Pusher client
 - On `line-item:claimed` / `unclaimed` events: invalidate the relevant TanStack Query
 - **Fallback**: if `integrations.realtime.enabled === false`, poll every 3s while expense detail is foregrounded; pause when `document.visibilityState === 'hidden'`
 
@@ -840,7 +840,7 @@ Every component gets stories for: Default, Empty, Loading, Error, **OCR-pending*
 - Tax/tip are prorated correctly; rounding residuals go to the payer and are visible in the UI
 - Currency mismatch warning appears for non-USD receipts, and non-USD expenses cannot be settled together with USD expenses
 - **Multi-user Playwright spec (A20)**: `apps/nextjs/e2e/tap-to-claim.spec.ts` uses `browser.newContext()` for user B, both claim items, asserts realtime sync
-- `pnpm -F @gmacko/api test` passes with at least 10 expense/share cases including currency mismatch + rounding
+- `pnpm -F @sortey/api test` passes with at least 10 expense/share cases including currency mismatch + rounding
 
 ---
 
@@ -985,7 +985,7 @@ pinAttendees: id, pinId (fk), userId (fk)
 - Write `forge.yml` declaring: Next.js app, Postgres addon, object storage bucket (S3-compatible), env var manifest
 - Wire Gitea Actions CI to build the container, push to Harbor, and trigger a ForgeGraph deploy on push to `main`
 - Document the secret rotation procedure for `ANTHROPIC_API_KEY`, `GOOGLE_MAPS_API_KEY`, `BETTER_AUTH_SECRET`, object storage keys, `PUSHER_*` (for realtime)
-- Commit to email transport: Resend (already the template's choice per `@gmacko/email`). Configure domain verification and DMARC alignment.
+- Commit to email transport: Resend (already the template's choice per `@sortey/email`). Configure domain verification and DMARC alignment.
 - Stand up a staging environment and run a full smoke test (sign up → create trip → upload receipt → claim items → settle)
 
 ### Verification (Phase 7)
@@ -1007,20 +1007,20 @@ pinAttendees: id, pinId (fk), userId (fk)
 - Vote on polls (date grid tap, single/multi select, drag-to-rank)
 - React to proposals (swipe right = interested, swipe left = pass, tap = details)
 - Browse lodging/flight proposals with images
-- Push notifications for new polls and proposals (`@gmacko/notifications`)
+- Push notifications for new polls and proposals (`@sortey/notifications`)
 
 8.2 **Auth**
-- Better Auth's `@better-auth/expo` plugin is already in `@gmacko/auth`. Wire the Expo auth client to use magic link (same `extraPlugins` pattern).
+- Better Auth's `@better-auth/expo` plugin is already in `@sortey/auth`. Wire the Expo auth client to use magic link (same `extraPlugins` pattern).
 - Secure token storage via `expo-secure-store`.
 
 8.3 **Receipt capture (mobile-optimized)**
 - Full-bleed camera view using `expo-camera` for receipt photo
-- Upload to the same `@gmacko/storage` endpoint as web
+- Upload to the same `@sortey/storage` endpoint as web
 - OCR result appears as a push notification or in-app when ready
 
 8.4 **Line-item claiming**
 - Same tRPC endpoints as web
-- Realtime updates via `@gmacko/realtime` Pusher client
+- Realtime updates via `@sortey/realtime` Pusher client
 - 44px touch targets per Palantir-on-Mobile spec
 - Pass-the-phone "Claiming as: [me v]" switcher per CLAIM_SPEC.md
 
@@ -1080,23 +1080,23 @@ Closed out by direct file reads of `../create-gmacko-app`:
 - **Package manager**: pnpm 10.32.1
 - **Node**: 24
 - **ORM**: Drizzle 0.45 + postgres.js 3.4 + drizzle-zod, functional `pgTable` style
-- **Auth**: Better Auth via `@gmacko/auth` `initAuth()` factory; currently wired for Discord OAuth + Expo + oAuthProxy. Magic link is NOT enabled and is added via `extraPlugins` in `apps/nextjs/src/auth/server.ts`.
+- **Auth**: Better Auth via `@sortey/auth` `initAuth()` factory; currently wired for Discord OAuth + Expo + oAuthProxy. Magic link is NOT enabled and is added via `extraPlugins` in `apps/nextjs/src/auth/server.ts`.
 - **Lint/format**: Biome + oxlint + lefthook pre-commit
 - **Next.js**: 16.2.1, React 19
 - **Forms**: TanStack Form (`@tanstack/react-form`)
-- **Data fetching**: TanStack Query + tRPC (`@trpc/tanstack-react-query`); `@gmacko/api` holds tRPC routers
-- **UI package**: `@gmacko/ui` uses flat files, co-located stories, shadcn via `ui-add`, Radix primitives, sonner for toasts, class-variance-authority for variants
+- **Data fetching**: TanStack Query + tRPC (`@trpc/tanstack-react-query`); `@sortey/api` holds tRPC routers
+- **UI package**: `@sortey/ui` uses flat files, co-located stories, shadcn via `ui-add`, Radix primitives, sonner for toasts, class-variance-authority for variants
 - **Storybook**: lives in `apps/nextjs`, ports 6006, uses `@storybook/nextjs-vite` + addon-a11y + addon-docs. Convention: plain object `meta`, `title: "UI/<Name>"`, named-export variants, no typed `Meta<>` imports.
-- **Tailwind config**: workspace package `@gmacko/tailwind-config`
-- **E2E**: Playwright in `apps/nextjs/e2e/`, scripts `pnpm -F @gmacko/nextjs e2e|e2e:ui|e2e:headed`
+- **Tailwind config**: workspace package `@sortey/tailwind-config`
+- **E2E**: Playwright in `apps/nextjs/e2e/`, scripts `pnpm -F @sortey/nextjs e2e|e2e:ui|e2e:headed`
 - **Unit tests**: Vitest visible in `packages/db` (`vitest.config.ts`)
 - **Monitoring**: Sentry pre-configured (client, server, edge configs)
 - **i18n**: next-intl
 - **Env**: `@t3-oss/env-nextjs`
 - **Deploy**: Forge CLI (`pnpm forge:deploy:staging|production`), pre-wired
-- **Storage package**: `@gmacko/storage` exists
-- **Email package**: `@gmacko/email` exists; `@gmacko/notifications` exists separately — confirm which one handles transactional in Phase 1 investigation
-- **Realtime package**: `@gmacko/realtime` exists — candidate for Phase 3 tap-to-claim live updates
+- **Storage package**: `@sortey/storage` exists
+- **Email package**: `@sortey/email` exists; `@sortey/notifications` exists separately — confirm which one handles transactional in Phase 1 investigation
+- **Realtime package**: `@sortey/realtime` exists — candidate for Phase 3 tap-to-claim live updates
 - **Multi-tenant model**: template already ships a Workspace concept with roles and billing — forces the Trip vs. Workspace decision (see Architectural Decision above)
 
 ## Resolved by /autoplan Review
@@ -1104,7 +1104,7 @@ Closed out by direct file reads of `../create-gmacko-app`:
 These were open questions, now closed:
 
 1. **Trip vs. Workspace**: **Option B confirmed** by user. Workspace = long-lived group, Trip = child. Guards via tRPC middleware chain (E-1). Auto-create personal workspace on first sign-in.
-2. **Realtime for tap-to-claim**: **Use `@gmacko/realtime` (Pusher) from day one** (A6). 3s polling as fallback when realtime disabled.
+2. **Realtime for tap-to-claim**: **Use `@sortey/realtime` (Pusher) from day one** (A6). 3s polling as fallback when realtime disabled.
 3. **Email provider**: **Resend** (already the template's choice). Domain verification in Phase 7. Dev console log in Phase 1.
 4. **Edit lock duration**: **15s + 10s heartbeat** (A11). Not 30s static.
 5. **Apps scope**: **Both Next.js AND Expo ship in v1**. Confirmed by user. Next.js = dashboard. Expo = mobile capture + claiming. Phase 8 added.
@@ -1118,9 +1118,9 @@ These were open questions, now closed:
 1. **Discord OAuth env vars**: keep behind unused env vars for v1 or disable? Lean: keep, revisit if confusing.
 2. **OCR confidence threshold**: 0.6 is a guess — tune with real receipts in Phase 3.
 3. **Sentry in dev**: confirm it's gated off to avoid noise during Phase 0.
-4. **`@gmacko/email` vs. `@gmacko/notifications`**: Phase 1 investigation decides which delivers magic-link emails.
+4. **`@sortey/email` vs. `@sortey/notifications`**: Phase 1 investigation decides which delivers magic-link emails.
 5. **`apps/tanstack-start`**: not used in v1. Delete or leave? Lean: leave alone.
 
 ## Next Step
 
-Implementation begins with Phase 0. Run `pnpm -F @gmacko/nextjs storybook` after porting to confirm visual parity before proceeding to Phase 1.
+Implementation begins with Phase 0. Run `pnpm -F @sortey/nextjs storybook` after porting to confirm visual parity before proceeding to Phase 1.

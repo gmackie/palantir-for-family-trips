@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 

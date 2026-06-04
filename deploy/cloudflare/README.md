@@ -36,10 +36,10 @@ When you scaffold with `--vinext`, the generated Next app includes a separate Wo
 From the repo root:
 
 ```sh
-pnpm --filter @gmacko/nextjs dev:vinext
-pnpm --filter @gmacko/nextjs build:vinext
-pnpm --filter @gmacko/nextjs deploy:cloudflare:staging
-pnpm --filter @gmacko/nextjs deploy:cloudflare:production
+pnpm --filter @sortey/nextjs dev:vinext
+pnpm --filter @sortey/nextjs build:vinext
+pnpm --filter @sortey/nextjs deploy:cloudflare:staging
+pnpm --filter @sortey/nextjs deploy:cloudflare:production
 ```
 
 What gets generated:

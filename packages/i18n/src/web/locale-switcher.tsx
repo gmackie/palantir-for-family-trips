@@ -1,6 +1,6 @@
 "use client";
 
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 

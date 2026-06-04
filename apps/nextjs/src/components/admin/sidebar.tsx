@@ -1,8 +1,8 @@
 "use client";
 
-import { cn } from "@gmacko/ui";
-import { Button } from "@gmacko/ui/button";
-import { Separator } from "@gmacko/ui/separator";
+import { cn } from "@sortey/ui";
+import { Button } from "@sortey/ui/button";
+import { Separator } from "@sortey/ui/separator";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 

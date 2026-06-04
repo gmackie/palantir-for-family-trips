@@ -65,7 +65,7 @@ Updated after merging the other agent's Phase 1–2 work and the upstream RBAC/R
 - **Trip invite accept flow** — `/invite/[token]` route + `acceptInvite` mutation
 - **Auto-create workspace membership on invite accept** — transactional
 - **Workspace switcher UI** — exists in routes but needs the nav dropdown component
-- **Flag-gated workspace visibility** — `WORKSPACES_VISIBLE` via `@gmacko/flags`
+- **Flag-gated workspace visibility** — `WORKSPACES_VISIBLE` via `@sortey/flags`
 - **Trip RLS policies** — trips/tripMembers/tripSegments/etc. need RLS enabled with workspace-scoped predicates using `packages/db/src/tenant.ts` helpers
 - **Drizzle migration for trip tables** — schema is defined but migration file doesn't exist yet (`packages/db/drizzle/0000_misty_wrecking_crew.sql` only has workspace tables)
 - **Seed data** for trips
@@ -102,11 +102,11 @@ Receipt capture, claim on phone, itinerary review, planning votes, push notifica
 ## Build Status
 
 ```
-pnpm turbo run build --filter='!@gmacko/tanstack-start' --filter='!@gmacko/expo' --filter='*'
+pnpm turbo run build --filter='!@sortey/tanstack-start' --filter='!@sortey/expo' --filter='*'
 # 22/22 packages pass, full turbo cache
 ```
 
-Excluded: `@gmacko/tanstack-start` (not used in v1), `@gmacko/expo` (native build needs Xcode).
+Excluded: `@sortey/tanstack-start` (not used in v1), `@sortey/expo` (native build needs Xcode).
 
 ## Current Branch
 

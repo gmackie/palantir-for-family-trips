@@ -1,18 +1,18 @@
 "use client";
 
-import type { RouterOutputs } from "@gmacko/api";
-import { CreatePostSchema } from "@gmacko/db/schema";
-import { cn } from "@gmacko/ui";
-import { Button } from "@gmacko/ui/button";
+import type { RouterOutputs } from "@sortey/api";
+import { CreatePostSchema } from "@sortey/db/schema";
+import { cn } from "@sortey/ui";
+import { Button } from "@sortey/ui/button";
 import {
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@gmacko/ui/field";
-import { Input } from "@gmacko/ui/input";
-import { toast } from "@gmacko/ui/toast";
+} from "@sortey/ui/field";
+import { Input } from "@sortey/ui/input";
+import { toast } from "@sortey/ui/toast";
 import { useForm } from "@tanstack/react-form";
 import {
   useMutation,

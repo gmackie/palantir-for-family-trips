@@ -2,7 +2,7 @@
  * Server-side helpers for feature flags
  *
  * Usage in tRPC procedures:
- *   import { withFlags, requireFlag, getFlagsForUser } from "@gmacko/flags/server";
+ *   import { withFlags, requireFlag, getFlagsForUser } from "@sortey/flags/server";
  *
  *   // In a procedure
  *   export const myProcedure = protectedProcedure

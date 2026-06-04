@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/purchases",
+  "name": "@sortey/purchases",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,12 +18,12 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
+    "@sortey/config": "workspace:*",
     "react-native-purchases": "^10.1.2"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/react": "catalog:react19",
     "oxlint": "catalog:",
     "typescript": "catalog:"

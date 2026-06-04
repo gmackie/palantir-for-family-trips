@@ -55,7 +55,7 @@ jobs:
             echo "New migration files found that should be committed:"
             git status --porcelain drizzle/
             echo ""
-            echo "Please run 'pnpm --filter @gmacko/db generate' and commit the generated files."
+            echo "Please run 'pnpm --filter @sortey/db generate' and commit the generated files."
             exit 1
           fi
           echo "✓ All migrations are in sync with schema"

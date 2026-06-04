@@ -10,7 +10,7 @@
     "cssVariables": true
   },
   "aliases": {
-    "utils": "@gmacko/ui",
+    "utils": "@sortey/ui",
     "components": "src/",
     "ui": "src/"
   }

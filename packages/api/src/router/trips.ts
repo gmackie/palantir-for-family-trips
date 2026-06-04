@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { and, asc, desc, eq, isNull, sql } from "@gmacko/db";
+import { and, asc, desc, eq, isNull, sql } from "@sortey/db";
 import {
   segmentMembers,
   tripInvites,
@@ -9,7 +9,7 @@ import {
   tripStatusEnum,
   trips,
   workspaceMembership,
-} from "@gmacko/db/schema";
+} from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

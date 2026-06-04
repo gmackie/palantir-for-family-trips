@@ -3,7 +3,7 @@ import {
   createOperatorClient,
   executeOperatorTool,
   listOperatorTools,
-} from "@gmacko/operator-core";
+} from "@sortey/operator-core";
 
 const HELP_TEXT = `gmacko-ops
 

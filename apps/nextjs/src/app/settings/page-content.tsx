@@ -1,7 +1,7 @@
-import { appRouter, createTRPCContext } from "@gmacko/api";
-import { isMultiTenant } from "@gmacko/config";
-import { Button } from "@gmacko/ui/button";
-import { Input } from "@gmacko/ui/input";
+import { appRouter, createTRPCContext } from "@sortey/api";
+import { isMultiTenant } from "@sortey/config";
+import { Button } from "@sortey/ui/button";
+import { Input } from "@sortey/ui/input";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";

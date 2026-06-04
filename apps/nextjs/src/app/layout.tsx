@@ -1,6 +1,6 @@
-import { cn } from "@gmacko/ui";
-import { ThemeProvider } from "@gmacko/ui/theme";
-import { Toaster } from "@gmacko/ui/toast";
+import { cn } from "@sortey/ui";
+import { ThemeProvider } from "@sortey/ui/theme";
+import { Toaster } from "@sortey/ui/toast";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 

@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@gmacko/ui/theme";
+import { ThemeProvider } from "@sortey/ui/theme";
 import type { ReactNode } from "react";
 
 import "../src/app/styles.css";

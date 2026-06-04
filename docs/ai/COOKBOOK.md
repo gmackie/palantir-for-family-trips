@@ -33,8 +33,8 @@ TODO: Fill in after Phase 2. Will include:
 ## 3. Adding a shadcn primitive
 
 ```bash
-pnpm -F @gmacko/ui ui-add <name>
-# e.g., pnpm -F @gmacko/ui ui-add tabs
+pnpm -F @sortey/ui ui-add <name>
+# e.g., pnpm -F @sortey/ui ui-add tabs
 ```
 
 After adding:
@@ -74,7 +74,7 @@ export const Loading = {
 };
 ```
 
-Run Storybook: `pnpm -F @gmacko/nextjs storybook`
+Run Storybook: `pnpm -F @sortey/nextjs storybook`
 
 ## 5. Using the trip auth guard
 

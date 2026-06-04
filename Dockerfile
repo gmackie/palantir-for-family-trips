@@ -70,7 +70,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 # Build the application
-RUN pnpm turbo run build --filter=@gmacko/nextjs
+RUN pnpm turbo run build --filter=@sortey/nextjs
 
 # ============================================
 # Runner stage - production image

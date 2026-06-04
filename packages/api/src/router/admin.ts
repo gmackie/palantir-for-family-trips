@@ -1,6 +1,6 @@
-import { isPlatformAdminRole } from "@gmacko/auth";
-import { platformPrimitives } from "@gmacko/config";
-import { eq } from "@gmacko/db";
+import { isPlatformAdminRole } from "@sortey/auth";
+import { platformPrimitives } from "@sortey/config";
+import { eq } from "@sortey/db";
 import {
   applicationSettings,
   user,
@@ -9,7 +9,7 @@ import {
   workspace,
   workspaceInviteAllowlist,
   workspaceMembership,
-} from "@gmacko/db/schema";
+} from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

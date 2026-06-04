@@ -1,4 +1,4 @@
-import { db } from "@gmacko/db/client";
+import { db } from "@sortey/db/client";
 import { NextResponse } from "next/server";
 
 /**

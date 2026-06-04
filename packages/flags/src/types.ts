@@ -2,7 +2,7 @@
  * Runtime Feature Flags Types
  *
  * These types define the structure for runtime feature flags,
- * as opposed to build-time integration flags in @gmacko/config.
+ * as opposed to build-time integration flags in @sortey/config.
  */
 
 /**

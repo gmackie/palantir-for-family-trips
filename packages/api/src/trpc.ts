@@ -1,6 +1,6 @@
-import { and, eq, isNull } from "@gmacko/db";
-import { db } from "@gmacko/db/client";
-import { apiKeys, session as sessionTable, user } from "@gmacko/db/schema";
+import { and, eq, isNull } from "@sortey/db";
+import { db } from "@sortey/db/client";
+import { apiKeys, session as sessionTable, user } from "@sortey/db/schema";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
 import superjson from "superjson";

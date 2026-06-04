@@ -1,4 +1,4 @@
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import { getLocales } from "expo-localization";
 import i18next from "i18next";
 import type { ReactNode } from "react";

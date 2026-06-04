@@ -32,7 +32,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { oAuthProxy } from "better-auth/plugins";
 
-import { db } from "@gmacko/db/client";
+import { db } from "@sortey/db/client";
 
 export function initAuth<
   TExtraPlugins extends BetterAuthPlugin[] = [],
@@ -203,7 +203,7 @@ In `packages/db/package.json`, add export for seed-constants:
 
 **Step 4: Verify seed runs**
 
-Run: `pnpm -F @gmacko/db build`
+Run: `pnpm -F @sortey/db build`
 Expected: PASS
 
 **Step 5: Commit**
@@ -261,7 +261,7 @@ Create `apps/nextjs/e2e/_setup/auth.setup.ts`:
 import type { FullConfig } from "@playwright/test";
 import { chromium } from "@playwright/test";
 
-import { E2E_SEED } from "@gmacko/db/seed-constants";
+import { E2E_SEED } from "@sortey/db/seed-constants";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
@@ -327,7 +327,7 @@ Create `apps/nextjs/e2e/fixtures/test.ts`:
 ```typescript
 import { test as base } from "@playwright/test";
 
-import { E2E_SEED } from "@gmacko/db/seed-constants";
+import { E2E_SEED } from "@sortey/db/seed-constants";
 
 // Export seed data for assertions
 export const seed = E2E_SEED;
@@ -353,7 +353,7 @@ export { expect } from "@playwright/test";
 Create `apps/nextjs/e2e/utils/test-data.ts`:
 
 ```typescript
-import { E2E_SEED } from "@gmacko/db/seed-constants";
+import { E2E_SEED } from "@sortey/db/seed-constants";
 
 export const testData = {
   admin: E2E_SEED.ADMIN,
@@ -475,7 +475,7 @@ e2e/.auth/
 
 **Step 3: Verify config is valid**
 
-Run: `pnpm -F @gmacko/nextjs exec playwright test --list`
+Run: `pnpm -F @sortey/nextjs exec playwright test --list`
 Expected: Lists available tests
 
 **Step 4: Commit**
@@ -555,7 +555,7 @@ userTest.describe("Authenticated User @smoke", () => {
 
 **Step 2: Verify test file is discovered**
 
-Run: `pnpm -F @gmacko/nextjs exec playwright test --list --grep @smoke`
+Run: `pnpm -F @sortey/nextjs exec playwright test --list --grep @smoke`
 Expected: Lists auth.smoke.spec.ts tests
 
 **Step 3: Commit**
@@ -945,17 +945,17 @@ jobs:
         run: echo "DATABASE_URL=${{ steps.neon.outputs.db_url_pooled }}" >> "$GITHUB_ENV"
 
       - name: Install Playwright browsers
-        run: pnpm -F @gmacko/nextjs exec playwright install --with-deps chromium
+        run: pnpm -F @sortey/nextjs exec playwright install --with-deps chromium
 
       - name: Build application
-        run: pnpm -F @gmacko/nextjs build
+        run: pnpm -F @sortey/nextjs build
         env:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           AUTH_DISCORD_ID: ${{ secrets.AUTH_DISCORD_ID }}
           AUTH_DISCORD_SECRET: ${{ secrets.AUTH_DISCORD_SECRET }}
 
       - name: Run E2E tests
-        run: pnpm -F @gmacko/nextjs e2e
+        run: pnpm -F @sortey/nextjs e2e
         env:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           AUTH_DISCORD_ID: ${{ secrets.AUTH_DISCORD_ID }}
@@ -1094,16 +1094,16 @@ Create `apps/nextjs/e2e/README.md`:
 
 ```bash
 # Run smoke tests (fast, chromium only)
-pnpm -F @gmacko/nextjs e2e
+pnpm -F @sortey/nextjs e2e
 
 # Run full suite (all browsers)
-E2E_TIER=full pnpm -F @gmacko/nextjs e2e
+E2E_TIER=full pnpm -F @sortey/nextjs e2e
 
 # UI mode (interactive)
-pnpm -F @gmacko/nextjs e2e:ui
+pnpm -F @sortey/nextjs e2e:ui
 
 # Headed mode (see browser)
-pnpm -F @gmacko/nextjs e2e:headed
+pnpm -F @sortey/nextjs e2e:headed
 ```
 ````
 
@@ -1111,7 +1111,7 @@ pnpm -F @gmacko/nextjs e2e:headed
 
 1. Set `E2E_TESTING=1` in your `.env`
 2. Ensure database is seeded: `pnpm db:seed`
-3. Start the dev server: `pnpm -F @gmacko/nextjs dev`
+3. Start the dev server: `pnpm -F @sortey/nextjs dev`
 
 ## Test Organization
 
@@ -1156,9 +1156,9 @@ git commit -m "docs(e2e): add Playwright E2E documentation"
 Add to root `package.json` scripts:
 
 ```json
-"e2e:web": "pnpm -F @gmacko/nextjs e2e",
-"e2e:web:ui": "pnpm -F @gmacko/nextjs e2e:ui",
-"e2e:mobile": "pnpm -F @gmacko/expo e2e"
+"e2e:web": "pnpm -F @sortey/nextjs e2e",
+"e2e:web:ui": "pnpm -F @sortey/nextjs e2e:ui",
+"e2e:mobile": "pnpm -F @sortey/expo e2e"
 ```
 
 **Step 2: Commit**

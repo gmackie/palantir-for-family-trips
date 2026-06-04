@@ -1,4 +1,4 @@
-import { appRouter, createTRPCContext } from "@gmacko/api";
+import { appRouter, createTRPCContext } from "@sortey/api";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import type { NextRequest } from "next/server";
 

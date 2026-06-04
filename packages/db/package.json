@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/db",
+  "name": "@sortey/db",
   "private": true,
   "type": "module",
   "exports": {
@@ -55,8 +55,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
-    "@gmacko/vitest-config": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
+    "@sortey/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "drizzle-kit": "^0.31.10",
     "oxlint": "catalog:",

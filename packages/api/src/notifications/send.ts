@@ -1,6 +1,6 @@
-import { and, eq, inArray, ne } from "@gmacko/db";
-import { db as dbType } from "@gmacko/db/client";
-import { pushTokens, tripMembers } from "@gmacko/db/schema";
+import { and, eq, inArray, ne } from "@sortey/db";
+import { db as dbType } from "@sortey/db/client";
+import { pushTokens, tripMembers } from "@sortey/db/schema";
 
 interface PushMessage {
   to: string;

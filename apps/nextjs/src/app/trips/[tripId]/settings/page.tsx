@@ -1,13 +1,13 @@
-import { appRouter, createTRPCContext } from "@gmacko/api";
-import { Button } from "@gmacko/ui/button";
+import { appRouter, createTRPCContext } from "@sortey/api";
+import { Button } from "@sortey/ui/button";
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-} from "@gmacko/ui/field";
-import { Input } from "@gmacko/ui/input";
+} from "@sortey/ui/field";
+import { Input } from "@sortey/ui/input";
 import { TRPCError } from "@trpc/server";
 import { headers } from "next/headers";
 import Link from "next/link";

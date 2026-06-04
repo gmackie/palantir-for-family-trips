@@ -53,9 +53,9 @@ Set `DEV_MODE=local` in `.env` to enable zero-cost local iteration:
 | `pnpm db:studio` | Open Drizzle Studio (DB browser) |
 | `pnpm db:migrate` | Apply pending migrations |
 | `pnpm db:seed` | Seed dev data |
-| `pnpm -F @gmacko/nextjs storybook` | Start Storybook on :6006 |
-| `pnpm -F @gmacko/nextjs e2e` | Run Playwright e2e tests |
-| `pnpm -F @gmacko/nextjs e2e --headed` | Run e2e tests with visible browser |
+| `pnpm -F @sortey/nextjs storybook` | Start Storybook on :6006 |
+| `pnpm -F @sortey/nextjs e2e` | Run Playwright e2e tests |
+| `pnpm -F @sortey/nextjs e2e --headed` | Run e2e tests with visible browser |
 | `pnpm turbo run typecheck` | Typecheck all workspaces |
 | `pnpm turbo run build` | Build all workspaces |
 | `pnpm format:check` | Check formatting (Biome) |

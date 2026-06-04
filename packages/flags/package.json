@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/flags",
+  "name": "@sortey/flags",
   "private": true,
   "type": "module",
   "exports": {
@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "oxlint": "catalog:",

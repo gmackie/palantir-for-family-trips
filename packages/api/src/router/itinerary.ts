@@ -1,5 +1,5 @@
-import { asc, eq } from "@gmacko/db";
-import { itineraryEvents } from "@gmacko/db/schema";
+import { asc, eq } from "@sortey/db";
+import { itineraryEvents } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

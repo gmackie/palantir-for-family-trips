@@ -1,6 +1,6 @@
 "use client";
 
-import { Label } from "@gmacko/ui/label";
+import { Label } from "@sortey/ui/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTransition } from "react";
 

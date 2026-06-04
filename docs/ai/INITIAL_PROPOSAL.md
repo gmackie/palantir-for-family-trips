@@ -50,7 +50,7 @@ This proposal expands the product into a **group trip command center** that pres
 - **OCR pipeline**: on upload, a server-side job calls Claude Sonnet 4.6 vision (or Codex) with a prompt-cached extraction schema to pull merchant, date, subtotal, tax, tip, total, and line items (name, qty, unit price, line total). Low-confidence extractions fall back to manual entry with OCR values pre-filled.
 - **Line-item assignment** — two supported modes per trip:
   - **Organizer-assigns**: the uploader or organizer taps each line item and picks who it belongs to (one or many).
-  - **Tap-to-claim**: the expense shows as "unclaimed items" and each member opens it on their phone and taps items they had. Conflicts reconcile live. This mode is realtime-first via `@gmacko/realtime`, with 3-second polling only as a fallback when realtime is unavailable.
+  - **Tap-to-claim**: the expense shows as "unclaimed items" and each member opens it on their phone and taps items they had. Conflicts reconcile live. This mode is realtime-first via `@sortey/realtime`, with 3-second polling only as a fallback when realtime is unavailable.
 - **Shared items**: a line item can be assigned to multiple people, splitting its cost equally across claimants.
 - **Tax & tip allocation**: each person's share of tax + tip = (their subtotal share) / (total subtotal) × (tax + tip). This is applied automatically once all items are assigned.
 - **Settlement view**: a running "who owes whom" panel computed from all expenses using a minimize-transactions algorithm (classic Splitwise simplification). One-tap "mark settled" when someone pays another.

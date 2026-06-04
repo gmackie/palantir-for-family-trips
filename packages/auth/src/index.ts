@@ -1,6 +1,6 @@
 import { expo } from "@better-auth/expo";
-import { db } from "@gmacko/db/client";
-import type { WorkspaceRole } from "@gmacko/db/schema";
+import { db } from "@sortey/db/client";
+import type { WorkspaceRole } from "@sortey/db/schema";
 import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";

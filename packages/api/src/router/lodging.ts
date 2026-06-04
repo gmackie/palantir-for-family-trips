@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "@gmacko/db";
+import { and, asc, eq, sql } from "@sortey/db";
 import {
   groundTransportGroups,
   groundTransportMembers,
@@ -6,7 +6,7 @@ import {
   lodgings,
   memberTransits,
   tripSegments,
-} from "@gmacko/db/schema";
+} from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

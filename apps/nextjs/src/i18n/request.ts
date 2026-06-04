@@ -1,4 +1,4 @@
-import { integrations } from "@gmacko/config";
+import { integrations } from "@sortey/config";
 import { getRequestConfig } from "next-intl/server";
 
 import { routing } from "./routing";
@@ -6,7 +6,7 @@ import { routing } from "./routing";
 export default getRequestConfig(async ({ requestLocale }) => {
   // If i18n is disabled, always use default locale
   if (!integrations.i18n) {
-    const messages = (await import("@gmacko/i18n/messages/en.json")).default;
+    const messages = (await import("@sortey/i18n/messages/en.json")).default;
     return {
       locale: routing.defaultLocale,
       messages,
@@ -25,7 +25,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   }
 
   // Load messages for the locale
-  const messages = (await import(`@gmacko/i18n/messages/${locale}.json`))
+  const messages = (await import(`@sortey/i18n/messages/${locale}.json`))
     .default;
 
   return {

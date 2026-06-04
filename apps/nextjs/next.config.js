@@ -1,5 +1,5 @@
-import { integrations } from "@gmacko/config";
 import { withSentryConfig } from "@sentry/nextjs";
+import { integrations } from "@sortey/config";
 import { createJiti } from "jiti";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -14,15 +14,15 @@ const config = {
   output: process.env.DOCKER_BUILD ? "standalone" : undefined,
 
   transpilePackages: [
-    "@gmacko/api",
-    "@gmacko/auth",
-    "@gmacko/config",
-    "@gmacko/db",
-    "@gmacko/i18n",
-    "@gmacko/logging",
-    "@gmacko/monitoring",
-    "@gmacko/ui",
-    "@gmacko/validators",
+    "@sortey/api",
+    "@sortey/auth",
+    "@sortey/config",
+    "@sortey/db",
+    "@sortey/i18n",
+    "@sortey/logging",
+    "@sortey/monitoring",
+    "@sortey/ui",
+    "@sortey/validators",
   ],
 
   typescript: { ignoreBuildErrors: true },

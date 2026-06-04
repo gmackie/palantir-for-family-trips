@@ -46,10 +46,10 @@ pnpm ui-add --help
 ### Using Components
 
 ```typescript
-// Import from @gmacko/ui
-import { Button } from "@gmacko/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@gmacko/ui/card";
-import { Input } from "@gmacko/ui/input";
+// Import from @sortey/ui
+import { Button } from "@sortey/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@sortey/ui/card";
+import { Input } from "@sortey/ui/input";
 
 export function MyComponent() {
   return (
@@ -75,7 +75,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import {
   Form,
   FormControl,
@@ -83,8 +83,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@gmacko/ui/form";
-import { Input } from "@gmacko/ui/input";
+} from "@sortey/ui/form";
+import { Input } from "@sortey/ui/input";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -143,7 +143,7 @@ export function MyForm({ onSubmit }: { onSubmit: (data: FormValues) => void }) {
 "use client";
 
 import { useState } from "react";
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -151,7 +151,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@gmacko/ui/dialog";
+} from "@sortey/ui/dialog";
 
 export function MyDialog() {
   const [open, setOpen] = useState(false);

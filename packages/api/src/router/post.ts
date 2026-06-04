@@ -1,5 +1,5 @@
-import { desc, eq } from "@gmacko/db";
-import { CreatePostSchema, Post } from "@gmacko/db/schema";
+import { desc, eq } from "@sortey/db";
+import { CreatePostSchema, Post } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 

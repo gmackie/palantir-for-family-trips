@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/tailwind-config",
+  "name": "@sortey/tailwind-config",
   "private": true,
   "type": "module",
   "exports": {
@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

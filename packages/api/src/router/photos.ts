@@ -1,10 +1,10 @@
-import { and, asc, desc, eq, sql } from "@gmacko/db";
+import { and, asc, desc, eq, sql } from "@sortey/db";
 import {
   photoReactions,
   tripMembers,
   tripPhotos,
   tripSegments,
-} from "@gmacko/db/schema";
+} from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/storage",
+  "name": "@sortey/storage",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,12 +18,12 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
+    "@sortey/config": "workspace:*",
     "uploadthing": "^7.7.4"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

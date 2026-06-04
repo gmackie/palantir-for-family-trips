@@ -1,5 +1,5 @@
-import { and, eq, gt } from "@gmacko/db";
-import { memberLocations, tripMembers } from "@gmacko/db/schema";
+import { and, eq, gt } from "@sortey/db";
+import { memberLocations, tripMembers } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 

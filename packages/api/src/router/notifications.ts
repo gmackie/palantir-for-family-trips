@@ -1,5 +1,5 @@
-import { and, eq } from "@gmacko/db";
-import { pushTokens } from "@gmacko/db/schema";
+import { and, eq } from "@sortey/db";
+import { pushTokens } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 

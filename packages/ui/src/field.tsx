@@ -1,8 +1,8 @@
 "use client";
 
-import { cn } from "@gmacko/ui";
-import { Label } from "@gmacko/ui/label";
-import { Separator } from "@gmacko/ui/separator";
+import { cn } from "@sortey/ui";
+import { Label } from "@sortey/ui/label";
+import { Separator } from "@sortey/ui/separator";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import { useMemo } from "react";

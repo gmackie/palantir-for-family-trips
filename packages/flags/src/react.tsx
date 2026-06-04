@@ -2,7 +2,7 @@
  * React hooks for feature flags
  *
  * Usage:
- *   import { useFlag, useFlagValue, FlagsProvider } from "@gmacko/flags/react";
+ *   import { useFlag, useFlagValue, FlagsProvider } from "@sortey/flags/react";
  *
  *   // In your app root
  *   <FlagsProvider context={{ userId: user.id }}>

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
-import { Input } from "@gmacko/ui/input";
+import { Button } from "@sortey/ui/button";
+import { Input } from "@sortey/ui/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";

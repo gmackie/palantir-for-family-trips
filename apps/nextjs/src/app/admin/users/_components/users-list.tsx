@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@gmacko/ui/button";
+import { Button } from "@sortey/ui/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useTransition } from "react";
 

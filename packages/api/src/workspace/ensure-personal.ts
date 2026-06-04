@@ -1,6 +1,6 @@
-import { and, eq } from "@gmacko/db";
-import { db as defaultDb } from "@gmacko/db/client";
-import { workspace, workspaceMembership } from "@gmacko/db/schema";
+import { and, eq } from "@sortey/db";
+import { db as defaultDb } from "@sortey/db/client";
+import { workspace, workspaceMembership } from "@sortey/db/schema";
 
 type Database = typeof defaultDb;
 

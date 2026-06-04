@@ -1,5 +1,5 @@
-import { integrations } from "@gmacko/config";
 import * as Sentry from "@sentry/react-native";
+import { integrations } from "@sortey/config";
 
 export interface SentryNativeConfig {
   dsn: string;

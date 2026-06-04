@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/notifications",
+  "name": "@sortey/notifications",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,14 +18,14 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@gmacko/config": "workspace:*",
+    "@sortey/config": "workspace:*",
     "expo-constants": "~56.0.14",
     "expo-device": "~55.0.17",
     "expo-notifications": "~56.0.15"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/react": "catalog:react19",
     "@types/react-native": "^0.73.0",
     "oxlint": "catalog:",

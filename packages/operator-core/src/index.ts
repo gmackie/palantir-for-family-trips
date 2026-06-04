@@ -1,5 +1,5 @@
-import type { CreateClientOptions, TRPCClient } from "@gmacko/trpc-client";
-import { createClient } from "@gmacko/trpc-client";
+import type { CreateClientOptions, TRPCClient } from "@sortey/trpc-client";
+import { createClient } from "@sortey/trpc-client";
 
 export interface OperatorToolDefinition {
   name: string;

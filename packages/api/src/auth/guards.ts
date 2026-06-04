@@ -1,11 +1,11 @@
-import { and, eq } from "@gmacko/db";
+import { and, eq } from "@sortey/db";
 import {
   type TripMemberRole,
   tripMembers,
   trips,
   type WorkspaceRole,
   workspaceMembership,
-} from "@gmacko/db/schema";
+} from "@sortey/db/schema";
 import { TRPCError } from "@trpc/server";
 
 import { protectedProcedure } from "../trpc";

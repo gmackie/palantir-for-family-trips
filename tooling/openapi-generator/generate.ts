@@ -85,7 +85,7 @@ const LANGUAGES: Record<string, LanguageConfig> = {
     generator: "typescript-fetch",
     outputDir: "sdks/generated/typescript",
     additionalProperties: {
-      npmName: "@gmacko/api-client",
+      npmName: "@sortey/api-client",
       supportsES6: "true",
       typescriptThreePlus: "true",
     },
@@ -163,7 +163,7 @@ function main(): void {
   // Check if spec exists
   if (!existsSync(SPEC_PATH)) {
     console.error(`OpenAPI spec not found at ${SPEC_PATH}`);
-    console.error("Run 'pnpm -F @gmacko/openapi-spec generate' first");
+    console.error("Run 'pnpm -F @sortey/openapi-spec generate' first");
     process.exit(1);
   }
 

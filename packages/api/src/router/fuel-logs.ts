@@ -1,5 +1,5 @@
-import { and, desc, eq } from "@gmacko/db";
-import { fuelLogs } from "@gmacko/db/schema";
+import { and, desc, eq } from "@sortey/db";
+import { fuelLogs } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

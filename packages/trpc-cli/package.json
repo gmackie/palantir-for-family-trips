@@ -1,5 +1,5 @@
 {
-  "name": "@gmacko/trpc-cli",
+  "name": "@sortey/trpc-cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -19,11 +19,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gmacko/operator-core": "workspace:^0.1.0"
+    "@sortey/operator-core": "workspace:^0.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@gmacko/tsconfig": "workspace:*",
+    "@sortey/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsup": "^8.5.1",

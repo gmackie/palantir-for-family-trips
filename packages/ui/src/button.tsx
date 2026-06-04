@@ -1,4 +1,4 @@
-import { cn } from "@gmacko/ui";
+import { cn } from "@sortey/ui";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import { Slot as SlotPrimitive } from "radix-ui";

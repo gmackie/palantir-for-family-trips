@@ -1,9 +1,9 @@
 "use client";
 
-import { integrations } from "@gmacko/config";
-import { captureException } from "@gmacko/monitoring/web";
-import { cn } from "@gmacko/ui";
-import { Button } from "@gmacko/ui/button";
+import { integrations } from "@sortey/config";
+import { captureException } from "@sortey/monitoring/web";
+import { cn } from "@sortey/ui";
+import { Button } from "@sortey/ui/button";
 import type { ErrorInfo, ReactNode } from "react";
 import { Component } from "react";
 

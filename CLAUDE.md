@@ -27,7 +27,7 @@ If the repo was scaffolded with the optional SaaS bootstrap pack, run that flow 
 
 ## UI Workflow
 
-- Use Storybook for isolated UI work with `pnpm --filter @gmacko/nextjs storybook`.
+- Use Storybook for isolated UI work with `pnpm --filter @sortey/nextjs storybook`.
 - Add or update stories in `packages/ui/src/**/*.stories.tsx` when shared components change.
 
 ## Project: Group Trip Command Center
@@ -47,8 +47,8 @@ Do not deviate without explicit user approval.
 - **Workspace ⊃ Trip ⊃ Segments**: Workspace = long-lived group, Trip = bounded event, Segment = one stop
 - **Auth guards**: tRPC middleware chain (`protectedProcedure → workspaceProcedure → tripProcedure`), NOT helper functions
 - **Both apps**: `apps/nextjs` (dashboard) + `apps/expo` (mobile capture), shared tRPC backend
-- **Realtime**: `@gmacko/realtime` (Pusher) for tap-to-claim, polling as fallback
-- **Storage**: Extend `@gmacko/storage`, do NOT create parallel storage code
+- **Realtime**: `@sortey/realtime` (Pusher) for tap-to-claim, polling as fallback
+- **Storage**: Extend `@sortey/storage`, do NOT create parallel storage code
 - **Currency**: Stored per expense, settlement refuses mixed currencies
 
 ### Development Rules

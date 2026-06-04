@@ -2,7 +2,7 @@ import {
   createOperatorClient,
   executeOperatorTool,
   listOperatorTools,
-} from "@gmacko/operator-core";
+} from "@sortey/operator-core";
 
 const PROTECTED_TOOL_ERROR =
   "GMACKO_API_KEY environment variable is required for protected operator tools";

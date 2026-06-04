@@ -1,6 +1,6 @@
-import { appRouter, createTRPCContext } from "@gmacko/api";
-import { extractAndReconcileReceipt } from "@gmacko/api/ocr";
-import { getR2Bucket } from "@gmacko/db/runtime";
+import { appRouter, createTRPCContext } from "@sortey/api";
+import { extractAndReconcileReceipt } from "@sortey/api/ocr";
+import { getR2Bucket } from "@sortey/db/runtime";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { auth, getSession } from "~/auth/server";

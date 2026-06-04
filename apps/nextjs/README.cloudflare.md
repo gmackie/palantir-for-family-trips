@@ -8,10 +8,10 @@ This app now includes an experimental `vinext` lane for Cloudflare Workers.
 cd apps/nextjs
 pnpm with-env wrangler deploy
 
-pnpm --filter @gmacko/nextjs dev:vinext
-pnpm --filter @gmacko/nextjs build:vinext
-pnpm --filter @gmacko/nextjs deploy:cloudflare:staging
-pnpm --filter @gmacko/nextjs deploy:cloudflare:production
+pnpm --filter @sortey/nextjs dev:vinext
+pnpm --filter @sortey/nextjs build:vinext
+pnpm --filter @sortey/nextjs deploy:cloudflare:staging
+pnpm --filter @sortey/nextjs deploy:cloudflare:production
 ```
 
 ## Auth

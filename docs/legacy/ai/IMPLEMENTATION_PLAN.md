@@ -46,7 +46,7 @@ Fork `create-t3-turbo` and keep upstream-compatible structure, but introduce a s
 
 ### Phase 1 outcomes
 - Forked repo under Gmacko org.
-- Workspace scope renamed (`@gmacko/*` → `@gmacko/*` or neutral `@repo/*`).
+- Workspace scope renamed (`@sortey/*` → `@sortey/*` or neutral `@repo/*`).
 - Neon is the default Postgres provider for Drizzle.
 - better-auth remains the auth system (Next.js + Expo).
 - CI passes on `main`.
@@ -75,8 +75,8 @@ Fork `create-t3-turbo` and keep upstream-compatible structure, but introduce a s
 
 **Steps**
 1. Choose scope strategy:
-   - **Recommended:** keep internal packages under `@gmacko/*` (clear identity), but generator can rewrite for consumers.
-2. Replace `@gmacko/` imports and package names with your chosen scope.
+   - **Recommended:** keep internal packages under `@sortey/*` (clear identity), but generator can rewrite for consumers.
+2. Replace `@sortey/` imports and package names with your chosen scope.
 
 **Verification**
 - `pnpm -w lint` (if configured) or `pnpm -w typecheck`
@@ -197,7 +197,7 @@ If your current template already has these packages, port them with minimal chan
 **Steps**
 1. Copy packages into the fork with minimal refactors.
 2. Ensure export pattern stays consistent:
-   - `@gmacko/analytics`, `@gmacko/analytics/web`, `@gmacko/analytics/native` (as needed)
+   - `@sortey/analytics`, `@sortey/analytics/web`, `@sortey/analytics/native` (as needed)
 3. Ensure packages can be "present but unused" without side effects.
 
 **Verification**
