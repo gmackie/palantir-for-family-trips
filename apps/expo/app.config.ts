@@ -1,6 +1,16 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
-const APP_ENV = process.env.APP_ENV ?? "development";
+type AppVariant = "development" | "preview" | "production";
+
+const APP_VARIANT: AppVariant = (() => {
+  const variant = process.env.APP_VARIANT;
+  if (variant === "production" || variant === "preview") return variant;
+  return "development";
+})();
+
+// Keep APP_ENV available to runtime consumers (src/config/env.ts) — derived
+// from APP_VARIANT so the two stay in sync.
+const APP_ENV = APP_VARIANT;
 const API_URL = process.env.API_URL ?? "https://sortey.app";
 const GOOGLE_MAPS_API_KEY =
   process.env.GOOGLE_MAPS_API_KEY ??
@@ -13,20 +23,42 @@ const SENTRY_DSN = process.env.SENTRY_DSN;
 const POSTHOG_KEY = process.env.POSTHOG_KEY;
 const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
 
+// Production bundle id. Each variant gets a distinct id/name/scheme so all
+// three install side-by-side.
+const BASE_BUNDLE_ID = "com.gmacko.sortey";
+const BASE_SCHEME = "sortey";
+
 const getAppName = (): string => {
-  switch (APP_ENV) {
+  switch (APP_VARIANT) {
     case "production":
       return "Sortey";
-    case "staging":
-      return "Sortey (Beta)";
+    case "preview":
+      return "Sortey (Preview)";
     default:
       return "Sortey (Dev)";
   }
 };
 
 const getBundleId = (): string => {
-  if (APP_ENV === "production") return "com.gmacko.sortey";
-  return "com.gmacko.sortey.dev";
+  switch (APP_VARIANT) {
+    case "production":
+      return BASE_BUNDLE_ID;
+    case "preview":
+      return `${BASE_BUNDLE_ID}.preview`;
+    default:
+      return `${BASE_BUNDLE_ID}.dev`;
+  }
+};
+
+const getScheme = (): string => {
+  switch (APP_VARIANT) {
+    case "production":
+      return BASE_SCHEME;
+    case "preview":
+      return `${BASE_SCHEME}-preview`;
+    default:
+      return `${BASE_SCHEME}-dev`;
+  }
 };
 
 const getSentryConfig = () => {
@@ -86,7 +118,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: getAppName(),
     slug: "sortie",
-    scheme: "sortey",
+    scheme: getScheme(),
     version: "0.1.0",
     orientation: "portrait",
     icon: "./assets/icon-light.png",
