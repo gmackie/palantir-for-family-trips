@@ -80,7 +80,10 @@ interface ScheduledEvent {
 const imageConfig: ImageConfig = {};
 
 const instrumentedFetch = wrapFetch(
-  async (request: Request, env: Env, ctx: ExecutionContext) => {
+  // `wrapFetch` types the handler against otel's looser `WorkerEnv`; narrow it
+  // back to this worker's `Env` (which guarantees the ASSETS/IMAGES bindings).
+  async (request, workerEnv, ctx) => {
+    const env = workerEnv as Env;
     syncEnvSecrets(env);
     const url = new URL(request.url);
 

@@ -26,11 +26,11 @@ export default async function PhotosPage(props: {
   params: Promise<{ tripId: string }>;
 }) {
   const { tripId } = await props.params;
-  const { caller, workspaceId } = await requireTripsWorkspace();
+  const { caller, workspace } = await requireTripsWorkspace();
 
   let photos;
   try {
-    photos = await caller.photos.list({ workspaceId, tripId });
+    photos = await caller.photos.list({ workspaceId: workspace.id, tripId });
   } catch (err) {
     if (err instanceof TRPCError && err.code === "NOT_FOUND") notFound();
     throw err;
