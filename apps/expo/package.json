@@ -76,10 +76,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@sentry/cli": "3.4.1",
     "@sortey/api": "workspace:*",
     "@sortey/tailwind-config": "workspace:*",
     "@sortey/tsconfig": "workspace:*",
     "@types/react": "catalog:react19",
+    "babel-preset-expo": "56.0.11",
+    "metro-cache": "0.83.7",
     "oxlint": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:"
