@@ -104,6 +104,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     "expo-share-intent",
     {
       iosShareExtensionName: "SorteyShare",
+      // One App Group shared across all variants (registered in the portal),
+      // instead of the plugin default group.<bundleId> which would need a
+      // separate group per dev/preview/prod.
+      iosAppGroupIdentifier: "group.com.gmacko.sortey",
       iosActivationRules: {
         NSExtensionActivationSupportsImageWithMaxCount: 20,
       },
