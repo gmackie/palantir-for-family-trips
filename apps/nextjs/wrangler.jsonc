@@ -30,7 +30,7 @@
     "FG_APP": "sortey",
     "APP_URL": "https://sortey.app",
     "NEXT_PUBLIC_APP_URL": "https://sortey.app",
-    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCzOuctt2rEHJ4IjXftBoUfa3Byph4LURY"
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCCz6GZeB8qfIXJhCmKtHqhhY9kW23IllQ"
   },
   "env": {
     "staging": {
