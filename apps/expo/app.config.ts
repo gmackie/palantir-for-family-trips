@@ -28,6 +28,12 @@ const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
 const BASE_BUNDLE_ID = "com.gmacko.sortey";
 const BASE_SCHEME = "sortey";
 
+const getVariantIcon = (): string => {
+  if (APP_VARIANT === "development") return "./assets/icon-dev.png";
+  if (APP_VARIANT === "preview") return "./assets/icon-preview.png";
+  return "./assets/icon-light.png";
+};
+
 const getAppName = (): string => {
   switch (APP_VARIANT) {
     case "production":
@@ -125,7 +131,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     scheme: getScheme(),
     version: "0.1.0",
     orientation: "portrait",
-    icon: "./assets/icon-light.png",
+    icon: getVariantIcon(),
     userInterfaceStyle: "automatic",
     runtimeVersion: "0.1.0",
     assetBundlePatterns: ["**/*"],
@@ -134,10 +140,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supportsTablet: true,
       usesAppleSignIn: true,
       associatedDomains: [`applinks:${ASSOCIATED_DOMAIN}`],
-      icon: {
-        light: "./assets/icon-light.png",
-        dark: "./assets/icon-dark.png",
-      },
+      icon:
+        APP_VARIANT === "production"
+          ? {
+              light: "./assets/icon-light.png",
+              dark: "./assets/icon-dark.png",
+            }
+          : getVariantIcon(),
       infoPlist: {
         CFBundleDisplayName: getAppName(),
         ITSAppUsesNonExemptEncryption: false,
