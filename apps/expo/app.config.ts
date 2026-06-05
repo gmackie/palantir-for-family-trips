@@ -169,8 +169,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       adaptiveIcon: {
-        foregroundImage: "./assets/icon-light.png",
-        backgroundColor: "#0D1B2A",
+        foregroundImage:
+          APP_VARIANT === "production"
+            ? "./assets/icon-light.png"
+            : getVariantIcon(),
+        backgroundColor:
+          APP_VARIANT === "development"
+            ? "#4a6de5"
+            : APP_VARIANT === "preview"
+              ? "#eef2fb"
+              : "#0D1B2A",
       },
     },
     extra: {
