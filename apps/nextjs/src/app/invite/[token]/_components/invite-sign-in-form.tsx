@@ -6,24 +6,37 @@ import { startTransition, useState } from "react";
 
 import { authClient } from "~/auth/client";
 
-export function InviteSignInForm(props: { email: string; token: string }) {
+export function InviteSignInForm(props: {
+  token: string;
+  /**
+   * Pre-known email for per-email invites (rendered read-only). Omit for share
+   * links where the joiner enters their own email.
+   */
+  email?: string;
+  /** Magic-link callback. Defaults to the per-email invite page. */
+  callbackUrl?: string;
+}) {
+  const emailLocked = typeof props.email === "string";
+  const [email, setEmail] = useState(props.email ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const callbackUrl = props.callbackUrl ?? `/invite/${props.token}`;
 
   return (
     <form
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!email.trim()) return;
         setError(null);
         setIsPending(true);
 
         startTransition(async () => {
           try {
             await authClient.signIn.magicLink({
-              email: props.email,
-              callbackURL: `/invite/${props.token}`,
+              email,
+              callbackURL: callbackUrl,
             });
             setSubmitted(true);
           } catch (submissionError) {
@@ -47,20 +60,27 @@ export function InviteSignInForm(props: { email: string; token: string }) {
           name="email"
           type="email"
           autoComplete="email"
-          value={props.email}
-          readOnly
-          disabled
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          readOnly={emailLocked}
+          disabled={emailLocked}
+          required
         />
       </div>
 
-      <Button className="w-full" disabled={isPending} type="submit">
+      <Button
+        className="w-full"
+        disabled={isPending || !email.trim()}
+        type="submit"
+      >
         {isPending ? "Sending..." : "Send sign-in link"}
       </Button>
 
       {submitted ? (
         <p className="text-sm text-muted-foreground">
-          Check {props.email} for a sign-in link. After signing in you&apos;ll
-          be redirected back here to accept the invite.
+          Check {email} for a sign-in link. After signing in you&apos;ll be
+          redirected back here to continue.
         </p>
       ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
