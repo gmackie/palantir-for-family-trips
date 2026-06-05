@@ -18,9 +18,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { backoffDelay } from "./backoff";
 import type { ChatMessage, MergeItem } from "./messages";
 import { mergeMessages } from "./messages";
+import { createReconnectScheduler } from "./reconnect";
 
 // --- Minimal structural WebSocket surface ----------------------------------
 // We deliberately do NOT depend on lib.dom's `WebSocket` (RN's global differs
@@ -181,6 +181,9 @@ export function useTripChat(opts: UseTripChatOptions): UseTripChatResult {
     };
 
     const connect = () => {
+      // Bail before opening if there's nothing to connect to: an empty tripId
+      // (or a missing WebSocket global, e.g. SSR) must never spin the loop.
+      if (!tripId) return;
       const Ctor = getWebSocketCtor();
       if (!Ctor) return; // no WebSocket in this environment (e.g. SSR) — bail.
 
@@ -231,15 +234,27 @@ export function useTripChat(opts: UseTripChatOptions): UseTripChatResult {
         }
       });
 
-      const onDown = () => {
-        if (mountedRef.current) setConnected(false);
-        if (closedByUs) return;
-        // Schedule a reconnect with capped exponential backoff.
-        reconnectTimer = setTimeout(connect, backoffDelay(attempt));
-        attempt += 1;
-      };
-      ws.addEventListener("close", onDown);
-      ws.addEventListener("error", onDown);
+      // A failed connection fires `error` THEN `close`; the scheduler's own
+      // re-entry guard makes the double registration safe (schedules once). A
+      // fresh scheduler per `connect()` means its guard resets each attempt.
+      const scheduler = createReconnectScheduler({
+        isClosedByUs: () => closedByUs,
+        onDisconnected: () => {
+          if (mountedRef.current) setConnected(false);
+        },
+        setReconnectTimer: (fn, delayMs) => {
+          reconnectTimer = setTimeout(fn, delayMs);
+          return reconnectTimer;
+        },
+        clearReconnectTimer: (timer) => clearTimeout(timer),
+        connect,
+        getAttempt: () => attempt,
+        setAttempt: (next) => {
+          attempt = next;
+        },
+      });
+      ws.addEventListener("close", scheduler.onDown);
+      ws.addEventListener("error", scheduler.onDown);
     };
 
     connect();

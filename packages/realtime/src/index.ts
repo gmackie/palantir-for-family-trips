@@ -21,6 +21,11 @@ export type {
 } from "./messages";
 export { mergeMessages } from "./messages";
 export type {
+  ReconnectScheduler,
+  ReconnectSchedulerDeps,
+} from "./reconnect";
+export { createReconnectScheduler } from "./reconnect";
+export type {
   UseTripChatOptions,
   UseTripChatResult,
 } from "./use-trip-chat";
