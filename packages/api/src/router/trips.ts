@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { and, asc, desc, eq, isNull, sql } from "@sortey/db";
+import type { TripStatus } from "@sortey/db/schema";
 import {
   segmentMembers,
   tripInvites,
@@ -161,6 +162,46 @@ export interface TripStore {
       | "paused"
       | "completed";
   }): Promise<TripSummary | null>;
+  getShareInfo(input: {
+    tripId: string;
+  }): Promise<{ token: string | null; enabled: boolean } | null>;
+  setShareToken(input: {
+    tripId: string;
+    token: string;
+  }): Promise<{ token: string; enabled: boolean }>;
+  forceSetShareToken(input: {
+    tripId: string;
+    token: string;
+  }): Promise<{ token: string; enabled: boolean }>;
+  setShareEnabled(input: {
+    tripId: string;
+    enabled: boolean;
+  }): Promise<{ enabled: boolean }>;
+  findTripByShareToken(input: { token: string }): Promise<{
+    tripId: string;
+    workspaceId: string;
+    enabled: boolean;
+    status: TripStatus;
+  } | null>;
+  // Idempotently ensures BOTH the workspace 'member' row and the trip 'member'
+  // row. Consolidated into one method so the production impl can wrap both
+  // writes in a single DB transaction (no partial-membership state on crash).
+  joinTripMembership(input: {
+    workspaceId: string;
+    tripId: string;
+    userId: string;
+  }): Promise<{ tripMemberInserted: boolean }>;
+  getSharePreview(input: { token: string }): Promise<{
+    tripId: string;
+    tripName: string;
+    destinationName: string | null;
+    destinationLat: string | null;
+    destinationLng: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    enabled: boolean;
+    tripStatus: TripStatus;
+  } | null>;
 }
 
 function requireOrganizerTripRole(tripRole: "organizer" | "member") {
@@ -286,6 +327,183 @@ export function setTripClaimMode(
   },
 ) {
   return updateTripRecord(store, input);
+}
+
+const SHARE_BASE_URL = "https://sortey.app/join";
+
+function shareUrl(token: string): string {
+  return `${SHARE_BASE_URL}/${token}`;
+}
+
+export async function getOrCreateShareLink(
+  store: TripStore,
+  input: {
+    tripId: string;
+    tripRole: "organizer" | "member";
+  },
+): Promise<{ token: string; url: string; enabled: boolean }> {
+  requireOrganizerTripRole(input.tripRole);
+
+  const info = await store.getShareInfo({ tripId: input.tripId });
+
+  if (!info) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Trip not found.",
+    });
+  }
+
+  let token = info.token;
+  let enabled = info.enabled;
+
+  if (!token) {
+    // setShareToken is idempotent: concurrent first-callers converge on the
+    // single winning token, and it returns the now-current authoritative
+    // { token, enabled } (minting a fresh link re-enables it).
+    const result = await store.setShareToken({
+      tripId: input.tripId,
+      token: generateInviteToken(),
+    });
+    token = result.token;
+    enabled = result.enabled;
+  }
+
+  return { token, url: shareUrl(token), enabled };
+}
+
+export async function regenerateShareLink(
+  store: TripStore,
+  input: {
+    tripId: string;
+    tripRole: "organizer" | "member";
+  },
+): Promise<{ token: string; url: string; enabled: boolean }> {
+  requireOrganizerTripRole(input.tripRole);
+
+  // Unconditionally rotate the token (old links die) and re-enable the link.
+  const result = await store.forceSetShareToken({
+    tripId: input.tripId,
+    token: generateInviteToken(),
+  });
+
+  return { token: result.token, url: shareUrl(result.token), enabled: true };
+}
+
+export async function setShareLinkEnabled(
+  store: TripStore,
+  input: {
+    tripId: string;
+    tripRole: "organizer" | "member";
+    enabled: boolean;
+  },
+): Promise<{ enabled: boolean }> {
+  requireOrganizerTripRole(input.tripRole);
+
+  return store.setShareEnabled({
+    tripId: input.tripId,
+    enabled: input.enabled,
+  });
+}
+
+export type ShareLinkPreview =
+  | {
+      status: "active";
+      tripId: string;
+      tripName: string;
+      destinationName: string | null;
+      destinationLat: string | null;
+      destinationLng: string | null;
+      startDate: string | null;
+      endDate: string | null;
+    }
+  | { status: "ended" }
+  | { status: "disabled" }
+  | { status: "not_found" };
+
+// SECURITY: protectedProcedure (NOT tripProcedure) backs this — the joiner is
+// not yet a member, the share token IS the authorization. We deliberately do
+// NOT check the caller's email (unlike acceptInvite): anyone holding a live,
+// enabled link may join. Keep this function DB/IO-free except via `store`.
+export async function joinTripByShareToken(
+  store: TripStore,
+  input: {
+    token: string;
+    userId: string;
+  },
+): Promise<{
+  tripId: string;
+  workspaceId: string;
+  tripMemberInserted: boolean;
+}> {
+  const trip = await store.findTripByShareToken({ token: input.token });
+
+  if (!trip) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "This invite link is no longer active.",
+    });
+  }
+
+  if (!trip.enabled) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This invite link has been disabled.",
+    });
+  }
+
+  if (trip.status === "completed") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This trip has already ended.",
+    });
+  }
+
+  // Both membership writes happen atomically (and idempotently) inside the
+  // store, so a crash can't leave a workspace member without a trip member.
+  const { tripMemberInserted } = await store.joinTripMembership({
+    workspaceId: trip.workspaceId,
+    tripId: trip.tripId,
+    userId: input.userId,
+  });
+
+  return {
+    tripId: trip.tripId,
+    workspaceId: trip.workspaceId,
+    tripMemberInserted,
+  };
+}
+
+export async function getShareLinkPreview(
+  store: TripStore,
+  input: { token: string },
+): Promise<ShareLinkPreview> {
+  const preview = await store.getSharePreview({ token: input.token });
+
+  if (!preview) {
+    return { status: "not_found" };
+  }
+
+  if (!preview.enabled) {
+    return { status: "disabled" };
+  }
+
+  // A completed trip can't be joined (join rejects it with BAD_REQUEST), so
+  // surface it as "ended" rather than dangling an "active" preview.
+  if (preview.tripStatus === "completed") {
+    return { status: "ended" };
+  }
+
+  // NEVER return the token or any secret — only public-safe display fields.
+  return {
+    status: "active",
+    tripId: preview.tripId,
+    tripName: preview.tripName,
+    destinationName: preview.destinationName,
+    destinationLat: preview.destinationLat,
+    destinationLng: preview.destinationLng,
+    startDate: preview.startDate,
+    endDate: preview.endDate,
+  };
 }
 
 function createTripStore(db: any): TripStore {
@@ -434,6 +652,149 @@ function createTripStore(db: any): TripStore {
       }
 
       return updatedTrip;
+    },
+    getShareInfo: async ({ tripId }) => {
+      const [row] = (await db
+        .select({
+          token: trips.shareInviteToken,
+          enabled: trips.shareInviteEnabled,
+        })
+        .from(trips)
+        .where(eq(trips.id, tripId))
+        .limit(1)) as Array<{ token: string | null; enabled: boolean }>;
+
+      return row ?? null;
+    },
+    setShareToken: async ({ tripId, token }) => {
+      // Idempotent: only set the token when it is still null, so concurrent
+      // first-callers converge on a single winning token (last-writer-wins is
+      // avoided). Then re-select to return the now-current authoritative state.
+      await db
+        .update(trips)
+        .set({
+          shareInviteToken: token,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: new Date(),
+        })
+        .where(and(eq(trips.id, tripId), isNull(trips.shareInviteToken)));
+
+      const [row] = (await db
+        .select({
+          token: trips.shareInviteToken,
+          enabled: trips.shareInviteEnabled,
+        })
+        .from(trips)
+        .where(eq(trips.id, tripId))
+        .limit(1)) as Array<{ token: string | null; enabled: boolean }>;
+
+      return { token: row?.token ?? token, enabled: row?.enabled ?? true };
+    },
+    forceSetShareToken: async ({ tripId, token }) => {
+      // Unconditional rotation: overwrite any existing token (old links die)
+      // and re-enable the link.
+      const [row] = (await db
+        .update(trips)
+        .set({
+          shareInviteToken: token,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: new Date(),
+        })
+        .where(eq(trips.id, tripId))
+        .returning({
+          token: trips.shareInviteToken,
+          enabled: trips.shareInviteEnabled,
+        })) as Array<{ token: string | null; enabled: boolean }>;
+
+      return { token: row?.token ?? token, enabled: row?.enabled ?? true };
+    },
+    setShareEnabled: async ({ tripId, enabled }) => {
+      const [row] = (await db
+        .update(trips)
+        .set({ shareInviteEnabled: enabled })
+        .where(eq(trips.id, tripId))
+        .returning({
+          enabled: trips.shareInviteEnabled,
+        })) as Array<{ enabled: boolean }>;
+
+      return { enabled: row?.enabled ?? enabled };
+    },
+    findTripByShareToken: async ({ token }) => {
+      const [row] = (await db
+        .select({
+          tripId: trips.id,
+          workspaceId: trips.workspaceId,
+          enabled: trips.shareInviteEnabled,
+          status: trips.status,
+        })
+        .from(trips)
+        .where(eq(trips.shareInviteToken, token))
+        .limit(1)) as Array<{
+        tripId: string;
+        workspaceId: string;
+        enabled: boolean;
+        status: TripStatus;
+      }>;
+
+      return row ?? null;
+    },
+    joinTripMembership: async ({ workspaceId, tripId, userId }) => {
+      // Atomic + idempotent: both membership rows are written in a single
+      // transaction, so a crash can't leave a workspace member without the
+      // matching trip member. onConflictDoNothing leans on the existing unique
+      // constraints, making re-joining a safe no-op.
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle tx type is complex
+      return await db.transaction(async (tx: any) => {
+        await tx
+          .insert(workspaceMembership)
+          .values({ workspaceId, userId, role: "member" })
+          .onConflictDoNothing({
+            target: [
+              workspaceMembership.workspaceId,
+              workspaceMembership.userId,
+            ],
+          });
+        // An empty returning() result means the row already existed (conflict),
+        // so we only signal a fresh insert when a new trip_member row landed.
+        const insertedTripMembers = (await tx
+          .insert(tripMembers)
+          .values({ tripId, userId, role: "member" })
+          .onConflictDoNothing({
+            target: [tripMembers.tripId, tripMembers.userId],
+          })
+          .returning({ tripId: tripMembers.tripId })) as Array<{
+          tripId: string;
+        }>;
+        return { tripMemberInserted: insertedTripMembers.length > 0 };
+      });
+    },
+    getSharePreview: async ({ token }) => {
+      const [row] = (await db
+        .select({
+          tripId: trips.id,
+          tripName: trips.name,
+          destinationName: trips.destinationName,
+          destinationLat: trips.destinationLat,
+          destinationLng: trips.destinationLng,
+          startDate: trips.startDate,
+          endDate: trips.endDate,
+          enabled: trips.shareInviteEnabled,
+          tripStatus: trips.status,
+        })
+        .from(trips)
+        .where(eq(trips.shareInviteToken, token))
+        .limit(1)) as Array<{
+        tripId: string;
+        tripName: string;
+        destinationName: string | null;
+        destinationLat: string | null;
+        destinationLng: string | null;
+        startDate: string | null;
+        endDate: string | null;
+        enabled: boolean;
+        tripStatus: TripStatus;
+      }>;
+
+      return row ?? null;
     },
   };
 }
@@ -668,6 +1029,94 @@ export const tripsRouter = {
 
       return rows;
     }),
+
+  getShareLink: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(({ ctx }) =>
+      getOrCreateShareLink(createTripStore(ctx.db), {
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+      }),
+    ),
+
+  regenerateShareLink: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .mutation(({ ctx }) =>
+      regenerateShareLink(createTripStore(ctx.db), {
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+      }),
+    ),
+
+  setShareLinkEnabled: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      setShareLinkEnabled(createTripStore(ctx.db), {
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+        enabled: input.enabled,
+      }),
+    ),
+
+  // SECURITY: protectedProcedure, NOT tripProcedure — the joiner is not yet a
+  // member, so the share token itself is the authorization. The single
+  // deliberate exception to the trip-membership gate.
+  joinByShareToken: protectedProcedure
+    .input(
+      z.object({
+        token: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // TODO(ratelimit): this is an unauthenticated-token entry point — wrap
+      // with a per-IP / per-user rate limiter once a shared util exists.
+      const result = await joinTripByShareToken(createTripStore(ctx.db), {
+        token: input.token,
+        userId: ctx.session.user.id,
+      });
+
+      // joinTripByShareToken is idempotent; only notify when a NEW member
+      // actually joined so re-opening the link doesn't spam "X joined".
+      if (result.tripMemberInserted) {
+        void sendPushToTripMembers(ctx.db, {
+          tripId: result.tripId,
+          excludeUserId: ctx.session.user.id,
+          title: "New Member",
+          body: `${ctx.session.user.name ?? ctx.session.user.email ?? "Someone"} joined the trip`,
+          data: { tripId: result.tripId, screen: "members" },
+        });
+      }
+
+      return result;
+    }),
+
+  // Public, unauthenticated — backs the /join/[token] OG preview card. Returns
+  // only public-safe display fields; NEVER the token or any secret.
+  getShareLinkPreview: publicProcedure
+    .input(
+      z.object({
+        token: z.string().min(1),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      getShareLinkPreview(createTripStore(ctx.db), { token: input.token }),
+    ),
 
   getInviteByToken: publicProcedure
     .input(

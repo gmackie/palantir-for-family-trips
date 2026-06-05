@@ -209,6 +209,10 @@ export const trips = pgTable("trip", (t) => ({
   startDate: t.date(),
   endDate: t.date(),
   tz: t.varchar({ length: 100 }).notNull().default("UTC"),
+  // Phase 1a — device-sent share invite (one reusable, revocable link per trip)
+  shareInviteToken: t.varchar({ length: 64 }).unique(),
+  shareInviteEnabled: t.boolean().notNull().default(true),
+  shareInviteCreatedAt: t.timestamp({ mode: "date", withTimezone: true }),
   createdAt: t.timestamp().defaultNow().notNull(),
   updatedAt: t
     .timestamp({ mode: "date", withTimezone: true })

@@ -86,7 +86,13 @@ export function TripDashboard(props: {
           />
         );
       case "members":
-        return <MembersPanel tripId={trip.id} workspaceId={workspaceId} />;
+        return (
+          <MembersPanel
+            tripId={trip.id}
+            workspaceId={workspaceId}
+            tripName={trip.name}
+          />
+        );
       case "stay":
         return (
           <div className="p-4">

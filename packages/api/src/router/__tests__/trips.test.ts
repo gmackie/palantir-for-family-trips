@@ -44,6 +44,9 @@ type TripRecord = {
   startDate: string | null;
   endDate: string | null;
   tz: string;
+  shareInviteToken: string | null;
+  shareInviteEnabled: boolean;
+  shareInviteCreatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date | null;
 };
@@ -163,6 +166,11 @@ function createTripStore(input?: {
     tripMembers: [...(input?.tripMembers ?? [])],
     tripSegments: [...(input?.tripSegments ?? [])],
     segmentMembers: [...(input?.segmentMembers ?? [])],
+    workspaceMemberships: [] as Array<{
+      workspaceId: string;
+      userId: string;
+      role: "owner" | "admin" | "member";
+    }>,
   };
 
   const store: TripStore = {
@@ -195,6 +203,9 @@ function createTripStore(input?: {
         startDate: input.startDate ?? null,
         endDate: input.endDate ?? null,
         tz: input.tz ?? "UTC",
+        shareInviteToken: null,
+        shareInviteEnabled: true,
+        shareInviteCreatedAt: null,
         createdAt: new Date("2026-04-15T12:00:00.000Z"),
         updatedAt: null,
       };
@@ -324,6 +335,153 @@ function createTripStore(input?: {
 
       return state.trips[index]!;
     },
+    getShareInfo: async ({ tripId }: { tripId: string }) => {
+      const trip = state.trips.find((entry) => entry.id === tripId) ?? null;
+      if (!trip) {
+        return null;
+      }
+      return {
+        token: trip.shareInviteToken,
+        enabled: trip.shareInviteEnabled,
+      };
+    },
+    setShareToken: async ({
+      tripId,
+      token,
+    }: {
+      tripId: string;
+      token: string;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return { token, enabled: true };
+      }
+      // Idempotent: only set the token when it is still null (mirrors the
+      // production "WHERE shareInviteToken IS NULL" guard).
+      if (state.trips[index]!.shareInviteToken === null) {
+        state.trips[index] = {
+          ...state.trips[index]!,
+          shareInviteToken: token,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+        };
+      }
+      const current = state.trips[index]!;
+      return {
+        token: current.shareInviteToken ?? token,
+        enabled: current.shareInviteEnabled,
+      };
+    },
+    forceSetShareToken: async ({
+      tripId,
+      token,
+    }: {
+      tripId: string;
+      token: string;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return { token, enabled: true };
+      }
+      // Unconditional rotation: overwrite any existing token and re-enable.
+      state.trips[index] = {
+        ...state.trips[index]!,
+        shareInviteToken: token,
+        shareInviteEnabled: true,
+        shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+      };
+      return { token, enabled: true };
+    },
+    setShareEnabled: async ({
+      tripId,
+      enabled,
+    }: {
+      tripId: string;
+      enabled: boolean;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return { enabled };
+      }
+      state.trips[index] = {
+        ...state.trips[index]!,
+        shareInviteEnabled: enabled,
+      };
+      return { enabled };
+    },
+    findTripByShareToken: async ({ token }: { token: string }) => {
+      const trip = state.trips.find(
+        (entry) =>
+          entry.shareInviteToken !== null && entry.shareInviteToken === token,
+      );
+      if (!trip) {
+        return null;
+      }
+      return {
+        tripId: trip.id,
+        workspaceId: trip.workspaceId,
+        enabled: trip.shareInviteEnabled,
+        status: trip.status,
+      };
+    },
+    joinTripMembership: async ({
+      workspaceId,
+      tripId,
+      userId,
+    }: {
+      workspaceId: string;
+      tripId: string;
+      userId: string;
+    }) => {
+      const workspaceExists = state.workspaceMemberships.some(
+        (m) => m.workspaceId === workspaceId && m.userId === userId,
+      );
+      if (!workspaceExists) {
+        state.workspaceMemberships.push({
+          workspaceId,
+          userId,
+          role: "member",
+        });
+      }
+      const tripExists = state.tripMembers.some(
+        (m) => m.tripId === tripId && m.userId === userId,
+      );
+      if (!tripExists) {
+        state.tripMembers.push({
+          id: randomUUID(),
+          tripId,
+          userId,
+          role: "member",
+          displayName: null,
+          colorHex: null,
+          venmoHandle: null,
+          joinedAt: new Date("2026-04-15T12:00:00.000Z"),
+        });
+      }
+      // true only when a NEW trip_member row landed (mirrors production
+      // onConflictDoNothing().returning() length check).
+      return { tripMemberInserted: !tripExists };
+    },
+    getSharePreview: async ({ token }: { token: string }) => {
+      const trip = state.trips.find(
+        (entry) =>
+          entry.shareInviteToken !== null && entry.shareInviteToken === token,
+      );
+      if (!trip) {
+        return null;
+      }
+      return {
+        tripId: trip.id,
+        tripName: trip.name,
+        destinationName: trip.destinationName,
+        destinationLat: trip.destinationLat,
+        destinationLng: trip.destinationLng,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        enabled: trip.shareInviteEnabled,
+        tripStatus: trip.status,
+      };
+    },
   };
 
   return { state, store };
@@ -378,6 +536,9 @@ describe("trip guards", () => {
           startDate: "2026-06-01",
           endDate: "2026-06-08",
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-01T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -443,6 +604,9 @@ describe("trip creation", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -462,6 +626,9 @@ describe("trip creation", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-11T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -481,6 +648,9 @@ describe("trip creation", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Paris",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-12T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -554,6 +724,9 @@ describe("trip updates", () => {
           startDate: "2026-06-01",
           endDate: "2026-06-08",
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -598,6 +771,9 @@ describe("trip updates", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -635,6 +811,9 @@ describe("trip updates", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },
