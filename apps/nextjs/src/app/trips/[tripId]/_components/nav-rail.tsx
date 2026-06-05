@@ -10,7 +10,8 @@ export type NavItem =
   | "members"
   | "polls"
   | "proposals"
-  | "photos";
+  | "photos"
+  | "chat";
 
 type TripStatus =
   | "planning"
@@ -40,6 +41,7 @@ const NAV_ITEMS: {
   { id: "expenses", label: "Expenses", icon: "dollar" },
   { id: "settlement", label: "Settlement", icon: "scale" },
   { id: "photos", label: "Photos", icon: "camera" },
+  { id: "chat", label: "Chat", icon: "chat" },
   { id: "members", label: "Members", icon: "users" },
 ];
 
@@ -221,6 +223,21 @@ function NavIcon({ icon, active }: { icon: string; active: boolean }) {
         >
           <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
           <circle cx="12" cy="13" r="4" />
+        </svg>
+      );
+    case "chat":
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
         </svg>
       );
     default:
