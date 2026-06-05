@@ -100,6 +100,12 @@ const TABS = [
     path: "members",
   },
   {
+    key: "chat",
+    label: "Chat",
+    icon: "chatbubbles-outline" as const,
+    path: "chat",
+  },
+  {
     key: "plan",
     label: "Plan",
     icon: "clipboard-outline" as const,
