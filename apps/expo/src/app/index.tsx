@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import * as Linking from "expo-linking";
 import { Stack, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef, useState } from "react";
@@ -85,7 +86,13 @@ function SignIn() {
     setLoading(true);
     setError(null);
     try {
-      await authClient.signIn.magicLink({ email: email.trim() });
+      // Pass an app deep link so the post-verify redirect returns to the app
+      // (sortey:// in standalone builds, exp:// in Expo Go) instead of loading
+      // the web app in Safari. The scheme must be in the server trustedOrigins.
+      await authClient.signIn.magicLink({
+        email: email.trim(),
+        callbackURL: Linking.createURL("/"),
+      });
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send link");

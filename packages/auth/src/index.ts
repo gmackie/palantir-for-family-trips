@@ -75,7 +75,7 @@ export function initAuth<
           }
         : {}),
     },
-    trustedOrigins: ["sortie://", "exp://", "https://appleid.apple.com"],
+    trustedOrigins: ["sortey://", "exp://", "https://appleid.apple.com"],
     onAPIError: {
       onError(error, ctx) {
         console.error("BETTER AUTH API ERROR", error, ctx);
