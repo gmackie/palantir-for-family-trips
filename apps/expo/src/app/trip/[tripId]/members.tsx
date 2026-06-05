@@ -258,6 +258,48 @@ export default function MembersScreen() {
     retry: false,
   });
 
+  const { data: trip } = useQuery({
+    ...trpc.trips.get.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+    }),
+    retry: false,
+  });
+
+  const [sharingInvite, setSharingInvite] = useState(false);
+
+  const shareInvite = async () => {
+    if (sharingInvite) return;
+    setSharingInvite(true);
+    try {
+      const { url } = await queryClient.fetchQuery(
+        trpc.trips.getShareLink.queryOptions({
+          workspaceId,
+          tripId: tripId ?? "",
+        }),
+      );
+      const tripName = trip?.name ?? "our trip";
+      try {
+        await Share.share({
+          message: `You're invited to ${tripName} on Sortey 🚗 Tap to join: ${url}`,
+          url,
+        });
+      } catch {
+        // User dismissed the share sheet — ignore.
+      }
+    } catch (err) {
+      // getShareLink is organizer-only; non-organizers get an error here.
+      Alert.alert(
+        "Cannot share invite",
+        err instanceof Error
+          ? err.message
+          : "Only trip organizers can create invite links.",
+      );
+    } finally {
+      setSharingInvite(false);
+    }
+  };
+
   const sendInvite = useMutation(
     trpc.trips.createInvite.mutationOptions({
       onSuccess: (data) => {
@@ -608,10 +650,9 @@ export default function MembersScreen() {
           </Pressable>
           <Pressable
             onPress={() => {
-              void Share.share({
-                message: `Join my trip on Sortey! ${APP_URL}/trips`,
-              });
+              void shareInvite();
             }}
+            disabled={sharingInvite}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -623,11 +664,16 @@ export default function MembersScreen() {
               paddingHorizontal: 20,
               paddingVertical: 16,
               minHeight: 52,
+              opacity: sharingInvite ? 0.5 : 1,
             }}
           >
-            <Ionicons name="share-outline" size={18} color={C.fg} />
+            {sharingInvite ? (
+              <ActivityIndicator color={C.fg} size="small" />
+            ) : (
+              <Ionicons name="share-outline" size={18} color={C.fg} />
+            )}
             <Text style={{ color: C.fg, fontWeight: "600", fontSize: 15 }}>
-              Share
+              Share invite
             </Text>
           </Pressable>
         </View>
