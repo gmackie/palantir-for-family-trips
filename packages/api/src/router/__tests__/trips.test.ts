@@ -367,6 +367,43 @@ function createTripStore(input?: {
         enabled: current.shareInviteEnabled,
       };
     },
+    forceSetShareToken: async ({
+      tripId,
+      token,
+    }: {
+      tripId: string;
+      token: string;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return { token, enabled: true };
+      }
+      // Unconditional rotation: overwrite any existing token and re-enable.
+      state.trips[index] = {
+        ...state.trips[index]!,
+        shareInviteToken: token,
+        shareInviteEnabled: true,
+        shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+      };
+      return { token, enabled: true };
+    },
+    setShareEnabled: async ({
+      tripId,
+      enabled,
+    }: {
+      tripId: string;
+      enabled: boolean;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return { enabled };
+      }
+      state.trips[index] = {
+        ...state.trips[index]!,
+        shareInviteEnabled: enabled,
+      };
+      return { enabled };
+    },
   };
 
   return { state, store };

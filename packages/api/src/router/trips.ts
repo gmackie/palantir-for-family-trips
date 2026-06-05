@@ -168,6 +168,14 @@ export interface TripStore {
     tripId: string;
     token: string;
   }): Promise<{ token: string; enabled: boolean }>;
+  forceSetShareToken(input: {
+    tripId: string;
+    token: string;
+  }): Promise<{ token: string; enabled: boolean }>;
+  setShareEnabled(input: {
+    tripId: string;
+    enabled: boolean;
+  }): Promise<{ enabled: boolean }>;
 }
 
 function requireOrganizerTripRole(tripRole: "organizer" | "member") {
@@ -335,6 +343,40 @@ export async function getOrCreateShareLink(
   }
 
   return { token, url: shareUrl(token), enabled };
+}
+
+export async function regenerateShareLink(
+  store: TripStore,
+  input: {
+    tripId: string;
+    tripRole: "organizer" | "member";
+  },
+): Promise<{ token: string; url: string; enabled: boolean }> {
+  requireOrganizerTripRole(input.tripRole);
+
+  // Unconditionally rotate the token (old links die) and re-enable the link.
+  const result = await store.forceSetShareToken({
+    tripId: input.tripId,
+    token: generateInviteToken(),
+  });
+
+  return { token: result.token, url: shareUrl(result.token), enabled: true };
+}
+
+export async function setShareLinkEnabled(
+  store: TripStore,
+  input: {
+    tripId: string;
+    tripRole: "organizer" | "member";
+    enabled: boolean;
+  },
+): Promise<{ enabled: boolean }> {
+  requireOrganizerTripRole(input.tripRole);
+
+  return store.setShareEnabled({
+    tripId: input.tripId,
+    enabled: input.enabled,
+  });
 }
 
 function createTripStore(db: any): TripStore {
@@ -519,6 +561,35 @@ function createTripStore(db: any): TripStore {
         .limit(1)) as Array<{ token: string | null; enabled: boolean }>;
 
       return { token: row?.token ?? token, enabled: row?.enabled ?? true };
+    },
+    forceSetShareToken: async ({ tripId, token }) => {
+      // Unconditional rotation: overwrite any existing token (old links die)
+      // and re-enable the link.
+      const [row] = (await db
+        .update(trips)
+        .set({
+          shareInviteToken: token,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: new Date(),
+        })
+        .where(eq(trips.id, tripId))
+        .returning({
+          token: trips.shareInviteToken,
+          enabled: trips.shareInviteEnabled,
+        })) as Array<{ token: string | null; enabled: boolean }>;
+
+      return { token: row?.token ?? token, enabled: row?.enabled ?? true };
+    },
+    setShareEnabled: async ({ tripId, enabled }) => {
+      const [row] = (await db
+        .update(trips)
+        .set({ shareInviteEnabled: enabled })
+        .where(eq(trips.id, tripId))
+        .returning({
+          enabled: trips.shareInviteEnabled,
+        })) as Array<{ enabled: boolean }>;
+
+      return { enabled: row?.enabled ?? enabled };
     },
   };
 }
@@ -765,6 +836,36 @@ export const tripsRouter = {
       getOrCreateShareLink(createTripStore(ctx.db), {
         tripId: ctx.tripId,
         tripRole: ctx.tripRole,
+      }),
+    ),
+
+  regenerateShareLink: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .mutation(({ ctx }) =>
+      regenerateShareLink(createTripStore(ctx.db), {
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+      }),
+    ),
+
+  setShareLinkEnabled: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      setShareLinkEnabled(createTripStore(ctx.db), {
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+        enabled: input.enabled,
       }),
     ),
 

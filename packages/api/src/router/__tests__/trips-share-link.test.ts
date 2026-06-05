@@ -4,7 +4,8 @@ import type { TripStore } from "../trips";
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@localhost:5432/gmacko_test";
 
-const { getOrCreateShareLink } = await import("../trips");
+const { getOrCreateShareLink, regenerateShareLink, setShareLinkEnabled } =
+  await import("../trips");
 
 type TripStatus = "planning" | "confirmed" | "active" | "completed";
 type ClaimMode = "organizer" | "tap";
@@ -63,7 +64,10 @@ function createShareStore(input?: { trips?: TripRecord[] }) {
     trips: [...(input?.trips ?? [])],
   };
 
-  const store: Pick<TripStore, "getShareInfo" | "setShareToken"> = {
+  const store: Pick<
+    TripStore,
+    "getShareInfo" | "setShareToken" | "forceSetShareToken" | "setShareEnabled"
+  > = {
     getShareInfo: async ({ tripId }: { tripId: string }) => {
       const trip = state.trips.find((entry) => entry.id === tripId) ?? null;
       if (!trip) {
@@ -100,6 +104,43 @@ function createShareStore(input?: { trips?: TripRecord[] }) {
         token: current.shareInviteToken ?? token,
         enabled: current.shareInviteEnabled,
       };
+    },
+    forceSetShareToken: async ({
+      tripId,
+      token,
+    }: {
+      tripId: string;
+      token: string;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return { token, enabled: true };
+      }
+      // Unconditional rotation: overwrite any existing token and re-enable.
+      state.trips[index] = {
+        ...state.trips[index]!,
+        shareInviteToken: token,
+        shareInviteEnabled: true,
+        shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+      };
+      return { token, enabled: true };
+    },
+    setShareEnabled: async ({
+      tripId,
+      enabled,
+    }: {
+      tripId: string;
+      enabled: boolean;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return { enabled };
+      }
+      state.trips[index] = {
+        ...state.trips[index]!,
+        shareInviteEnabled: enabled,
+      };
+      return { enabled };
     },
   };
 
@@ -180,6 +221,105 @@ describe("getOrCreateShareLink", () => {
       getOrCreateShareLink(store, {
         tripId: "trip_1",
         tripRole: "member",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("regenerateShareLink", () => {
+  it("rotates to a DIFFERENT token than the current share link", async () => {
+    const { state, store } = createShareStore({ trips: [makeTrip()] });
+
+    const first = await getOrCreateShareLink(store, {
+      tripId: "trip_1",
+      tripRole: "organizer",
+    });
+
+    const rotated = await regenerateShareLink(store, {
+      tripId: "trip_1",
+      tripRole: "organizer",
+    });
+
+    expect(rotated.token).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(rotated.token).not.toBe(first.token);
+    expect(rotated.url).toBe(`https://sortey.app/join/${rotated.token}`);
+    expect(rotated.enabled).toBe(true);
+    // The new token is persisted (old links die).
+    expect(state.trips[0]?.shareInviteToken).toBe(rotated.token);
+  });
+
+  it("re-enables a disabled link when regenerating", async () => {
+    const { state, store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "old-token",
+          shareInviteEnabled: false,
+        }),
+      ],
+    });
+
+    const rotated = await regenerateShareLink(store, {
+      tripId: "trip_1",
+      tripRole: "organizer",
+    });
+
+    expect(rotated.token).not.toBe("old-token");
+    expect(rotated.enabled).toBe(true);
+    expect(state.trips[0]?.shareInviteEnabled).toBe(true);
+    expect(state.trips[0]?.shareInviteToken).toBe(rotated.token);
+  });
+
+  it("rejects non-organizers", async () => {
+    const { store } = createShareStore({ trips: [makeTrip()] });
+
+    await expect(
+      regenerateShareLink(store, {
+        tripId: "trip_1",
+        tripRole: "member",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("setShareLinkEnabled", () => {
+  it("toggles the enabled flag off", async () => {
+    const { state, store } = createShareStore({
+      trips: [makeTrip({ shareInviteToken: "tok", shareInviteEnabled: true })],
+    });
+
+    const result = await setShareLinkEnabled(store, {
+      tripId: "trip_1",
+      tripRole: "organizer",
+      enabled: false,
+    });
+
+    expect(result.enabled).toBe(false);
+    expect(state.trips[0]?.shareInviteEnabled).toBe(false);
+  });
+
+  it("toggles the enabled flag back on", async () => {
+    const { state, store } = createShareStore({
+      trips: [makeTrip({ shareInviteToken: "tok", shareInviteEnabled: false })],
+    });
+
+    const result = await setShareLinkEnabled(store, {
+      tripId: "trip_1",
+      tripRole: "organizer",
+      enabled: true,
+    });
+
+    expect(result.enabled).toBe(true);
+    expect(state.trips[0]?.shareInviteEnabled).toBe(true);
+  });
+
+  it("rejects non-organizers", async () => {
+    const { store } = createShareStore({ trips: [makeTrip()] });
+
+    await expect(
+      setShareLinkEnabled(store, {
+        tripId: "trip_1",
+        tripRole: "member",
+        enabled: false,
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
