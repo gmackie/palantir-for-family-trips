@@ -19,6 +19,19 @@
 - Static Maps URL helper to copy: `apps/nextjs/src/app/trips/page.tsx:34`.
 - Tests live in `packages/api/src/router/__tests__/`.
 
+> ## ⚠️ IMPLEMENTATION PATTERN — READ BEFORE ANY API TASK (overrides the inline code in Tasks 2-5)
+>
+> The trips router uses a **store-abstraction pattern**, and the inline `ctx.db.*` snippets in Tasks 2-5 below show the **logic, not the structure to copy**. The older `createInvite`/`acceptInvite` use `ctx.db` directly and are NOT unit-tested — do **not** imitate them. Instead follow the tested convention used by `create`/`update`:
+>
+> 1. **Extend the `TripStore` interface** (`packages/api/src/router/trips.ts:104`) with the new methods you need, e.g. `getShareInfo`, `setShareToken`, `findTripByShareToken`, `addTripMemberIfMissing`, `ensureWorkspaceMember`. Keep them small and data-shaped.
+> 2. **Extend the production store factory** `createTripStore(db)` (the drizzle-backed impl in the same file) to implement those methods with `db.select/update/insert(...)`.
+> 3. **Write a standalone exported logic function** per task, e.g. `export async function getOrCreateShareLink(store, { tripId, tripRole }) {...}`, `export async function joinTripByShareToken(store, { token, userId, userLabel }) {...}` — mirroring `createTripRecord` (L175) and `updateTripRecord`.
+> 4. **The tRPC procedure is a thin wrapper:** `.mutation(({ ctx, input }) => getOrCreateShareLink(createTripStore(ctx.db), { tripId: ctx.tripId, tripRole: ctx.tripRole }))` — exactly like `create` (L442). Call `requireOrganizerTripRole(ctx.tripRole)` where the plan says organizer-only.
+> 5. **Tests target the standalone function with an in-memory store**, mirroring `createTripStore`/`createAccessStore` mocks in `trips.test.ts` (an object literal whose methods read/write `state.*` arrays). **No real DB.** Add `shareInviteToken`/`shareInviteEnabled`/`shareInviteCreatedAt` to the test `TripRecord` type and the in-memory store methods.
+> 6. **`sendPushToTripMembers`** is a side-effect called in the procedure layer (not the store fn) — invoke it in the thin wrapper so the logic fn stays DB/IO-free and testable.
+>
+> Net per API task = extend interface + extend factory + logic fn + thin procedure + function-level test. The plan's `ctx.db` code is your spec for *what the SQL does*, not where it lives.
+
 ---
 
 ## Task 1: Schema — add share-link columns to `trip`
