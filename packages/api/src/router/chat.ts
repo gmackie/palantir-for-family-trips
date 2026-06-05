@@ -234,10 +234,12 @@ export const chatRouter = {
         body: input.body,
       });
 
-      // TODO(Task 4): broadcastToTripRoom(ctx, ctx.tripId, message) — fan the
-      // persisted message out to connected WebSocket clients via the TripRoom
-      // Durable Object. The `env`/DO-namespace access is wired into the tRPC
-      // context in Task 4; until then `send` only persists + pushes.
+      // Fan the persisted message out to connected WebSocket clients via the
+      // TripRoom Durable Object. `ctx.realtime` is populated by the worker entry
+      // (Workers runtime) and is `undefined`/`null` in unit tests, where this is
+      // a no-op. Best-effort: a broadcast failure must never roll back or block
+      // the already-persisted message (the impl wraps in try/catch + void).
+      ctx.realtime?.broadcast(ctx.tripId, { type: "message", message });
 
       // Notify offline members. Fire-and-forget so a push failure never blocks
       // (or rolls back) the already-persisted message.
@@ -285,8 +287,9 @@ export const chatRouter = {
         tripId: ctx.tripId,
       });
 
-      // TODO(Task 4): broadcastToTripRoom(ctx, ctx.tripId, { type: "delete",
-      // id: deleted.id }) — tell connected clients to render the tombstone.
+      // Tell connected clients to render the tombstone. No-op in unit tests
+      // (no realtime runtime); best-effort in the Workers runtime.
+      ctx.realtime?.broadcast(ctx.tripId, { type: "delete", id: deleted.id });
 
       return deleted;
     }),

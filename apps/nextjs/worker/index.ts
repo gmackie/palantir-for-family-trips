@@ -1,5 +1,9 @@
 import { wrapFetch } from "@forgegraph/otel/workers";
+import { runWithRealtimeRuntime } from "@sortey/api";
+import { and, eq } from "@sortey/db";
+import { db } from "@sortey/db/client";
 import { runWithDatabaseRuntime } from "@sortey/db/runtime";
+import { tripMembers } from "@sortey/db/schema";
 import handler from "vinext/server/app-router-entry";
 import type { ImageConfig } from "vinext/server/image-optimization";
 import {
@@ -7,6 +11,7 @@ import {
   DEFAULT_IMAGE_SIZES,
   handleImageOptimization,
 } from "vinext/server/image-optimization";
+import { auth } from "~/auth/server";
 
 interface R2Bucket {
   put(
@@ -23,7 +28,10 @@ interface DurableObjectId {
   toString(): string;
 }
 interface DurableObjectStub {
-  fetch(request: Request): Promise<Response>;
+  // The Workers runtime's DO stub `fetch` mirrors the global `fetch` signature:
+  // it accepts either a `Request` (used for the upgrade forward) or a URL string
+  // + `RequestInit` (used by the server-side `/broadcast` helper).
+  fetch(input: Request | string, init?: RequestInit): Promise<Response>;
 }
 interface DurableObjectNamespace {
   idFromName(name: string): DurableObjectId;
@@ -81,6 +89,98 @@ function syncEnvSecrets(env: Env) {
   }
 }
 
+// Server-side fan-out seam. Persisting a chat message (tRPC `chat.send`/`delete`)
+// POSTs the event to the trip's TripRoom DO, which broadcasts it to every
+// connected socket. This is the ONLY path that reaches the DO's `/broadcast`
+// route — it is never exposed to the public internet (see the WS route below,
+// which only ever forwards the upgrade).
+//
+// Best-effort: a broadcast failure must never roll back or block the
+// already-persisted mutation, so we swallow errors and never await the result in
+// a way that propagates a rejection. The DO call is fired and forgotten.
+function broadcastToTripRoom(env: Env, tripId: string, payload: unknown): void {
+  try {
+    const id = env.TRIP_ROOM.idFromName(tripId);
+    const stub = env.TRIP_ROOM.get(id);
+    void stub
+      .fetch("https://do/broadcast", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+      .catch(() => {
+        // Swallow: realtime delivery is opportunistic; Postgres is the source
+        // of truth and history backfill covers any dropped broadcast.
+      });
+  } catch {
+    // `idFromName`/`get` should not throw, but never let a fan-out problem
+    // surface into the persisted mutation.
+  }
+}
+
+// --- Authenticated chat WebSocket upgrade -----------------------------------
+//
+// SECURITY-CRITICAL. The TripRoom DO trusts the `x-user-id` / `x-user-name`
+// headers unconditionally, so this is the trust boundary: nothing reaches the DO
+// upgrade path without (1) a valid better-auth session and (2) verified trip
+// membership, and the identity headers are derived solely from the validated
+// session — any client-supplied `x-user-*` header is stripped first.
+//
+// Must run inside `runWithDatabaseRuntime` so the `db` proxy resolves the
+// request's Hyperdrive connection for the membership query.
+async function handleChatWebSocketUpgrade(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  // Only a real WebSocket upgrade is forwarded to the DO.
+  if (request.headers.get("Upgrade") !== "websocket") {
+    return new Response("expected websocket upgrade", { status: 426 });
+  }
+
+  // Path is `/api/chat/<tripId>/ws` -> ["", "api", "chat", "<tripId>", "ws"].
+  const tripId = url.pathname.split("/")[3];
+  if (!tripId) {
+    return new Response("missing trip id", { status: 400 });
+  }
+
+  // 1. Validate the better-auth session from the request cookies. Same
+  //    mechanism as `~/auth/server` and the tRPC route handler.
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userId = session?.user?.id;
+  if (!userId) {
+    return new Response("unauthorized", { status: 401 });
+  }
+  const name = session.user.name ?? "";
+
+  // 2. Verify trip membership with a tiny scoped query. `db` here resolves the
+  //    request's Hyperdrive connection via the surrounding database runtime.
+  const membership = (await db
+    .select({ userId: tripMembers.userId })
+    .from(tripMembers)
+    .where(and(eq(tripMembers.tripId, tripId), eq(tripMembers.userId, userId)))
+    .limit(1)) as { userId: string }[];
+  if (membership.length === 0) {
+    return new Response("forbidden", { status: 403 });
+  }
+
+  // 3. SECURITY: build a FRESH Headers from the incoming request, then DELETE
+  //    any client-supplied identity headers (case-insensitive via
+  //    `Headers.delete`) BEFORE setting the trusted values. Spreading the
+  //    request headers into an object literal would NOT reliably overwrite a
+  //    spoofed header, so we mutate an explicit Headers instance instead.
+  const forwardHeaders = new Headers(request.headers);
+  forwardHeaders.delete("x-user-id");
+  forwardHeaders.delete("x-user-name");
+  forwardHeaders.set("x-user-id", userId);
+  forwardHeaders.set("x-user-name", name);
+
+  // Forward the upgrade to the trip's DO. This is the only client-reachable DO
+  // path; `/broadcast` is never routed here from the internet.
+  const id = env.TRIP_ROOM.idFromName(tripId);
+  const stub = env.TRIP_ROOM.get(id);
+  return stub.fetch(new Request(request, { headers: forwardHeaders }));
+}
+
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
@@ -131,6 +231,18 @@ const instrumentedFetch = wrapFetch(
       async () => {
         const url = new URL(request.url);
 
+        // Authenticated chat WebSocket upgrade: `/api/chat/<tripId>/ws`. Handled
+        // here (inside the DB runtime, so the membership query works) BEFORE the
+        // request ever reaches the Next.js handler. The DO's `/broadcast` route
+        // is intentionally NOT reachable from any client path.
+        if (
+          request.method === "GET" &&
+          url.pathname.startsWith("/api/chat/") &&
+          url.pathname.endsWith("/ws")
+        ) {
+          return handleChatWebSocketUpgrade(request, env, url);
+        }
+
         if (url.pathname === "/_vinext/image") {
           const allowedWidths = [
             ...DEFAULT_DEVICE_SIZES,
@@ -162,7 +274,18 @@ const instrumentedFetch = wrapFetch(
           );
         }
 
-        return handler.fetch(request, env, ctx);
+        // Make the TripRoom fan-out seam available to tRPC mutations
+        // (`chat.send` / `chat.delete`) for the duration of this request.
+        // `createTRPCContext` reads this via `getRealtimeRuntime()` and exposes
+        // it as `ctx.realtime`. In unit tests there is no runtime, so the
+        // broadcast is skipped. `broadcast` is best-effort and never throws.
+        return runWithRealtimeRuntime(
+          {
+            broadcast: (tripId, payload) =>
+              broadcastToTripRoom(env, tripId, payload),
+          },
+          () => handler.fetch(request, env, ctx),
+        );
       },
     );
   },
