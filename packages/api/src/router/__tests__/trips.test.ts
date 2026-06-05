@@ -458,6 +458,9 @@ function createTripStore(input?: {
           joinedAt: new Date("2026-04-15T12:00:00.000Z"),
         });
       }
+      // true only when a NEW trip_member row landed (mirrors production
+      // onConflictDoNothing().returning() length check).
+      return { tripMemberInserted: !tripExists };
     },
     getSharePreview: async ({ token }: { token: string }) => {
       const trip = state.trips.find(

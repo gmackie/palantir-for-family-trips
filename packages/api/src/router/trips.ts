@@ -190,7 +190,7 @@ export interface TripStore {
     workspaceId: string;
     tripId: string;
     userId: string;
-  }): Promise<void>;
+  }): Promise<{ tripMemberInserted: boolean }>;
   getSharePreview(input: { token: string }): Promise<{
     tripId: string;
     tripName: string;
@@ -430,7 +430,11 @@ export async function joinTripByShareToken(
     token: string;
     userId: string;
   },
-): Promise<{ tripId: string; workspaceId: string }> {
+): Promise<{
+  tripId: string;
+  workspaceId: string;
+  tripMemberInserted: boolean;
+}> {
   const trip = await store.findTripByShareToken({ token: input.token });
 
   if (!trip) {
@@ -456,13 +460,17 @@ export async function joinTripByShareToken(
 
   // Both membership writes happen atomically (and idempotently) inside the
   // store, so a crash can't leave a workspace member without a trip member.
-  await store.joinTripMembership({
+  const { tripMemberInserted } = await store.joinTripMembership({
     workspaceId: trip.workspaceId,
     tripId: trip.tripId,
     userId: input.userId,
   });
 
-  return { tripId: trip.tripId, workspaceId: trip.workspaceId };
+  return {
+    tripId: trip.tripId,
+    workspaceId: trip.workspaceId,
+    tripMemberInserted,
+  };
 }
 
 export async function getShareLinkPreview(
@@ -735,7 +743,7 @@ function createTripStore(db: any): TripStore {
       // matching trip member. onConflictDoNothing leans on the existing unique
       // constraints, making re-joining a safe no-op.
       // biome-ignore lint/suspicious/noExplicitAny: Drizzle tx type is complex
-      await db.transaction(async (tx: any) => {
+      return await db.transaction(async (tx: any) => {
         await tx
           .insert(workspaceMembership)
           .values({ workspaceId, userId, role: "member" })
@@ -745,12 +753,18 @@ function createTripStore(db: any): TripStore {
               workspaceMembership.userId,
             ],
           });
-        await tx
+        // An empty returning() result means the row already existed (conflict),
+        // so we only signal a fresh insert when a new trip_member row landed.
+        const insertedTripMembers = (await tx
           .insert(tripMembers)
           .values({ tripId, userId, role: "member" })
           .onConflictDoNothing({
             target: [tripMembers.tripId, tripMembers.userId],
-          });
+          })
+          .returning({ tripId: tripMembers.tripId })) as Array<{
+          tripId: string;
+        }>;
+        return { tripMemberInserted: insertedTripMembers.length > 0 };
       });
     },
     getSharePreview: async ({ token }) => {
@@ -1077,13 +1091,17 @@ export const tripsRouter = {
         userId: ctx.session.user.id,
       });
 
-      void sendPushToTripMembers(ctx.db, {
-        tripId: result.tripId,
-        excludeUserId: ctx.session.user.id,
-        title: "New Member",
-        body: `${ctx.session.user.name ?? ctx.session.user.email ?? "Someone"} joined the trip`,
-        data: { tripId: result.tripId, screen: "members" },
-      });
+      // joinTripByShareToken is idempotent; only notify when a NEW member
+      // actually joined so re-opening the link doesn't spam "X joined".
+      if (result.tripMemberInserted) {
+        void sendPushToTripMembers(ctx.db, {
+          tripId: result.tripId,
+          excludeUserId: ctx.session.user.id,
+          title: "New Member",
+          body: `${ctx.session.user.name ?? ctx.session.user.email ?? "Someone"} joined the trip`,
+          data: { tripId: result.tripId, screen: "members" },
+        });
+      }
 
       return result;
     }),

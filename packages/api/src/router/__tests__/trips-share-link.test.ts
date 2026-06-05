@@ -213,6 +213,9 @@ function createShareStore(input?: {
       if (!tripExists) {
         state.tripMembers.push({ tripId, userId, role: "member" });
       }
+      // tripMemberInserted is true only when a NEW trip_member row landed
+      // (mirrors the production onConflictDoNothing().returning() length check).
+      return { tripMemberInserted: !tripExists };
     },
     getSharePreview: async ({ token }: { token: string }) => {
       const trip = state.trips.find(
@@ -437,6 +440,7 @@ describe("joinTripByShareToken", () => {
     expect(result).toEqual({
       tripId: "trip_1",
       workspaceId: "workspace_1",
+      tripMemberInserted: true,
     });
     expect(
       state.workspaceMemberships.some(
@@ -473,6 +477,7 @@ describe("joinTripByShareToken", () => {
     expect(result).toEqual({
       tripId: "trip_1",
       workspaceId: "workspace_1",
+      tripMemberInserted: false,
     });
     // No duplicates were created.
     expect(
@@ -481,6 +486,30 @@ describe("joinTripByShareToken", () => {
     expect(
       state.tripMembers.filter((m) => m.userId === "stranger_1"),
     ).toHaveLength(1);
+  });
+
+  it("signals tripMemberInserted=true on first join, false on idempotent re-join", async () => {
+    const { store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "live-token",
+          shareInviteEnabled: true,
+          status: "active",
+        }),
+      ],
+    });
+
+    const first = await joinTripByShareToken(store, {
+      token: "live-token",
+      userId: "stranger_1",
+    });
+    expect(first.tripMemberInserted).toBe(true);
+
+    const second = await joinTripByShareToken(store, {
+      token: "live-token",
+      userId: "stranger_1",
+    });
+    expect(second.tripMemberInserted).toBe(false);
   });
 
   it("rejects a disabled token", async () => {

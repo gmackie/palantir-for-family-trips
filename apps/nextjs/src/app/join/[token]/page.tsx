@@ -6,9 +6,6 @@ import { auth, getSession } from "~/auth/server";
 import { InviteSignInForm } from "../../invite/[token]/_components/invite-sign-in-form";
 import { JoinButton } from "./_components/join-button";
 
-// Static branded fallback used when the destination has no map coordinates.
-const OG_FALLBACK_IMAGE = "/og-default.png";
-
 // Copied from apps/nextjs/src/app/trips/page.tsx — dark Static Maps thumbnail of
 // the destination, used as the OG card image when coordinates are available.
 function mapThumbnailUrl(lat: string, lng: string) {
@@ -17,20 +14,18 @@ function mapThumbnailUrl(lat: string, lng: string) {
   return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=11&size=600x300&scale=2&maptype=roadmap&style=element:geometry%7Ccolor:0x161B22&style=element:labels.text.fill%7Ccolor:0x8B949E&style=element:labels.text.stroke%7Ccolor:0x0A0C10&style=feature:road%7Celement:geometry%7Ccolor:0x21262D&style=feature:water%7Celement:geometry%7Ccolor:0x0A0C10&key=${apiKey}`;
 }
 
-// Builds the OG card image for an active preview. When the destination has
-// coordinates, render a dark Static Maps thumbnail of the destination as the
-// rich preview card; otherwise fall back to the branded default.
+// Builds the OG card image for an active preview. Returns a dark Static Maps
+// thumbnail of the destination when coordinates AND a Maps API key are
+// available, otherwise null so the preview omits an image entirely (avoids a
+// broken og:image for a non-existent fallback asset).
 function ogImageForPreview(preview: {
   destinationLat: string | null;
   destinationLng: string | null;
-}): string {
+}): string | null {
   if (preview.destinationLat && preview.destinationLng) {
-    return (
-      mapThumbnailUrl(preview.destinationLat, preview.destinationLng) ??
-      OG_FALLBACK_IMAGE
-    );
+    return mapThumbnailUrl(preview.destinationLat, preview.destinationLng);
   }
-  return OG_FALLBACK_IMAGE;
+  return null;
 }
 
 async function createCaller() {
@@ -89,9 +84,12 @@ export async function generateMetadata(props: {
     openGraph: {
       title: `Join ${preview.tripName}`,
       description,
-      images: [ogImage],
+      // Only attach an image when a real Static Maps URL could be built;
+      // omit it otherwise so platforms render a text-only preview.
+      ...(ogImage ? { images: [ogImage] } : {}),
     },
-    twitter: { card: "summary_large_image" },
+    // The large-image card only makes sense when there's an image to show.
+    ...(ogImage ? { twitter: { card: "summary_large_image" as const } } : {}),
   };
 }
 
