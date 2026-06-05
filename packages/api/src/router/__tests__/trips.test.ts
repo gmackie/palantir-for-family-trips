@@ -44,6 +44,9 @@ type TripRecord = {
   startDate: string | null;
   endDate: string | null;
   tz: string;
+  shareInviteToken: string | null;
+  shareInviteEnabled: boolean;
+  shareInviteCreatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date | null;
 };
@@ -195,6 +198,9 @@ function createTripStore(input?: {
         startDate: input.startDate ?? null,
         endDate: input.endDate ?? null,
         tz: input.tz ?? "UTC",
+        shareInviteToken: null,
+        shareInviteEnabled: true,
+        shareInviteCreatedAt: null,
         createdAt: new Date("2026-04-15T12:00:00.000Z"),
         updatedAt: null,
       };
@@ -324,6 +330,34 @@ function createTripStore(input?: {
 
       return state.trips[index]!;
     },
+    getShareInfo: async ({ tripId }: { tripId: string }) => {
+      const trip = state.trips.find((entry) => entry.id === tripId) ?? null;
+      if (!trip) {
+        return null;
+      }
+      return {
+        token: trip.shareInviteToken,
+        enabled: trip.shareInviteEnabled,
+      };
+    },
+    setShareToken: async ({
+      tripId,
+      token,
+    }: {
+      tripId: string;
+      token: string;
+    }) => {
+      const index = state.trips.findIndex((entry) => entry.id === tripId);
+      if (index === -1) {
+        return;
+      }
+      state.trips[index] = {
+        ...state.trips[index]!,
+        shareInviteToken: token,
+        shareInviteEnabled: true,
+        shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+      };
+    },
   };
 
   return { state, store };
@@ -378,6 +412,9 @@ describe("trip guards", () => {
           startDate: "2026-06-01",
           endDate: "2026-06-08",
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-01T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -443,6 +480,9 @@ describe("trip creation", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -462,6 +502,9 @@ describe("trip creation", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-11T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -481,6 +524,9 @@ describe("trip creation", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Paris",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-12T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -554,6 +600,9 @@ describe("trip updates", () => {
           startDate: "2026-06-01",
           endDate: "2026-06-08",
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -598,6 +647,9 @@ describe("trip updates", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },
@@ -635,6 +687,9 @@ describe("trip updates", () => {
           startDate: null,
           endDate: null,
           tz: "Europe/Rome",
+          shareInviteToken: null,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: null,
           createdAt: new Date("2026-04-10T00:00:00.000Z"),
           updatedAt: null,
         },

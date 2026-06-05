@@ -161,6 +161,10 @@ export interface TripStore {
       | "paused"
       | "completed";
   }): Promise<TripSummary | null>;
+  getShareInfo(input: {
+    tripId: string;
+  }): Promise<{ token: string | null; enabled: boolean } | null>;
+  setShareToken(input: { tripId: string; token: string }): Promise<void>;
 }
 
 function requireOrganizerTripRole(tripRole: "organizer" | "member") {
@@ -286,6 +290,43 @@ export function setTripClaimMode(
   },
 ) {
   return updateTripRecord(store, input);
+}
+
+const SHARE_BASE_URL = "https://sortey.app/join";
+
+function shareUrl(token: string): string {
+  return `${SHARE_BASE_URL}/${token}`;
+}
+
+export async function getOrCreateShareLink(
+  store: TripStore,
+  input: {
+    tripId: string;
+    tripRole: "organizer" | "member";
+  },
+): Promise<{ token: string; url: string; enabled: boolean }> {
+  requireOrganizerTripRole(input.tripRole);
+
+  const info = await store.getShareInfo({ tripId: input.tripId });
+
+  if (!info) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Trip not found.",
+    });
+  }
+
+  let token = info.token;
+  let enabled = info.enabled;
+
+  if (!token) {
+    token = generateInviteToken();
+    await store.setShareToken({ tripId: input.tripId, token });
+    // setShareToken (re)enables the link when minting a fresh token.
+    enabled = true;
+  }
+
+  return { token, url: shareUrl(token), enabled };
 }
 
 function createTripStore(db: any): TripStore {
@@ -434,6 +475,28 @@ function createTripStore(db: any): TripStore {
       }
 
       return updatedTrip;
+    },
+    getShareInfo: async ({ tripId }) => {
+      const [row] = (await db
+        .select({
+          token: trips.shareInviteToken,
+          enabled: trips.shareInviteEnabled,
+        })
+        .from(trips)
+        .where(eq(trips.id, tripId))
+        .limit(1)) as Array<{ token: string | null; enabled: boolean }>;
+
+      return row ?? null;
+    },
+    setShareToken: async ({ tripId, token }) => {
+      await db
+        .update(trips)
+        .set({
+          shareInviteToken: token,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: new Date(),
+        })
+        .where(eq(trips.id, tripId));
     },
   };
 }
@@ -668,6 +731,20 @@ export const tripsRouter = {
 
       return rows;
     }),
+
+  getShareLink: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(({ ctx }) =>
+      getOrCreateShareLink(createTripStore(ctx.db), {
+        tripId: ctx.tripId,
+        tripRole: ctx.tripRole,
+      }),
+    ),
 
   getInviteByToken: publicProcedure
     .input(
