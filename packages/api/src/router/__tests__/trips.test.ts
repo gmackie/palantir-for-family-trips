@@ -471,6 +471,8 @@ function createTripStore(input?: {
         tripId: trip.id,
         tripName: trip.name,
         destinationName: trip.destinationName,
+        destinationLat: trip.destinationLat,
+        destinationLng: trip.destinationLng,
         startDate: trip.startDate,
         endDate: trip.endDate,
         enabled: trip.shareInviteEnabled,

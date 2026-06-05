@@ -195,6 +195,8 @@ export interface TripStore {
     tripId: string;
     tripName: string;
     destinationName: string | null;
+    destinationLat: string | null;
+    destinationLng: string | null;
     startDate: string | null;
     endDate: string | null;
     enabled: boolean;
@@ -409,6 +411,8 @@ export type ShareLinkPreview =
       tripId: string;
       tripName: string;
       destinationName: string | null;
+      destinationLat: string | null;
+      destinationLng: string | null;
       startDate: string | null;
       endDate: string | null;
     }
@@ -487,6 +491,8 @@ export async function getShareLinkPreview(
     tripId: preview.tripId,
     tripName: preview.tripName,
     destinationName: preview.destinationName,
+    destinationLat: preview.destinationLat,
+    destinationLng: preview.destinationLng,
     startDate: preview.startDate,
     endDate: preview.endDate,
   };
@@ -753,6 +759,8 @@ function createTripStore(db: any): TripStore {
           tripId: trips.id,
           tripName: trips.name,
           destinationName: trips.destinationName,
+          destinationLat: trips.destinationLat,
+          destinationLng: trips.destinationLng,
           startDate: trips.startDate,
           endDate: trips.endDate,
           enabled: trips.shareInviteEnabled,
@@ -764,6 +772,8 @@ function createTripStore(db: any): TripStore {
         tripId: string;
         tripName: string;
         destinationName: string | null;
+        destinationLat: string | null;
+        destinationLng: string | null;
         startDate: string | null;
         endDate: string | null;
         enabled: boolean;

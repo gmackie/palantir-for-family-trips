@@ -17,22 +17,16 @@ function mapThumbnailUrl(lat: string, lng: string) {
   return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=11&size=600x300&scale=2&maptype=roadmap&style=element:geometry%7Ccolor:0x161B22&style=element:labels.text.fill%7Ccolor:0x8B949E&style=element:labels.text.stroke%7Ccolor:0x0A0C10&style=feature:road%7Celement:geometry%7Ccolor:0x21262D&style=feature:water%7Celement:geometry%7Ccolor:0x0A0C10&key=${apiKey}`;
 }
 
-// Builds the OG card image for an active preview. The preview procedure only
-// exposes destination *name* (not lat/lng), so we fall back to the branded
-// default; if coordinates are ever added to the preview shape, prefer the
-// Static Maps thumbnail.
+// Builds the OG card image for an active preview. When the destination has
+// coordinates, render a dark Static Maps thumbnail of the destination as the
+// rich preview card; otherwise fall back to the branded default.
 function ogImageForPreview(preview: {
-  destinationName: string | null;
+  destinationLat: string | null;
+  destinationLng: string | null;
 }): string {
-  // The preview shape exposes destination *name* only (not lat/lng). When
-  // coordinates are added to the preview, swap in mapThumbnailUrl(lat, lng).
-  const coords = preview as {
-    destinationLat?: string | null;
-    destinationLng?: string | null;
-  };
-  if (coords.destinationLat && coords.destinationLng) {
+  if (preview.destinationLat && preview.destinationLng) {
     return (
-      mapThumbnailUrl(coords.destinationLat, coords.destinationLng) ??
+      mapThumbnailUrl(preview.destinationLat, preview.destinationLng) ??
       OG_FALLBACK_IMAGE
     );
   }
