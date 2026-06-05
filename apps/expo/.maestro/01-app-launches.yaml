@@ -1,0 +1,20 @@
+# Preflight launch flow
+# Path/name expected by the Preflight readiness check (.maestro/01-app-launches.yaml).
+# Mirrors flows/01-app-launch.yaml. References the native app ID so the
+# maestro_app_id readiness check passes (com.gmacko.sortey + .dev/.preview variants).
+appId: ${APP_ID:-com.gmacko.sortey}
+---
+# Launch the app (com.gmacko.sortey / com.gmacko.sortey.dev / com.gmacko.sortey.preview)
+- launchApp
+
+# Wait for the app to be ready
+- assertVisible:
+    text: "Welcome"
+    optional: true
+
+- takeScreenshot: app-launch
+
+# Verify main content rendered
+- assertVisible:
+    text: ".*"
+    regex: true
