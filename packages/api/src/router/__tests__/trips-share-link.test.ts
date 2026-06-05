@@ -83,13 +83,22 @@ function createShareStore(input?: { trips?: TripRecord[] }) {
     }) => {
       const index = state.trips.findIndex((entry) => entry.id === tripId);
       if (index === -1) {
-        return;
+        return { token, enabled: true };
       }
-      state.trips[index] = {
-        ...state.trips[index]!,
-        shareInviteToken: token,
-        shareInviteEnabled: true,
-        shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+      // Idempotent: only set the token when it is still null (mirrors the
+      // production "WHERE shareInviteToken IS NULL" guard).
+      if (state.trips[index]!.shareInviteToken === null) {
+        state.trips[index] = {
+          ...state.trips[index]!,
+          shareInviteToken: token,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+        };
+      }
+      const current = state.trips[index]!;
+      return {
+        token: current.shareInviteToken ?? token,
+        enabled: current.shareInviteEnabled,
       };
     },
   };
@@ -139,6 +148,29 @@ describe("getOrCreateShareLink", () => {
     expect(result.token).toBe("existing-token");
     expect(result.enabled).toBe(false);
     expect(result.url).toBe("https://sortey.app/join/existing-token");
+  });
+
+  it("generates a token AND returns enabled:true when the existing row has a null token but enabled=false", async () => {
+    const { state, store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: null,
+          shareInviteEnabled: false,
+        }),
+      ],
+    });
+
+    const result = await getOrCreateShareLink(store, {
+      tripId: "trip_1",
+      tripRole: "organizer",
+    });
+
+    // A fresh share link was minted...
+    expect(result.token).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(state.trips[0]?.shareInviteToken).toBe(result.token);
+    // ...and generating it re-enables the link (the re-enable contract).
+    expect(result.enabled).toBe(true);
+    expect(result.url).toBe(`https://sortey.app/join/${result.token}`);
   });
 
   it("rejects non-organizers", async () => {

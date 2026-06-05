@@ -164,7 +164,10 @@ export interface TripStore {
   getShareInfo(input: {
     tripId: string;
   }): Promise<{ token: string | null; enabled: boolean } | null>;
-  setShareToken(input: { tripId: string; token: string }): Promise<void>;
+  setShareToken(input: {
+    tripId: string;
+    token: string;
+  }): Promise<{ token: string; enabled: boolean }>;
 }
 
 function requireOrganizerTripRole(tripRole: "organizer" | "member") {
@@ -320,10 +323,15 @@ export async function getOrCreateShareLink(
   let enabled = info.enabled;
 
   if (!token) {
-    token = generateInviteToken();
-    await store.setShareToken({ tripId: input.tripId, token });
-    // setShareToken (re)enables the link when minting a fresh token.
-    enabled = true;
+    // setShareToken is idempotent: concurrent first-callers converge on the
+    // single winning token, and it returns the now-current authoritative
+    // { token, enabled } (minting a fresh link re-enables it).
+    const result = await store.setShareToken({
+      tripId: input.tripId,
+      token: generateInviteToken(),
+    });
+    token = result.token;
+    enabled = result.enabled;
   }
 
   return { token, url: shareUrl(token), enabled };
@@ -489,6 +497,9 @@ function createTripStore(db: any): TripStore {
       return row ?? null;
     },
     setShareToken: async ({ tripId, token }) => {
+      // Idempotent: only set the token when it is still null, so concurrent
+      // first-callers converge on a single winning token (last-writer-wins is
+      // avoided). Then re-select to return the now-current authoritative state.
       await db
         .update(trips)
         .set({
@@ -496,7 +507,18 @@ function createTripStore(db: any): TripStore {
           shareInviteEnabled: true,
           shareInviteCreatedAt: new Date(),
         })
-        .where(eq(trips.id, tripId));
+        .where(and(eq(trips.id, tripId), isNull(trips.shareInviteToken)));
+
+      const [row] = (await db
+        .select({
+          token: trips.shareInviteToken,
+          enabled: trips.shareInviteEnabled,
+        })
+        .from(trips)
+        .where(eq(trips.id, tripId))
+        .limit(1)) as Array<{ token: string | null; enabled: boolean }>;
+
+      return { token: row?.token ?? token, enabled: row?.enabled ?? true };
     },
   };
 }

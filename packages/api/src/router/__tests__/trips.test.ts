@@ -349,13 +349,22 @@ function createTripStore(input?: {
     }) => {
       const index = state.trips.findIndex((entry) => entry.id === tripId);
       if (index === -1) {
-        return;
+        return { token, enabled: true };
       }
-      state.trips[index] = {
-        ...state.trips[index]!,
-        shareInviteToken: token,
-        shareInviteEnabled: true,
-        shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+      // Idempotent: only set the token when it is still null (mirrors the
+      // production "WHERE shareInviteToken IS NULL" guard).
+      if (state.trips[index]!.shareInviteToken === null) {
+        state.trips[index] = {
+          ...state.trips[index]!,
+          shareInviteToken: token,
+          shareInviteEnabled: true,
+          shareInviteCreatedAt: new Date("2026-04-16T08:00:00.000Z"),
+        };
+      }
+      const current = state.trips[index]!;
+      return {
+        token: current.shareInviteToken ?? token,
+        enabled: current.shareInviteEnabled,
       };
     },
   };
