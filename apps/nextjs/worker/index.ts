@@ -139,8 +139,13 @@ async function handleChatWebSocketUpgrade(
 
   // Path is `/api/chat/<tripId>/ws` -> ["", "api", "chat", "<tripId>", "ws"].
   const tripId = url.pathname.split("/")[3];
-  if (!tripId) {
-    return new Response("missing trip id", { status: 400 });
+  if (
+    !tripId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      tripId,
+    )
+  ) {
+    return new Response("invalid trip id", { status: 400 });
   }
 
   // 1. Validate the better-auth session from the request cookies. Same

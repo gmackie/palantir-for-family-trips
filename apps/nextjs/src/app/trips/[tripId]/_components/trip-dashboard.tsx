@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CenterView } from "./center-view";
 import { ExpensesPanel } from "./inspector/expenses-panel";
@@ -64,6 +65,16 @@ export function TripDashboard(props: {
     props;
   const [activeNav, setActiveNav] = useState<NavItem>("overview");
   const [timelineOpen, setTimelineOpen] = useState(true);
+  const router = useRouter();
+
+  function handleNavClick(item: NavItem) {
+    // Chat lives at its own route rather than in the inspector rail.
+    if (item === "chat") {
+      router.push(`/trips/${trip.id}/chat`);
+      return;
+    }
+    setActiveNav(item);
+  }
 
   function renderInspector() {
     switch (activeNav) {
@@ -201,7 +212,7 @@ export function TripDashboard(props: {
         {/* Left nav rail */}
         <NavRail
           activeItem={activeNav}
-          onItemClick={setActiveNav}
+          onItemClick={handleNavClick}
           tripStatus={trip.status}
         />
 
