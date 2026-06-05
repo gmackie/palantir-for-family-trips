@@ -4,9 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
+import { ShareInviteCard } from "../share-invite-card";
 
-export function MembersPanel(props: { tripId: string; workspaceId: string }) {
-  const { tripId, workspaceId } = props;
+export function MembersPanel(props: {
+  tripId: string;
+  workspaceId: string;
+  tripName: string;
+}) {
+  const { tripId, workspaceId, tripName } = props;
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState("");
@@ -44,6 +49,12 @@ export function MembersPanel(props: { tripId: string; workspaceId: string }) {
 
   return (
     <div className="space-y-3 p-4">
+      <ShareInviteCard
+        workspaceId={workspaceId}
+        tripId={tripId}
+        tripName={tripName}
+      />
+
       <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
         Trip Members
       </h3>
