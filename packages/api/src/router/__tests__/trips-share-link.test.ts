@@ -4,8 +4,13 @@ import type { TripStore } from "../trips";
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@localhost:5432/gmacko_test";
 
-const { getOrCreateShareLink, regenerateShareLink, setShareLinkEnabled } =
-  await import("../trips");
+const {
+  getOrCreateShareLink,
+  regenerateShareLink,
+  setShareLinkEnabled,
+  joinTripByShareToken,
+  getShareLinkPreview,
+} = await import("../trips");
 
 type TripStatus = "planning" | "confirmed" | "active" | "completed";
 type ClaimMode = "organizer" | "tap";
@@ -59,14 +64,39 @@ function makeTrip(overrides: Partial<TripRecord> = {}): TripRecord {
   };
 }
 
-function createShareStore(input?: { trips?: TripRecord[] }) {
+type WorkspaceMembershipRecord = {
+  workspaceId: string;
+  userId: string;
+  role: "owner" | "admin" | "member";
+};
+
+type TripMemberRecord = {
+  tripId: string;
+  userId: string;
+  role: "organizer" | "member";
+};
+
+function createShareStore(input?: {
+  trips?: TripRecord[];
+  workspaceMemberships?: WorkspaceMembershipRecord[];
+  tripMembers?: TripMemberRecord[];
+}) {
   const state = {
     trips: [...(input?.trips ?? [])],
+    workspaceMemberships: [...(input?.workspaceMemberships ?? [])],
+    tripMembers: [...(input?.tripMembers ?? [])],
   };
 
   const store: Pick<
     TripStore,
-    "getShareInfo" | "setShareToken" | "forceSetShareToken" | "setShareEnabled"
+    | "getShareInfo"
+    | "setShareToken"
+    | "forceSetShareToken"
+    | "setShareEnabled"
+    | "findTripByShareToken"
+    | "ensureWorkspaceMember"
+    | "addTripMemberIfMissing"
+    | "getSharePreview"
   > = {
     getShareInfo: async ({ tripId }: { tripId: string }) => {
       const trip = state.trips.find((entry) => entry.id === tripId) ?? null;
@@ -141,6 +171,72 @@ function createShareStore(input?: { trips?: TripRecord[] }) {
         shareInviteEnabled: enabled,
       };
       return { enabled };
+    },
+    findTripByShareToken: async ({ token }: { token: string }) => {
+      const trip = state.trips.find(
+        (entry) =>
+          entry.shareInviteToken !== null && entry.shareInviteToken === token,
+      );
+      if (!trip) {
+        return null;
+      }
+      return {
+        tripId: trip.id,
+        workspaceId: trip.workspaceId,
+        enabled: trip.shareInviteEnabled,
+        status: trip.status,
+      };
+    },
+    ensureWorkspaceMember: async ({
+      workspaceId,
+      userId,
+    }: {
+      workspaceId: string;
+      userId: string;
+    }) => {
+      // Idempotent: insert only if missing.
+      const exists = state.workspaceMemberships.some(
+        (m) => m.workspaceId === workspaceId && m.userId === userId,
+      );
+      if (!exists) {
+        state.workspaceMemberships.push({
+          workspaceId,
+          userId,
+          role: "member",
+        });
+      }
+    },
+    addTripMemberIfMissing: async ({
+      tripId,
+      userId,
+    }: {
+      tripId: string;
+      userId: string;
+    }) => {
+      // Idempotent: onConflictDoNothing on (tripId, userId).
+      const exists = state.tripMembers.some(
+        (m) => m.tripId === tripId && m.userId === userId,
+      );
+      if (!exists) {
+        state.tripMembers.push({ tripId, userId, role: "member" });
+      }
+    },
+    getSharePreview: async ({ token }: { token: string }) => {
+      const trip = state.trips.find(
+        (entry) =>
+          entry.shareInviteToken !== null && entry.shareInviteToken === token,
+      );
+      if (!trip) {
+        return null;
+      }
+      return {
+        tripId: trip.id,
+        tripName: trip.name,
+        destinationName: trip.destinationName,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        enabled: trip.shareInviteEnabled,
+      };
     },
   };
 
@@ -322,5 +418,190 @@ describe("setShareLinkEnabled", () => {
         enabled: false,
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("joinTripByShareToken", () => {
+  it("adds workspace + trip membership for a new joiner (happy path)", async () => {
+    const { state, store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "live-token",
+          shareInviteEnabled: true,
+          status: "active",
+        }),
+      ],
+    });
+
+    const result = await joinTripByShareToken(store, {
+      token: "live-token",
+      userId: "stranger_1",
+    });
+
+    expect(result).toEqual({
+      tripId: "trip_1",
+      workspaceId: "workspace_1",
+    });
+    expect(
+      state.workspaceMemberships.some(
+        (m) => m.workspaceId === "workspace_1" && m.userId === "stranger_1",
+      ),
+    ).toBe(true);
+    expect(
+      state.tripMembers.some(
+        (m) => m.tripId === "trip_1" && m.userId === "stranger_1",
+      ),
+    ).toBe(true);
+  });
+
+  it("is idempotent for an already-member (no duplicate, no throw)", async () => {
+    const { state, store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "live-token",
+          shareInviteEnabled: true,
+          status: "active",
+        }),
+      ],
+      workspaceMemberships: [
+        { workspaceId: "workspace_1", userId: "stranger_1", role: "member" },
+      ],
+      tripMembers: [{ tripId: "trip_1", userId: "stranger_1", role: "member" }],
+    });
+
+    const result = await joinTripByShareToken(store, {
+      token: "live-token",
+      userId: "stranger_1",
+    });
+
+    expect(result).toEqual({
+      tripId: "trip_1",
+      workspaceId: "workspace_1",
+    });
+    // No duplicates were created.
+    expect(
+      state.workspaceMemberships.filter((m) => m.userId === "stranger_1"),
+    ).toHaveLength(1);
+    expect(
+      state.tripMembers.filter((m) => m.userId === "stranger_1"),
+    ).toHaveLength(1);
+  });
+
+  it("rejects a disabled token", async () => {
+    const { store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "disabled-token",
+          shareInviteEnabled: false,
+          status: "active",
+        }),
+      ],
+    });
+
+    await expect(
+      joinTripByShareToken(store, {
+        token: "disabled-token",
+        userId: "stranger_1",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects an unknown token", async () => {
+    const { store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "live-token",
+          shareInviteEnabled: true,
+          status: "active",
+        }),
+      ],
+    });
+
+    await expect(
+      joinTripByShareToken(store, {
+        token: "nope",
+        userId: "stranger_1",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("rejects a completed trip", async () => {
+    const { store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "live-token",
+          shareInviteEnabled: true,
+          status: "completed",
+        }),
+      ],
+    });
+
+    await expect(
+      joinTripByShareToken(store, {
+        token: "live-token",
+        userId: "stranger_1",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("getShareLinkPreview", () => {
+  it("returns an active preview for a valid + enabled token (no secrets)", async () => {
+    const { store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "live-token",
+          shareInviteEnabled: true,
+          destinationName: "Milan",
+          startDate: "2026-07-01",
+          endDate: "2026-07-10",
+        }),
+      ],
+    });
+
+    const preview = await getShareLinkPreview(store, { token: "live-token" });
+
+    expect(preview).toEqual({
+      status: "active",
+      tripId: "trip_1",
+      tripName: "Italy Summer",
+      destinationName: "Milan",
+      startDate: "2026-07-01",
+      endDate: "2026-07-10",
+    });
+    // Never leak the token or any secret.
+    expect(JSON.stringify(preview)).not.toContain("live-token");
+  });
+
+  it("returns disabled for a disabled token", async () => {
+    const { store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "disabled-token",
+          shareInviteEnabled: false,
+        }),
+      ],
+    });
+
+    const preview = await getShareLinkPreview(store, {
+      token: "disabled-token",
+    });
+
+    expect(preview).toEqual({ status: "disabled" });
+  });
+
+  it("returns not_found for an unknown token", async () => {
+    const { store } = createShareStore({
+      trips: [
+        makeTrip({
+          shareInviteToken: "live-token",
+          shareInviteEnabled: true,
+        }),
+      ],
+    });
+
+    const preview = await getShareLinkPreview(store, { token: "nope" });
+
+    expect(preview).toEqual({ status: "not_found" });
   });
 });

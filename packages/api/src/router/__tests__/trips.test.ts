@@ -166,6 +166,11 @@ function createTripStore(input?: {
     tripMembers: [...(input?.tripMembers ?? [])],
     tripSegments: [...(input?.tripSegments ?? [])],
     segmentMembers: [...(input?.segmentMembers ?? [])],
+    workspaceMemberships: [] as Array<{
+      workspaceId: string;
+      userId: string;
+      role: "owner" | "admin" | "member";
+    }>,
   };
 
   const store: TripStore = {
@@ -403,6 +408,79 @@ function createTripStore(input?: {
         shareInviteEnabled: enabled,
       };
       return { enabled };
+    },
+    findTripByShareToken: async ({ token }: { token: string }) => {
+      const trip = state.trips.find(
+        (entry) =>
+          entry.shareInviteToken !== null && entry.shareInviteToken === token,
+      );
+      if (!trip) {
+        return null;
+      }
+      return {
+        tripId: trip.id,
+        workspaceId: trip.workspaceId,
+        enabled: trip.shareInviteEnabled,
+        status: trip.status,
+      };
+    },
+    ensureWorkspaceMember: async ({
+      workspaceId,
+      userId,
+    }: {
+      workspaceId: string;
+      userId: string;
+    }) => {
+      const exists = state.workspaceMemberships.some(
+        (m) => m.workspaceId === workspaceId && m.userId === userId,
+      );
+      if (!exists) {
+        state.workspaceMemberships.push({
+          workspaceId,
+          userId,
+          role: "member",
+        });
+      }
+    },
+    addTripMemberIfMissing: async ({
+      tripId,
+      userId,
+    }: {
+      tripId: string;
+      userId: string;
+    }) => {
+      const exists = state.tripMembers.some(
+        (m) => m.tripId === tripId && m.userId === userId,
+      );
+      if (!exists) {
+        state.tripMembers.push({
+          id: randomUUID(),
+          tripId,
+          userId,
+          role: "member",
+          displayName: null,
+          colorHex: null,
+          venmoHandle: null,
+          joinedAt: new Date("2026-04-15T12:00:00.000Z"),
+        });
+      }
+    },
+    getSharePreview: async ({ token }: { token: string }) => {
+      const trip = state.trips.find(
+        (entry) =>
+          entry.shareInviteToken !== null && entry.shareInviteToken === token,
+      );
+      if (!trip) {
+        return null;
+      }
+      return {
+        tripId: trip.id,
+        tripName: trip.name,
+        destinationName: trip.destinationName,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        enabled: trip.shareInviteEnabled,
+      };
     },
   };
 
