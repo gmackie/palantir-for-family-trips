@@ -24,9 +24,7 @@ export function MarketingPage(props: {
               <p className="text-primary text-xs font-semibold uppercase tracking-[0.28em]">
                 {props.eyebrow}
               </p>
-              <p className="text-foreground mt-1 text-sm font-medium">
-                Gmacko template
-              </p>
+              <p className="text-foreground mt-1 text-sm font-medium">Sortey</p>
             </div>
             <nav className="flex flex-wrap gap-2 text-sm">
               {nav.map(([label, href]) => (
@@ -74,6 +72,21 @@ export function MarketingPage(props: {
             </div>
           </aside>
         </section>
+
+        <footer className="border-border/60 text-muted-foreground mt-auto border-t py-6 text-xs leading-5">
+          <p>
+            Sortey is a product of Gmacko Ventures LLC. Support:{" "}
+            <a
+              className="hover:text-foreground underline"
+              href="mailto:support@gmacko.com"
+            >
+              support@gmacko.com
+            </a>
+          </p>
+          <p className="mt-1">
+            © 2026 Gmacko Ventures LLC. All rights reserved.
+          </p>
+        </footer>
       </div>
     </main>
   );
