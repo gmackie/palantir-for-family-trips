@@ -43,14 +43,19 @@ function createMemoryChatStore(input?: { messages?: MessageRow[] }) {
         .slice(0, limit)
         .map((m) => (m.deletedAt ? { ...m, body: "" } : m));
     },
-    softDeleteMessage: async ({ messageId, userId, isOrganizer }) => {
-      const index = state.messages.findIndex((m) => m.id === messageId);
-      if (index === -1) return null;
+    softDeleteMessage: async ({ messageId, tripId, userId, isOrganizer }) => {
+      // Scoped to tripId: a message belonging to another trip is invisible here.
+      const index = state.messages.findIndex(
+        (m) => m.id === messageId && m.tripId === tripId,
+      );
+      if (index === -1) return { ok: false, reason: "not_found" };
       const row = state.messages[index]!;
-      if (row.userId !== userId && !isOrganizer) return null;
+      if (row.userId !== userId && !isOrganizer)
+        return { ok: false, reason: "forbidden" };
       const deleted: MessageRow = { ...row, deletedAt: new Date() };
       state.messages[index] = deleted;
-      return deleted;
+      // Mirror the production tombstone (body blanked) on a deleted row.
+      return { ok: true, row: { ...deleted, body: "" } };
     },
   };
 
@@ -245,6 +250,42 @@ describe("deleteMessage", () => {
         tripId: "trip_1",
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("refuses cross-trip delete (member of trip A cannot touch trip B's message)", async () => {
+    const { state, store } = createMemoryChatStore();
+    // Seed a message that lives under trip B.
+    const tripBMessage = await sendMessage(store, {
+      tripId: "trip_b",
+      userId: "owner_b",
+      body: "trip B secret",
+    });
+
+    // A plain member of trip A attempts to delete it, passing their own
+    // tripId (trip_a) — the message must be invisible -> NOT_FOUND.
+    await expect(
+      deleteMessage(store, {
+        messageId: tripBMessage.id,
+        userId: "member_a",
+        isOrganizer: false,
+        tripId: "trip_a",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    // Even an *organizer* of trip A cannot reach it — scoping is by trip, not
+    // role. Still NOT_FOUND (never FORBIDDEN, which would leak existence).
+    await expect(
+      deleteMessage(store, {
+        messageId: tripBMessage.id,
+        userId: "organizer_a",
+        isOrganizer: true,
+        tripId: "trip_a",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    // The trip-B message was NOT soft-deleted.
+    const persisted = state.messages.find((m) => m.id === tripBMessage.id);
+    expect(persisted?.deletedAt).toBeNull();
   });
 
   it("surfaces a deleted message as a tombstone in history", async () => {

@@ -34,14 +34,18 @@ export interface ChatStore {
     before?: Date;
     limit: number;
   }): Promise<MessageRow[]>;
-  // Author or organizer only. Returns null when the message is missing OR the
-  // caller is not allowed to delete it, so the logic fn can map to NOT_FOUND /
-  // FORBIDDEN without leaking which case occurred at the store layer.
+  // Author or organizer only. Scoped to `tripId` so a caller can never act on a
+  // message belonging to another trip. Returns a discriminated result so the
+  // logic fn can map precisely to NOT_FOUND / FORBIDDEN without a second query.
   softDeleteMessage(input: {
     messageId: string;
+    tripId: string;
     userId: string;
     isOrganizer: boolean;
-  }): Promise<MessageRow | null>;
+  }): Promise<
+    | { ok: true; row: MessageRow }
+    | { ok: false; reason: "not_found" | "forbidden" }
+  >;
 }
 
 const messageColumns = {
@@ -94,29 +98,37 @@ export function createChatStore(db: any): ChatStore {
 
       return rows.map(toTombstone);
     },
-    softDeleteMessage: async ({ messageId, userId, isOrganizer }) => {
+    softDeleteMessage: async ({ messageId, tripId, userId, isOrganizer }) => {
       const [existing] = (await db
         .select(messageColumns)
         .from(tripMessages)
-        .where(eq(tripMessages.id, messageId))
+        .where(
+          and(eq(tripMessages.id, messageId), eq(tripMessages.tripId, tripId)),
+        )
         .limit(1)) as MessageRow[];
 
       if (!existing) {
-        return null;
+        return { ok: false, reason: "not_found" };
       }
 
       // Only the author or a trip organizer may delete a message.
       if (existing.userId !== userId && !isOrganizer) {
-        return null;
+        return { ok: false, reason: "forbidden" };
       }
 
       const [deleted] = (await db
         .update(tripMessages)
         .set({ deletedAt: new Date() })
-        .where(eq(tripMessages.id, messageId))
+        .where(
+          and(eq(tripMessages.id, messageId), eq(tripMessages.tripId, tripId)),
+        )
         .returning(messageColumns)) as MessageRow[];
 
-      return deleted ?? null;
+      if (!deleted) {
+        return { ok: false, reason: "not_found" };
+      }
+
+      return { ok: true, row: toTombstone(deleted) };
     },
   };
 }
@@ -180,36 +192,28 @@ export async function deleteMessage(
     tripId: string;
   },
 ): Promise<MessageRow> {
-  const deleted = await store.softDeleteMessage({
+  const result = await store.softDeleteMessage({
     messageId: input.messageId,
+    tripId: input.tripId,
     userId: input.userId,
     isOrganizer: input.isOrganizer,
   });
 
-  // The store deliberately conflates "missing" and "not allowed" into null (so
-  // the store layer never leaks which case occurred). Disambiguate for the
-  // caller's error code by peeking at the recent history: if the row is present
-  // there it exists but is owned by someone else -> FORBIDDEN; otherwise
-  // NOT_FOUND. This is authz-safe either way (a null result is never a
-  // successful delete); the lookup only affects the surfaced error code, and
-  // only for messages outside the most-recent window does it fall back to
-  // NOT_FOUND.
-  if (!deleted) {
-    const recent = await store.listMessages({
-      tripId: input.tripId,
-      limit: MAX_HISTORY_LIMIT,
-    });
-    const exists = recent.some((m) => m.id === input.messageId);
+  if (!result.ok) {
+    if (result.reason === "forbidden") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You can only delete your own messages.",
+      });
+    }
 
     throw new TRPCError({
-      code: exists ? "FORBIDDEN" : "NOT_FOUND",
-      message: exists
-        ? "You can only delete your own messages."
-        : "Message not found.",
+      code: "NOT_FOUND",
+      message: "Message not found.",
     });
   }
 
-  return deleted;
+  return result.row;
 }
 
 export const chatRouter = {
