@@ -22,15 +22,22 @@ A2P 10DLC is required only when **Sortey's servers** send SMS (Phase 1b: automat
 
 | Field | Value (fill in) | Notes |
 |---|---|---|
-| Legal business name | `__________` | EXACTLY as registered with the IRS — mismatches are the #1 rejection cause |
+| Legal business name | **Gmacko Ventures LLC** | EXACTLY as registered with the IRS — mismatches are the #1 rejection cause. (Sortey is a product **of** this LLC — the **brand** is Gmacko Ventures LLC; the **campaign** represents Sortey.) |
 | EIN | `__________` | US Tax ID |
 | Business type | `__________` | LLC / C-Corp / S-Corp / etc. |
 | Business address | `__________` | Registered address |
-| Business website | `https://sortey.app` | Must be live (it is) |
+| Brand website | `https://gmacko.com` (the LLC) — or `https://sortey.app` if Gmacko has no live site | Must be live. See the brand↔product note below |
 | Authorized rep | name + title + email + phone | A real person Twilio can verify |
-| Support email | `support@sortey.app` (recommended) | Currently none exists in-app — see action item |
+| Support email | `support@gmacko.com` (recommended) | Currently none exists in-app — see action item |
 | Support phone | `__________` | Optional but helps vetting |
 | Stock symbol / exchange | n/a (private) | Only for public companies |
+
+> ### ⚠️ Brand ↔ product domain note (a real vetting risk)
+> The **brand** is *Gmacko Ventures LLC* but every message links to **sortey.app**. TCR/carriers sometimes flag a campaign whose links/domain don't obviously belong to the registered brand. Mitigate with ONE of:
+> - Add a visible **"Sortey is a product of Gmacko Ventures LLC"** line in the sortey.app footer + Privacy Policy (cheapest; 🤖 I can do this), **and/or**
+> - Use **`gmacko.com`** as the brand website with a page that lists Sortey as a product, **and/or**
+> - Set the support email to **support@gmacko.com** (done) so brand contact matches the LLC.
+> Doing the footer/privacy attribution is usually enough.
 
 ---
 
@@ -64,7 +71,7 @@ A2P 10DLC is required only when **Sortey's servers** send SMS (Phase 1b: automat
 
 **Required keywords (configure in the Messaging Service):**
 - **Opt-out:** `STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT` → reply: *"You're unsubscribed from Sortey texts and won't receive more. Reply START to resubscribe."*
-- **Help:** `HELP, INFO` → reply: *"Sortey trip notifications. Msg & data rates may apply. Contact support@sortey.app. Reply STOP to cancel."*
+- **Help:** `HELP, INFO` → reply: *"Sortey trip notifications. Msg & data rates may apply. Contact support@gmacko.com. Reply STOP to cancel."*
 - **Opt-in (resubscribe):** `START, UNSTOP` → reply: *"You're resubscribed to Sortey texts. Reply STOP to cancel."*
 
 **Other campaign fields:**
@@ -82,7 +89,7 @@ These are real builds. The campaign description above promises them, so they sho
 1. **🤖 Privacy Policy SMS section** — `apps/nextjs/src/app/privacy/page.tsx` currently has **no SMS language**. TCR commonly checks the privacy URL. Add a clause:
    > **SMS/Text Messaging.** If you provide your mobile number and opt in, Sortey sends transactional trip messages (invites, reminders, notifications). Message and data rates may apply; message frequency varies. Reply STOP to opt out or HELP for help. We do **not** sell or share your mobile number, and mobile opt-in data is **not** shared with third parties for marketing. See our Terms for details.
 2. **🤖 The opt-in UI + consent logging** — the "Text me trip invites…" checkbox on the phone-number field (Settings → Notifications and/or the invite-accept flow), storing consent timestamp. This is the core of **Phase 1b** and doesn't exist yet.
-3. **🧑 A `support@sortey.app` mailbox** — referenced in HELP replies and the brand contact. No support email currently appears in the app.
+3. **🧑 A `support@gmacko.com` mailbox** — referenced in HELP replies and the brand contact. No support email currently appears in the app.
 
 ---
 
@@ -106,5 +113,5 @@ The `route-planner`/invite send path already prefers dedicated env keys; Phase 1
 ---
 
 ## TL;DR next actions
-- 🧑 **You:** create Twilio account → Business Profile (EIN) → Standard Brand → Messaging Service → register the Campaign (paste the content above) → buy a number. Set up `support@sortey.app`.
+- 🧑 **You:** create Twilio account → Business Profile (EIN) → Standard Brand → Messaging Service → register the Campaign (paste the content above) → buy a number. Set up `support@gmacko.com`.
 - 🤖 **Claude (say the word):** add the Privacy Policy SMS section now; build the opt-in checkbox + consent logging as the first piece of Phase 1b.
