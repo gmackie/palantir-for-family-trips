@@ -424,35 +424,29 @@ function createTripStore(input?: {
         status: trip.status,
       };
     },
-    ensureWorkspaceMember: async ({
+    joinTripMembership: async ({
       workspaceId,
+      tripId,
       userId,
     }: {
       workspaceId: string;
+      tripId: string;
       userId: string;
     }) => {
-      const exists = state.workspaceMemberships.some(
+      const workspaceExists = state.workspaceMemberships.some(
         (m) => m.workspaceId === workspaceId && m.userId === userId,
       );
-      if (!exists) {
+      if (!workspaceExists) {
         state.workspaceMemberships.push({
           workspaceId,
           userId,
           role: "member",
         });
       }
-    },
-    addTripMemberIfMissing: async ({
-      tripId,
-      userId,
-    }: {
-      tripId: string;
-      userId: string;
-    }) => {
-      const exists = state.tripMembers.some(
+      const tripExists = state.tripMembers.some(
         (m) => m.tripId === tripId && m.userId === userId,
       );
-      if (!exists) {
+      if (!tripExists) {
         state.tripMembers.push({
           id: randomUUID(),
           tripId,
@@ -480,6 +474,7 @@ function createTripStore(input?: {
         startDate: trip.startDate,
         endDate: trip.endDate,
         enabled: trip.shareInviteEnabled,
+        tripStatus: trip.status,
       };
     },
   };

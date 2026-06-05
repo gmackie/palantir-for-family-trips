@@ -183,11 +183,11 @@ export interface TripStore {
     enabled: boolean;
     status: TripStatus;
   } | null>;
-  ensureWorkspaceMember(input: {
+  // Idempotently ensures BOTH the workspace 'member' row and the trip 'member'
+  // row. Consolidated into one method so the production impl can wrap both
+  // writes in a single DB transaction (no partial-membership state on crash).
+  joinTripMembership(input: {
     workspaceId: string;
-    userId: string;
-  }): Promise<void>;
-  addTripMemberIfMissing(input: {
     tripId: string;
     userId: string;
   }): Promise<void>;
@@ -198,6 +198,7 @@ export interface TripStore {
     startDate: string | null;
     endDate: string | null;
     enabled: boolean;
+    tripStatus: TripStatus;
   } | null>;
 }
 
@@ -411,6 +412,7 @@ export type ShareLinkPreview =
       startDate: string | null;
       endDate: string | null;
     }
+  | { status: "ended" }
   | { status: "disabled" }
   | { status: "not_found" };
 
@@ -448,12 +450,10 @@ export async function joinTripByShareToken(
     });
   }
 
-  // Both membership writes are idempotent so re-joining is a safe no-op.
-  await store.ensureWorkspaceMember({
+  // Both membership writes happen atomically (and idempotently) inside the
+  // store, so a crash can't leave a workspace member without a trip member.
+  await store.joinTripMembership({
     workspaceId: trip.workspaceId,
-    userId: input.userId,
-  });
-  await store.addTripMemberIfMissing({
     tripId: trip.tripId,
     userId: input.userId,
   });
@@ -473,6 +473,12 @@ export async function getShareLinkPreview(
 
   if (!preview.enabled) {
     return { status: "disabled" };
+  }
+
+  // A completed trip can't be joined (join rejects it with BAD_REQUEST), so
+  // surface it as "ended" rather than dangling an "active" preview.
+  if (preview.tripStatus === "completed") {
+    return { status: "ended" };
   }
 
   // NEVER return the token or any secret — only public-safe display fields.
@@ -717,24 +723,29 @@ function createTripStore(db: any): TripStore {
 
       return row ?? null;
     },
-    ensureWorkspaceMember: async ({ workspaceId, userId }) => {
-      // Idempotent: insert role 'member' only if the membership is missing.
-      await db
-        .insert(workspaceMembership)
-        .values({ workspaceId, userId, role: "member" })
-        .onConflictDoNothing({
-          target: [workspaceMembership.workspaceId, workspaceMembership.userId],
-        });
-    },
-    addTripMemberIfMissing: async ({ tripId, userId }) => {
-      // Idempotent: the trip_members_trip_user_unique constraint absorbs
-      // duplicate joins, so re-joining the same trip is a safe no-op.
-      await db
-        .insert(tripMembers)
-        .values({ tripId, userId, role: "member" })
-        .onConflictDoNothing({
-          target: [tripMembers.tripId, tripMembers.userId],
-        });
+    joinTripMembership: async ({ workspaceId, tripId, userId }) => {
+      // Atomic + idempotent: both membership rows are written in a single
+      // transaction, so a crash can't leave a workspace member without the
+      // matching trip member. onConflictDoNothing leans on the existing unique
+      // constraints, making re-joining a safe no-op.
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle tx type is complex
+      await db.transaction(async (tx: any) => {
+        await tx
+          .insert(workspaceMembership)
+          .values({ workspaceId, userId, role: "member" })
+          .onConflictDoNothing({
+            target: [
+              workspaceMembership.workspaceId,
+              workspaceMembership.userId,
+            ],
+          });
+        await tx
+          .insert(tripMembers)
+          .values({ tripId, userId, role: "member" })
+          .onConflictDoNothing({
+            target: [tripMembers.tripId, tripMembers.userId],
+          });
+      });
     },
     getSharePreview: async ({ token }) => {
       const [row] = (await db
@@ -745,6 +756,7 @@ function createTripStore(db: any): TripStore {
           startDate: trips.startDate,
           endDate: trips.endDate,
           enabled: trips.shareInviteEnabled,
+          tripStatus: trips.status,
         })
         .from(trips)
         .where(eq(trips.shareInviteToken, token))
@@ -755,6 +767,7 @@ function createTripStore(db: any): TripStore {
         startDate: string | null;
         endDate: string | null;
         enabled: boolean;
+        tripStatus: TripStatus;
       }>;
 
       return row ?? null;
