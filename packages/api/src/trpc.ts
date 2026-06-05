@@ -6,6 +6,8 @@ import { createHash } from "crypto";
 import superjson from "superjson";
 import { ZodError, z } from "zod/v4";
 
+import { getRealtimeRuntime } from "./realtime-runtime";
+
 export type ApiKeyPermission = "read" | "write" | "delete" | "admin";
 
 export interface ApiKeyAuth {
@@ -194,6 +196,10 @@ export const createTRPCContext = async (opts: {
           },
           apiKeyAuth,
           db,
+          // Realtime fan-out seam. Populated by the worker entry (Workers
+          // runtime) via `runWithRealtimeRuntime`; `null` everywhere else
+          // (unit tests, non-Workers callers) so the broadcast is skipped.
+          realtime: getRealtimeRuntime(),
         };
       }
     }
@@ -221,6 +227,8 @@ export const createTRPCContext = async (opts: {
     session,
     apiKeyAuth: null as ApiKeyAuth | null,
     db,
+    // See note above: the worker populates this; `null` in tests / non-Workers.
+    realtime: getRealtimeRuntime(),
     _expoAuthDiag:
       !session && source === "expo-react"
         ? `fallback=${fallbackAttempted}, cookie_len=${cookieHeader?.length ?? 0}, cookie_start=${cookieHeader?.substring(0, 80) ?? "none"}`

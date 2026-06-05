@@ -15,15 +15,24 @@
     "dev": "tsc",
     "format": "biome check .",
     "lint": "oxlint .",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
     "@sortey/config": "workspace:*"
   },
+  "peerDependencies": {
+    "react": "catalog:react19"
+  },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@sortey/tsconfig": "workspace:*",
+    "@sortey/vitest-config": "workspace:*",
+    "@types/react": "catalog:react19",
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "react": "catalog:react19",
+    "typescript": "catalog:",
+    "vitest": "^4.1.7"
   }
 }

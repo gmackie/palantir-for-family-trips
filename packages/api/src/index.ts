@@ -5,6 +5,8 @@ import type { AppRouter } from "./root";
 type RouterInputs = inferRouterInputs<AppRouter>;
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 
+export type { RealtimeBroadcast, RealtimeRuntime } from "./realtime-runtime";
+export { getRealtimeRuntime, runWithRealtimeRuntime } from "./realtime-runtime";
 export { type AppRouter, appRouter } from "./root";
 export { createTRPCContext } from "./trpc";
 export type {

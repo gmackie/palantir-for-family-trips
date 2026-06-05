@@ -16,6 +16,8 @@
     "deploy:cloudflare:production": "pnpm build:vinext && pnpm with-env wrangler deploy -c dist/server/wrangler.json",
     "format": "biome check .",
     "lint": "oxlint .",
+    "test": "vitest run --config vitest.worker.config.ts",
+    "test:watch": "vitest --config vitest.worker.config.ts",
     "storybook": "SKIP_ENV_VALIDATION=1 storybook dev -p 6006",
     "storybook:build": "SKIP_ENV_VALIDATION=1 storybook build",
     "start": "pnpm with-env next start",
@@ -60,6 +62,7 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@cloudflare/vite-plugin": "^1.37.2",
+    "@cloudflare/vitest-pool-workers": "^0.16.13",
     "@playwright/test": "^1.60.0",
     "@sortey/tailwind-config": "workspace:*",
     "@sortey/tsconfig": "workspace:*",
@@ -81,6 +84,7 @@
     "typescript": "catalog:",
     "vinext": "^0.0.51",
     "vite": "catalog:",
+    "vitest": "^4.1.7",
     "wrangler": "^4.93.0"
   }
 }

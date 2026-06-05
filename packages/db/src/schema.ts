@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, unique } from "drizzle-orm/pg-core";
+import { index, pgTable, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -322,6 +322,33 @@ export const tripInvites = pgTable(
   }),
   (table) => [
     unique("trip_invites_trip_email_unique").on(table.tripId, table.email),
+  ],
+);
+
+export const tripMessages = pgTable(
+  "trip_message",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    body: t.varchar({ length: 4000 }).notNull(),
+    contextType: t.text().$type<"pin" | "poll" | "expense" | "segment">(),
+    contextId: t.uuid(),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    editedAt: t.timestamp({ mode: "date", withTimezone: true }),
+    deletedAt: t.timestamp({ mode: "date", withTimezone: true }),
+  }),
+  (table) => [
+    index("trip_message_trip_created_idx").on(table.tripId, table.createdAt),
   ],
 );
 

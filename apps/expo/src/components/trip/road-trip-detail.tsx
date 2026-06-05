@@ -140,6 +140,12 @@ export function RoadTripDetail({
       path: "expenses",
     },
     {
+      key: "chat",
+      label: "Chat",
+      icon: "chatbubbles-outline",
+      path: "chat",
+    },
+    {
       key: "fuel",
       label: "Fuel Log",
       icon: "speedometer-outline",
