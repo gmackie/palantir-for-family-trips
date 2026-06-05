@@ -1,6 +1,10 @@
 # A2P 10DLC Registration — Sortey (Twilio)
 
-**Status:** Not started. This is the long-lead prerequisite for **Phase 1b** (Twilio app-sent invites + reminders). Phase 1a (device-sent invites) is already live and needs **none** of this.
+> ## 🗄️ SHELVED (2026-06-04) — do not action
+> **Decision:** Sortey will **not** pursue A2P 10DLC / app-sent SMS. App-sent SMS *invites* are inherently non-compliant (A2P/carriers require prior consent; invites go to people who haven't consented → treated as spam). Member notifications are already covered by **device-sent invites** (Phase 1a, live) + **push notifications** (`registerPushToken`/Expo push, already built). SMS added too little reach for the LLC-brand vetting, campaign fees, and opt-in-consent build it required.
+> This doc is kept only as a reference if SMS-to-opted-in-members is ever revisited. The privacy-policy SMS clause + "product of Gmacko Ventures LLC" attribution shipped on sortey.app are kept (accurate and future-proof regardless).
+
+**(Historical) Status:** Not started. This was the long-lead prerequisite for **Phase 1b** (Twilio app-sent invites + reminders). Phase 1a (device-sent invites) is already live and needs **none** of this.
 
 **Path chosen:** Standard brand (registered business with EIN).
 
