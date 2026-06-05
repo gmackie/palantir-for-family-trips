@@ -50,5 +50,9 @@
       "binding": "HYPERDRIVE",
       "id": "71e7b1f713a841c4b98b4fa41c42ffef"
     }
-  ]
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "TRIP_ROOM", "class_name": "TripRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TripRoom"] }]
 }

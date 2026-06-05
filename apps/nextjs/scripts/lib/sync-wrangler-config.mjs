@@ -1,5 +1,7 @@
 const PASSTHROUGH_KEYS = [
+  "durable_objects",
   "hyperdrive",
+  "migrations",
   "preview_urls",
   "route",
   "routes",

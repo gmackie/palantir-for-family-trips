@@ -17,8 +17,22 @@ interface R2Bucket {
   get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>;
 }
 
-interface Env {
+// Minimal surface of the `TRIP_ROOM` Durable Object namespace binding. The full
+// Workers types are not in this app's tsc env, so declare just what callers use.
+interface DurableObjectId {
+  toString(): string;
+}
+interface DurableObjectStub {
+  fetch(request: Request): Promise<Response>;
+}
+interface DurableObjectNamespace {
+  idFromName(name: string): DurableObjectId;
+  get(id: DurableObjectId): DurableObjectStub;
+}
+
+export interface Env {
   APP_ENV?: "development" | "staging" | "production";
+  TRIP_ROOM: DurableObjectNamespace;
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
@@ -154,6 +168,10 @@ const instrumentedFetch = wrapFetch(
   },
   { serviceName: "sortey" },
 );
+
+// The `TripRoom` Durable Object class must be exported from the worker entry
+// module so wrangler can bind it (see `durable_objects` in wrangler.jsonc).
+export { TripRoom } from "./trip-room";
 
 export default {
   async scheduled(_event: ScheduledEvent, _env: Env, _ctx: ExecutionContext) {},

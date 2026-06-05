@@ -1,0 +1,15 @@
+{
+  // Test-only wrangler config for the TripRoom DO harness. The app's real
+  // wrangler.jsonc has a vinext build command + Next.js `main` that the
+  // workers test pool can't bootstrap, so we point the pool at a tiny entry
+  // that re-exports only the DO under test.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trip-room-test",
+  "main": "./trip-room.test-entry.ts",
+  "compatibility_date": "2026-04-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "TRIP_ROOM", "class_name": "TripRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TripRoom"] }]
+}
