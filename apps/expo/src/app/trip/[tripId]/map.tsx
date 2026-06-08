@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import type { LocationEvent } from "@sortey/realtime";
+import { useTripLocations } from "@sortey/realtime";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -13,10 +15,34 @@ import {
 import type { Region } from "react-native-maps";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 
-import { trpc } from "~/utils/api";
+import { trpc, trpcClient } from "~/utils/api";
+import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, PALETTE, R } from "~/utils/design";
 import { useLocationSharing } from "~/utils/use-location-sharing";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
+
+/**
+ * `useTripLocations` (like `useTripChat`) appends `/api/chat/${tripId}/ws`, so it
+ * wants just the `wss://host` (or `ws://host` on plain-http dev) origin. Derived
+ * from the same base URL the tRPC client uses — mirrors chat.tsx's helper.
+ */
+function deriveWsBaseUrl(): string {
+  const base = getBaseUrl();
+  if (base.startsWith("https://"))
+    return `wss://${base.slice("https://".length)}`;
+  if (base.startsWith("http://")) return `ws://${base.slice("http://".length)}`;
+  return base;
+}
+
+/** Member location as rendered on the map: polled roster row + live position. */
+interface MapMemberLocation {
+  userId: string;
+  lat: number;
+  lng: number;
+  updatedAt: string | number | Date;
+  displayName: string | null;
+  colorHex: string | null;
+}
 
 const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#0A0C10" }] },
@@ -218,13 +244,79 @@ export default function MapScreen() {
     }),
   );
 
-  const { data: memberLocations } = useQuery({
+  // Polled source: the persisted roster positions. Kept as the cold-start /
+  // fallback source (it carries displayName + colorHex, which the live location
+  // frames don't). Interval dropped to ~5s because the live socket below is
+  // best-effort — a missed broadcast is reconciled by the next poll quickly.
+  const { data: polledLocations } = useQuery({
     ...trpc.location.listMemberLocations.queryOptions({
       workspaceId,
       tripId: tripId ?? "",
     }),
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
   });
+
+  // Live source: member-location broadcasts over the trip-room WebSocket (the
+  // same room chat uses; the TripRoom DO relay is payload-agnostic). Best-effort
+  // — moves markers without waiting for the poll. Backfills via the same query
+  // on every (re)connect so a dropped socket never strands a stale marker.
+  const wsBaseUrl = useMemo(() => deriveWsBaseUrl(), []);
+  const backfillLocations = useCallback(
+    async (opts: { tripId: string }): Promise<LocationEvent[]> => {
+      const rows = await trpcClient.location.listMemberLocations.query({
+        workspaceId,
+        tripId: opts.tripId,
+      });
+      return rows.map((r) => ({
+        userId: r.userId,
+        lat: r.lat,
+        lng: r.lng,
+        heading: r.heading,
+        speed: r.speed,
+        updatedAt: r.updatedAt,
+      }));
+    },
+    [workspaceId],
+  );
+  const { locations: liveLocations } = useTripLocations({
+    tripId: tripId ?? "",
+    wsBaseUrl,
+    backfill: backfillLocations,
+  });
+
+  // Merge polled roster rows with live positions: keyed by userId, the live
+  // event overrides the polled value when newer. Roster metadata (displayName /
+  // colorHex) always comes from the poll since live frames omit it.
+  const memberLocations = useMemo<MapMemberLocation[]>(() => {
+    const byId = new Map<string, MapMemberLocation>();
+    for (const m of polledLocations ?? []) {
+      byId.set(m.userId, {
+        userId: m.userId,
+        lat: m.lat,
+        lng: m.lng,
+        updatedAt: m.updatedAt,
+        displayName: m.displayName,
+        colorHex: m.colorHex,
+      });
+    }
+    for (const live of Object.values(liveLocations)) {
+      const polled = byId.get(live.userId);
+      // Live wins only when strictly newer than the polled row (or no poll yet).
+      const liveTime = new Date(live.updatedAt).getTime();
+      const polledTime = polled ? new Date(polled.updatedAt).getTime() : -1;
+      if (!polled || (Number.isFinite(liveTime) && liveTime > polledTime)) {
+        byId.set(live.userId, {
+          userId: live.userId,
+          lat: live.lat,
+          lng: live.lng,
+          updatedAt: live.updatedAt,
+          displayName: polled?.displayName ?? null,
+          colorHex: polled?.colorHex ?? null,
+        });
+      }
+    }
+    return [...byId.values()];
+  }, [polledLocations, liveLocations]);
 
   const poiEnabled = activePoiCategories.size > 0 && mapCenter != null;
 

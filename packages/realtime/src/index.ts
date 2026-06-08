@@ -14,6 +14,8 @@ export {
   getLatestTimestamp,
   triggerEvent,
 } from "./event-log";
+export type { LocationEvent, LocationState } from "./locations";
+export { mergeLocations } from "./locations";
 export type {
   ChatMessage,
   DeleteTombstone,
@@ -30,3 +32,8 @@ export type {
   UseTripChatResult,
 } from "./use-trip-chat";
 export { useTripChat } from "./use-trip-chat";
+export type {
+  UseTripLocationsOptions,
+  UseTripLocationsResult,
+} from "./use-trip-locations";
+export { useTripLocations } from "./use-trip-locations";
