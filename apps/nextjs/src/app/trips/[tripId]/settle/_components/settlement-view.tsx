@@ -139,8 +139,10 @@ export function SettlementView(props: {
 
       {/* All settled celebration */}
       {allSettled && (
-        <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-10 text-center">
-          <p className="text-3xl font-black">Everyone&apos;s square!</p>
+        <div className="rounded-[4px] border border-[#3FB950]/30 bg-[#3FB950]/10 p-10 text-center">
+          <p className="text-3xl font-black text-[#3FB950]">
+            Everyone&apos;s square!
+          </p>
           <p className="text-muted-foreground mt-2 text-sm">
             All debts have been settled. No outstanding balances.
           </p>
@@ -159,8 +161,8 @@ export function SettlementView(props: {
                 key={b.userId}
                 className={`rounded-[4px] border p-4 ${
                   b.amountCents > 0
-                    ? "border-emerald-500/30 bg-emerald-500/5"
-                    : "border-red-500/30 bg-red-500/5"
+                    ? "border-[#3FB950]/30 bg-[#3FB950]/5"
+                    : "border-[#F85149]/30 bg-[#F85149]/5"
                 }`}
               >
                 <p className="text-sm font-medium">
@@ -168,9 +170,7 @@ export function SettlementView(props: {
                 </p>
                 <p
                   className={`text-2xl font-bold tabular-nums ${
-                    b.amountCents > 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-red-600 dark:text-red-400"
+                    b.amountCents > 0 ? "text-[#3FB950]" : "text-[#F85149]"
                   }`}
                 >
                   {b.amountCents > 0 ? "+" : ""}
@@ -286,9 +286,7 @@ export function SettlementView(props: {
                       <span>{formatDate(s.settledAt)}</span>
                       {s.note && <span>{s.note}</span>}
                       {isUndone && (
-                        <span className="text-amber-600 dark:text-amber-400">
-                          Undone
-                        </span>
+                        <span className="text-[#D29922]">Undone</span>
                       )}
                     </div>
                   </div>

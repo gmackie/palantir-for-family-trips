@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { StatusPill } from "../../_components/command-panel";
 import { requireTripsWorkspace } from "../../_lib/server";
 
 function formatCents(cents: number) {
@@ -71,15 +72,13 @@ export default async function ExpensesListPage(props: {
                     <h2 className="truncate text-base font-semibold">
                       {expense.merchant}
                     </h2>
-                    <span
-                      className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
-                        expense.status === "finalized"
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                      }`}
+                    <StatusPill
+                      tone={
+                        expense.status === "finalized" ? "success" : "warning"
+                      }
                     >
                       {expense.status}
-                    </span>
+                    </StatusPill>
                   </div>
                   <div className="text-muted-foreground flex gap-4 text-xs">
                     <span className="capitalize">{expense.category}</span>

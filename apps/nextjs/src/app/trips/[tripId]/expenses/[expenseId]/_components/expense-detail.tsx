@@ -9,6 +9,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import Link from "next/link";
 import { useState } from "react";
 
+import { StatusPill } from "~/app/trips/_components/command-panel";
 import { useExpenseRealtime } from "~/lib/use-expense-realtime";
 import { useTRPC } from "~/trpc/react";
 
@@ -160,15 +161,9 @@ export function ExpenseDetail(props: {
             <span className="capitalize">{expense.category}</span>
             <span>{formatDate(expense.occurredAt)}</span>
             <span>{expense.currency}</span>
-            <span
-              className={`inline-flex items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
-                isDraft
-                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-              }`}
-            >
+            <StatusPill tone={isDraft ? "warning" : "success"}>
               {expense.status}
-            </span>
+            </StatusPill>
           </div>
         </div>
 
@@ -441,7 +436,7 @@ export function ExpenseDetail(props: {
         {shares.warnings.length > 0 && (
           <div className="mt-3 space-y-1">
             {shares.warnings.map((warning, i) => (
-              <p key={i} className="text-xs text-amber-600 dark:text-amber-400">
+              <p key={i} className="text-xs text-[#D29922]">
                 {warning}
               </p>
             ))}
