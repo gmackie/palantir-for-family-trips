@@ -46,6 +46,10 @@ export interface FuelLogStore {
     segmentId: string;
   }): Promise<string | null>;
   listTripMemberIds(tripId: string): Promise<string[]>;
+  // Currency the trip's existing expenses use (finalized preferred), or null
+  // when the trip has none yet. Keeps the split expense from tripping
+  // settlement's single-currency rule (trips have no currency column).
+  findTripExpenseCurrency(tripId: string): Promise<string | null>;
   insertExpense(values: FuelExpenseValues): Promise<{ id: string }>;
   linkExpenseToFuelLog(input: {
     fuelLogId: string;
@@ -94,6 +98,22 @@ export function createFuelLogStore(db: any): FuelLogStore {
         .from(tripMembers)
         .where(eq(tripMembers.tripId, tripId))) as Array<{ userId: string }>;
       return members.map((m) => m.userId);
+    },
+    findTripExpenseCurrency: async (tripId) => {
+      const [finalized] = (await db
+        .select({ currency: expenses.currency })
+        .from(expenses)
+        .where(
+          and(eq(expenses.tripId, tripId), eq(expenses.status, "finalized")),
+        )
+        .limit(1)) as Array<{ currency: string }>;
+      if (finalized) return finalized.currency;
+      const [anyExpense] = (await db
+        .select({ currency: expenses.currency })
+        .from(expenses)
+        .where(eq(expenses.tripId, tripId))
+        .limit(1)) as Array<{ currency: string }>;
+      return anyExpense?.currency ?? null;
     },
     insertExpense: async (values) => {
       const [created] = (await db
@@ -212,14 +232,19 @@ export async function createFuelLogWithSplit(
     loggedAt: log.loggedAt,
   };
 
-  // The whole total is the shared pool; members drive the read-time split.
-  await store.listTripMemberIds(input.tripId);
+  // Settlement refuses mixed currencies, so the split expense must match the
+  // currency the trip's other expenses already use (trips have no currency
+  // column). Inherit it; fall back to the request default only for the first
+  // expense in a trip. The whole total is the shared pool — members drive the
+  // read-time split, so we don't need the member list here.
+  const currency =
+    (await store.findTripExpenseCurrency(input.tripId)) ?? input.currency;
 
   const values = buildFuelExpenseValues({
     fuelLog,
     segmentId,
     payerUserId: input.userId,
-    currency: input.currency,
+    currency,
   });
 
   const expense = await store.insertExpense(values);

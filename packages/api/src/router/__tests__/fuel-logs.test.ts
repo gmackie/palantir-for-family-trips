@@ -38,10 +38,11 @@ type SegmentRecord = { id: string; tripId: string; sortOrder: number };
 function createMemoryFuelLogStore(seed?: {
   segments?: SegmentRecord[];
   members?: string[];
+  existingExpenses?: ExpenseRecord[];
 }) {
   const state = {
     fuelLogs: [] as FuelLogRecord[],
-    expenses: [] as ExpenseRecord[],
+    expenses: [...(seed?.existingExpenses ?? [])] as ExpenseRecord[],
     segments: [...(seed?.segments ?? [])],
     members: [...(seed?.members ?? [])],
   };
@@ -69,6 +70,10 @@ function createMemoryFuelLogStore(seed?: {
       return seg?.id ?? null;
     },
     listTripMemberIds: async () => [...state.members],
+    findTripExpenseCurrency: async (tripId) => {
+      const existing = state.expenses.find((e) => e.tripId === tripId);
+      return existing?.currency ?? null;
+    },
     insertExpense: async (values) => {
       const row: ExpenseRecord = { id: randomUUID(), ...values };
       state.expenses.push(row);
@@ -201,5 +206,35 @@ describe("createFuelLogWithSplit", () => {
     });
 
     expect(state.expenses[0]!.merchant).toBe("Fuel");
+  });
+
+  it("inherits the trip's existing expense currency instead of the request default", async () => {
+    const segmentId = randomUUID();
+    const { state, store } = createMemoryFuelLogStore({
+      segments: [{ id: segmentId, tripId: "trip_1", sortOrder: 0 }],
+      members: ["user_1", "user_2"],
+      existingExpenses: [
+        {
+          id: randomUUID(),
+          tripId: "trip_1",
+          segmentId,
+          payerUserId: "user_2",
+          merchant: "Hotel",
+          category: "fuel",
+          totalCents: 10000,
+          currency: "EUR",
+          occurredAt: new Date("2026-06-07T12:00:00.000Z"),
+        },
+      ],
+    });
+
+    // baseInput.currency is "USD"; the trip already settles in EUR.
+    await createFuelLogWithSplit(store, {
+      ...baseInput,
+      splitWithGroup: true,
+    });
+
+    const created = state.expenses.find((e) => e.merchant === "Costco");
+    expect(created?.currency).toBe("EUR");
   });
 });
