@@ -116,17 +116,20 @@ export default function ChatScreen() {
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
 
   const handleSend = useCallback(async () => {
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
+    setSendFailed(false);
     setDraft("");
     try {
       await send(body);
     } catch {
-      // Restore the draft so the user can retry a failed send.
+      // Restore the draft AND surface the failure (no silent drop).
       setDraft(body);
+      setSendFailed(true);
     } finally {
       setSending(false);
     }
@@ -273,13 +276,27 @@ export default function ChatScreen() {
             paddingHorizontal: 16,
           }}
         >
-          {othersTyping.length > 0 && (
+          {sendFailed ? (
+            <Pressable onPress={() => void handleSend()}>
+              <Text
+                style={{
+                  color: C.critical,
+                  fontSize: 11,
+                  fontFamily: mono,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                failed to send — retry
+              </Text>
+            </Pressable>
+          ) : othersTyping.length > 0 ? (
             <Text style={{ color: C.muted, fontSize: 11, fontFamily: mono }}>
               {othersTyping.length === 1
                 ? "typing…"
                 : `${othersTyping.length} people typing…`}
             </Text>
-          )}
+          ) : null}
         </View>
 
         {/* Composer */}
@@ -300,6 +317,7 @@ export default function ChatScreen() {
             value={draft}
             onChangeText={(text) => {
               setDraft(text);
+              if (sendFailed) setSendFailed(false);
               sendTyping();
             }}
             placeholder="Message the trip…"

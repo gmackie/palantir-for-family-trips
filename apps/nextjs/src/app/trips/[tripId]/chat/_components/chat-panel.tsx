@@ -90,6 +90,7 @@ export function ChatPanel(props: {
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
 
   // Auto-scroll to newest on new messages.
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -102,12 +103,14 @@ export function ChatPanel(props: {
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
+    setSendFailed(false);
     setDraft("");
     try {
       await send(body);
     } catch {
-      // Restore the draft so the user can retry a failed send.
+      // Restore the draft AND surface the failure (no silent drop).
       setDraft(body);
+      setSendFailed(true);
     } finally {
       setSending(false);
     }
@@ -202,15 +205,23 @@ export function ChatPanel(props: {
         )}
       </div>
 
-      {/* Typing indicator — static all-caps label (minimal-functional motion per DESIGN.md) */}
+      {/* Typing indicator / send-failure — static all-caps (minimal-functional motion per DESIGN.md) */}
       <div className="h-4 px-1">
-        {othersTyping.length > 0 && (
+        {sendFailed ? (
+          <button
+            type="button"
+            onClick={() => void handleSend()}
+            className="font-mono text-[10px] uppercase tracking-wider text-[#F85149] hover:underline"
+          >
+            failed to send — retry
+          </button>
+        ) : othersTyping.length > 0 ? (
           <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E]">
             {othersTyping.length === 1
               ? "typing"
               : `${othersTyping.length} typing`}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Composer */}
@@ -219,6 +230,7 @@ export function ChatPanel(props: {
           value={draft}
           onChange={(e) => {
             setDraft(e.target.value);
+            if (sendFailed) setSendFailed(false);
             sendTyping();
           }}
           onKeyDown={handleKeyDown}
