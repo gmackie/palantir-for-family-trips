@@ -1,5 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { StatusPill } from "~/app/trips/_components/command-panel";
+
 interface FuelLogEntry {
   id: string;
   stationName: string | null;
@@ -10,6 +14,8 @@ interface FuelLogEntry {
   isCostco: boolean;
   loggedAt: Date;
   actualMpg: number | null;
+  // Set when the fill-up was also recorded as an equal-split group expense.
+  expenseId?: string | null;
 }
 
 interface FuelStats {
@@ -27,6 +33,9 @@ interface FuelLogPanelProps {
 }
 
 export function FuelLogPanel({ logs, stats }: FuelLogPanelProps) {
+  const params = useParams<{ tripId?: string }>();
+  const tripId = params?.tripId;
+
   return (
     <div className="flex flex-col gap-4">
       {/* Stats summary */}
@@ -53,13 +62,25 @@ export function FuelLogPanel({ logs, stats }: FuelLogPanelProps) {
             className="flex items-center justify-between rounded-[2px] border border-[#21262D] bg-[#0D1117] px-3 py-2"
           >
             <div>
-              <p className="text-sm text-[#C9D1D9]">
+              <p className="flex flex-wrap items-center gap-1.5 text-sm text-[#C9D1D9]">
                 {log.stationName ?? "Unknown station"}
                 {log.isCostco && (
-                  <span className="ml-1.5 rounded-[2px] bg-[#58A6FF]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#58A6FF]">
+                  <span className="rounded-[2px] bg-[#58A6FF]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#58A6FF]">
                     COSTCO
                   </span>
                 )}
+                {log.expenseId &&
+                  (tripId ? (
+                    <Link
+                      href={`/trips/${tripId}/expenses/${log.expenseId}`}
+                      className="transition-opacity hover:opacity-80"
+                      title="View linked group expense"
+                    >
+                      <StatusPill tone="success">SPLIT</StatusPill>
+                    </Link>
+                  ) : (
+                    <StatusPill tone="success">SPLIT</StatusPill>
+                  ))}
               </p>
               <p className="font-mono text-xs text-[#8B949E]">
                 {Number(log.gallons).toFixed(1)} gal @ $

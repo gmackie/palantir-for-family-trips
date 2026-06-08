@@ -95,6 +95,8 @@ export default function NewExpense() {
     null,
   );
   const [currency, setCurrency] = useState("USD");
+  // Gas fill-ups default to splitting evenly across the group.
+  const [splitWithGroup, setSplitWithGroup] = useState(true);
 
   const subtotalCents = dollarsToCents(subtotalDollars);
   const taxCents = expenseType === "gas" ? 0 : dollarsToCents(taxDollars);
@@ -116,6 +118,12 @@ export default function NewExpense() {
 
   const createExpense = useMutation(
     trpc.expenses.create.mutationOptions({
+      onError: (err) => Alert.alert("Error", err.message),
+    }),
+  );
+
+  const createFuelLog = useMutation(
+    trpc.fuelLogs.create.mutationOptions({
       onError: (err) => Alert.alert("Error", err.message),
     }),
   );
@@ -369,6 +377,34 @@ export default function NewExpense() {
     }
 
     try {
+      // Gas fill-ups are recorded as fuel logs. When "Split with group" is on,
+      // the backend also creates an equal-split group expense and links it
+      // back to the fuel log via `expenseId`.
+      if (expenseType === "gas") {
+        const gal = Number.parseFloat(gallons);
+        const ppg = Number.parseFloat(pricePerGallon);
+        if (Number.isNaN(gal) || gal <= 0 || Number.isNaN(ppg) || ppg <= 0) {
+          Alert.alert("Missing info", "Enter gallons and price per gallon.");
+          return;
+        }
+        await createFuelLog.mutateAsync({
+          workspaceId,
+          tripId: tripId ?? "",
+          segmentId: selectedSegmentId ?? undefined,
+          gallons: gal,
+          pricePerGallon: ppg,
+          totalCents,
+          stationName: merchant.trim(),
+          loggedAt: new Date().toISOString(),
+          currency,
+          splitWithGroup,
+        });
+
+        await queryClient.invalidateQueries(trpc.expenses.list.queryFilter());
+        router.back();
+        return;
+      }
+
       const created = await createExpense.mutateAsync({
         workspaceId,
         tripId: tripId ?? "",
@@ -420,7 +456,10 @@ export default function NewExpense() {
     }
   };
 
-  const isPending = createExpense.isPending || addLineItemsMutation.isPending;
+  const isPending =
+    createExpense.isPending ||
+    createFuelLog.isPending ||
+    addLineItemsMutation.isPending;
 
   const hasMultipleSegments = (segments?.length ?? 0) > 1;
   const selectedSegment = segments?.find((s) => s.id === selectedSegmentId);
@@ -777,6 +816,70 @@ export default function NewExpense() {
                 </View>
               </View>
             </View>
+          )}
+
+          {/* Split with group (gas only) */}
+          {expenseType === "gas" && (
+            <Pressable
+              onPress={() => setSplitWithGroup((v) => !v)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: splitWithGroup }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                minHeight: 44,
+                marginBottom: 16,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderColor: splitWithGroup ? C.success : C.border,
+                backgroundColor: splitWithGroup ? C.successBg : C.input,
+                borderRadius: R.md,
+              }}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: R.sm,
+                  borderWidth: 1.5,
+                  borderColor: splitWithGroup ? C.success : C.muted,
+                  backgroundColor: splitWithGroup ? C.success : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {splitWithGroup && (
+                  <Ionicons name="checkmark" size={16} color={C.bg} />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: C.fg,
+                    fontSize: 14,
+                    fontWeight: "600",
+                  }}
+                >
+                  Split with group
+                </Text>
+                <Text style={{ color: C.muted, fontSize: 12 }}>
+                  Record an even-split group expense for this fill-up
+                </Text>
+              </View>
+              {splitWithGroup && (
+                <Text
+                  style={{
+                    color: C.success,
+                    fontSize: 11,
+                    fontWeight: "700",
+                    letterSpacing: 1,
+                  }}
+                >
+                  SPLIT
+                </Text>
+              )}
+            </Pressable>
           )}
 
           {/* Line Items (non-gas only) */}
