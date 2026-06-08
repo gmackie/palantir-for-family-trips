@@ -227,7 +227,7 @@ export async function renderSettingsPage(input?: { workspaceSlug?: string }) {
                   <Link
                     key={workspace.id}
                     href={buildWorkspaceSettingsPath(workspace.slug)}
-                    className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                    className={`rounded-[4px] border px-4 py-2 text-sm transition-colors ${
                       isCurrent
                         ? "border-foreground bg-foreground text-background"
                         : "border-border hover:bg-muted"

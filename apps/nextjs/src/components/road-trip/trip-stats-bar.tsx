@@ -32,9 +32,9 @@ export function TripStatsBar({
           {completedMiles.toLocaleString()} / {totalMiles.toLocaleString()} mi (
           {progressPct}%)
         </span>
-        <div className="h-1.5 w-24 rounded-full bg-[#21262D]">
+        <div className="h-1.5 w-24 rounded-[2px] bg-[#21262D]">
           <div
-            className="h-full rounded-full bg-[#58A6FF] transition-all"
+            className="h-full rounded-[2px] bg-[#58A6FF] transition-all"
             style={{ width: `${progressPct}%` }}
           />
         </div>

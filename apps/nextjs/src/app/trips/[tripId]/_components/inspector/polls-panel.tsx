@@ -185,9 +185,9 @@ function PollCard(props: {
                     {option.voteCount}
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-[#21262D] overflow-hidden">
+                <div className="h-1.5 rounded-[2px] bg-[#21262D] overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#58A6FF] transition-all"
+                    className="h-full rounded-[2px] bg-[#58A6FF] transition-all"
                     style={{
                       width: `${(option.voteCount / maxVotes) * 100}%`,
                     }}

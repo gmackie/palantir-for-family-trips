@@ -149,7 +149,7 @@ function UserRow({
 
       <div className="col-span-2">
         <span
-          className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+          className={`inline-flex rounded-[2px] px-2 py-1 text-xs font-medium ${
             user.role === "admin"
               ? "bg-primary/10 text-primary"
               : "bg-muted text-muted-foreground"
