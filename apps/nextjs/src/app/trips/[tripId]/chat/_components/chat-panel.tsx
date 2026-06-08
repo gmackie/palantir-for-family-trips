@@ -202,18 +202,13 @@ export function ChatPanel(props: {
         )}
       </div>
 
-      {/* Typing indicator */}
+      {/* Typing indicator — static all-caps label (minimal-functional motion per DESIGN.md) */}
       <div className="h-4 px-1">
         {othersTyping.length > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-[#8B949E]">
-            <span className="inline-flex gap-0.5">
-              <span className="h-1 w-1 animate-pulse rounded-full bg-[#8B949E]" />
-              <span className="h-1 w-1 animate-pulse rounded-full bg-[#8B949E] [animation-delay:150ms]" />
-              <span className="h-1 w-1 animate-pulse rounded-full bg-[#8B949E] [animation-delay:300ms]" />
-            </span>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E]">
             {othersTyping.length === 1
               ? "typing"
-              : `${othersTyping.length} people typing`}
+              : `${othersTyping.length} typing`}
           </span>
         )}
       </div>
@@ -229,13 +224,13 @@ export function ChatPanel(props: {
           onKeyDown={handleKeyDown}
           rows={1}
           placeholder="Message the trip..."
-          className="max-h-32 min-h-[36px] flex-1 resize-none rounded-[4px] border border-[#21262D] bg-[#0D1117] px-3 py-2 text-sm text-[#C9D1D9] placeholder:text-[#484F58] focus:border-[#58A6FF]/40 focus:outline-none"
+          className="max-h-32 min-h-11 flex-1 resize-none rounded-[4px] border border-[#21262D] bg-[#0D1117] px-3 py-2.5 text-sm text-[#C9D1D9] placeholder:text-[#484F58] focus:border-[#58A6FF]/40 focus:outline-none"
         />
         <button
           type="button"
           onClick={() => void handleSend()}
           disabled={sending || draft.trim().length === 0}
-          className="shrink-0 rounded-[4px] border border-[#58A6FF]/30 bg-[#58A6FF]/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20 disabled:opacity-40"
+          className="min-h-11 shrink-0 rounded-[4px] border border-[#58A6FF]/30 bg-[#58A6FF]/10 px-4 text-[10px] font-semibold uppercase tracking-wider text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20 disabled:opacity-40"
         >
           {sending ? "..." : "Send"}
         </button>
