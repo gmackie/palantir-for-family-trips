@@ -1,18 +1,26 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.gmacko.sortey",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "EE:1D:E2:FC:02:46:67:43:08:08:D9:0E:C3:F4:AB:88:A3:B4:2C:08:0B:CE:68:19:14:53:F9:11:DE:1F:7D:51"
+      ]
     }
   },
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.gmacko.sortey.dev",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "49:42:74:7C:18:52:BB:92:12:3F:F9:5D:D6:55:E7:44:8A:B0:A1:C9:21:C0:29:17:82:37:40:9E:A0:87:CA:8C"
+      ]
     }
   }
 ]
