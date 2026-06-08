@@ -1,14 +1,18 @@
 import { randomBytes } from "node:crypto";
 
-import { and, asc, desc, eq, isNull, sql } from "@sortey/db";
+import { and, asc, desc, eq, gt, isNull, sql } from "@sortey/db";
 import type { TripStatus } from "@sortey/db/schema";
 import {
+  fuelLogs,
+  itineraryEvents,
+  memberLocations,
   segmentMembers,
   tripInvites,
   tripMembers,
   tripSegments,
   tripStatusEnum,
   trips,
+  vanProfiles,
   workspaceMembership,
 } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
@@ -16,6 +20,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
 import { sendPushToTripMembers } from "../notifications/send";
+import { buildDrivingSummary } from "../trips/driving-summary";
 import { protectedProcedure, publicProcedure } from "../trpc";
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
@@ -1578,5 +1583,167 @@ export const tripsRouter = {
         .onConflictDoNothing();
 
       return { added: true };
+    }),
+
+  // Read-only assembly for Driving Mode. Loads itinerary stops, the requester's
+  // own position + all live member locations (with names), the latest fuel log,
+  // and the trip's van profile, then hands them to the pure `buildDrivingSummary`
+  // logic fn. One round-trip so the mobile screen gets all four blocks at once.
+  drivingSummary: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      const userId = ctx.session.user.id;
+      const now = new Date();
+      const staleThreshold = new Date(now.getTime() - 30 * 60 * 1000);
+
+      // Itinerary stops, ordered earliest-first. `order` falls back to
+      // sortOrder; the logic fn prefers a future `scheduledAt` when present.
+      const stopRows = (await ctx.db
+        .select({
+          title: itineraryEvents.title,
+          lat: itineraryEvents.lat,
+          lng: itineraryEvents.lng,
+          sortOrder: itineraryEvents.sortOrder,
+          startsAt: itineraryEvents.startsAt,
+        })
+        .from(itineraryEvents)
+        .where(eq(itineraryEvents.tripId, ctx.tripId))
+        // Only geolocated stops (filtered below) can drive a distance/ETA readout.
+        .orderBy(
+          asc(itineraryEvents.startsAt),
+          asc(itineraryEvents.sortOrder),
+        )) as Array<{
+        title: string;
+        lat: string | null;
+        lng: string | null;
+        sortOrder: number;
+        startsAt: Date;
+      }>;
+
+      const stops = stopRows
+        .filter((r) => r.lat != null && r.lng != null)
+        .map((r, index) => ({
+          name: r.title,
+          lat: Number(r.lat),
+          lng: Number(r.lng),
+          order: r.sortOrder ?? index,
+          scheduledAt: r.startsAt,
+        }));
+
+      // All live, sharing-enabled member positions with display names. The
+      // requester's own row is "current position"; the rest form the convoy.
+      const locationRows = (await ctx.db
+        .select({
+          userId: memberLocations.userId,
+          lat: memberLocations.lat,
+          lng: memberLocations.lng,
+          updatedAt: memberLocations.updatedAt,
+          displayName: tripMembers.displayName,
+        })
+        .from(memberLocations)
+        .innerJoin(
+          tripMembers,
+          and(
+            eq(tripMembers.tripId, memberLocations.tripId),
+            eq(tripMembers.userId, memberLocations.userId),
+          ),
+        )
+        .where(
+          and(
+            eq(memberLocations.tripId, ctx.tripId),
+            eq(memberLocations.sharingEnabled, true),
+            gt(memberLocations.updatedAt, staleThreshold),
+          ),
+        )) as Array<{
+        userId: string;
+        lat: string;
+        lng: string;
+        updatedAt: Date;
+        displayName: string | null;
+      }>;
+
+      const memberLocationsInput = locationRows.map((r) => ({
+        userId: r.userId,
+        name: r.displayName ?? "Member",
+        lat: Number(r.lat),
+        lng: Number(r.lng),
+        updatedAt: r.updatedAt,
+      }));
+
+      const self = memberLocationsInput.find((m) => m.userId === userId);
+      const currentPosition = self
+        ? { lat: self.lat, lng: self.lng }
+        : null;
+
+      // Latest fuel log for the trip (most recent fill-up).
+      const [fuelRow] = (await ctx.db
+        .select({
+          odometerMiles: fuelLogs.odometerMiles,
+          loggedAt: fuelLogs.loggedAt,
+          vanProfileId: fuelLogs.vanProfileId,
+        })
+        .from(fuelLogs)
+        .where(eq(fuelLogs.tripId, ctx.tripId))
+        .orderBy(desc(fuelLogs.loggedAt))
+        .limit(1)) as Array<{
+        odometerMiles: string | null;
+        loggedAt: Date;
+        vanProfileId: string | null;
+      }>;
+
+      const latestFuelLog = fuelRow
+        ? {
+            odometerMiles:
+              fuelRow.odometerMiles != null
+                ? Number(fuelRow.odometerMiles)
+                : null,
+            loggedAt: fuelRow.loggedAt,
+          }
+        : null;
+
+      // Van profile tied to that fuel log (for mpg/tank). Skip if unlinked.
+      let vanProfile: {
+        mpgEstimate: number | null;
+        tankGallons: number | null;
+      } | null = null;
+      if (fuelRow?.vanProfileId) {
+        const [vanRow] = (await ctx.db
+          .select({
+            mpgEstimate: vanProfiles.mpgEstimate,
+            tankGallons: vanProfiles.tankGallons,
+          })
+          .from(vanProfiles)
+          .where(eq(vanProfiles.id, fuelRow.vanProfileId))
+          .limit(1)) as Array<{
+          mpgEstimate: string | null;
+          tankGallons: string | null;
+        }>;
+        if (vanRow) {
+          vanProfile = {
+            mpgEstimate:
+              vanRow.mpgEstimate != null ? Number(vanRow.mpgEstimate) : null,
+            tankGallons:
+              vanRow.tankGallons != null ? Number(vanRow.tankGallons) : null,
+          };
+        }
+      }
+
+      return buildDrivingSummary({
+        stops,
+        currentPosition,
+        nextLegRoute: null,
+        distanceToGoMiles: null,
+        latestFuelLog,
+        vanProfile,
+        currentOdometerMiles: null,
+        memberLocations: memberLocationsInput,
+        selfUserId: userId,
+        now,
+      });
     }),
 } satisfies TRPCRouterRecord;
