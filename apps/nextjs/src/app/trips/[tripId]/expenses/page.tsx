@@ -64,7 +64,7 @@ export default async function ExpensesListPage(props: {
               <Link
                 key={expense.id}
                 href={`/trips/${tripId}/expenses/${expense.id}`}
-                className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-2xl border p-5 shadow-sm transition-colors"
+                className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-[4px] border p-5 shadow-sm transition-colors"
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-3">

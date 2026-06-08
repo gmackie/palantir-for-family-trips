@@ -57,7 +57,7 @@ export function CreatePollForm({
   return (
     <form onSubmit={handleSubmit}>
       {error && (
-        <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className="mb-4 rounded-[4px] border border-[#F85149]/30 bg-[#F85149]/10 p-3 text-sm text-[#F85149]">
           {error}
         </div>
       )}

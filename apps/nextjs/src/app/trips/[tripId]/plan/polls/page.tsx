@@ -56,7 +56,7 @@ export default async function PollsListPage(props: {
                 <Link
                   key={poll.id}
                   href={`/trips/${tripId}/plan/polls/${poll.id}`}
-                  className="bg-card hover:bg-accent/50 rounded-2xl border p-5 shadow-sm transition-colors"
+                  className="bg-card hover:bg-accent/50 rounded-[4px] border p-5 shadow-sm transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">

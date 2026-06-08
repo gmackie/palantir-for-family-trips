@@ -64,7 +64,7 @@ export default async function PlanningDashboardPage(props: {
           </div>
 
           {openPolls.length === 0 ? (
-            <div className="bg-card mt-4 rounded-2xl border p-6 text-center">
+            <div className="bg-card mt-4 rounded-[4px] border p-6 text-center">
               <p className="text-muted-foreground text-sm">
                 No active polls. Create one to start gathering votes.
               </p>
@@ -78,7 +78,7 @@ export default async function PlanningDashboardPage(props: {
                 <Link
                   key={poll.id}
                   href={`/trips/${tripId}/plan/polls/${poll.id}`}
-                  className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-2xl border p-4 shadow-sm transition-colors"
+                  className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-[4px] border p-4 shadow-sm transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate font-semibold">{poll.title}</h3>
@@ -111,7 +111,7 @@ export default async function PlanningDashboardPage(props: {
           </div>
 
           {recentProposals.length === 0 ? (
-            <div className="bg-card mt-4 rounded-2xl border p-6 text-center">
+            <div className="bg-card mt-4 rounded-[4px] border p-6 text-center">
               <p className="text-muted-foreground text-sm">
                 No proposals yet. Suggest a flight, hotel, or activity.
               </p>
@@ -126,7 +126,7 @@ export default async function PlanningDashboardPage(props: {
               {recentProposals.map((proposal) => (
                 <div
                   key={proposal.id}
-                  className="bg-card flex items-center justify-between rounded-2xl border p-4 shadow-sm"
+                  className="bg-card flex items-center justify-between rounded-[4px] border p-4 shadow-sm"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">

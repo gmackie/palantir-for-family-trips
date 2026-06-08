@@ -120,7 +120,7 @@ export default function LockInPage() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className="mt-4 rounded-[4px] border border-[#F85149]/30 bg-[#F85149]/10 p-3 text-sm text-[#F85149]">
           {error}
         </div>
       )}
@@ -156,7 +156,7 @@ export default function LockInPage() {
             {pollWinners.map(({ poll, winner }) => (
               <div
                 key={poll.id}
-                className="bg-card rounded-2xl border p-4 shadow-sm"
+                className="bg-card rounded-[4px] border p-4 shadow-sm"
               >
                 <h3 className="text-sm font-semibold">{poll.title}</h3>
                 {winner ? (
@@ -196,7 +196,7 @@ export default function LockInPage() {
             {selectedProposals.map((proposal) => (
               <div
                 key={proposal.id}
-                className="bg-card rounded-2xl border p-4 shadow-sm"
+                className="bg-card rounded-[4px] border p-4 shadow-sm"
               >
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">{proposal.title}</h3>

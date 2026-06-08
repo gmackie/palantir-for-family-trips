@@ -164,7 +164,7 @@ export default function PollDetailPage() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className="mt-4 rounded-[4px] border border-[#F85149]/30 bg-[#F85149]/10 p-3 text-sm text-[#F85149]">
           {error}
         </div>
       )}
@@ -173,7 +173,7 @@ export default function PollDetailPage() {
       {isOpen && (
         <form
           onSubmit={handleAddOption}
-          className="bg-card mt-6 rounded-2xl border p-4 shadow-sm"
+          className="bg-card mt-6 rounded-[4px] border p-4 shadow-sm"
         >
           <p className="text-muted-foreground mb-2 text-sm font-medium">
             Add an option
@@ -199,7 +199,7 @@ export default function PollDetailPage() {
       {/* Options and voting */}
       <div className="mt-6 grid gap-3">
         {poll.options.length === 0 ? (
-          <div className="bg-card rounded-2xl border p-6 text-center">
+          <div className="bg-card rounded-[4px] border p-6 text-center">
             <p className="text-muted-foreground text-sm">
               No options yet. Add one above.
             </p>
@@ -208,7 +208,7 @@ export default function PollDetailPage() {
           poll.options.map((option) => (
             <div
               key={option.id}
-              className="bg-card rounded-2xl border p-4 shadow-sm"
+              className="bg-card rounded-[4px] border p-4 shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <div>

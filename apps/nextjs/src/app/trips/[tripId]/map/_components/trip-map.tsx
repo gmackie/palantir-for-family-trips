@@ -274,7 +274,7 @@ export function TripMap({
   // No API key — styled placeholder
   if (!apiKey) {
     return (
-      <div className="bg-muted flex min-h-[500px] items-center justify-center rounded-2xl border">
+      <div className="bg-muted flex min-h-[500px] items-center justify-center rounded-[4px] border">
         <div className="text-center">
           <p className="text-muted-foreground text-lg font-medium">
             Map unavailable
@@ -289,7 +289,7 @@ export function TripMap({
 
   if (error) {
     return (
-      <div className="bg-muted flex min-h-[500px] items-center justify-center rounded-2xl border">
+      <div className="bg-muted flex min-h-[500px] items-center justify-center rounded-[4px] border">
         <div className="text-center">
           <p className="text-destructive text-lg font-medium">
             Map failed to load
@@ -301,7 +301,7 @@ export function TripMap({
   }
 
   return (
-    <div className="relative min-h-[500px] overflow-hidden rounded-2xl border">
+    <div className="relative min-h-[500px] overflow-hidden rounded-[4px] border">
       {loading && (
         <div className="bg-muted absolute inset-0 z-10 flex items-center justify-center">
           <p className="text-muted-foreground animate-pulse text-sm">

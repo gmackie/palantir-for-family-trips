@@ -209,7 +209,7 @@ export default async function TripSettingsPage(props: {
             </Field>
           </FieldGroup>
 
-          <section className="border-border mt-8 rounded-2xl border p-4">
+          <section className="border-border mt-8 rounded-[4px] border p-4">
             <h2 className="text-lg font-semibold">Membership surface</h2>
             <p className="text-muted-foreground mt-2 text-sm">
               Invite sending, member roster management, and personal payment
