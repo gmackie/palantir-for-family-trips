@@ -13,12 +13,14 @@ const PROVIDER_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+// Dark semantic badges (Palantir command-center palette), matching the
+// expenses-panel STATUS_PILL treatment: tinted bg + same-hue text, sharp radius.
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: "bg-blue-100 text-blue-800",
-  en_route: "bg-yellow-100 text-yellow-800",
-  delayed: "bg-red-100 text-red-800",
-  arrived: "bg-green-100 text-green-800",
-  cancelled: "bg-gray-100 text-gray-800",
+  scheduled: "bg-[#58A6FF]/15 text-[#58A6FF]",
+  en_route: "bg-[#D29922]/15 text-[#D29922]",
+  delayed: "bg-[#F85149]/15 text-[#F85149]",
+  arrived: "bg-[#3FB950]/15 text-[#3FB950]",
+  cancelled: "bg-[#8B949E]/15 text-[#8B949E]",
 };
 
 const TRANSPORT_TYPE_LABELS: Record<string, string> = {
@@ -85,10 +87,12 @@ export default async function LodgingPage(props: {
       <main className="container mx-auto max-w-5xl px-4 py-10">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground text-sm uppercase tracking-[0.24em]">
+            <p className="text-[#8B949E] text-sm uppercase tracking-[0.24em]">
               Lodging &amp; Travel
             </p>
-            <h1 className="text-3xl font-black tracking-tight">{trip.name}</h1>
+            <h1 className="text-3xl font-black tracking-tight text-[#C9D1D9]">
+              {trip.name}
+            </h1>
           </div>
           <div className="flex gap-2">
             <Button asChild variant="outline" size="sm">
@@ -100,21 +104,21 @@ export default async function LodgingPage(props: {
         {segmentData.map(
           ({ segment, lodgingList, transits, transportGroups }) => (
             <section key={segment.id} className="mb-10">
-              <h2 className="text-muted-foreground mb-4 text-xs font-semibold uppercase tracking-[0.2em]">
+              <h2 className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-[#58A6FF]">
                 {segment.name}
               </h2>
 
               {/* ── Lodging Cards ────────────────────── */}
               <div className="mb-6">
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Lodging</h3>
+                  <h3 className="text-sm font-semibold text-[#C9D1D9]">Lodging</h3>
                   <Button variant="outline" size="sm" disabled>
                     Add lodging
                   </Button>
                 </div>
 
                 {lodgingList.length === 0 ? (
-                  <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
+                  <p className="rounded-[4px] border border-[#21262D] bg-[#161B22] p-4 text-sm text-[#8B949E]">
                     No lodging added yet.
                   </p>
                 ) : (
@@ -122,24 +126,24 @@ export default async function LodgingPage(props: {
                     {lodgingList.map((l) => (
                       <div
                         key={l.id}
-                        className="bg-card rounded-xl border p-4 shadow-sm"
+                        className="rounded-[4px] border border-[#21262D] bg-[#161B22] p-4"
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-semibold">{l.propertyName}</p>
+                            <p className="font-semibold text-[#C9D1D9]">{l.propertyName}</p>
                             {l.provider && (
-                              <span className="bg-muted mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider">
+                              <span className="mt-1 inline-block rounded-[2px] bg-[#21262D] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E]">
                                 {PROVIDER_LABELS[l.provider] ?? l.provider}
                               </span>
                             )}
                           </div>
                           {l.totalCostCents != null && (
-                            <span className="font-mono text-sm font-medium">
+                            <span className="font-mono text-sm font-medium tabular-nums text-[#C9D1D9]">
                               {formatCents(l.totalCostCents, l.currency)}
                             </span>
                           )}
                         </div>
-                        <div className="text-muted-foreground mt-2 space-y-0.5 text-xs">
+                        <div className="text-[#8B949E] mt-2 space-y-0.5 text-xs">
                           <p>
                             {formatDate(l.checkInAt)} &ndash;{" "}
                             {formatDate(l.checkOutAt)}
@@ -166,7 +170,7 @@ export default async function LodgingPage(props: {
               {/* ── Arrivals Board ───────────────────── */}
               <div className="mb-6">
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">
+                  <h3 className="text-sm font-semibold text-[#C9D1D9]">
                     Arrivals &amp; Departures
                   </h3>
                   <Button variant="outline" size="sm" disabled>
@@ -175,7 +179,7 @@ export default async function LodgingPage(props: {
                 </div>
 
                 {transits.length === 0 ? (
-                  <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
+                  <p className="rounded-[4px] border border-[#21262D] bg-[#161B22] p-4 text-sm text-[#8B949E]">
                     No arrivals or departures added yet.
                   </p>
                 ) : (
@@ -183,9 +187,9 @@ export default async function LodgingPage(props: {
                     {transits.map((t) => (
                       <div
                         key={t.id}
-                        className="bg-card flex items-center gap-4 rounded-lg border px-4 py-3"
+                        className="flex items-center gap-4 rounded-[4px] border border-[#21262D] bg-[#161B22] px-4 py-3"
                       >
-                        <div className="text-muted-foreground w-16 shrink-0 text-center text-xs font-medium uppercase">
+                        <div className="text-[#8B949E] w-16 shrink-0 text-center text-xs font-medium uppercase">
                           {t.direction ?? "transit"}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -197,12 +201,12 @@ export default async function LodgingPage(props: {
                               </span>
                             )}
                             {!t.carrier && !t.transitNumber && (
-                              <span className="text-muted-foreground">
+                              <span className="text-[#8B949E]">
                                 {t.transitType ?? "Transit"}
                               </span>
                             )}
                           </p>
-                          <p className="text-muted-foreground text-xs">
+                          <p className="text-[#8B949E] text-xs">
                             {t.departureStation && (
                               <span>{t.departureStation}</span>
                             )}
@@ -217,7 +221,7 @@ export default async function LodgingPage(props: {
                             {formatDate(t.scheduledAt)}
                           </p>
                           <span
-                            className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_COLORS[t.trackingStatus] ?? "bg-gray-100 text-gray-800"}`}
+                            className={`mt-1 inline-block rounded-[2px] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLORS[t.trackingStatus] ?? "bg-[#8B949E]/15 text-[#8B949E]"}`}
                           >
                             {t.trackingStatus.replace("_", " ")}
                           </span>
@@ -231,14 +235,14 @@ export default async function LodgingPage(props: {
               {/* ── Ground Transport Groups ──────────── */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Ground Transport</h3>
+                  <h3 className="text-sm font-semibold text-[#C9D1D9]">Ground Transport</h3>
                   <Button variant="outline" size="sm" disabled>
                     Add transport
                   </Button>
                 </div>
 
                 {transportGroups.length === 0 ? (
-                  <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
+                  <p className="rounded-[4px] border border-[#21262D] bg-[#161B22] p-4 text-sm text-[#8B949E]">
                     No ground transport groups added yet.
                   </p>
                 ) : (
@@ -246,25 +250,25 @@ export default async function LodgingPage(props: {
                     {transportGroups.map((g) => (
                       <div
                         key={g.id}
-                        className="bg-card rounded-xl border p-4 shadow-sm"
+                        className="rounded-[4px] border border-[#21262D] bg-[#161B22] p-4"
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-semibold">{g.label}</p>
+                            <p className="font-semibold text-[#C9D1D9]">{g.label}</p>
                             {g.transportType && (
-                              <span className="bg-muted mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider">
+                              <span className="mt-1 inline-block rounded-[2px] bg-[#21262D] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E]">
                                 {TRANSPORT_TYPE_LABELS[g.transportType] ??
                                   g.transportType}
                               </span>
                             )}
                           </div>
                           {g.costCents != null && (
-                            <span className="font-mono text-sm font-medium">
+                            <span className="font-mono text-sm font-medium tabular-nums text-[#C9D1D9]">
                               {formatCents(g.costCents, g.currency)}
                             </span>
                           )}
                         </div>
-                        <div className="text-muted-foreground mt-2 space-y-0.5 text-xs">
+                        <div className="text-[#8B949E] mt-2 space-y-0.5 text-xs">
                           {g.fromDescription && (
                             <p>From: {g.fromDescription}</p>
                           )}
