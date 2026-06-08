@@ -697,9 +697,10 @@ export default function PhotosScreen() {
             minHeight: 52,
             opacity: activeUploads.length > 0 ? 0.5 : 1,
             shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.18,
+            shadowRadius: 2,
+            elevation: 2,
           }}
         >
           <Ionicons name="images" size={18} color={C.white} />

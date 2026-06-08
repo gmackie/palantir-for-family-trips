@@ -536,7 +536,7 @@ export default function MapScreen() {
                   style={{
                     width: 32,
                     height: 32,
-                    borderRadius: 16,
+                    borderRadius: R.md,
                     backgroundColor: stale ? C.surface : `${color}33`,
                     borderWidth: 2,
                     borderColor: stale ? C.muted : color,
