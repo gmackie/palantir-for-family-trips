@@ -4,7 +4,6 @@ import { and, asc, desc, eq, gt, isNull, sql } from "@sortey/db";
 import type { TripStatus } from "@sortey/db/schema";
 import {
   fuelLogs,
-  itineraryEvents,
   memberLocations,
   segmentMembers,
   tripInvites,
@@ -1601,38 +1600,47 @@ export const tripsRouter = {
       const now = new Date();
       const staleThreshold = new Date(now.getTime() - 30 * 60 * 1000);
 
-      // Itinerary stops, ordered earliest-first. `order` falls back to
-      // sortOrder; the logic fn prefers a future `scheduledAt` when present.
+      // Road-trip "stops" are the trip's segments (the day legs). Each segment
+      // carries the leg's persisted route (origin → destination distance +
+      // duration from route-planner), which gives a real-road ETA to the next
+      // stop instead of a straight-line estimate. `order` falls back to index;
+      // the logic fn prefers a future `scheduledAt` (the segment start date).
       const stopRows = (await ctx.db
         .select({
-          title: itineraryEvents.title,
-          lat: itineraryEvents.lat,
-          lng: itineraryEvents.lng,
-          sortOrder: itineraryEvents.sortOrder,
-          startsAt: itineraryEvents.startsAt,
+          name: tripSegments.name,
+          lat: tripSegments.destinationLat,
+          lng: tripSegments.destinationLng,
+          sortOrder: tripSegments.sortOrder,
+          startDate: tripSegments.startDate,
+          distanceMiles: tripSegments.distanceMiles,
+          durationMinutes: tripSegments.durationMinutes,
         })
-        .from(itineraryEvents)
-        .where(eq(itineraryEvents.tripId, ctx.tripId))
-        // Only geolocated stops (filtered below) can drive a distance/ETA readout.
-        .orderBy(
-          asc(itineraryEvents.startsAt),
-          asc(itineraryEvents.sortOrder),
-        )) as Array<{
-        title: string;
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, ctx.tripId))
+        .orderBy(asc(tripSegments.sortOrder))) as Array<{
+        name: string;
         lat: string | null;
         lng: string | null;
         sortOrder: number;
-        startsAt: Date;
+        startDate: string | null;
+        distanceMiles: string | null;
+        durationMinutes: number | null;
       }>;
 
       const stops = stopRows
         .filter((r) => r.lat != null && r.lng != null)
         .map((r, index) => ({
-          name: r.title,
+          name: r.name,
           lat: Number(r.lat),
           lng: Number(r.lng),
           order: r.sortOrder ?? index,
-          scheduledAt: r.startsAt,
+          // Segment dates are day-granular. Anchor to END of the segment day so
+          // today's destination stays "next" through the whole day instead of
+          // flipping to tomorrow's stop at midday.
+          scheduledAt: r.startDate ? new Date(`${r.startDate}T23:59:59`) : null,
+          distanceMiles:
+            r.distanceMiles != null ? Number(r.distanceMiles) : null,
+          durationMinutes: r.durationMinutes ?? null,
         }));
 
       // All live, sharing-enabled member positions with display names. The

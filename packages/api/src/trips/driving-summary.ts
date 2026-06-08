@@ -44,6 +44,11 @@ export interface DrivingSummaryStop {
   order: number;
   // ISO string or Date; the next stop is the earliest one still in the future.
   scheduledAt?: string | Date | null;
+  // Stored real-road route for the leg ending at this stop (origin → this stop),
+  // persisted on the trip segment from route-planner. When present, preferred
+  // over the haversine + AVG_SPEED_MPH fallback for this stop's distance/ETA.
+  distanceMiles?: number | null;
+  durationMinutes?: number | null;
 }
 
 export interface DrivingSummaryPosition {
@@ -318,10 +323,24 @@ export function buildDrivingSummary(
   input: BuildDrivingSummaryInput,
 ): DrivingSummary {
   const nextStopRow = pickNextStop(input.stops, input.now);
-  const nextStop = buildNextStop(input, nextStopRow);
-  const legProgress = buildLegProgress(input, nextStop);
-  const fuelRange = buildFuelRange(input, nextStop);
-  const convoy = buildConvoy(input, nextStopRow);
+  // Promote the picked stop's own stored leg route (real road distance/duration
+  // from the segment) into nextLegRoute so buildNextStop/buildLegProgress use it
+  // over haversine. An explicit input.nextLegRoute is kept only as a fallback.
+  const stopRoute: NextLegRoute | null =
+    nextStopRow?.distanceMiles != null && nextStopRow?.durationMinutes != null
+      ? {
+          distanceMiles: nextStopRow.distanceMiles,
+          durationMinutes: nextStopRow.durationMinutes,
+        }
+      : null;
+  const effectiveInput = stopRoute
+    ? { ...input, nextLegRoute: stopRoute }
+    : input;
+
+  const nextStop = buildNextStop(effectiveInput, nextStopRow);
+  const legProgress = buildLegProgress(effectiveInput, nextStop);
+  const fuelRange = buildFuelRange(effectiveInput, nextStop);
+  const convoy = buildConvoy(effectiveInput, nextStopRow);
 
   return { nextStop, legProgress, fuelRange, convoy };
 }

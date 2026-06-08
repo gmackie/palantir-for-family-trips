@@ -56,6 +56,33 @@ describe("buildDrivingSummary — nextStop", () => {
     });
   });
 
+  it("prefers the next stop's own stored leg route (real road distance/ETA)", () => {
+    const result = buildDrivingSummary(
+      baseInput({
+        // No top-level route; the picked segment carries its own road route.
+        nextLegRoute: null,
+        stops: [
+          {
+            name: "Boise",
+            lat: POMONA.lat,
+            lng: POMONA.lng,
+            order: 0,
+            distanceMiles: 432,
+            durationMinutes: 395,
+          },
+        ],
+      }),
+    );
+    // 432mi / 395min, not the ~30mi haversine from the LA currentPosition.
+    expect(result.nextStop).toEqual({
+      name: "Boise",
+      lat: POMONA.lat,
+      lng: POMONA.lng,
+      distanceMiles: 432,
+      etaMinutes: 395,
+    });
+  });
+
   it("falls back to haversine + AVG_SPEED_MPH when no route is provided", () => {
     const result = buildDrivingSummary(baseInput());
     expect(result.nextStop).not.toBeNull();
