@@ -81,11 +81,16 @@ export function ChatPanel(props: {
 
   const wsBaseUrl = useMemo(() => deriveWsBaseUrl(), []);
 
-  const { messages, presence, typing, connected, send, sendTyping } =
+  const { messages, presence, typing, connected, loading, send, sendTyping } =
     useTripChat({ tripId, wsBaseUrl, history, sendMessage });
+
+  // Reconnecting = we finished the initial load but the socket is down. During
+  // the initial load `connected` is legitimately false, so gate on !loading.
+  const reconnecting = !loading && !connected;
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
 
   // Auto-scroll to newest on new messages.
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -98,12 +103,14 @@ export function ChatPanel(props: {
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
+    setSendFailed(false);
     setDraft("");
     try {
       await send(body);
     } catch {
-      // Restore the draft so the user can retry a failed send.
+      // Restore the draft AND surface the failure (no silent drop).
       setDraft(body);
+      setSendFailed(true);
     } finally {
       setSending(false);
     }
@@ -130,12 +137,16 @@ export function ChatPanel(props: {
         <div className="flex items-center gap-2">
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              connected ? "bg-[#3FB950]" : "bg-[#8B949E]"
+              connected
+                ? "bg-[#3FB950]"
+                : reconnecting
+                  ? "bg-[#D29922]"
+                  : "bg-[#8B949E]"
             }`}
             aria-hidden
           />
           <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E]">
-            {presence.length} online
+            {reconnecting ? "reconnecting…" : `${presence.length} online`}
           </span>
         </div>
       </div>
@@ -145,7 +156,16 @@ export function ChatPanel(props: {
         ref={scrollRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-4"
       >
-        {messages.length === 0 ? (
+        {loading ? (
+          <div className="space-y-3" aria-busy="true" aria-label="Loading messages">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <div className="h-2.5 w-24 animate-pulse rounded-[2px] bg-[#21262D]" />
+                <div className="h-3 w-2/3 animate-pulse rounded-[2px] bg-[#161B22]" />
+              </div>
+            ))}
+          </div>
+        ) : messages.length === 0 ? (
           <p className="py-12 text-center text-sm text-[#484F58]">
             No messages yet. Say hello.
           </p>
@@ -166,7 +186,7 @@ export function ChatPanel(props: {
                   >
                     {mine ? "You" : name}
                   </span>
-                  <span className="font-mono text-[10px] text-[#484F58]">
+                  <span className="font-mono text-[10px] tabular-nums text-[#484F58]">
                     {formatTime(message.createdAt)}
                   </span>
                 </div>
@@ -185,20 +205,23 @@ export function ChatPanel(props: {
         )}
       </div>
 
-      {/* Typing indicator */}
+      {/* Typing indicator / send-failure — static all-caps (minimal-functional motion per DESIGN.md) */}
       <div className="h-4 px-1">
-        {othersTyping.length > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-[#8B949E]">
-            <span className="inline-flex gap-0.5">
-              <span className="h-1 w-1 animate-pulse rounded-full bg-[#8B949E]" />
-              <span className="h-1 w-1 animate-pulse rounded-full bg-[#8B949E] [animation-delay:150ms]" />
-              <span className="h-1 w-1 animate-pulse rounded-full bg-[#8B949E] [animation-delay:300ms]" />
-            </span>
+        {sendFailed ? (
+          <button
+            type="button"
+            onClick={() => void handleSend()}
+            className="font-mono text-[10px] uppercase tracking-wider text-[#F85149] hover:underline"
+          >
+            failed to send — retry
+          </button>
+        ) : othersTyping.length > 0 ? (
+          <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E]">
             {othersTyping.length === 1
               ? "typing"
-              : `${othersTyping.length} people typing`}
+              : `${othersTyping.length} typing`}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Composer */}
@@ -207,18 +230,19 @@ export function ChatPanel(props: {
           value={draft}
           onChange={(e) => {
             setDraft(e.target.value);
+            if (sendFailed) setSendFailed(false);
             sendTyping();
           }}
           onKeyDown={handleKeyDown}
           rows={1}
           placeholder="Message the trip..."
-          className="max-h-32 min-h-[36px] flex-1 resize-none rounded-[4px] border border-[#21262D] bg-[#0D1117] px-3 py-2 text-sm text-[#C9D1D9] placeholder:text-[#484F58] focus:border-[#58A6FF]/40 focus:outline-none"
+          className="max-h-32 min-h-11 flex-1 resize-none rounded-[4px] border border-[#21262D] bg-[#0D1117] px-3 py-2.5 text-sm text-[#C9D1D9] placeholder:text-[#484F58] focus:border-[#58A6FF]/40 focus:outline-none"
         />
         <button
           type="button"
           onClick={() => void handleSend()}
           disabled={sending || draft.trim().length === 0}
-          className="shrink-0 rounded-[4px] border border-[#58A6FF]/30 bg-[#58A6FF]/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20 disabled:opacity-40"
+          className="min-h-11 shrink-0 rounded-[4px] border border-[#58A6FF]/30 bg-[#58A6FF]/10 px-4 text-[10px] font-semibold uppercase tracking-wider text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20 disabled:opacity-40"
         >
           {sending ? "..." : "Send"}
         </button>
