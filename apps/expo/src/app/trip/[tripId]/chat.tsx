@@ -104,8 +104,12 @@ export default function ChatScreen() {
 
   const wsBaseUrl = useMemo(() => deriveWsBaseUrl(), []);
 
-  const { messages, presence, typing, connected, send, sendTyping } =
+  const { messages, presence, typing, connected, loading, send, sendTyping } =
     useTripChat({ tripId, wsBaseUrl, history, sendMessage });
+
+  // Reconnecting = initial load done but socket down (connected is legitimately
+  // false during the first load, so gate on !loading).
+  const reconnecting = !loading && !connected;
 
   // Inverted list renders newest-at-bottom, so feed it newest-first.
   const ordered = useMemo(() => [...messages].reverse(), [messages]);
@@ -158,7 +162,11 @@ export default function ChatScreen() {
             width: 7,
             height: 7,
             borderRadius: 4,
-            backgroundColor: connected ? C.success : C.muted,
+            backgroundColor: connected
+              ? C.success
+              : reconnecting
+                ? C.warning
+                : C.muted,
           }}
         />
         <Text
@@ -171,7 +179,7 @@ export default function ChatScreen() {
             fontFamily: mono,
           }}
         >
-          {presence.length} online
+          {reconnecting ? "reconnecting…" : `${presence.length} online`}
         </Text>
       </View>
 
@@ -212,6 +220,7 @@ export default function ChatScreen() {
                       color: C.placeholder,
                       fontSize: 11,
                       fontFamily: mono,
+                      fontVariant: ["tabular-nums"],
                     }}
                   >
                     {formatTime(item.createdAt)}
@@ -241,13 +250,17 @@ export default function ChatScreen() {
                 alignItems: "center",
                 justifyContent: "center",
                 paddingVertical: 60,
-                // Counteract `inverted` so the empty state reads upright.
+                // Counteract `inverted` so the empty/loading state reads upright.
                 transform: [{ scaleY: -1 }],
               }}
             >
-              <Text style={{ color: C.muted, fontSize: 15 }}>
-                No messages yet. Say hello.
-              </Text>
+              {loading ? (
+                <ActivityIndicator color={C.muted} size="small" />
+              ) : (
+                <Text style={{ color: C.muted, fontSize: 15 }}>
+                  No messages yet. Say hello.
+                </Text>
+              )}
             </View>
           }
         />
@@ -325,7 +338,15 @@ export default function ChatScreen() {
             {sending ? (
               <ActivityIndicator color={C.white} size="small" />
             ) : (
-              <Text style={{ color: C.white, fontWeight: "700", fontSize: 15 }}>
+              <Text
+                style={{
+                  color: C.white,
+                  fontWeight: "700",
+                  fontSize: 13,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
                 Send
               </Text>
             )}

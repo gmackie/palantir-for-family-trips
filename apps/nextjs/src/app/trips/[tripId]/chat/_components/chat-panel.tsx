@@ -81,8 +81,12 @@ export function ChatPanel(props: {
 
   const wsBaseUrl = useMemo(() => deriveWsBaseUrl(), []);
 
-  const { messages, presence, typing, connected, send, sendTyping } =
+  const { messages, presence, typing, connected, loading, send, sendTyping } =
     useTripChat({ tripId, wsBaseUrl, history, sendMessage });
+
+  // Reconnecting = we finished the initial load but the socket is down. During
+  // the initial load `connected` is legitimately false, so gate on !loading.
+  const reconnecting = !loading && !connected;
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -130,12 +134,16 @@ export function ChatPanel(props: {
         <div className="flex items-center gap-2">
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              connected ? "bg-[#3FB950]" : "bg-[#8B949E]"
+              connected
+                ? "bg-[#3FB950]"
+                : reconnecting
+                  ? "bg-[#D29922]"
+                  : "bg-[#8B949E]"
             }`}
             aria-hidden
           />
           <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E]">
-            {presence.length} online
+            {reconnecting ? "reconnecting…" : `${presence.length} online`}
           </span>
         </div>
       </div>
@@ -145,7 +153,16 @@ export function ChatPanel(props: {
         ref={scrollRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-4"
       >
-        {messages.length === 0 ? (
+        {loading ? (
+          <div className="space-y-3" aria-busy="true" aria-label="Loading messages">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <div className="h-2.5 w-24 animate-pulse rounded-[2px] bg-[#21262D]" />
+                <div className="h-3 w-2/3 animate-pulse rounded-[2px] bg-[#161B22]" />
+              </div>
+            ))}
+          </div>
+        ) : messages.length === 0 ? (
           <p className="py-12 text-center text-sm text-[#484F58]">
             No messages yet. Say hello.
           </p>
@@ -166,7 +183,7 @@ export function ChatPanel(props: {
                   >
                     {mine ? "You" : name}
                   </span>
-                  <span className="font-mono text-[10px] text-[#484F58]">
+                  <span className="font-mono text-[10px] tabular-nums text-[#484F58]">
                     {formatTime(message.createdAt)}
                   </span>
                 </div>

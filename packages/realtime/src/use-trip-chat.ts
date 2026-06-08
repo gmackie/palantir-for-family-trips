@@ -93,6 +93,13 @@ export interface UseTripChatResult {
   presence: string[];
   typing: string[];
   connected: boolean;
+  /**
+   * True until the FIRST history backfill settles (success or failure). Lets the
+   * UI show a distinct loading state instead of conflating it with "empty" — a
+   * fresh room must not flash "no messages yet" while history is still in flight.
+   * Per DESIGN.md every interactive surface defines loading vs empty separately.
+   */
+  loading: boolean;
   /** Send a message. Optimistically appends, reconciles on broadcast echo. */
   send: (body: string) => Promise<void>;
   /** Notify the room that the current user is typing (throttled). */
@@ -118,6 +125,15 @@ export function useTripChat(opts: UseTripChatOptions): UseTripChatResult {
   const [presence, setPresence] = useState<string[]>([]);
   const [typing, setTyping] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
+  // True until the first history backfill settles. Flipped false once (see
+  // `finishLoading`) so reconnects never re-enter the loading state.
+  const [loading, setLoading] = useState(true);
+  const loadedOnceRef = useRef(false);
+  const finishLoading = useCallback(() => {
+    if (loadedOnceRef.current) return;
+    loadedOnceRef.current = true;
+    if (mountedRef.current) setLoading(false);
+  }, []);
 
   // Refs that must survive reconnects / re-renders without re-triggering the
   // socket effect. `history`/`sendMessage` are kept in refs so the effect can
@@ -173,9 +189,14 @@ export function useTripChat(opts: UseTripChatOptions): UseTripChatResult {
 
     const backfill = () => {
       historyRef.current({ tripId, limit: historyLimit }).then(
-        (rows) => ingest(rows),
+        (rows) => {
+          ingest(rows);
+          finishLoading();
+        },
         () => {
-          /* best-effort: a failed backfill is retried on the next reconnect */
+          // best-effort: a failed backfill is retried on the next reconnect, but
+          // we still leave the loading state so the UI can show empty/error.
+          finishLoading();
         },
       );
     };
@@ -183,9 +204,15 @@ export function useTripChat(opts: UseTripChatOptions): UseTripChatResult {
     const connect = () => {
       // Bail before opening if there's nothing to connect to: an empty tripId
       // (or a missing WebSocket global, e.g. SSR) must never spin the loop.
-      if (!tripId) return;
+      if (!tripId) {
+        finishLoading();
+        return;
+      }
       const Ctor = getWebSocketCtor();
-      if (!Ctor) return; // no WebSocket in this environment (e.g. SSR) — bail.
+      if (!Ctor) {
+        finishLoading(); // no WebSocket in this environment (e.g. SSR) — bail.
+        return;
+      }
 
       const ws = new Ctor(`${wsBaseUrl}/api/chat/${tripId}/ws`);
       current = ws;
@@ -272,7 +299,7 @@ export function useTripChat(opts: UseTripChatOptions): UseTripChatResult {
       }
       socketRef.current = null;
     };
-  }, [tripId, wsBaseUrl, historyLimit, ingest, markTyping]);
+  }, [tripId, wsBaseUrl, historyLimit, ingest, markTyping, finishLoading]);
 
   const send = useCallback(
     async (body: string) => {
@@ -299,5 +326,5 @@ export function useTripChat(opts: UseTripChatOptions): UseTripChatResult {
     }
   }, [typingThrottleMs]);
 
-  return { messages, presence, typing, connected, send, sendTyping };
+  return { messages, presence, typing, connected, loading, send, sendTyping };
 }
