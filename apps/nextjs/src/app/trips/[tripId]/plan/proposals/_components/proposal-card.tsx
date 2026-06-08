@@ -59,7 +59,7 @@ export function ProposalCard({
   }
 
   return (
-    <div className="bg-card rounded-[4px] border p-5 shadow-sm">
+    <div className="bg-card rounded-[4px] border p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export function ProposalCard({
               {proposal.title}
             </h3>
             <span
-              className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+              className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
                 proposal.status === "selected"
                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                   : proposal.status === "rejected"

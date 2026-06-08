@@ -161,7 +161,7 @@ export function ExpenseDetail(props: {
             <span>{formatDate(expense.occurredAt)}</span>
             <span>{expense.currency}</span>
             <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+              className={`inline-flex items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
                 isDraft
                   ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                   : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
@@ -178,7 +178,7 @@ export function ExpenseDetail(props: {
       </div>
 
       {/* Totals card */}
-      <section className="bg-card rounded-3xl border p-6 shadow-sm">
+      <section className="bg-card rounded-3xl border p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Totals</h2>
           {isDraft && !editingDraft && (
@@ -309,7 +309,7 @@ export function ExpenseDetail(props: {
       </section>
 
       {/* Line items */}
-      <section className="bg-card rounded-3xl border p-6 shadow-sm">
+      <section className="bg-card rounded-3xl border p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">
             Line items ({lineItems.length})
@@ -435,7 +435,7 @@ export function ExpenseDetail(props: {
       </section>
 
       {/* Shares summary */}
-      <section className="bg-card rounded-3xl border p-6 shadow-sm">
+      <section className="bg-card rounded-3xl border p-6">
         <h2 className="text-lg font-semibold">Shares</h2>
 
         {shares.warnings.length > 0 && (

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { EmptyState } from "~/app/trips/_components/command-panel";
 import { useTRPC } from "~/trpc/react";
 
 const VOTE_RESPONSES = [
@@ -137,7 +138,7 @@ export default function PollDetailPage() {
           <h1 className="text-4xl font-black tracking-tight">{poll.title}</h1>
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+              className={`inline-flex items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
                 isOpen
                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                   : "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400"
@@ -173,7 +174,7 @@ export default function PollDetailPage() {
       {isOpen && (
         <form
           onSubmit={handleAddOption}
-          className="bg-card mt-6 rounded-[4px] border p-4 shadow-sm"
+          className="bg-card mt-6 rounded-[4px] border p-4"
         >
           <p className="text-muted-foreground mb-2 text-sm font-medium">
             Add an option
@@ -199,16 +200,12 @@ export default function PollDetailPage() {
       {/* Options and voting */}
       <div className="mt-6 grid gap-3">
         {poll.options.length === 0 ? (
-          <div className="bg-card rounded-[4px] border p-6 text-center">
-            <p className="text-muted-foreground text-sm">
-              No options yet. Add one above.
-            </p>
-          </div>
+          <EmptyState>No options yet. Add one above.</EmptyState>
         ) : (
           poll.options.map((option) => (
             <div
               key={option.id}
-              className="bg-card rounded-[4px] border p-4 shadow-sm"
+              className="bg-card rounded-[4px] border p-4"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -258,7 +255,7 @@ export default function PollDetailPage() {
                   {option.votes.map((v) => (
                     <span
                       key={v.id}
-                      className="bg-muted rounded-full px-2 py-0.5 text-xs"
+                      className="bg-muted rounded-[2px] px-2 py-0.5 text-xs"
                     >
                       {v.userId.slice(0, 8)}: {v.response}
                       {v.rank != null && ` (#${v.rank})`}

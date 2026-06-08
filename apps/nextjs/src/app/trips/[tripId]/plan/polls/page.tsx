@@ -37,7 +37,7 @@ export default async function PollsListPage(props: {
         </div>
 
         {/* Create poll form */}
-        <section className="bg-card mt-8 rounded-3xl border p-6 shadow-sm">
+        <section className="bg-card mt-8 rounded-3xl border p-6">
           <h2 className="mb-4 text-lg font-semibold">Create a new poll</h2>
           <CreatePollForm tripId={tripId} workspaceId={workspace.id} />
         </section>
@@ -45,7 +45,7 @@ export default async function PollsListPage(props: {
         {/* Poll list */}
         <section className="mt-8">
           {pollsList.length === 0 ? (
-            <div className="bg-card rounded-3xl border p-10 text-center shadow-sm">
+            <div className="bg-card rounded-3xl border p-10 text-center">
               <p className="text-muted-foreground text-sm">
                 No polls yet. Create one above to start.
               </p>
@@ -56,7 +56,7 @@ export default async function PollsListPage(props: {
                 <Link
                   key={poll.id}
                   href={`/trips/${tripId}/plan/polls/${poll.id}`}
-                  className="bg-card hover:bg-accent/50 rounded-[4px] border p-5 shadow-sm transition-colors"
+                  className="bg-card hover:bg-accent/50 rounded-[4px] border p-5 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
@@ -65,7 +65,7 @@ export default async function PollsListPage(props: {
                           {poll.title}
                         </h3>
                         <span
-                          className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
                             poll.status === "open"
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                               : "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400"

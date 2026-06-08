@@ -53,7 +53,7 @@ export default async function ExpensesListPage(props: {
         </div>
 
         {expenses.length === 0 ? (
-          <div className="bg-card mt-8 rounded-3xl border p-10 text-center shadow-sm">
+          <div className="bg-card mt-8 rounded-3xl border p-10 text-center">
             <p className="text-muted-foreground text-sm">
               No expenses yet. Add your first expense to start tracking.
             </p>
@@ -64,7 +64,7 @@ export default async function ExpensesListPage(props: {
               <Link
                 key={expense.id}
                 href={`/trips/${tripId}/expenses/${expense.id}`}
-                className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-[4px] border p-5 shadow-sm transition-colors"
+                className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-[4px] border p-5 transition-colors"
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ export default async function ExpensesListPage(props: {
                       {expense.merchant}
                     </h2>
                     <span
-                      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
                         expense.status === "finalized"
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : "bg-amber-500/15 text-amber-600 dark:text-amber-400"

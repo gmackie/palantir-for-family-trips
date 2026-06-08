@@ -87,7 +87,7 @@ export default async function ProposalsListPage(props: {
         </div>
 
         {/* Create proposal form */}
-        <section className="bg-card mt-6 rounded-3xl border p-6 shadow-sm">
+        <section className="bg-card mt-6 rounded-3xl border p-6">
           <h2 className="mb-4 text-lg font-semibold">Add a proposal</h2>
           <CreateProposalForm tripId={tripId} workspaceId={workspace.id} />
         </section>
@@ -95,7 +95,7 @@ export default async function ProposalsListPage(props: {
         {/* Proposal list */}
         <section className="mt-8">
           {proposalsList.length === 0 ? (
-            <div className="bg-card rounded-3xl border p-10 text-center shadow-sm">
+            <div className="bg-card rounded-3xl border p-10 text-center">
               <p className="text-muted-foreground text-sm">
                 No proposals yet. Add one above.
               </p>

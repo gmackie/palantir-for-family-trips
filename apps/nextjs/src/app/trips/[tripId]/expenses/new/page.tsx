@@ -193,7 +193,7 @@ export default function NewExpensePage() {
 
       <form
         onSubmit={handleSubmit}
-        className="bg-card mt-8 rounded-3xl border p-6 shadow-sm"
+        className="bg-card mt-8 rounded-3xl border p-6"
       >
         <FieldGroup>
           <Field>

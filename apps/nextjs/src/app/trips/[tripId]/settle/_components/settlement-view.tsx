@@ -139,7 +139,7 @@ export function SettlementView(props: {
 
       {/* All settled celebration */}
       {allSettled && (
-        <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-10 text-center shadow-sm">
+        <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-10 text-center">
           <p className="text-3xl font-black">Everyone&apos;s square!</p>
           <p className="text-muted-foreground mt-2 text-sm">
             All debts have been settled. No outstanding balances.
@@ -157,7 +157,7 @@ export function SettlementView(props: {
             {balances.map((b) => (
               <div
                 key={b.userId}
-                className={`rounded-[4px] border p-4 shadow-sm ${
+                className={`rounded-[4px] border p-4 ${
                   b.amountCents > 0
                     ? "border-emerald-500/30 bg-emerald-500/5"
                     : "border-red-500/30 bg-red-500/5"
@@ -199,7 +199,7 @@ export function SettlementView(props: {
               return (
                 <div
                   key={`${tx.fromUserId}-${tx.toUserId}-${i}`}
-                  className="bg-card flex flex-col gap-3 rounded-[4px] border p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                  className="bg-card flex flex-col gap-3 rounded-[4px] border p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="space-y-1">
                     <p className="text-sm font-medium">
@@ -248,7 +248,7 @@ export function SettlementView(props: {
           Settlement History
         </h2>
         {history.length === 0 ? (
-          <div className="bg-card rounded-[4px] border p-6 text-center shadow-sm">
+          <div className="bg-card rounded-[4px] border p-6 text-center">
             <p className="text-muted-foreground text-sm">
               No settlements recorded yet.
             </p>
@@ -265,7 +265,7 @@ export function SettlementView(props: {
               return (
                 <div
                   key={s.id}
-                  className={`bg-card flex flex-col gap-3 rounded-[4px] border p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between ${
+                  className={`bg-card flex flex-col gap-3 rounded-[4px] border p-4 sm:flex-row sm:items-center sm:justify-between ${
                     isUndone ? "opacity-50" : ""
                   }`}
                 >

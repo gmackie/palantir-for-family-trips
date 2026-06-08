@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { EmptyState } from "../../_components/command-panel";
 import { requireTripsWorkspace } from "../../_lib/server";
 
 export default async function PlanningDashboardPage(props: {
@@ -64,21 +65,23 @@ export default async function PlanningDashboardPage(props: {
           </div>
 
           {openPolls.length === 0 ? (
-            <div className="bg-card mt-4 rounded-[4px] border p-6 text-center">
-              <p className="text-muted-foreground text-sm">
-                No active polls. Create one to start gathering votes.
-              </p>
-              <Button asChild className="mt-3" size="sm">
-                <Link href={`/trips/${tripId}/plan/polls`}>Create a poll</Link>
-              </Button>
-            </div>
+            <EmptyState
+              className="mt-4"
+              action={
+                <Button asChild size="sm">
+                  <Link href={`/trips/${tripId}/plan/polls`}>Create a poll</Link>
+                </Button>
+              }
+            >
+              No active polls. Create one to start gathering votes.
+            </EmptyState>
           ) : (
             <div className="mt-4 grid gap-3">
               {openPolls.map((poll) => (
                 <Link
                   key={poll.id}
                   href={`/trips/${tripId}/plan/polls/${poll.id}`}
-                  className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-[4px] border p-4 shadow-sm transition-colors"
+                  className="bg-card hover:bg-accent/50 flex items-center justify-between rounded-[4px] border p-4 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate font-semibold">{poll.title}</h3>
@@ -88,7 +91,7 @@ export default async function PlanningDashboardPage(props: {
                       {poll.pollType.replace("_", " ")}
                     </p>
                   </div>
-                  <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ml-3 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium">
+                  <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ml-3 inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium">
                     open
                   </span>
                 </Link>
@@ -111,22 +114,24 @@ export default async function PlanningDashboardPage(props: {
           </div>
 
           {recentProposals.length === 0 ? (
-            <div className="bg-card mt-4 rounded-[4px] border p-6 text-center">
-              <p className="text-muted-foreground text-sm">
-                No proposals yet. Suggest a flight, hotel, or activity.
-              </p>
-              <Button asChild className="mt-3" size="sm">
-                <Link href={`/trips/${tripId}/plan/proposals`}>
-                  Add a proposal
-                </Link>
-              </Button>
-            </div>
+            <EmptyState
+              className="mt-4"
+              action={
+                <Button asChild size="sm">
+                  <Link href={`/trips/${tripId}/plan/proposals`}>
+                    Add a proposal
+                  </Link>
+                </Button>
+              }
+            >
+              No proposals yet. Suggest a flight, hotel, or activity.
+            </EmptyState>
           ) : (
             <div className="mt-4 grid gap-3">
               {recentProposals.map((proposal) => (
                 <div
                   key={proposal.id}
-                  className="bg-card flex items-center justify-between rounded-[4px] border p-4 shadow-sm"
+                  className="bg-card flex items-center justify-between rounded-[4px] border p-4"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -134,7 +139,7 @@ export default async function PlanningDashboardPage(props: {
                         {proposal.title}
                       </h3>
                       <span
-                        className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
                           proposal.status === "selected"
                             ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                             : proposal.status === "rejected"

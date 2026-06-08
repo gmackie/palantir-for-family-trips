@@ -69,7 +69,7 @@ export default async function NewTripPage() {
 
       <form
         action={createTripAction}
-        className="bg-card mt-8 rounded-3xl border p-6 shadow-sm"
+        className="bg-card mt-8 rounded-3xl border p-6"
       >
         <FieldGroup>
           <Field>

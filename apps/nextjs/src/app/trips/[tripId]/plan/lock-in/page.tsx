@@ -126,7 +126,7 @@ export default function LockInPage() {
       )}
 
       {/* Trip details */}
-      <section className="bg-card mt-8 rounded-3xl border p-6 shadow-sm">
+      <section className="bg-card mt-8 rounded-3xl border p-6">
         <h2 className="text-lg font-semibold">Trip Details</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between gap-4">
@@ -156,7 +156,7 @@ export default function LockInPage() {
             {pollWinners.map(({ poll, winner }) => (
               <div
                 key={poll.id}
-                className="bg-card rounded-[4px] border p-4 shadow-sm"
+                className="bg-card rounded-[4px] border p-4"
               >
                 <h3 className="text-sm font-semibold">{poll.title}</h3>
                 {winner ? (
@@ -196,11 +196,11 @@ export default function LockInPage() {
             {selectedProposals.map((proposal) => (
               <div
                 key={proposal.id}
-                className="bg-card rounded-[4px] border p-4 shadow-sm"
+                className="bg-card rounded-[4px] border p-4"
               >
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">{proposal.title}</h3>
-                  <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-full px-2 py-0.5 text-xs font-medium">
+                  <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-[2px] px-2 py-0.5 text-xs font-medium">
                     {proposal.status}
                   </span>
                 </div>
