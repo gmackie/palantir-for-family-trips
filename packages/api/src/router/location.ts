@@ -54,6 +54,21 @@ export const locationRouter = {
           updatedAt: memberLocations.updatedAt,
         })) as { id: string; updatedAt: Date }[];
 
+      // Fan the new position out to connected WebSocket clients via the TripRoom
+      // Durable Object. `ctx.realtime` is populated by the worker entry (Workers
+      // runtime) and is `undefined`/`null` in unit tests, where this is a no-op.
+      // Best-effort: a broadcast failure must never roll back or block the
+      // already-persisted upsert.
+      ctx.realtime?.broadcast(ctx.tripId, {
+        type: "location",
+        userId: ctx.session.user.id,
+        lat: input.lat,
+        lng: input.lng,
+        heading: input.heading ?? null,
+        speed: input.speed ?? null,
+        updatedAt: row!.updatedAt.toISOString(),
+      });
+
       return row!;
     }),
 

@@ -17,6 +17,15 @@ import { AsyncLocalStorage } from "node:async_hooks";
 /** Payload broadcast to a TripRoom. Either a new message row or a delete tombstone. */
 export type RealtimeBroadcast =
   | { type: "delete"; id: string }
+  | {
+      type: "location";
+      userId: string;
+      lat: number;
+      lng: number;
+      heading: number | null;
+      speed: number | null;
+      updatedAt: string;
+    }
   | Record<string, unknown>;
 
 export interface RealtimeRuntime {
