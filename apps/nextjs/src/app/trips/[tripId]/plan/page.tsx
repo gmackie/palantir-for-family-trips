@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { EmptyState } from "../../_components/command-panel";
+import { EmptyState, StatusPill } from "../../_components/command-panel";
 import { requireTripsWorkspace } from "../../_lib/server";
 
 export default async function PlanningDashboardPage(props: {
@@ -91,9 +91,7 @@ export default async function PlanningDashboardPage(props: {
                       {poll.pollType.replace("_", " ")}
                     </p>
                   </div>
-                  <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ml-3 inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium">
-                    open
-                  </span>
+                  <StatusPill tone="success">open</StatusPill>
                 </Link>
               ))}
             </div>
@@ -138,17 +136,17 @@ export default async function PlanningDashboardPage(props: {
                       <h3 className="truncate font-semibold">
                         {proposal.title}
                       </h3>
-                      <span
-                        className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
+                      <StatusPill
+                        tone={
                           proposal.status === "selected"
-                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            ? "success"
                             : proposal.status === "rejected"
-                              ? "bg-red-500/15 text-red-600 dark:text-red-400"
-                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                        }`}
+                              ? "critical"
+                              : "warning"
+                        }
                       >
                         {proposal.status}
-                      </span>
+                      </StatusPill>
                     </div>
                     <p className="text-muted-foreground text-xs">
                       {proposal.proposalType.replace("_", " ")}

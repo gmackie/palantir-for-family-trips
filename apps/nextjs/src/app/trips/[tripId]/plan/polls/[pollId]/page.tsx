@@ -7,14 +7,30 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
-import { EmptyState } from "~/app/trips/_components/command-panel";
+import { EmptyState, ErrorBanner, StatusPill } from "~/app/trips/_components/command-panel";
 import { useTRPC } from "~/trpc/react";
 
 const VOTE_RESPONSES = [
-  { value: "yes", label: "Yes", color: "bg-emerald-500/15 text-emerald-600" },
-  { value: "no", label: "No", color: "bg-red-500/15 text-red-600" },
-  { value: "maybe", label: "Maybe", color: "bg-amber-500/15 text-amber-600" },
-  { value: "prefer", label: "Prefer", color: "bg-blue-500/15 text-blue-600" },
+  {
+    value: "yes",
+    label: "Yes",
+    color: "border border-[#3FB950]/30 bg-[#3FB950]/10 text-[#3FB950]",
+  },
+  {
+    value: "no",
+    label: "No",
+    color: "border border-[#F85149]/30 bg-[#F85149]/10 text-[#F85149]",
+  },
+  {
+    value: "maybe",
+    label: "Maybe",
+    color: "border border-[#D29922]/30 bg-[#D29922]/10 text-[#D29922]",
+  },
+  {
+    value: "prefer",
+    label: "Prefer",
+    color: "border border-[#58A6FF]/30 bg-[#58A6FF]/10 text-[#58A6FF]",
+  },
 ] as const;
 
 export default function PollDetailPage() {
@@ -72,7 +88,7 @@ export default function PollDetailPage() {
   if (pollQuery.error) {
     return (
       <main className="container mx-auto max-w-3xl px-4 py-10">
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-[#F85149]">
           Failed to load poll: {pollQuery.error.message}
         </p>
       </main>
@@ -137,15 +153,9 @@ export default function PollDetailPage() {
           </p>
           <h1 className="text-4xl font-black tracking-tight">{poll.title}</h1>
           <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
-                isOpen
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                  : "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400"
-              }`}
-            >
+            <StatusPill tone={isOpen ? "success" : "neutral"}>
               {poll.status}
-            </span>
+            </StatusPill>
             <span className="text-muted-foreground text-xs">
               {poll.pollType.replace("_", " ")}
             </span>
@@ -164,11 +174,7 @@ export default function PollDetailPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="mt-4 rounded-[4px] border border-[#F85149]/30 bg-[#F85149]/10 p-3 text-sm text-[#F85149]">
-          {error}
-        </div>
-      )}
+      {error && <ErrorBanner className="mt-4">{error}</ErrorBanner>}
 
       {/* Add option */}
       {isOpen && (
@@ -220,7 +226,7 @@ export default function PollDetailPage() {
                       href={option.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-1 inline-block text-xs text-blue-500 underline"
+                      className="mt-1 inline-block text-xs text-[#58A6FF] underline"
                     >
                       Link
                     </a>
@@ -241,7 +247,7 @@ export default function PollDetailPage() {
                       type="button"
                       onClick={() => handleVote(option.id, vr.value)}
                       disabled={vote.isPending}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 ${vr.color}`}
+                      className={`rounded-[2px] px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80 ${vr.color}`}
                     >
                       {vr.label}
                     </button>

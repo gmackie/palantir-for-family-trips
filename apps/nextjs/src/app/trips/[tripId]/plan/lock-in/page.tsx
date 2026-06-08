@@ -6,6 +6,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import {
+  ErrorBanner,
+  StatusPill,
+  WarningBanner,
+} from "~/app/trips/_components/command-panel";
 import { useTRPC } from "~/trpc/react";
 
 export default function LockInPage() {
@@ -63,7 +68,7 @@ export default function LockInPage() {
   if (!trip || !workspaceId) {
     return (
       <main className="container mx-auto max-w-3xl px-4 py-10">
-        <p className="text-sm text-red-600">Trip not found.</p>
+        <p className="text-sm text-[#F85149]">Trip not found.</p>
       </main>
     );
   }
@@ -119,14 +124,10 @@ export default function LockInPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="mt-4 rounded-[4px] border border-[#F85149]/30 bg-[#F85149]/10 p-3 text-sm text-[#F85149]">
-          {error}
-        </div>
-      )}
+      {error && <ErrorBanner className="mt-4">{error}</ErrorBanner>}
 
       {/* Trip details */}
-      <section className="bg-card mt-8 rounded-3xl border p-6">
+      <section className="bg-card mt-8 rounded-[4px] border p-6">
         <h2 className="text-lg font-semibold">Trip Details</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between gap-4">
@@ -180,12 +181,10 @@ export default function LockInPage() {
 
       {/* Open polls warning */}
       {openPolls.length > 0 && (
-        <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-            {openPolls.length} poll{openPolls.length !== 1 ? "s are" : " is"}{" "}
-            still open. Confirming the trip will close all open polls.
-          </p>
-        </div>
+        <WarningBanner className="mt-6">
+          {openPolls.length} poll{openPolls.length !== 1 ? "s are" : " is"}{" "}
+          still open. Confirming the trip will close all open polls.
+        </WarningBanner>
       )}
 
       {/* Selected proposals */}
@@ -200,9 +199,11 @@ export default function LockInPage() {
               >
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">{proposal.title}</h3>
-                  <span className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-[2px] px-2 py-0.5 text-xs font-medium">
+                  <StatusPill
+                    tone={proposal.status === "booked" ? "info" : "success"}
+                  >
                     {proposal.status}
-                  </span>
+                  </StatusPill>
                 </div>
                 <p className="text-muted-foreground mt-1 text-xs">
                   {proposal.proposalType.replace("_", " ")}

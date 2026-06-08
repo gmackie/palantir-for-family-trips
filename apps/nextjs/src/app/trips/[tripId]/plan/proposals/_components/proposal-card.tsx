@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { StatusPill } from "~/app/trips/_components/command-panel";
 import { useTRPC } from "~/trpc/react";
 
 interface ProposalData {
@@ -66,19 +67,19 @@ export function ProposalCard({
             <h3 className="truncate text-base font-semibold">
               {proposal.title}
             </h3>
-            <span
-              className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
+            <StatusPill
+              tone={
                 proposal.status === "selected"
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  ? "success"
                   : proposal.status === "rejected"
-                    ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                    ? "critical"
                     : proposal.status === "booked"
-                      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-              }`}
+                      ? "info"
+                      : "warning"
+              }
             >
               {proposal.status}
-            </span>
+            </StatusPill>
           </div>
           <div className="text-muted-foreground mt-1 flex flex-wrap gap-3 text-xs">
             <span className="capitalize">
@@ -101,7 +102,7 @@ export function ProposalCard({
               href={proposal.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 inline-block text-xs text-blue-500 underline"
+              className="mt-1 inline-block text-xs text-[#58A6FF] underline"
             >
               View link
             </a>
@@ -109,7 +110,7 @@ export function ProposalCard({
         </div>
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
 
       <div className="mt-3 flex items-center gap-2">
         {REACTIONS.map((r) => (
@@ -118,12 +119,14 @@ export function ProposalCard({
             type="button"
             onClick={() => handleReact(r.value)}
             disabled={react.isPending}
-            className="bg-muted hover:bg-accent rounded-full px-3 py-1 text-xs font-medium transition-colors"
+            className="bg-muted hover:bg-accent rounded-[2px] px-3 py-1 text-xs font-medium transition-colors"
           >
             {r.emoji}{" "}
-            {proposal.reactionCounts[r.value] != null
-              ? proposal.reactionCounts[r.value]
-              : 0}
+            <span className="tabular-nums">
+              {proposal.reactionCounts[r.value] != null
+                ? proposal.reactionCounts[r.value]
+                : 0}
+            </span>
           </button>
         ))}
       </div>

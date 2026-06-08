@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireTripsWorkspace } from "../../../_lib/server";
+import { EmptyState, StatusPill } from "~/app/trips/_components/command-panel";
 import { CreatePollForm } from "./_components/create-poll-form";
 
 export default async function PollsListPage(props: {
@@ -37,7 +38,7 @@ export default async function PollsListPage(props: {
         </div>
 
         {/* Create poll form */}
-        <section className="bg-card mt-8 rounded-3xl border p-6">
+        <section className="bg-card mt-8 rounded-[4px] border p-6">
           <h2 className="mb-4 text-lg font-semibold">Create a new poll</h2>
           <CreatePollForm tripId={tripId} workspaceId={workspace.id} />
         </section>
@@ -45,11 +46,9 @@ export default async function PollsListPage(props: {
         {/* Poll list */}
         <section className="mt-8">
           {pollsList.length === 0 ? (
-            <div className="bg-card rounded-3xl border p-10 text-center">
-              <p className="text-muted-foreground text-sm">
-                No polls yet. Create one above to start.
-              </p>
-            </div>
+            <EmptyState className="mt-0">
+              No polls yet. Create one above to start.
+            </EmptyState>
           ) : (
             <div className="grid gap-4">
               {pollsList.map((poll) => (
@@ -64,15 +63,11 @@ export default async function PollsListPage(props: {
                         <h3 className="truncate text-base font-semibold">
                           {poll.title}
                         </h3>
-                        <span
-                          className={`inline-flex shrink-0 items-center rounded-[2px] px-2 py-0.5 text-xs font-medium ${
-                            poll.status === "open"
-                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                              : "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400"
-                          }`}
+                        <StatusPill
+                          tone={poll.status === "open" ? "success" : "neutral"}
                         >
                           {poll.status}
-                        </span>
+                        </StatusPill>
                       </div>
                       <p className="text-muted-foreground mt-1 text-xs">
                         {poll.pollType.replace("_", " ")} &middot;{" "}

@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { EmptyState } from "~/app/trips/_components/command-panel";
 import { requireTripsWorkspace } from "../../../_lib/server";
 import { CreateProposalForm } from "./_components/create-proposal-form";
 import { ProposalCard } from "./_components/proposal-card";
@@ -50,7 +51,7 @@ export default async function ProposalsListPage(props: {
               Proposals
             </p>
             <h1 className="text-4xl font-black tracking-tight">{trip.name}</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
+            <p className="text-muted-foreground text-sm tabular-nums sm:text-base">
               {proposalsList.length} proposal
               {proposalsList.length !== 1 ? "s" : ""}
             </p>
@@ -74,7 +75,7 @@ export default async function ProposalsListPage(props: {
               <Link
                 key={tab.label}
                 href={href}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-[2px] px-3 py-1 text-xs font-medium transition-colors ${
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-accent"
@@ -87,7 +88,7 @@ export default async function ProposalsListPage(props: {
         </div>
 
         {/* Create proposal form */}
-        <section className="bg-card mt-6 rounded-3xl border p-6">
+        <section className="bg-card mt-6 rounded-[4px] border p-6">
           <h2 className="mb-4 text-lg font-semibold">Add a proposal</h2>
           <CreateProposalForm tripId={tripId} workspaceId={workspace.id} />
         </section>
@@ -95,11 +96,7 @@ export default async function ProposalsListPage(props: {
         {/* Proposal list */}
         <section className="mt-8">
           {proposalsList.length === 0 ? (
-            <div className="bg-card rounded-3xl border p-10 text-center">
-              <p className="text-muted-foreground text-sm">
-                No proposals yet. Add one above.
-              </p>
-            </div>
+            <EmptyState>No proposals yet. Add one above.</EmptyState>
           ) : (
             <div className="grid gap-4">
               {proposalsList.map((proposal) => (
