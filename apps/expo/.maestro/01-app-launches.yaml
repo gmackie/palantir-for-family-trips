@@ -1,20 +1,19 @@
-# Preflight launch flow
-# Path/name expected by the Preflight readiness check (.maestro/01-app-launches.yaml).
-# Mirrors flows/01-app-launch.yaml. References the native app ID so the
-# maestro_app_id readiness check passes (com.gmacko.sortey + .dev/.preview variants).
-appId: ${APP_ID:-com.gmacko.sortey}
+# Preflight launch smoke flow (path/name expected by the Preflight readiness
+# check: .maestro/01-app-launches.yaml). References the native app id so the
+# maestro_app_id readiness check passes (com.gmacko.sortey + .dev/.preview).
+appId: ${APP_ID:-com.gmacko.sortey.dev}
 ---
 # Launch the app (com.gmacko.sortey / com.gmacko.sortey.dev / com.gmacko.sortey.preview)
 - launchApp
 
-# Wait for the app to be ready
-- assertVisible:
-    text: "Welcome"
-    optional: true
+# Dev/simulator builds download the JS bundle from Metro on first launch, which
+# can take well over the default 10s assert window. Poll up to 45s for ANY text
+# to render instead of asserting instantly — this is a "did it launch + render"
+# smoke, so wait for content rather than flaking on bundle-load timing.
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+      regex: true
+    timeout: 45000
 
 - takeScreenshot: app-launch
-
-# Verify main content rendered
-- assertVisible:
-    text: ".*"
-    regex: true
