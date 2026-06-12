@@ -13,7 +13,7 @@ re-audited from scratch.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001  | Fix settlement claims query + add settlements router tests | P1 | M | — | IN PROGRESS |
+| 001  | Fix settlement claims query + add settlements router tests | P1 | M | — | DONE (executed in worktree `worktree-agent-ab02dc91e165d0e1f` @ `9c014c6`, reviewed+approved 2026-06-12; awaiting user merge) |
 | 002  | Scope attachReceiptImage to the current trip | P1 | S | — | TODO |
 | 003  | Batch pin attendee queries (list + listForTimeline) | P2 | S | — | TODO |
 | 004  | Redact email PII from expo-fallback log | P2 | S | — | TODO |
