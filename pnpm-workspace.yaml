@@ -54,3 +54,11 @@ overrides:
   # GHSA-66fc-rw6m-c2q6. solid-js is a peer of better-auth only; no workspace package
   # imports it directly, so this override has no app-code impact.
   solid-js: '>=1.9.11'
+  # Force h3 >=1.15.6 to clear GHSA-22cc-p3c6-wpvm (SSE injection) and related path-traversal
+  # advisories. h3 is a peer dep of uploadthing (constraint: "*"); uploadthing@7.7.4 is the
+  # latest 7.x release and pins to h3@1.15.4 internally. Direct-bump route exhausted.
+  h3: '>=1.15.11'
+  # Force effect >=3.20.0 to clear GHSA-38f7-945m-qr2g (AsyncLocalStorage context loss).
+  # uploadthing@7.7.4 pins effect@3.17.7; @effect/platform@0.90.3 peer range is ^3.17.7
+  # (accepts >=3.17.7 <4.0.0) so 3.20+ is semver-compatible. Direct-bump route exhausted.
+  effect: '>=3.20.0'
