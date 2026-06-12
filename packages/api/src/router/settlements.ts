@@ -57,7 +57,6 @@ export interface SettlementStore {
 
 // ─── Drizzle implementation ─────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createSettlementStore(db: any): SettlementStore {
   return {
     async listFinalizedExpenses(tripId) {
