@@ -40,6 +40,86 @@ function requireOrganizerOrSelf(
   });
 }
 
+// ---------------------------------------------------------------------------
+// ReceiptImage seam — extracted for unit-testability (same pattern as chat.ts)
+// ---------------------------------------------------------------------------
+
+export interface ReceiptImageStore {
+  findTripExpense(input: {
+    expenseId: string;
+    tripId: string;
+  }): Promise<{ id: string } | null>;
+  insertReceiptImage(values: {
+    expenseId: string;
+    storageKey: string;
+    mimeType: string;
+    sizeBytes: number;
+    uploadedByUserId: string;
+  }): Promise<typeof receiptImages.$inferSelect>;
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle db type is complex
+export function createReceiptImageStore(db: any): ReceiptImageStore {
+  return {
+    findTripExpense: async ({ expenseId, tripId }) => {
+      const [row] = (await db
+        .select({ id: expenses.id })
+        .from(expenses)
+        .where(and(eq(expenses.id, expenseId), eq(expenses.tripId, tripId)))
+        .limit(1)) as Array<{ id: string }>;
+
+      return row ?? null;
+    },
+    insertReceiptImage: async (values) => {
+      const [created] = (await db
+        .insert(receiptImages)
+        .values(values)
+        .returning()) as Array<typeof receiptImages.$inferSelect>;
+
+      if (!created) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to attach receipt image.",
+        });
+      }
+
+      return created;
+    },
+  };
+}
+
+export async function attachReceiptImageToTrip(
+  store: ReceiptImageStore,
+  input: {
+    expenseId: string;
+    tripId: string;
+    storageKey: string;
+    mimeType: string;
+    sizeBytes: number;
+    userId: string;
+  },
+): Promise<typeof receiptImages.$inferSelect> {
+  const found = await store.findTripExpense({
+    expenseId: input.expenseId,
+    tripId: input.tripId,
+  });
+
+  if (!found) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Expense not found on this trip.",
+    });
+  }
+
+  return store.insertReceiptImage({
+    expenseId: input.expenseId,
+    storageKey: input.storageKey,
+    mimeType: input.mimeType,
+    sizeBytes: input.sizeBytes,
+    uploadedByUserId: input.userId,
+  });
+}
+
 export const expensesRouter = {
   /**
    * Create a draft expense. Payer defaults to the calling user unless
@@ -828,17 +908,13 @@ export const expensesRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const [created] = (await ctx.db
-        .insert(receiptImages)
-        .values({
-          expenseId: input.expenseId,
-          storageKey: input.storageKey,
-          mimeType: input.mimeType,
-          sizeBytes: input.sizeBytes,
-          uploadedByUserId: ctx.session.user.id,
-        })
-        .returning()) as Array<typeof receiptImages.$inferSelect>;
-
-      return created;
+      return attachReceiptImageToTrip(createReceiptImageStore(ctx.db), {
+        expenseId: input.expenseId,
+        tripId: ctx.tripId,
+        storageKey: input.storageKey,
+        mimeType: input.mimeType,
+        sizeBytes: input.sizeBytes,
+        userId: ctx.session.user.id,
+      });
     }),
 } satisfies TRPCRouterRecord;
