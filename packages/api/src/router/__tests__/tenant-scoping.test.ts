@@ -3,9 +3,8 @@
  *
  * Strategy: both helpers are pure async functions that accept a `db` argument.
  * We stub `db` as an object whose `.select().from().where().limit()` chain
- * returns a controllable result — the same pattern used in fuel-logs.test.ts
- * (referenced in the plan; note: that file has since been removed, so we
- * follow the stub pattern from chat.test.ts / trips.test.ts).
+ * returns a controllable result — following the repo's in-memory store test
+ * convention (chat.test.ts / trips.test.ts).
  *
  * The itinerary delete where-clause is verified by reading the source file
  * (no DB harness available for inline-router mutations).
