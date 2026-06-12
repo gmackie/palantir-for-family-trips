@@ -13,7 +13,7 @@ re-audited from scratch.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001  | Fix settlement claims query + add settlements router tests | P1 | M | — | TODO |
+| 001  | Fix settlement claims query + add settlements router tests | P1 | M | — | IN PROGRESS |
 | 002  | Scope attachReceiptImage to the current trip | P1 | S | — | TODO |
 | 003  | Batch pin attendee queries (list + listForTimeline) | P2 | S | — | TODO |
 | 004  | Redact email PII from expo-fallback log | P2 | S | — | TODO |
