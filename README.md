@@ -1,6 +1,10 @@
-# create-gmacko-app
+# Sortey — Group Trip Command Center
 
-A fork of [create-t3-turbo](https://github.com/t3-oss/create-t3-turbo) with:
+Sortey is a trip coordination platform for groups. It supports both destination trips (fly-and-stay) and road trips (multi-segment driving itineraries), with a Palantir-style command-center dashboard on web and a mobile companion app for capture on the go. Core vocabulary: Workspace (long-lived group), Trip (bounded event), Segment (one stop or driving day). See `CONTEXT.md` for the full product vocabulary.
+
+## Template & stack
+
+This app is built on the [create-gmacko-app](https://github.com/gmackorg/create-gmacko-app) monorepo template (a fork of [create-t3-turbo](https://github.com/t3-oss/create-t3-turbo)) with:
 
 - Postgres deployed alongside the app first, with hosted Postgres as a later migration once the product has real customer demand
 - ForgeGraph as the preferred deployment path for app hosting, especially on the Hetzner VPS setup
