@@ -12,6 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { validateSegmentBelongsToTrip } from "../trips/segment-guard";
 
 const lodgingProviderSchema = z.enum([
   "airbnb",
@@ -57,21 +58,30 @@ const tripScopedInput = z.object({
   tripId: z.string().min(1),
 });
 
-async function validateSegmentBelongsToTrip(
+/**
+ * Verify that `lodging.segmentId` belongs to `tripId`.
+ * Reports NOT_FOUND (not FORBIDDEN) so cross-trip ids don't leak existence.
+ */
+export async function assertLodgingInTrip(
   db: any,
-  segmentId: string,
+  lodging: { segmentId: string },
   tripId: string,
 ) {
   const [segment] = (await db
     .select({ id: tripSegments.id })
     .from(tripSegments)
-    .where(and(eq(tripSegments.id, segmentId), eq(tripSegments.tripId, tripId)))
+    .where(
+      and(
+        eq(tripSegments.id, lodging.segmentId),
+        eq(tripSegments.tripId, tripId),
+      ),
+    )
     .limit(1)) as { id: string }[];
 
   if (!segment) {
     throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Segment does not belong to this trip.",
+      code: "NOT_FOUND",
+      message: "Lodging not found.",
     });
   }
 }
@@ -168,6 +178,21 @@ export const lodgingRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       const { lodgingId, workspaceId, tripId, ...changes } = input;
+
+      const [existing] = (await ctx.db
+        .select({ id: lodgings.id, segmentId: lodgings.segmentId })
+        .from(lodgings)
+        .where(eq(lodgings.id, lodgingId))
+        .limit(1)) as { id: string; segmentId: string }[];
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Lodging not found.",
+        });
+      }
+
+      await assertLodgingInTrip(ctx.db, existing, ctx.tripId);
 
       const [updated] = (await ctx.db
         .update(lodgings)
@@ -270,11 +295,16 @@ export const lodgingRouter = {
       const [existing] = (await ctx.db
         .select({
           id: lodgings.id,
+          segmentId: lodgings.segmentId,
           createdByUserId: lodgings.createdByUserId,
         })
         .from(lodgings)
         .where(eq(lodgings.id, input.lodgingId))
-        .limit(1)) as { id: string; createdByUserId: string | null }[];
+        .limit(1)) as {
+        id: string;
+        segmentId: string;
+        createdByUserId: string | null;
+      }[];
 
       if (!existing) {
         throw new TRPCError({
@@ -282,6 +312,8 @@ export const lodgingRouter = {
           message: "Lodging not found.",
         });
       }
+
+      await assertLodgingInTrip(ctx.db, existing, ctx.tripId);
 
       if (
         ctx.tripRole !== "organizer" &&
