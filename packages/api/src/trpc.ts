@@ -140,7 +140,7 @@ async function expoSessionFallback(cookieHeader: string): Promise<AuthSession> {
 
       if (!userRow) continue;
 
-      console.log(`[expo-fallback] session valid for ${userRow.email}`);
+      console.log(`[expo-fallback] session valid for user ${userRow.id}`);
       return {
         user: {
           id: userRow.id,
