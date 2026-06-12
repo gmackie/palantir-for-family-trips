@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "@sortey/db";
+import { and, asc, eq, inArray, sql } from "@sortey/db";
 import {
   pinAttendees,
   pins,
@@ -60,14 +60,19 @@ export const pinsRouter = {
       const attendeeCounts = new Map<string, number>();
 
       if (pinIds.length > 0) {
-        for (const pin of rows) {
-          const countResult = (await ctx.db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(pinAttendees)
-            .where(eq(pinAttendees.pinId, pin.id))) as Array<{
-            count: number;
-          }>;
-          attendeeCounts.set(pin.id, countResult[0]?.count ?? 0);
+        const countRows = (await ctx.db
+          .select({
+            pinId: pinAttendees.pinId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(pinAttendees)
+          .where(inArray(pinAttendees.pinId, pinIds))
+          .groupBy(pinAttendees.pinId)) as Array<{
+          pinId: string;
+          count: number;
+        }>;
+        for (const row of countRows) {
+          attendeeCounts.set(row.pinId, row.count);
         }
       }
 
@@ -406,21 +411,27 @@ export const pinsRouter = {
         typeof pins.$inferSelect
       >;
 
-      // Load attendees for each pin
-      const result = [];
-      for (const pin of rows) {
-        const attendees = (await ctx.db
-          .select({ userId: pinAttendees.userId })
+      const pinIds = rows.map((r) => r.id);
+      const attendeesByPin = new Map<string, string[]>();
+
+      if (pinIds.length > 0) {
+        const attendeeRows = (await ctx.db
+          .select({ pinId: pinAttendees.pinId, userId: pinAttendees.userId })
           .from(pinAttendees)
-          .where(eq(pinAttendees.pinId, pin.id))) as Array<{
+          .where(inArray(pinAttendees.pinId, pinIds))) as Array<{
+          pinId: string;
           userId: string;
         }>;
-        result.push({
-          ...pin,
-          attendees: attendees.map((a) => a.userId),
-        });
+        for (const row of attendeeRows) {
+          const existing = attendeesByPin.get(row.pinId) ?? [];
+          existing.push(row.userId);
+          attendeesByPin.set(row.pinId, existing);
+        }
       }
 
-      return result;
+      return rows.map((pin) => ({
+        ...pin,
+        attendees: attendeesByPin.get(pin.id) ?? [],
+      }));
     }),
 } satisfies TRPCRouterRecord;
