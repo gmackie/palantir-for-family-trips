@@ -20,6 +20,7 @@ import { z } from "zod/v4";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
 import { sendPushToTripMembers } from "../notifications/send";
 import { buildDrivingSummary } from "../trips/driving-summary";
+import { assertValidTripStatusTransition } from "../trips/status-transitions";
 import { protectedProcedure, publicProcedure } from "../trpc";
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
@@ -296,6 +297,24 @@ export async function updateTripRecord(
   },
 ) {
   requireOrganizerTripRole(input.tripRole);
+
+  // Only validate status transitions when a new status is being set — non-status
+  // updates (name, dates, etc.) must not pay the extra read.
+  if (input.status !== undefined) {
+    const current = await store.getTrip({
+      workspaceId: input.workspaceId,
+      tripId: input.tripId,
+    });
+
+    if (!current) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Trip not found.",
+      });
+    }
+
+    assertValidTripStatusTransition(current.status, input.status);
+  }
 
   const updated = await store.updateTrip(input);
 
