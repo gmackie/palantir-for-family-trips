@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "@sortey/db";
+import { and, desc, eq, inArray, isNull } from "@sortey/db";
 import {
   expenses,
   lineItemClaims,
@@ -14,6 +14,232 @@ import { tripProcedure } from "../auth/guards";
 import { computeNetBalances, minimizeTransactions } from "../expenses/settle";
 import { computeExpenseShares } from "../expenses/shares";
 
+// ---------------------------------------------------------------------------
+// Narrow row types — only the fields the summary logic needs.
+// ---------------------------------------------------------------------------
+
+export interface ExpenseRow {
+  id: string;
+  tripId: string;
+  payerUserId: string;
+  subtotalCents: number;
+  taxCents: number;
+  tipCents: number;
+}
+
+export interface LineItemRow {
+  id: string;
+  expenseId: string;
+  lineTotalCents: number;
+}
+
+export interface ClaimRow {
+  lineItemId: string;
+  userId: string;
+}
+
+export interface MemberRow {
+  tripId: string;
+  userId: string;
+  displayName: string | null;
+  venmoHandle: string | null;
+}
+
+export interface SettlementRow {
+  tripId: string;
+  fromUserId: string;
+  toUserId: string;
+  amountCents: number;
+}
+
+// ---------------------------------------------------------------------------
+// Store interface + Drizzle-backed factory
+// ---------------------------------------------------------------------------
+
+export interface SettlementSummaryStore {
+  listFinalizedExpenses(tripId: string): Promise<ExpenseRow[]>;
+  listLineItems(expenseIds: string[]): Promise<LineItemRow[]>;
+  listClaims(lineItemIds: string[]): Promise<ClaimRow[]>;
+  listMembers(tripId: string): Promise<MemberRow[]>;
+  listActiveSettlements(tripId: string): Promise<SettlementRow[]>;
+}
+
+export function createSettlementSummaryStore(db: any): SettlementSummaryStore {
+  return {
+    async listFinalizedExpenses(tripId) {
+      return (await db
+        .select({
+          id: expenses.id,
+          tripId: expenses.tripId,
+          payerUserId: expenses.payerUserId,
+          subtotalCents: expenses.subtotalCents,
+          taxCents: expenses.taxCents,
+          tipCents: expenses.tipCents,
+        })
+        .from(expenses)
+        .where(
+          and(eq(expenses.tripId, tripId), eq(expenses.status, "finalized")),
+        )) as ExpenseRow[];
+    },
+
+    async listLineItems(expenseIds) {
+      if (expenseIds.length === 0) return [];
+      return (await db
+        .select({
+          id: lineItems.id,
+          expenseId: lineItems.expenseId,
+          lineTotalCents: lineItems.lineTotalCents,
+        })
+        .from(lineItems)
+        .where(inArray(lineItems.expenseId, expenseIds))) as LineItemRow[];
+    },
+
+    async listClaims(lineItemIds) {
+      if (lineItemIds.length === 0) return [];
+      return (await db
+        .select({
+          lineItemId: lineItemClaims.lineItemId,
+          userId: lineItemClaims.userId,
+        })
+        .from(lineItemClaims)
+        .where(
+          inArray(lineItemClaims.lineItemId, lineItemIds),
+        )) as ClaimRow[];
+    },
+
+    async listMembers(tripId) {
+      return (await db
+        .select({
+          tripId: tripMembers.tripId,
+          userId: tripMembers.userId,
+          displayName: tripMembers.displayName,
+          venmoHandle: tripMembers.venmoHandle,
+        })
+        .from(tripMembers)
+        .where(eq(tripMembers.tripId, tripId))) as MemberRow[];
+    },
+
+    async listActiveSettlements(tripId) {
+      return (await db
+        .select({
+          tripId: settlements.tripId,
+          fromUserId: settlements.fromUserId,
+          toUserId: settlements.toUserId,
+          amountCents: settlements.amountCents,
+        })
+        .from(settlements)
+        .where(
+          and(eq(settlements.tripId, tripId), isNull(settlements.undoneAt)),
+        )) as SettlementRow[];
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Pure orchestration — no DB calls; operates on in-memory data via the store.
+// ---------------------------------------------------------------------------
+
+export async function buildSettlementSummary(
+  store: SettlementSummaryStore,
+  tripId: string,
+) {
+  // Load all finalized expenses and members in parallel
+  const [finalizedExpenses, members] = await Promise.all([
+    store.listFinalizedExpenses(tripId),
+    store.listMembers(tripId),
+  ]);
+
+  const participantUserIds = members.map((m) => m.userId);
+
+  // Batch-load ALL line items for all expenses in a single call
+  const expenseIds = finalizedExpenses.map((e) => e.id);
+  const allLineItems = await store.listLineItems(expenseIds);
+
+  // Batch-load ALL claims for all line items in a single call
+  const lineItemIds = allLineItems.map((li) => li.id);
+  const allClaims = await store.listClaims(lineItemIds);
+
+  // Group line items by expenseId in-memory
+  const lineItemsByExpense = new Map<string, LineItemRow[]>();
+  for (const li of allLineItems) {
+    const existing = lineItemsByExpense.get(li.expenseId) ?? [];
+    existing.push(li);
+    lineItemsByExpense.set(li.expenseId, existing);
+  }
+
+  // Group claims by lineItemId in-memory
+  const claimantsByLineItem = new Map<string, string[]>();
+  for (const claim of allClaims) {
+    const existing = claimantsByLineItem.get(claim.lineItemId) ?? [];
+    existing.push(claim.userId);
+    claimantsByLineItem.set(claim.lineItemId, existing);
+  }
+
+  // Compute shares per expense (no DB calls inside this loop)
+  const expenseShares: Array<{
+    payerUserId: string;
+    shares: Array<{ userId: string; totalCents: number }>;
+  }> = [];
+
+  for (const expense of finalizedExpenses) {
+    const items = lineItemsByExpense.get(expense.id) ?? [];
+
+    const result = computeExpenseShares({
+      payerUserId: expense.payerUserId,
+      subtotalCents: expense.subtotalCents,
+      taxCents: expense.taxCents,
+      tipCents: expense.tipCents,
+      participantUserIds,
+      lineItems: items.map((item) => ({
+        id: item.id,
+        lineTotalCents: item.lineTotalCents,
+        claimantUserIds: claimantsByLineItem.get(item.id) ?? [],
+      })),
+    });
+
+    expenseShares.push({
+      payerUserId: expense.payerUserId,
+      shares: result.shares,
+    });
+  }
+
+  // Load active settlements and compute net balances
+  const activeSettlements = await store.listActiveSettlements(tripId);
+
+  const balancesMap = computeNetBalances({
+    expenseShares,
+    settlements: activeSettlements.map((s) => ({
+      fromUserId: s.fromUserId,
+      toUserId: s.toUserId,
+      amountCents: s.amountCents,
+    })),
+  });
+
+  const suggestedTransactions = minimizeTransactions(balancesMap);
+
+  // Convert Map to array for serialization
+  const balances = Array.from(balancesMap.entries()).map(
+    ([userId, amountCents]) => ({
+      userId,
+      amountCents,
+    }),
+  );
+
+  const allSettled =
+    balances.length === 0 && suggestedTransactions.length === 0;
+
+  return {
+    balances,
+    suggestedTransactions,
+    allSettled,
+    members,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Router
+// ---------------------------------------------------------------------------
+
 export const settlementsRouter = {
   /**
    * Compute the settlement summary for a trip: net balances and
@@ -27,120 +253,10 @@ export const settlementsRouter = {
       }),
     )
     .query(async ({ ctx }) => {
-      // Load all finalized expenses for this trip
-      const finalizedExpenses = (await ctx.db
-        .select()
-        .from(expenses)
-        .where(
-          and(
-            eq(expenses.tripId, ctx.tripId),
-            eq(expenses.status, "finalized"),
-          ),
-        )) as Array<typeof expenses.$inferSelect>;
-
-      // Load trip members for participant pool
-      const members = (await ctx.db
-        .select({
-          userId: tripMembers.userId,
-          displayName: tripMembers.displayName,
-          venmoHandle: tripMembers.venmoHandle,
-        })
-        .from(tripMembers)
-        .where(eq(tripMembers.tripId, ctx.tripId))) as Array<{
-        userId: string;
-        displayName: string | null;
-        venmoHandle: string | null;
-      }>;
-
-      const participantUserIds = members.map((m) => m.userId);
-
-      // For each expense, load line items + claims and compute shares
-      const expenseShares: Array<{
-        payerUserId: string;
-        shares: Array<{ userId: string; totalCents: number }>;
-      }> = [];
-
-      for (const expense of finalizedExpenses) {
-        const items = (await ctx.db
-          .select()
-          .from(lineItems)
-          .where(eq(lineItems.expenseId, expense.id))) as Array<
-          typeof lineItems.$inferSelect
-        >;
-
-        const itemIds = items.map((i) => i.id);
-        let claims: Array<typeof lineItemClaims.$inferSelect> = [];
-        if (itemIds.length > 0) {
-          claims = (await ctx.db
-            .select()
-            .from(lineItemClaims)
-            .where(eq(lineItems.expenseId, expense.id))) as Array<
-            typeof lineItemClaims.$inferSelect
-          >;
-        }
-
-        const claimantsByLineItem = new Map<string, string[]>();
-        for (const claim of claims) {
-          const existing = claimantsByLineItem.get(claim.lineItemId) ?? [];
-          existing.push(claim.userId);
-          claimantsByLineItem.set(claim.lineItemId, existing);
-        }
-
-        const result = computeExpenseShares({
-          payerUserId: expense.payerUserId,
-          subtotalCents: expense.subtotalCents,
-          taxCents: expense.taxCents,
-          tipCents: expense.tipCents,
-          participantUserIds,
-          lineItems: items.map((item) => ({
-            id: item.id,
-            lineTotalCents: item.lineTotalCents,
-            claimantUserIds: claimantsByLineItem.get(item.id) ?? [],
-          })),
-        });
-
-        expenseShares.push({
-          payerUserId: expense.payerUserId,
-          shares: result.shares,
-        });
-      }
-
-      // Load non-undone settlements
-      const activeSettlements = (await ctx.db
-        .select()
-        .from(settlements)
-        .where(
-          and(eq(settlements.tripId, ctx.tripId), isNull(settlements.undoneAt)),
-        )) as Array<typeof settlements.$inferSelect>;
-
-      const balancesMap = computeNetBalances({
-        expenseShares,
-        settlements: activeSettlements.map((s) => ({
-          fromUserId: s.fromUserId,
-          toUserId: s.toUserId,
-          amountCents: s.amountCents,
-        })),
-      });
-
-      const suggestedTransactions = minimizeTransactions(balancesMap);
-
-      // Convert Map to array for serialization
-      const balances = Array.from(balancesMap.entries()).map(
-        ([userId, amountCents]) => ({
-          userId,
-          amountCents,
-        }),
+      return buildSettlementSummary(
+        createSettlementSummaryStore(ctx.db),
+        ctx.tripId,
       );
-
-      const allSettled =
-        balances.length === 0 && suggestedTransactions.length === 0;
-
-      return {
-        balances,
-        suggestedTransactions,
-        allSettled,
-        members,
-      };
     }),
 
   /**
