@@ -39,7 +39,7 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
   - Enums: `tripStatusEnum`, `tripClaimModeEnum`, `tripMemberRoleEnum`
   - Migrations: `packages/db/drizzle/0000_misty_wrecking_crew.sql` through `0006_tan_gorilla_man.sql`
 - **Auth guards**: `packages/api/src/auth/guards.ts` with `workspaceProcedure()` and `tripProcedure()` middleware factories
-- **Trip router**: `packages/api/src/router/trips.ts` (1,582 lines) — CRUD, member management, segment helpers, invite generation, share links, `acceptInvite`
+- **Trip router**: `packages/api/src/router/trips.ts` — CRUD, member management, segment helpers, invite generation, share links, `acceptInvite`
 - **Invite accept flow**: `/invite/[token]` and `/join/[token]` routes; `trips.acceptInvite` and `trips.joinByShareToken` mutations
 - **Trip routes in `apps/nextjs/src/app/trips/`**:
   - `page.tsx` — trip list
@@ -58,6 +58,7 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - `roomAssignments` — schema present (UI not wired)
 - Web: `apps/nextjs/src/app/trips/[tripId]/plan/` route
 - Mobile: `apps/expo/src/app/trip/[tripId]/polls.tsx`
+- **"Lock it in" wizard** — planning → confirmed transition UI at `apps/nextjs/src/app/trips/[tripId]/plan/lock-in/page.tsx`; backed by `planning.confirmTrip` at `packages/api/src/router/planning.ts:517`
 
 ### Phase 3 — Expenses + Receipts + OCR ✅ IMPLEMENTED (OCR not wired)
 - `packages/api/src/router/expenses.ts` (844 lines) — create/draft/finalize/delete, line items, claims, share calculation, group split
@@ -83,10 +84,10 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - `packages/api/src/router/itinerary.ts` — itinerary entries and Gantt timeline data
 - `packages/api/src/router/route-planner.ts` — auto-split into driving days (daylight hours, max 12 h)
 - `packages/api/src/router/corridor.ts` — `searchImported` queries `importedPois` + `poiCache` tables with PostGIS bounding-box filter
-- Google Maps integration (3-key split: browser/server/mobile — see memory/project-gcp-maps-keys.md)
+- Google Maps integration (3-key split: browser/server/mobile)
 - Web: `apps/nextjs/src/app/trips/[tripId]/map/`, `[tripId]/itinerary/`, `[tripId]/road-trip/`
 - Mobile: `apps/expo/src/app/trip/[tripId]/map.tsx`, `itinerary.tsx`, `plan-route.tsx`
-- Route gradient visualization: `apps/nextjs/src/components/road-trip/route-gradient-map.tsx`
+- Route gradient visualization: `apps/nextjs/src/components/road-trip/route-gradient-map.tsx` (partially built — web map component exists; not yet in mobile Driving Mode)
 
 ### Phase 6 — Dashboard adaptation ✅ WIRED
 - Live trip command-center dashboard at `apps/nextjs/src/app/trips/[tripId]/dashboard/page.tsx` — wired to live DB data
@@ -135,7 +136,6 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - **`WORKSPACES_VISIBLE` flag-gating** — `@sortey/flags` infrastructure exists; workspace visibility flag not connected
 
 ### Phase 2P remaining gaps
-- **"Lock it in" wizard** — planning → confirmed transition UI not built
 - **AviationStack integration** — `memberTransits` schema present; AviationStack API not wired
 - **Room assignments UI** — `roomAssignments` schema present; no UI to create/edit them
 
@@ -148,11 +148,12 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - **No UI surface**: corridor search not exposed in either app
 
 ### Road-trip vocabulary features (designed, unbuilt)
-From `CONTEXT.md:41-61` — fully specified vocabulary, none yet implemented:
-- **Predicted Stop** — algorithm-suggested refuel/rest waypoint
-- **Route Gradient** — elevation-aware road type annotation (highway / scenic / dirt)
-- **Side Trip** — branch off the main corridor (different from a trip segment)
-- **Fuel Zone** — geographic region with fuel options (not a specific station)
+From `CONTEXT.md:41-61` — fully specified vocabulary, not yet fully implemented:
+- **Predicted Stop** — an auto-placed pin along a road trip route based on constraints (fuel range, overnight before sunset, amenity needs); recalculates when segment boundaries change
+- **Side Trip** — a deviation from the planned route; when the user leaves the route polyline (>2 mi for a non-POI stop), Sortie prompts to pause the trip for free exploration; a deviation marker is placed on the timeline at the exit point
+- **Fuel Zone** — a predicted area along the route where the vehicle will need fuel, based on MPG × tank size × threshold; rendered as a custom SVG marker on the route gradient showing nearby stations (not a specific station)
+
+Note: **Route Gradient** — a color gradient applied to the route polyline encoding hours-from-now — has a partial web implementation (`route-gradient-map.tsx`; see Phase 5 above); not yet in mobile Driving Mode.
 
 ### SMS invites
 - `docs/ai/A2P_10DLC_REGISTRATION.md` describes the full registration package; 10DLC registration not submitted; Twilio not integrated
@@ -163,9 +164,10 @@ From `CONTEXT.md:41-61` — fully specified vocabulary, none yet implemented:
 
 ## Build Status
 
+Last verified earlier in development; re-verify with:
+
 ```
 pnpm turbo run build --filter='!@sortey/tanstack-start' --filter='!@sortey/expo' --filter='*'
-# 22/22 packages pass, full turbo cache
 ```
 
 Excluded: `@sortey/tanstack-start` (not used in v1), `@sortey/expo` (native build needs Xcode).
