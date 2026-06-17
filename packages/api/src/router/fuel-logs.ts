@@ -1,5 +1,10 @@
 import { and, asc, desc, eq } from "@sortey/db";
-import { expenses, fuelLogs, tripMembers, tripSegments } from "@sortey/db/schema";
+import {
+  expenses,
+  fuelLogs,
+  tripMembers,
+  tripSegments,
+} from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

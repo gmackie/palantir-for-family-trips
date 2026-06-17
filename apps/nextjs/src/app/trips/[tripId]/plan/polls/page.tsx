@@ -2,9 +2,8 @@ import { Button } from "@sortey/ui/button";
 import { TRPCError } from "@trpc/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
-import { requireTripsWorkspace } from "../../../_lib/server";
 import { EmptyState, StatusPill } from "~/app/trips/_components/command-panel";
+import { requireTripsWorkspace } from "../../../_lib/server";
 import { CreatePollForm } from "./_components/create-poll-form";
 
 export default async function PollsListPage(props: {

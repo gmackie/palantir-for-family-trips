@@ -86,8 +86,7 @@ describe("buildDrivingSummary — nextStop", () => {
   it("falls back to haversine + AVG_SPEED_MPH when no route is provided", () => {
     const result = buildDrivingSummary(baseInput());
     expect(result.nextStop).not.toBeNull();
-    const expectedMiles =
-      Math.round(haversineMiles(LA, POMONA) * 10) / 10;
+    const expectedMiles = Math.round(haversineMiles(LA, POMONA) * 10) / 10;
     expect(result.nextStop!.distanceMiles).toBe(expectedMiles);
     // ETA ~ miles / 65 * 60. Just assert it's a positive integer that tracks distance.
     expect(result.nextStop!.etaMinutes).toBe(

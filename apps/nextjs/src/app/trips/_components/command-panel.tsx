@@ -6,9 +6,8 @@
 // operational empty states, dark semantic critical banner. Use these instead of
 // hand-rolling `bg-card rounded-2xl` cards or centered dashed empties.
 
-import type { ReactNode } from "react";
-
 import { cn } from "@sortey/ui";
+import type { ReactNode } from "react";
 
 /** A flat command-center panel (replaces `bg-card rounded-2xl border`). */
 export function CommandPanel(props: {
@@ -28,7 +27,10 @@ export function CommandPanel(props: {
 }
 
 /** All-caps section eyebrow (the dashboard's section-label treatment). */
-export function PanelEyebrow(props: { children: ReactNode; className?: string }) {
+export function PanelEyebrow(props: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <p
       className={cn(
@@ -64,7 +66,10 @@ export function EmptyState(props: {
 }
 
 /** Dark critical banner for inline errors (replaces light `bg-red-50` banners). */
-export function ErrorBanner(props: { children: ReactNode; className?: string }) {
+export function ErrorBanner(props: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       role="alert"
@@ -79,7 +84,10 @@ export function ErrorBanner(props: { children: ReactNode; className?: string }) 
 }
 
 /** Dark warning banner (replaces light `bg-amber-50` advisories). */
-export function WarningBanner(props: { children: ReactNode; className?: string }) {
+export function WarningBanner(props: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       role="status"
@@ -98,7 +106,12 @@ export function WarningBanner(props: { children: ReactNode; className?: string }
  * tabular-nums, semantic tone border+fill. Replaces hand-rolled
  * `bg-emerald-500/15 text-emerald-600` / `bg-zinc-500/15` pills.
  */
-export type StatusTone = "success" | "warning" | "critical" | "info" | "neutral";
+export type StatusTone =
+  | "success"
+  | "warning"
+  | "critical"
+  | "info"
+  | "neutral";
 
 const STATUS_TONE: Record<StatusTone, string> = {
   success: "border-[#3FB950]/30 bg-[#3FB950]/10 text-[#3FB950]",

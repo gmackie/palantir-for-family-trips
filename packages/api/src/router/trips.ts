@@ -1703,9 +1703,7 @@ export const tripsRouter = {
       }));
 
       const self = memberLocationsInput.find((m) => m.userId === userId);
-      const currentPosition = self
-        ? { lat: self.lat, lng: self.lng }
-        : null;
+      const currentPosition = self ? { lat: self.lat, lng: self.lng } : null;
 
       // Latest fuel log for the trip (most recent fill-up).
       const [fuelRow] = (await ctx.db

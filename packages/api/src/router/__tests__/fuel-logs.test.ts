@@ -193,7 +193,7 @@ describe("createFuelLogWithSplit", () => {
     expect(result.splitSkipped).toBe("no_segment");
   });
 
-  it("falls back to merchant \"Fuel\" when the station name is absent", async () => {
+  it('falls back to merchant "Fuel" when the station name is absent', async () => {
     const { state, store } = createMemoryFuelLogStore({
       segments: [{ id: randomUUID(), tripId: "trip_1", sortOrder: 0 }],
       members: ["user_1"],

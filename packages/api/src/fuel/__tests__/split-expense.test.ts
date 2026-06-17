@@ -7,12 +7,14 @@ const { buildFuelExpenseValues } = await import("../split-expense");
 
 const loggedAt = new Date("2026-06-08T15:30:00.000Z");
 
-function makeFuelLog(overrides: Partial<{
-  tripId: string;
-  totalCents: number;
-  stationName: string | null;
-  loggedAt: Date;
-}> = {}) {
+function makeFuelLog(
+  overrides: Partial<{
+    tripId: string;
+    totalCents: number;
+    stationName: string | null;
+    loggedAt: Date;
+  }> = {},
+) {
   return {
     tripId: "trip_1",
     totalCents: 5421,
@@ -43,7 +45,7 @@ describe("buildFuelExpenseValues", () => {
     });
   });
 
-  it("falls back to merchant \"Fuel\" when stationName is absent", () => {
+  it('falls back to merchant "Fuel" when stationName is absent', () => {
     const withNull = buildFuelExpenseValues({
       fuelLog: makeFuelLog({ stationName: null }),
       segmentId: "seg_1",

@@ -8,9 +8,8 @@ import {
   Text,
   View,
 } from "react-native";
-
-import { trpc } from "~/utils/api";
 import type { RouterOutputs } from "~/utils/api";
+import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -168,9 +167,7 @@ export default function DriveScreen() {
                 justifyContent: "center",
               }}
             >
-              <Text
-                style={{ color: C.info, fontSize: 14, fontWeight: "600" }}
-              >
+              <Text style={{ color: C.info, fontSize: 14, fontWeight: "600" }}>
                 Retry
               </Text>
             </Pressable>
@@ -318,7 +315,9 @@ export default function DriveScreen() {
         {(() => {
           const fr = summary?.fuelRange ?? null;
           const low = fr?.low ?? false;
-          const critical = fr ? fr.estimatedRangeMiles < fr.distanceToGoMiles * 0.75 : false;
+          const critical = fr
+            ? fr.estimatedRangeMiles < fr.distanceToGoMiles * 0.75
+            : false;
           const accent = low ? (critical ? C.critical : C.warning) : C.success;
           return (
             <BlockShell
@@ -423,11 +422,7 @@ export default function DriveScreen() {
         })()}
 
         {/* 4 — CONVOY */}
-        <BlockShell
-          label="Convoy"
-          icon="people-outline"
-          iconColor={C.info}
-        >
+        <BlockShell label="Convoy" icon="people-outline" iconColor={C.info}>
           {isLoading ? (
             <BlockLoading />
           ) : !summary || summary.convoy.length === 0 ? (

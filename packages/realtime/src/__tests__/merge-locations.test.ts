@@ -68,7 +68,10 @@ describe("mergeLocations", () => {
   });
 
   it("accepts Date, number, and ISO-string updatedAt for the newest-wins compare", () => {
-    const prev = mergeLocations({}, loc("u1", new Date("2026-06-08T10:00:00Z")));
+    const prev = mergeLocations(
+      {},
+      loc("u1", new Date("2026-06-08T10:00:00Z")),
+    );
     // newer as epoch millis
     const out = mergeLocations(
       prev,
@@ -76,7 +79,10 @@ describe("mergeLocations", () => {
     );
     expect(out.u1?.lat).toBe(7);
     // older as ISO string is ignored
-    const out2 = mergeLocations(out, loc("u1", "2026-06-08T09:59:00Z", { lat: 0 }));
+    const out2 = mergeLocations(
+      out,
+      loc("u1", "2026-06-08T09:59:00Z", { lat: 0 }),
+    );
     expect(out2.u1?.lat).toBe(7);
   });
 
