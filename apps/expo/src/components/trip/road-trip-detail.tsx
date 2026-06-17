@@ -111,7 +111,6 @@ export function RoadTripDetail({
   const isActive = trip.status === "en_route" || trip.status === "active";
 
   const hasRoute = (segments?.length ?? 0) > 0 && !!segments?.[0]?.originName;
-  const segmentCount = segments?.length ?? 0;
 
   const tabs: Array<{
     key: string;

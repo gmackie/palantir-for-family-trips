@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 
 import { authClient } from "~/auth/client";
 
 export function MagicLinkForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);

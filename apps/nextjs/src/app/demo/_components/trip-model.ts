@@ -233,13 +233,6 @@ const LOCATION_MEDIA = {
   ],
 };
 
-const DAY_NAME_TO_ID = {
-  Thursday: "thu",
-  Friday: "fri",
-  Saturday: "sat",
-  Sunday: "sun",
-};
-
 const LEGACY_FAMILY_TASKS = {
   "north-star": {
     "car-pack": "task-car-pack",

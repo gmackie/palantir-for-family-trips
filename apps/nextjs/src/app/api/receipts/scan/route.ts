@@ -5,7 +5,7 @@ import { getR2Bucket } from "@sortey/db/runtime";
 import { session as sessionTable, user as userTable } from "@sortey/db/schema";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { auth, getSession } from "~/auth/server";
+import { getSession } from "~/auth/server";
 import { storeReceiptImage } from "~/lib/receipt-storage";
 
 export const runtime = "nodejs";

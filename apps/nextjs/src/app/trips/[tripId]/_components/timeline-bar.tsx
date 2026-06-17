@@ -18,12 +18,6 @@ function getDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function timeToPercent(date: Date): number {
-  const hours = date.getUTCHours() + date.getUTCMinutes() / 60;
-  const clamped = Math.max(6, Math.min(23, hours));
-  return ((clamped - 6) / 17) * 100;
-}
-
 export function TimelineBar(props: {
   tripId: string;
   workspaceId: string;

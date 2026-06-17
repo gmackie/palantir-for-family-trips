@@ -1,4 +1,4 @@
-import { and, asc, desc, count as drizzleCount, eq, sql } from "@sortey/db";
+import { and, asc, desc, eq, sql } from "@sortey/db";
 import {
   pollOptions,
   polls,

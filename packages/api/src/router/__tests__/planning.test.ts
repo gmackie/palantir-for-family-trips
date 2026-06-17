@@ -23,16 +23,6 @@ type PollRow = {
   createdAt: Date;
 };
 
-type PollOptionRow = {
-  id: string;
-  pollId: string;
-  label: string;
-  description: string | null;
-  url: string | null;
-  sortOrder: number;
-  createdAt: Date;
-};
-
 type PollVoteRow = {
   id: string;
   pollOptionId: string;

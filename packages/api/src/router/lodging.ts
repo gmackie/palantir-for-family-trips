@@ -177,7 +177,12 @@ export const lodgingRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { lodgingId, workspaceId, tripId, ...changes } = input;
+      const {
+        lodgingId,
+        workspaceId: _workspaceId,
+        tripId: _tripId,
+        ...changes
+      } = input;
 
       const [existing] = (await ctx.db
         .select({ id: lodgings.id, segmentId: lodgings.segmentId })
@@ -411,7 +416,12 @@ export const lodgingRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { transitId, workspaceId, tripId, ...changes } = input;
+      const {
+        transitId,
+        workspaceId: _workspaceId,
+        tripId: _tripId,
+        ...changes
+      } = input;
 
       const [updated] = (await ctx.db
         .update(memberTransits)

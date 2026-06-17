@@ -42,7 +42,6 @@ describe("minimizeTransactions", () => {
     ]);
     const txns = minimizeTransactions(balances);
     expect(txns.length).toBeLessThanOrEqual(3); // N-1 = 3
-    const net = txns.reduce((s, t) => s + t.amountCents, 0);
     // All transactions are from debtors to creditors; net flow = sum of payments
     // Each debtor's total payments should match their debt
   });

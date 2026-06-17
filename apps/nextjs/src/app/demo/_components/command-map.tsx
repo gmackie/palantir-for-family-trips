@@ -1436,7 +1436,7 @@ export default function CommandMap({
   activities = [],
   cursorSlot = 0,
   mapUi,
-  mapWeather,
+  mapWeather: _mapWeather,
   mapWeatherTargets = [],
   selectedLocationId,
   selectedRouteId,
@@ -3160,7 +3160,6 @@ export default function CommandMap({
       : status === "error" || status === "missing"
         ? "border-[#F85149]/30 bg-[#F85149]/10 text-[#F85149]"
         : "border-[#58A6FF]/30 bg-[#58A6FF]/10 text-[#58A6FF]";
-  const WeatherIcon = WEATHER_ICONS[mapWeather?.iconKey] || Cloud;
 
   return (
     <div className="relative h-full min-h-0 overflow-hidden bg-[#080a0f]">

@@ -74,7 +74,7 @@ export class MockOCRProvider {
         if (typeof parsed.hash === "string") {
           cache.set(parsed.hash, extraction);
         }
-      } catch (error) {
+      } catch {
         // Skip malformed fixtures silently — they'll fail the test that uses them
       }
     }

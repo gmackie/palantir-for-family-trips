@@ -138,7 +138,6 @@ const EXPENSE_SPLIT_LABELS = {
 
 const PLAYBACK_SPEED_OPTIONS = [1, 2, 3, 4];
 const TIMELINE_HOURS_PER_SLOT = 6;
-const TIMELINE_HOUR_STEPS = 24;
 const VISIBLE_TIMELINE_START_HOUR = 6;
 const VISIBLE_TIMELINE_END_HOUR = 24;
 const MISSION_LAUNCH_HOUR = 9;
@@ -834,20 +833,6 @@ function buildOperationCheckpoints(doc) {
   }).filter(Boolean);
 }
 
-function findUpcomingOperationCheckpoint(
-  checkpoints,
-  cursorSlot,
-  threshold = 0.14,
-) {
-  return (
-    checkpoints.find(
-      (item) =>
-        item.startSlot >= cursorSlot &&
-        item.startSlot - cursorSlot <= threshold,
-    ) || null
-  );
-}
-
 function findCrossedOperationCheckpoint(
   checkpoints,
   previousCursor,
@@ -864,7 +849,7 @@ function findCrossedOperationCheckpoint(
   );
 }
 
-function getPlaybackHighlightLocation(doc, context) {
+function getPlaybackHighlightLocation(_doc, _context) {
   return null;
 }
 
@@ -1904,7 +1889,6 @@ function TimelineBoard({
   onSetPlaybackSpeed,
 }) {
   const days = weatherDays?.length ? weatherDays : DAYS;
-  const totalVisibleSlots = days.length * VISIBLE_TIMELINE_SLOT_SPAN;
   const visibleHoursPerDay =
     VISIBLE_TIMELINE_END_HOUR - VISIBLE_TIMELINE_START_HOUR;
   const timelineRef = useRef(null);
@@ -4842,10 +4826,6 @@ function App() {
       (family) => family.id === viewerProfile?.familyId,
     ) || null;
   const currentFamilyId = currentFamily?.id || null;
-  const selectedEntity = getEntityBySelection(displayDoc, selection);
-  const selectedLocation = getLocationForEntity(displayDoc, selectedEntity);
-  const selectedRoute = getRouteForEntity(displayDoc, selectedEntity);
-
   useEffect(() => {
     clearLegacyTripStorage();
   }, []);

@@ -37,14 +37,6 @@ const TYPE_ICONS: Record<string, string> = {
   destination: "🔴",
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  origin: "border-[#3FB950]",
-  fuel_zone: "border-[#D29922]",
-  poi: "border-[#58A6FF]",
-  overnight_zone: "border-[#D29922]",
-  destination: "border-[#F85149]",
-};
-
 export function TripTikStrip({
   segments,
   totalMiles,

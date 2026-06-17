@@ -261,8 +261,6 @@ export function RoadTripDashboard(props: {
     segments,
     fuelLogs,
     fuelStats,
-    workspaceId,
-    googleMapsApiKey,
     vanProfiles = [],
     corridorPois = [],
   } = props;

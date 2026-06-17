@@ -120,6 +120,7 @@ function createFakeDb(input?: {
       limit: () => query,
       offset: () => query,
       orderBy: () => query,
+      // oxlint-disable-next-line no-thenable -- intentional thenable: mocks an awaitable Drizzle query builder
       then: (
         onFulfilled?: ((value: T[]) => unknown) | null,
         onRejected?: ((reason: unknown) => unknown) | null,

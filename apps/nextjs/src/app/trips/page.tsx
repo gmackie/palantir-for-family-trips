@@ -28,12 +28,6 @@ function statusColor(status: string) {
   }
 }
 
-function mapThumbnailUrl(lat: string, lng: string) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  if (!apiKey) return null;
-  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=11&size=600x300&scale=2&maptype=roadmap&style=element:geometry%7Ccolor:0x161B22&style=element:labels.text.fill%7Ccolor:0x8B949E&style=element:labels.text.stroke%7Ccolor:0x0A0C10&style=feature:road%7Celement:geometry%7Ccolor:0x21262D&style=feature:water%7Celement:geometry%7Ccolor:0x0A0C10&key=${apiKey}`;
-}
-
 export default async function TripsPage() {
   const { caller, workspace } = await requireTripsWorkspace();
   const trips = await caller.trips.list({

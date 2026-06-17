@@ -56,7 +56,7 @@ export function RouteGradientMap({
   encodedPolyline,
   center,
   zoom = 7,
-  corridorRadiusMiles = 30,
+  corridorRadiusMiles: _corridorRadiusMiles = 30,
   showCorridor = true,
   pois = [],
   fuelZones = [],

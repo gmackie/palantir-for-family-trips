@@ -1,4 +1,4 @@
-import type { expenses, fuelLogs } from "@sortey/db/schema";
+import type { fuelLogs } from "@sortey/db/schema";
 
 /**
  * The subset of a fuel-log row that the split builder needs. Kept structural
