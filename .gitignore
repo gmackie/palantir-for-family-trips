@@ -62,3 +62,7 @@ dist/
 session-ses_*.md
 .gstack/
 apps/expo/.preflight/
+/.preflight/
+
+# Claude Code agent worktrees
+.claude/worktrees/

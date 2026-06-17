@@ -5703,7 +5703,7 @@ function App() {
       ...current,
       pageNotes: { ...current.pageNotes, [pageId]: value },
       pageNoteMeta: {
-        ...(current.pageNoteMeta || {}),
+        ...current.pageNoteMeta,
         [pageId]: currentFamilyId
           ? {
               updatedByFamilyId: currentFamilyId,
@@ -5973,7 +5973,7 @@ function App() {
                 allocationMode: "manual",
                 split: EXPENSE_SPLIT_LABELS.manual,
                 allocations: {
-                  ...(expense.allocations || {}),
+                  ...expense.allocations,
                   [familyId]: amount,
                 },
               },
