@@ -7,7 +7,11 @@ import {
   tripMembers,
   tripSegments,
 } from "@sortey/db/schema";
-import { triggerEvent } from "@sortey/realtime";
+// Deep import the server-safe event-log shim directly, NOT the package barrel:
+// the barrel re-exports the client-only `useTripChat`/`useTripLocations` hooks
+// (they import `useEffect`), which would drag client code into this server-side
+// router and break the Next.js server build.
+import { triggerEvent } from "@sortey/realtime/event-log";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";

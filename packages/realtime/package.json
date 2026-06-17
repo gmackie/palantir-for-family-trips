@@ -6,6 +6,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
+    },
+    "./event-log": {
+      "types": "./dist/event-log.d.ts",
+      "default": "./src/event-log.ts"
     }
   },
   "license": "MIT",
