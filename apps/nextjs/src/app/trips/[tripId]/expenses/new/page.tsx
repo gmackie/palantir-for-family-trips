@@ -1,5 +1,6 @@
 "use client";
 
+import { OCR_REVIEW_CONFIDENCE_THRESHOLD } from "@sortey/api/ocr/review";
 import { Button } from "@sortey/ui/button";
 import { Field, FieldContent, FieldGroup, FieldLabel } from "@sortey/ui/field";
 import { Input } from "@sortey/ui/input";
@@ -144,7 +145,9 @@ export default function NewExpensePage() {
                 })),
               });
 
-              if (uploadData.ocr.confidence >= 0.8) {
+              if (
+                uploadData.ocr.confidence >= OCR_REVIEW_CONFIDENCE_THRESHOLD
+              ) {
                 await updateExpense.mutateAsync({
                   workspaceId,
                   tripId,

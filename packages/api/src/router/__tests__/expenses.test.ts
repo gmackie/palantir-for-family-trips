@@ -441,3 +441,77 @@ describe("expenses router — updateDraft guard", () => {
     expect(result).toBe(expense); // same reference — no update happened
   });
 });
+
+describe("expenses router — attachReceiptImage OCR persistence", () => {
+  // Mirrors the trip-scope guard + OCR patch building in expenses.ts
+  // attachReceiptImage. The mutation looks the expense up scoped to the
+  // authorized trip, then writes only the OCR fields the caller supplied.
+
+  type OcrInput = {
+    ocrConfidence?: number;
+    ocrWarnings?: string[];
+    ocrProvider?: "claude" | "gemini" | "fixture";
+    ocrStatus?: "success" | "failed";
+  };
+
+  function simulateAttach(
+    rowsInTrip: ExpenseRow[],
+    ctxTripId: string,
+    input: { expenseId: string } & OcrInput,
+  ): { patch: Record<string, unknown> } {
+    const existing = rowsInTrip.find(
+      (r) => r.id === input.expenseId && r.tripId === ctxTripId,
+    );
+    if (!existing) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found." });
+    }
+    const patch: Record<string, unknown> = {};
+    if (input.ocrConfidence !== undefined)
+      patch.ocrConfidence = input.ocrConfidence;
+    if (input.ocrWarnings !== undefined) patch.ocrWarnings = input.ocrWarnings;
+    if (input.ocrProvider !== undefined) patch.ocrProvider = input.ocrProvider;
+    if (input.ocrStatus !== undefined) patch.ocrStatus = input.ocrStatus;
+    return { patch };
+  }
+
+  it("throws NOT_FOUND when the expense is not in the authorized trip", () => {
+    const expense = makeDraftExpense({ id: "exp_1", tripId: "trip_1" });
+    expect(() =>
+      simulateAttach([expense], "trip_OTHER", { expenseId: "exp_1" }),
+    ).toThrow("Expense not found.");
+  });
+
+  it("persists supplied OCR provenance onto the expense", () => {
+    const expense = makeDraftExpense({ id: "exp_1", tripId: "trip_1" });
+    const { patch } = simulateAttach([expense], "trip_1", {
+      expenseId: "exp_1",
+      ocrConfidence: 0.42,
+      ocrWarnings: ["Subtotal + tax + tip != total"],
+      ocrProvider: "claude",
+      ocrStatus: "success",
+    });
+    expect(patch).toEqual({
+      ocrConfidence: 0.42,
+      ocrWarnings: ["Subtotal + tax + tip != total"],
+      ocrProvider: "claude",
+      ocrStatus: "success",
+    });
+  });
+
+  it("records a failed scan with status only (no confidence/provider)", () => {
+    const expense = makeDraftExpense({ id: "exp_1", tripId: "trip_1" });
+    const { patch } = simulateAttach([expense], "trip_1", {
+      expenseId: "exp_1",
+      ocrStatus: "failed",
+    });
+    expect(patch).toEqual({ ocrStatus: "failed" });
+  });
+
+  it("leaves OCR fields untouched for a manual attach (empty patch)", () => {
+    const expense = makeDraftExpense({ id: "exp_1", tripId: "trip_1" });
+    const { patch } = simulateAttach([expense], "trip_1", {
+      expenseId: "exp_1",
+    });
+    expect(Object.keys(patch)).toHaveLength(0);
+  });
+});

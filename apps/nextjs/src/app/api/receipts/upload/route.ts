@@ -81,7 +81,47 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Attach the storage key via the tRPC mutation (enforces trip membership)
+  // Run OCR and reconciliation first so we can persist its provenance on the
+  // expense in the same attach call. If OCR fails, we still attach the image
+  // (with a "failed" status) so the user can edit the draft manually.
+  let ocr = null;
+  let ocrError: string | undefined;
+  let ocrMeta:
+    | {
+        ocrConfidence: number;
+        ocrWarnings: string[];
+        ocrProvider: "claude" | "gemini" | "fixture";
+        ocrStatus: "success";
+      }
+    | { ocrStatus: "failed" };
+  try {
+    const result = await extractAndReconcileReceipt({
+      imageBytes: bytes,
+      mimeType: mimeType as
+        | "image/jpeg"
+        | "image/png"
+        | "image/webp"
+        | "image/gif",
+    });
+    ocr = {
+      ...result.sanitized,
+      confidence: result.confidence,
+      warnings: result.warnings,
+      provider: result.provider,
+    };
+    ocrMeta = {
+      ocrConfidence: result.confidence,
+      ocrWarnings: result.warnings,
+      ocrProvider: result.provider,
+      ocrStatus: "success",
+    };
+  } catch (error) {
+    ocrError = error instanceof Error ? error.message : "OCR extraction failed";
+    ocrMeta = { ocrStatus: "failed" };
+  }
+
+  // Attach the storage key + OCR provenance via the tRPC mutation (enforces
+  // trip membership and that the expense belongs to the trip).
   const caller = appRouter.createCaller(
     await createTRPCContext({
       headers: new Headers(request.headers),
@@ -97,6 +137,7 @@ export async function POST(request: NextRequest) {
       storageKey: stored.storageKey,
       mimeType: stored.mimeType,
       sizeBytes: stored.sizeBytes,
+      ...ocrMeta,
     });
   } catch (error) {
     return NextResponse.json(
@@ -108,38 +149,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Run OCR and reconciliation. If this fails, we still return the storage
-  // key — the user can edit the draft manually.
-  let ocr;
-  try {
-    const result = await extractAndReconcileReceipt({
-      imageBytes: bytes,
-      mimeType: mimeType as
-        | "image/jpeg"
-        | "image/png"
-        | "image/webp"
-        | "image/gif",
-    });
-    ocr = {
-      ...result.sanitized,
-      confidence: result.confidence,
-      warnings: result.warnings,
-    };
-  } catch (error) {
-    return NextResponse.json({
-      storageKey: stored.storageKey,
-      sizeBytes: stored.sizeBytes,
-      mimeType: stored.mimeType,
-      ocr: null,
-      ocrError:
-        error instanceof Error ? error.message : "OCR extraction failed",
-    });
-  }
-
   return NextResponse.json({
     storageKey: stored.storageKey,
     sizeBytes: stored.sizeBytes,
     mimeType: stored.mimeType,
     ocr,
+    ocrStatus: ocrMeta.ocrStatus,
+    ...(ocrError ? { ocrError } : {}),
   });
 }

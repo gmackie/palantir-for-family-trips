@@ -2,6 +2,7 @@ import { ClaudeReceiptExtractor } from "./claude-extractor";
 import { GeminiReceiptExtractor } from "./gemini-extractor";
 import { MockOCRProvider } from "./mock-provider";
 import { type ReconcileResult, reconcileReceipt } from "./reconcile";
+import type { OcrProvider } from "./review";
 import type { ReceiptExtraction } from "./schema";
 
 export { ClaudeReceiptExtractor } from "./claude-extractor";
@@ -9,6 +10,14 @@ export { GeminiReceiptExtractor } from "./gemini-extractor";
 export { MockOCRProvider } from "./mock-provider";
 export type { ReconcileResult } from "./reconcile";
 export { reconcileReceipt } from "./reconcile";
+export {
+  needsOcrReview,
+  OCR_PROVIDERS,
+  OCR_REVIEW_CONFIDENCE_THRESHOLD,
+  OCR_STATUSES,
+  type OcrProvider,
+  type OcrStatus,
+} from "./review";
 export type { ReceiptExtraction } from "./schema";
 export { receiptExtractionSchema } from "./schema";
 
@@ -47,20 +56,36 @@ export function resolveOCRProvider(): OCRProvider {
 }
 
 /**
+ * The provider name `resolveOCRProvider` would select, for persistence/audit.
+ * Mirrors the same env precedence so the name matches the resolved provider.
+ */
+export function resolveOCRProviderName(): OcrProvider {
+  const devMode = process.env.DEV_MODE === "local";
+  const ocrOverride = process.env.OCR_PROVIDER;
+  if (devMode || ocrOverride === "fixture") return "fixture";
+  if (ocrOverride === "claude") return "claude";
+  return "gemini";
+}
+
+/**
  * End-to-end receipt OCR: extract → reconcile.
  *
- * Returns the reconciled result (sanitized extraction + warnings + confidence).
- * Callers persist the result and surface warnings to the user.
+ * Returns the reconciled result (sanitized extraction + warnings + confidence)
+ * plus the resolved provider name. Callers persist the result and surface
+ * warnings to the user.
  */
 export async function extractAndReconcileReceipt(input: {
   imageBytes: Buffer;
   mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
   provider?: OCRProvider;
-}): Promise<ReconcileResult> {
+}): Promise<ReconcileResult & { provider: OcrProvider }> {
   const provider = input.provider ?? resolveOCRProvider();
   const extraction = await provider.extract({
     imageBytes: input.imageBytes,
     mimeType: input.mimeType,
   });
-  return reconcileReceipt(extraction);
+  return {
+    ...reconcileReceipt(extraction),
+    provider: resolveOCRProviderName(),
+  };
 }

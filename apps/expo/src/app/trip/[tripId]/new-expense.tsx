@@ -28,6 +28,9 @@ interface OcrResult {
   taxCents?: number;
   tipCents?: number;
   totalCents?: number;
+  confidence?: number;
+  warnings?: string[];
+  provider?: "claude" | "gemini" | "fixture";
   lineItems?: Array<{
     name: string;
     quantity: number;
@@ -80,6 +83,10 @@ export default function NewExpense() {
     storageKey: string;
     mimeType: string;
     sizeBytes: number;
+    ocrConfidence?: number;
+    ocrWarnings?: string[];
+    ocrProvider?: "claude" | "gemini" | "fixture";
+    ocrStatus?: "success" | "failed";
   } | null>(null);
 
   const expenseType = type === "gas" ? "gas" : "regular";
@@ -235,11 +242,20 @@ export default function NewExpense() {
         return;
       }
 
+      const ocr = data.ocr as OcrResult | null | undefined;
+      const ocrStatus = data.ocrStatus as "success" | "failed" | undefined;
+
       if (data.storageKey && data.mimeType && data.sizeBytes) {
+        // Carry OCR provenance through to attachReceiptImage so it is persisted
+        // on the expense (confidence/warnings/provider + success-or-failed).
         setReceiptMeta({
           storageKey: data.storageKey as string,
           mimeType: data.mimeType as string,
           sizeBytes: data.sizeBytes as number,
+          ocrConfidence: ocr?.confidence,
+          ocrWarnings: ocr?.warnings,
+          ocrProvider: ocr?.provider,
+          ocrStatus: ocrStatus ?? (data.ocrError ? "failed" : undefined),
         });
       }
 
@@ -248,7 +264,6 @@ export default function NewExpense() {
         return;
       }
 
-      const ocr = data.ocr as OcrResult | null | undefined;
       if (!ocr) {
         Alert.alert(
           "No OCR Data",

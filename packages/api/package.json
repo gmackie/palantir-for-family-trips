@@ -26,6 +26,10 @@
     "./ocr": {
       "types": "./dist/ocr/index.d.ts",
       "default": "./src/ocr/index.ts"
+    },
+    "./ocr/review": {
+      "types": "./dist/ocr/review.d.ts",
+      "default": "./src/ocr/review.ts"
     }
   },
   "license": "MIT",

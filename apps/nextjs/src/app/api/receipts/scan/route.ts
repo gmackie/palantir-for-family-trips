@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
       ...result.sanitized,
       confidence: result.confidence,
       warnings: result.warnings,
+      provider: result.provider,
     };
   } catch (error) {
     return NextResponse.json({
@@ -135,6 +136,7 @@ export async function POST(request: NextRequest) {
       sizeBytes: stored.sizeBytes,
       mimeType: stored.mimeType,
       ocr: null,
+      ocrStatus: "failed",
       ocrError:
         error instanceof Error ? error.message : "OCR extraction failed",
     });
@@ -145,5 +147,6 @@ export async function POST(request: NextRequest) {
     sizeBytes: stored.sizeBytes,
     mimeType: stored.mimeType,
     ocr,
+    ocrStatus: "success",
   });
 }

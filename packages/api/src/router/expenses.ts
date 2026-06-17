@@ -18,6 +18,7 @@ import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
 import { computeExpenseShares } from "../expenses/shares";
 import { sendPushToTripMembers } from "../notifications/send";
+import { OCR_PROVIDERS, OCR_STATUSES } from "../ocr/review";
 
 const expenseCategoryEnum = z.enum([
   "meal",
@@ -829,9 +830,35 @@ export const expensesRouter = {
         storageKey: z.string().min(1),
         mimeType: z.string().min(1),
         sizeBytes: z.number().int().positive(),
+        // Optional OCR provenance from the receipt pipeline. When present it is
+        // persisted onto the parent expense so a low-confidence/failed
+        // extraction can be surfaced for review instead of silently trusted.
+        ocrConfidence: z.number().min(0).max(1).optional(),
+        ocrWarnings: z.array(z.string()).optional(),
+        ocrProvider: z.enum(OCR_PROVIDERS).optional(),
+        ocrStatus: z.enum(OCR_STATUSES).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Verify the expense belongs to the authorized trip before writing to it.
+      const [expense] = (await ctx.db
+        .select()
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.id, input.expenseId),
+            eq(expenses.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<typeof expenses.$inferSelect>;
+
+      if (!expense) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Expense not found.",
+        });
+      }
+
       const [created] = (await ctx.db
         .insert(receiptImages)
         .values({
@@ -842,6 +869,23 @@ export const expensesRouter = {
           uploadedByUserId: ctx.session.user.id,
         })
         .returning()) as Array<typeof receiptImages.$inferSelect>;
+
+      // Persist OCR provenance onto the expense when the caller supplied it.
+      const ocrPatch: Record<string, unknown> = {};
+      if (input.ocrConfidence !== undefined)
+        ocrPatch.ocrConfidence = input.ocrConfidence;
+      if (input.ocrWarnings !== undefined)
+        ocrPatch.ocrWarnings = input.ocrWarnings;
+      if (input.ocrProvider !== undefined)
+        ocrPatch.ocrProvider = input.ocrProvider;
+      if (input.ocrStatus !== undefined) ocrPatch.ocrStatus = input.ocrStatus;
+
+      if (Object.keys(ocrPatch).length > 0) {
+        await ctx.db
+          .update(expenses)
+          .set(ocrPatch)
+          .where(eq(expenses.id, input.expenseId));
+      }
 
       return created;
     }),

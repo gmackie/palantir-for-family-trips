@@ -395,7 +395,13 @@ export const expenses = pgTable("expense", (t) => ({
   totalCents: t.integer().notNull().default(0),
   currency: t.varchar({ length: 8 }).notNull().default("USD"),
   notes: t.text(),
+  // OCR provenance — persisted from the receipt-OCR pipeline so a low-confidence
+  // or failed extraction can be surfaced for review instead of silently trusted.
+  // Null on all three = manually-entered (no OCR was run).
   ocrConfidence: t.real(),
+  ocrWarnings: t.jsonb().$type<string[]>(),
+  ocrProvider: t.text().$type<"claude" | "gemini" | "fixture">(),
+  ocrStatus: t.text().$type<"success" | "failed">(),
   status: t.text().$type<ExpenseStatus>().notNull().default("draft"),
   createdAt: t.timestamp().defaultNow().notNull(),
   updatedAt: t

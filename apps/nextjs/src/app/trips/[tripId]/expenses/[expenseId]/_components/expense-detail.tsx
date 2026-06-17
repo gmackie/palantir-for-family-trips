@@ -1,6 +1,7 @@
 "use client";
 
 import type { AppRouter } from "@sortey/api";
+import { needsOcrReview } from "@sortey/api/ocr/review";
 import { Button } from "@sortey/ui/button";
 import { Input } from "@sortey/ui/input";
 import { Separator } from "@sortey/ui/separator";
@@ -48,6 +49,15 @@ export function ExpenseDetail(props: {
   const lineItems = data.lineItems;
   const shares = data.shares;
   const isDraft = expense.status === "draft";
+
+  // OCR provenance: flag low-confidence/failed scans for review, and always
+  // surface any reconciler warnings (e.g. arithmetic mismatch, redacted card).
+  const ocrWarnings = expense.ocrWarnings ?? [];
+  const ocrNeedsReview = needsOcrReview({
+    ocrConfidence: expense.ocrConfidence,
+    ocrStatus: expense.ocrStatus,
+  });
+  const showOcrNotice = ocrNeedsReview || ocrWarnings.length > 0;
 
   // Draft editing state
   const [editingDraft, setEditingDraft] = useState(false);
@@ -171,6 +181,58 @@ export function ExpenseDetail(props: {
           <Link href={`/trips/${tripId}/expenses`}>Back to expenses</Link>
         </Button>
       </div>
+
+      {/* OCR review notice */}
+      {showOcrNotice && (
+        <section
+          className={`rounded-3xl border p-5 ${
+            ocrNeedsReview
+              ? "border-[#D29922]/30 bg-[#D29922]/10"
+              : "border-[#58A6FF]/30 bg-[#58A6FF]/10"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <span aria-hidden className="text-lg leading-none">
+              {ocrNeedsReview ? "⚠" : "ℹ"}
+            </span>
+            <div className="space-y-2">
+              <p
+                className={`font-semibold ${
+                  ocrNeedsReview ? "text-[#D29922]" : "text-[#58A6FF]"
+                }`}
+              >
+                {expense.ocrStatus === "failed"
+                  ? "Receipt scan failed — verify these details manually"
+                  : ocrNeedsReview
+                    ? "Low-confidence receipt scan — please review the amounts"
+                    : "Scanned from receipt"}
+              </p>
+              {(expense.ocrConfidence != null || expense.ocrProvider) && (
+                <p className="text-muted-foreground text-sm">
+                  {expense.ocrConfidence != null && (
+                    <span className="font-mono tabular-nums">
+                      {Math.round(expense.ocrConfidence * 100)}% confidence
+                    </span>
+                  )}
+                  {expense.ocrConfidence != null &&
+                    expense.ocrProvider &&
+                    " · "}
+                  {expense.ocrProvider && (
+                    <>scanned via {expense.ocrProvider}</>
+                  )}
+                </p>
+              )}
+              {ocrWarnings.length > 0 && (
+                <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                  {ocrWarnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Totals card */}
       <section className="bg-card rounded-3xl border p-6">
