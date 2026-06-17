@@ -178,6 +178,21 @@ export const photosRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const [photo] = await ctx.db
+        .select({ id: tripPhotos.id })
+        .from(tripPhotos)
+        .where(
+          and(
+            eq(tripPhotos.id, input.photoId),
+            eq(tripPhotos.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1);
+
+      if (!photo) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Photo not found." });
+      }
+
       const existing = await ctx.db
         .select({ id: photoReactions.id, reaction: photoReactions.reaction })
         .from(photoReactions)

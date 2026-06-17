@@ -1,4 +1,4 @@
-import { asc, eq } from "@sortey/db";
+import { and, asc, eq } from "@sortey/db";
 import { itineraryEvents } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
@@ -6,6 +6,7 @@ import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
 import { sendPushToTripMembers } from "../notifications/send";
+import { validateSegmentBelongsToTrip } from "../trips/segment-guard";
 
 export const itineraryRouter = {
   list: tripProcedure()
@@ -52,6 +53,10 @@ export const itineraryRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.segmentId) {
+        await validateSegmentBelongsToTrip(ctx.db, input.segmentId, ctx.tripId);
+      }
+
       const [created] = (await ctx.db
         .insert(itineraryEvents)
         .values({
@@ -97,7 +102,12 @@ export const itineraryRouter = {
     .mutation(async ({ ctx, input }) => {
       const [deleted] = (await ctx.db
         .delete(itineraryEvents)
-        .where(eq(itineraryEvents.id, input.eventId))
+        .where(
+          and(
+            eq(itineraryEvents.id, input.eventId),
+            eq(itineraryEvents.tripId, ctx.tripId),
+          ),
+        )
         .returning()) as Array<typeof itineraryEvents.$inferSelect>;
 
       if (!deleted) {
