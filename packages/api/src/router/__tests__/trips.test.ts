@@ -19,7 +19,13 @@ const {
 
 type WorkspaceRole = "owner" | "admin" | "member";
 type TripRole = "organizer" | "member";
-type TripStatus = "planning" | "confirmed" | "active" | "completed";
+type TripStatus =
+  | "planning"
+  | "confirmed"
+  | "active"
+  | "en_route"
+  | "paused"
+  | "completed";
 type ClaimMode = "organizer" | "tap";
 
 type WorkspaceMembershipRecord = {
@@ -318,6 +324,7 @@ function createTripStore(input?: {
       tz?: string;
       groupMode?: boolean;
       claimMode?: "organizer" | "tap";
+      status?: TripStatus;
     }) => {
       const index = state.trips.findIndex(
         (trip) => trip.workspaceId === workspaceId && trip.id === tripId,
@@ -835,5 +842,183 @@ describe("trip updates", () => {
 
     expect(grouped.groupMode).toBe(true);
     expect(claimed.claimMode).toBe("tap");
+  });
+});
+
+// ── Helper ─────────────────────────────────────────────────────────────────
+
+function makeTripRecord(
+  overrides: Partial<TripRecord> & { id: string; status: TripStatus },
+): TripRecord {
+  return {
+    workspaceId: "workspace_1",
+    name: "Test Trip",
+    createdByUserId: "user_1",
+    tripMode: "destination" as const,
+    groupMode: false,
+    claimMode: "organizer" as ClaimMode,
+    destinationName: null,
+    destinationLat: null,
+    destinationLng: null,
+    defaultZoom: 13,
+    startDate: null,
+    endDate: null,
+    tz: "UTC",
+    shareInviteToken: null,
+    shareInviteEnabled: true,
+    shareInviteCreatedAt: null,
+    createdAt: new Date("2026-04-10T00:00:00.000Z"),
+    updatedAt: null,
+    ...overrides,
+  };
+}
+
+// ── Status transition integration tests ─────────────────────────────────────
+
+describe("updateTripRecord — status transitions", () => {
+  it("allows a valid transition (planning → confirmed) and writes the new status", async () => {
+    const { state, store } = createTripStore({
+      trips: [makeTripRecord({ id: "trip_1", status: "planning" })],
+    });
+
+    const updated = await updateTripRecord(store, {
+      workspaceId: "workspace_1",
+      tripId: "trip_1",
+      tripRole: "organizer",
+      status: "confirmed",
+    });
+
+    expect(updated.status).toBe("confirmed");
+    expect(state.trips[0]?.status).toBe("confirmed");
+  });
+
+  it("allows planning → en_route (road-trip Start Trip)", async () => {
+    const { state, store } = createTripStore({
+      trips: [makeTripRecord({ id: "trip_1", status: "planning" })],
+    });
+
+    const updated = await updateTripRecord(store, {
+      workspaceId: "workspace_1",
+      tripId: "trip_1",
+      tripRole: "organizer",
+      status: "en_route",
+    });
+
+    expect(updated.status).toBe("en_route");
+    expect(state.trips[0]?.status).toBe("en_route");
+  });
+
+  it("allows same-state write (en_route → en_route) as no-op idempotence", async () => {
+    const { state, store } = createTripStore({
+      trips: [makeTripRecord({ id: "trip_1", status: "en_route" })],
+    });
+
+    const updated = await updateTripRecord(store, {
+      workspaceId: "workspace_1",
+      tripId: "trip_1",
+      tripRole: "organizer",
+      status: "en_route",
+    });
+
+    expect(updated.status).toBe("en_route");
+    expect(state.trips[0]?.status).toBe("en_route");
+  });
+
+  it("rejects an invalid transition (completed → planning) with BAD_REQUEST", async () => {
+    const { store } = createTripStore({
+      trips: [makeTripRecord({ id: "trip_1", status: "completed" })],
+    });
+
+    await expect(
+      updateTripRecord(store, {
+        workspaceId: "workspace_1",
+        tripId: "trip_1",
+        tripRole: "organizer",
+        status: "planning",
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+  });
+
+  it("rejects planning → active (skips confirm step) with BAD_REQUEST", async () => {
+    const { store } = createTripStore({
+      trips: [makeTripRecord({ id: "trip_1", status: "planning" })],
+    });
+
+    await expect(
+      updateTripRecord(store, {
+        workspaceId: "workspace_1",
+        tripId: "trip_1",
+        tripRole: "organizer",
+        status: "active",
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+  });
+
+  it("does NOT call updateTrip when the transition is invalid", async () => {
+    let updateTripCalled = false;
+    const { store } = createTripStore({
+      trips: [makeTripRecord({ id: "trip_1", status: "completed" })],
+    });
+
+    // Wrap updateTrip to detect if it gets called
+    const originalUpdateTrip = store.updateTrip.bind(store);
+    store.updateTrip = async (...args) => {
+      updateTripCalled = true;
+      return originalUpdateTrip(...args);
+    };
+
+    await expect(
+      updateTripRecord(store, {
+        workspaceId: "workspace_1",
+        tripId: "trip_1",
+        tripRole: "organizer",
+        status: "active",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(updateTripCalled).toBe(false);
+  });
+
+  it("does not perform the status read when no status is being updated (non-status update skips check)", async () => {
+    let getTripCalled = false;
+    const { store } = createTripStore({
+      trips: [makeTripRecord({ id: "trip_1", status: "planning" })],
+    });
+
+    // Wrap getTrip to detect if it gets called for a non-status update
+    const originalGetTrip = store.getTrip.bind(store);
+    store.getTrip = async (...args) => {
+      getTripCalled = true;
+      return originalGetTrip(...args);
+    };
+
+    const updated = await updateTripRecord(store, {
+      workspaceId: "workspace_1",
+      tripId: "trip_1",
+      tripRole: "organizer",
+      name: "Updated Name",
+    });
+
+    expect(updated.name).toBe("Updated Name");
+    expect(getTripCalled).toBe(false);
+  });
+
+  it("throws NOT_FOUND when the trip does not exist during status update", async () => {
+    const { store } = createTripStore({ trips: [] });
+
+    await expect(
+      updateTripRecord(store, {
+        workspaceId: "workspace_1",
+        tripId: "trip_nonexistent",
+        tripRole: "organizer",
+        status: "confirmed",
+      }),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
