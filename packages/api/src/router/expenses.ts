@@ -17,6 +17,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
 import { clampExpenseListLimit } from "../expenses/list-pagination";
+import { recheckExpenseOcr } from "../expenses/ocr-recheck";
 import { computeExpenseShares } from "../expenses/shares";
 import { sendPushToTripMembers } from "../notifications/send";
 import { OCR_PROVIDERS, OCR_STATUSES } from "../ocr/review";
@@ -360,6 +361,53 @@ export const expensesRouter = {
 
       if (Object.keys(patch).length === 0) {
         return existing;
+      }
+
+      // If this expense carries OCR provenance and the user changed a
+      // reconcile-relevant field, re-run reconciliation on the corrected values
+      // so the stored confidence/warnings refresh (fixing the math clears the
+      // "needs review" flag). The user's edits stay authoritative — we only take
+      // the recomputed confidence/warnings, not the sanitized extraction.
+      const hasOcrProvenance =
+        existing.ocrStatus !== null ||
+        existing.ocrProvider !== null ||
+        existing.ocrConfidence !== null;
+      const touchedReconcileFields =
+        input.subtotalCents !== undefined ||
+        input.taxCents !== undefined ||
+        input.tipCents !== undefined ||
+        input.totalCents !== undefined ||
+        input.currency !== undefined ||
+        input.merchant !== undefined;
+
+      if (hasOcrProvenance && touchedReconcileFields) {
+        const items = (await ctx.db
+          .select()
+          .from(lineItems)
+          .where(eq(lineItems.expenseId, existing.id))) as Array<
+          typeof lineItems.$inferSelect
+        >;
+        const recheck = recheckExpenseOcr(
+          {
+            merchant: (patch.merchant as string) ?? existing.merchant,
+            occurredAt: (patch.occurredAt as Date) ?? existing.occurredAt,
+            currency: (patch.currency as string) ?? existing.currency,
+            subtotalCents:
+              (patch.subtotalCents as number) ?? existing.subtotalCents,
+            taxCents: (patch.taxCents as number) ?? existing.taxCents,
+            tipCents: (patch.tipCents as number) ?? existing.tipCents,
+            totalCents: (patch.totalCents as number) ?? existing.totalCents,
+          },
+          items.map((li) => ({
+            name: li.name,
+            quantity: li.quantity,
+            unitPriceCents: li.unitPriceCents,
+            lineTotalCents: li.lineTotalCents,
+          })),
+        );
+        patch.ocrConfidence = recheck.ocrConfidence;
+        patch.ocrWarnings = recheck.ocrWarnings;
+        patch.ocrStatus = recheck.ocrStatus;
       }
 
       const [updated] = (await ctx.db
