@@ -1,8 +1,18 @@
 import { Button } from "@sortey/ui/button";
+import { type StatusTone, trackingStatusTone } from "@sortey/validators/status";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireTripsWorkspace } from "../../_lib/server";
+
+// On-palette text color per tone (static classes so Tailwind's JIT detects them).
+const TONE_TEXT: Record<StatusTone, string> = {
+  success: "text-[#3FB950]",
+  warning: "text-[#D29922]",
+  critical: "text-[#F85149]",
+  info: "text-[#58A6FF]",
+  neutral: "text-[#8B949E]",
+};
 
 function formatTime(date: Date | string | null) {
   if (!date) return "--:--";
@@ -15,20 +25,7 @@ function formatTime(date: Date | string | null) {
 }
 
 function statusColor(status: string) {
-  switch (status) {
-    case "scheduled":
-      return "text-blue-400";
-    case "en_route":
-      return "text-yellow-400";
-    case "delayed":
-      return "text-red-400";
-    case "arrived":
-      return "text-green-400";
-    case "cancelled":
-      return "text-gray-500";
-    default:
-      return "text-gray-400";
-  }
+  return TONE_TEXT[trackingStatusTone(status)];
 }
 
 function pinTypeIcon(type: string) {

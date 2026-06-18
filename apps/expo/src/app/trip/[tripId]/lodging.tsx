@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { formatMoney as formatCurrency } from "@sortey/validators/money";
+import { TONE_HEX, trackingStatusTone } from "@sortey/validators/status";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import {
@@ -45,14 +46,6 @@ const TRANSPORT_ICONS: Record<
   rideshare: "car-sport-outline",
   shuttle: "bus-outline",
   public_transit: "train-outline",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  scheduled: C.info,
-  en_route: C.warning,
-  delayed: C.critical,
-  arrived: C.success,
-  cancelled: C.muted,
 };
 
 function formatTime(value: Date | string | null) {
@@ -266,7 +259,7 @@ function TransitRow({
   };
 }) {
   const icon = TRANSIT_ICONS[item.transitType ?? "other"] ?? "navigate-outline";
-  const statusColor = STATUS_COLORS[item.trackingStatus] ?? C.muted;
+  const statusColor = TONE_HEX[trackingStatusTone(item.trackingStatus)];
   const directionLabel =
     item.direction === "arrival"
       ? "ARR"
