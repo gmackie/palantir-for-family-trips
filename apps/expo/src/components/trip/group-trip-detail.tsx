@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { formatMoney as formatCurrency } from "@sortey/validators/money";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -31,13 +32,6 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
     new Date(value),
   );
-}
-
-function formatCurrency(cents: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(cents / 100);
 }
 
 function getDaysUntil(dateStr: string | null): string | null {

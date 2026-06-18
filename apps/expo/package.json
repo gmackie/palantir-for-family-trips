@@ -33,6 +33,7 @@
     "@sortey/i18n": "workspace:*",
     "@sortey/monitoring": "workspace:*",
     "@sortey/realtime": "workspace:*",
+    "@sortey/validators": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",

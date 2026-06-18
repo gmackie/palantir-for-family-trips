@@ -198,6 +198,9 @@ importers:
       '@sortey/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime
+      '@sortey/validators':
+        specifier: workspace:*
+        version: link:../../packages/validators
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.100.11(react@19.2.3)
@@ -1403,12 +1406,18 @@ importers:
       '@sortey/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@sortey/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
       oxlint:
         specifier: 'catalog:'
         version: 1.66.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.7)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.13(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0))
 
   tooling/github: {}
 

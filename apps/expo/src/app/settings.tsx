@@ -3,6 +3,7 @@ import {
   useLocaleNative,
   useTranslationsNative,
 } from "@sortey/i18n/native";
+import { formatMoney } from "@sortey/validators/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import { Stack } from "expo-router";
@@ -25,13 +26,6 @@ import { setLocale } from "~/utils/i18n";
 
 const PERMISSIONS = ["read", "write", "delete", "admin"] as const;
 const COLLABORATION_ROLES = ["member", "admin"] as const;
-
-function formatMoney(amountInCents: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amountInCents / 100);
-}
 
 function formatDate(value: Date | string | null) {
   if (!value) {

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { formatCents as centsToDisplay } from "@sortey/validators/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
@@ -16,6 +17,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { getBaseUrl } from "~/utils/base-url";
@@ -52,10 +54,6 @@ const TIP_PRESETS = [
   { label: "18%", multiplier: 0.18 },
   { label: "20%", multiplier: 0.2 },
 ] as const;
-
-function centsToDisplay(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
 
 function dollarsToCents(dollars: string): number {
   const num = Number.parseFloat(dollars);

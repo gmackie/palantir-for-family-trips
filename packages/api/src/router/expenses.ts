@@ -12,6 +12,7 @@ import {
 // (they import `useEffect`), which would drag client code into this server-side
 // router and break the Next.js server build.
 import { triggerEvent } from "@sortey/realtime/event-log";
+import { formatMoney } from "@sortey/validators/money";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
@@ -139,7 +140,7 @@ export const expensesRouter = {
         tripId: ctx.tripId,
         excludeUserId: ctx.session.user.id,
         title: "New Expense",
-        body: `${created.merchant} — $${((created.totalCents ?? 0) / 100).toFixed(2)}`,
+        body: `${created.merchant} — ${formatMoney(created.totalCents ?? 0, created.currency)}`,
         data: { tripId: ctx.tripId, screen: "expenses" },
       });
 

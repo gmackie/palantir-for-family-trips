@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { formatMoney as formatCurrency } from "@sortey/validators/money";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
@@ -7,13 +8,6 @@ import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
 
 function StatBox({
   label,

@@ -1,6 +1,7 @@
 import { appRouter, createTRPCContext } from "@sortey/api";
 import { Button } from "@sortey/ui/button";
 import { Input } from "@sortey/ui/input";
+import { formatMoney } from "@sortey/validators/money";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -62,13 +63,6 @@ type BillingOverview = {
     visible: boolean;
   };
 };
-
-function formatMoney(amountInCents: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amountInCents / 100);
-}
 
 function formatDate(value: Date | string | null) {
   if (!value) {

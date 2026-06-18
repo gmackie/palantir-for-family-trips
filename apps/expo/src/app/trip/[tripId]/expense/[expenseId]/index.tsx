@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { formatMoney as formatCurrency } from "@sortey/validators/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
@@ -16,13 +17,6 @@ import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
-
-function formatCurrency(cents: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(cents / 100);
-}
 
 function formatDate(value: Date | string | null) {
   if (!value) return "";

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { formatMoney as formatCurrency } from "@sortey/validators/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import {
@@ -80,13 +81,6 @@ function formatDateRange(
   if (!start && !end) return "";
   if (start && end) return `${formatDate(start)} – ${formatDate(end)}`;
   return formatDate(start ?? end);
-}
-
-function formatCurrency(cents: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(cents / 100);
 }
 
 function SectionHeader({ title, count }: { title: string; count?: number }) {
