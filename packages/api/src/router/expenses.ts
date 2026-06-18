@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "@sortey/db";
+import { and, asc, desc, eq, inArray, lt, or } from "@sortey/db";
 import {
   expenses,
   lineItemClaims,
@@ -16,6 +16,7 @@ import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
+import { clampExpenseListLimit } from "../expenses/list-pagination";
 import { computeExpenseShares } from "../expenses/shares";
 import { sendPushToTripMembers } from "../notifications/send";
 import { OCR_PROVIDERS, OCR_STATUSES } from "../ocr/review";
@@ -146,6 +147,12 @@ export const expensesRouter = {
 
   /**
    * List expenses for a trip, newest first. Scoped by tripProcedure.
+   *
+   * Optional keyset pagination: pass `limit` (capped) to bound the result and
+   * `cursor` ({ occurredAt, id } of the last row of the previous page) to fetch
+   * the next page. Omitting both returns every expense (preserves callers that
+   * compute trip-wide aggregates). Ordered by `occurredAt` desc, then `id` desc
+   * as a unique tiebreaker so the keyset cursor is stable.
    */
   list: tripProcedure()
     .input(
@@ -154,6 +161,13 @@ export const expensesRouter = {
         tripId: z.string().min(1),
         segmentId: z.string().min(1).optional(),
         status: z.enum(["draft", "finalized"]).optional(),
+        limit: z.number().int().positive().optional(),
+        cursor: z
+          .object({
+            occurredAt: z.string().datetime(),
+            id: z.string().min(1),
+          })
+          .optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -165,13 +179,28 @@ export const expensesRouter = {
         conditions.push(eq(expenses.status, input.status));
       }
 
-      const rows = (await ctx.db
+      // Keyset: rows strictly "after" the cursor in (occurredAt desc, id desc).
+      if (input.cursor) {
+        const cursorOccurredAt = new Date(input.cursor.occurredAt);
+        const keyset = or(
+          lt(expenses.occurredAt, cursorOccurredAt),
+          and(
+            eq(expenses.occurredAt, cursorOccurredAt),
+            lt(expenses.id, input.cursor.id),
+          ),
+        );
+        if (keyset) conditions.push(keyset);
+      }
+
+      const base = ctx.db
         .select()
         .from(expenses)
         .where(and(...conditions))
-        .orderBy(desc(expenses.occurredAt), desc(expenses.createdAt))) as Array<
-        typeof expenses.$inferSelect
-      >;
+        .orderBy(desc(expenses.occurredAt), desc(expenses.id));
+
+      const rows = (await (input.limit !== undefined
+        ? base.limit(clampExpenseListLimit(input.limit))
+        : base)) as Array<typeof expenses.$inferSelect>;
 
       return rows;
     }),
