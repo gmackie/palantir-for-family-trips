@@ -322,6 +322,18 @@ export const settlementsRouter = {
           .from(settlements)
           .where(eq(settlements.idempotencyKey, input.idempotencyKey))
           .limit(1)) as Array<typeof settlements.$inferSelect>;
+        // Guard: same key but different payload = client bug / possible double-spend
+        if (
+          existing!.amountCents !== input.amountCents ||
+          existing!.fromUserId !== input.fromUserId ||
+          existing!.toUserId !== input.toUserId
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Idempotency key reused with a different settlement payload.",
+          });
+        }
         return existing!;
       }
 

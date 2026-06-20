@@ -285,19 +285,23 @@ export const pinsRouter = {
         }
       }
 
-      // Replace: delete all, then insert
-      await ctx.db
-        .delete(pinAttendees)
-        .where(eq(pinAttendees.pinId, input.pinId));
+      // Replace: delete all, then insert — wrapped in a transaction so a
+      // failed insert never leaves the pin with zero attendees.
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle tx type is complex
+      await ctx.db.transaction(async (tx: any) => {
+        await tx
+          .delete(pinAttendees)
+          .where(eq(pinAttendees.pinId, input.pinId));
 
-      if (input.userIds.length > 0) {
-        await ctx.db.insert(pinAttendees).values(
-          input.userIds.map((userId) => ({
-            pinId: input.pinId,
-            userId,
-          })),
-        );
-      }
+        if (input.userIds.length > 0) {
+          await tx.insert(pinAttendees).values(
+            input.userIds.map((userId) => ({
+              pinId: input.pinId,
+              userId,
+            })),
+          );
+        }
+      });
 
       return { pinId: input.pinId, attendeeCount: input.userIds.length };
     }),
