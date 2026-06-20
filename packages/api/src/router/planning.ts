@@ -12,16 +12,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { requireOrganizer } from "../auth/organizer";
 import { sendPushToTripMembers } from "../notifications/send";
-
-function requireOrganizer(tripRole: "organizer" | "member") {
-  if (tripRole !== "organizer") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Only organizers can perform this action.",
-    });
-  }
-}
 
 export const planningRouter = {
   // ── Polls ──────────────────────────────────────────────

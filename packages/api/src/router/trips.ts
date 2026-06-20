@@ -15,6 +15,7 @@ import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
+import { requireOrganizer } from "../auth/organizer";
 import { sendPushToTripMembers } from "../notifications/send";
 import { protectedProcedure, publicProcedure } from "../trpc";
 
@@ -204,14 +205,8 @@ export interface TripStore {
   } | null>;
 }
 
-function requireOrganizerTripRole(tripRole: "organizer" | "member") {
-  if (tripRole !== "organizer") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Only organizers can update trip settings.",
-    });
-  }
-}
+const requireOrganizerTripRole = (tripRole: "organizer" | "member") =>
+  requireOrganizer(tripRole, "Only organizers can update trip settings.");
 
 export async function createTripRecord(
   store: TripStore,

@@ -12,6 +12,7 @@ import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
+import { requireOrganizerOrSelf } from "../auth/organizer";
 import { computeExpenseShares } from "../expenses/shares";
 import { sendPushToTripMembers } from "../notifications/send";
 
@@ -26,19 +27,6 @@ const expenseCategoryEnum = z.enum([
 ]);
 
 const currencySchema = z.string().length(3).toUpperCase();
-
-function requireOrganizerOrSelf(
-  tripRole: "organizer" | "member",
-  payerUserId: string,
-  ctxUserId: string,
-) {
-  if (tripRole === "organizer") return;
-  if (payerUserId === ctxUserId) return;
-  throw new TRPCError({
-    code: "FORBIDDEN",
-    message: "Only the payer or a trip organizer can modify this expense.",
-  });
-}
 
 // ---------------------------------------------------------------------------
 // ReceiptImage seam — extracted for unit-testability (same pattern as chat.ts)
