@@ -19,13 +19,13 @@ re-audited from scratch.
 | 004  | Redact email PII from expo-fallback log | P2 | S | — | DONE (cherry-picked @ `1db3578`, reviewed+approved 2026-06-12) |
 | 005  | Sync docs/ai/STATUS.md to shipped reality | P2 | S | — | DONE (cherry-picked @ `fefae3c`, reviewed+approved 2026-06-12) |
 | 006  | DO-backed rate limiter for chat.send + share-link join | P2 | L | — | TODO |
-| 007  | Direct unit tests for the auth guards middleware | P2 | M | — | TODO |
-| 008  | Make setAttendees atomic + settlement idempotency payload guard | P2 | S | — | TODO |
+| 007  | Direct unit tests for the auth guards middleware | P2 | M | — | DONE (cherry-picked @ `8ef6be7`, reviewed+approved 2026-06-12) |
+| 008  | Make setAttendees atomic + settlement idempotency payload guard | P2 | S | — | DONE (source @ `b671c0e`; vacuous logic-mirror test dropped — real test deferred pending a `record` store seam) |
 | 009  | Remove dead uploadthing dependency from @sortey/storage | P2 | S | — | TODO |
 | 010  | Consolidate the three organizer-check helpers | P3 | M | 007 (soft) | TODO |
 | 011  | Upgrade better-auth (clears seroval/h3 advisories) | P2 | M | — | TODO |
-| 012  | Move suncalc + polyline-codec to @sortey/api | P3 | S | — | TODO |
-| 013  | E2E test for trip → expense → claim → settle | P2 | M | — | TODO |
+| 012  | Move suncalc + polyline-codec to @sortey/api | P3 | S | — | DONE (cherry-picked @ `fc0dee1`, reviewed+approved 2026-06-12) |
+| 013  | E2E test for trip → expense → claim → settle | P2 | M | — | DONE (spec @ `471c4c6`, reviewed+approved; collectable via `playwright --list` but **requires CI to run** — no browser binaries in the exec sandbox) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
