@@ -154,10 +154,7 @@ export default function LockInPage() {
           <h2 className="text-lg font-semibold">Poll Results</h2>
           <div className="mt-3 grid gap-3">
             {pollWinners.map(({ poll, winner }) => (
-              <div
-                key={poll.id}
-                className="bg-card rounded-[4px] border p-4"
-              >
+              <div key={poll.id} className="bg-card rounded-[4px] border p-4">
                 <h3 className="text-sm font-semibold">{poll.title}</h3>
                 {winner ? (
                   <p className="text-muted-foreground mt-1 text-xs">

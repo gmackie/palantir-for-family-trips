@@ -111,7 +111,9 @@ export default async function LodgingPage(props: {
               {/* ── Lodging Cards ────────────────────── */}
               <div className="mb-6">
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-[#C9D1D9]">Lodging</h3>
+                  <h3 className="text-sm font-semibold text-[#C9D1D9]">
+                    Lodging
+                  </h3>
                   <Button variant="outline" size="sm" disabled>
                     Add lodging
                   </Button>
@@ -130,7 +132,9 @@ export default async function LodgingPage(props: {
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-semibold text-[#C9D1D9]">{l.propertyName}</p>
+                            <p className="font-semibold text-[#C9D1D9]">
+                              {l.propertyName}
+                            </p>
                             {l.provider && (
                               <span className="mt-1 inline-block rounded-[2px] bg-[#21262D] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E]">
                                 {PROVIDER_LABELS[l.provider] ?? l.provider}
@@ -235,7 +239,9 @@ export default async function LodgingPage(props: {
               {/* ── Ground Transport Groups ──────────── */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-[#C9D1D9]">Ground Transport</h3>
+                  <h3 className="text-sm font-semibold text-[#C9D1D9]">
+                    Ground Transport
+                  </h3>
                   <Button variant="outline" size="sm" disabled>
                     Add transport
                   </Button>
@@ -254,7 +260,9 @@ export default async function LodgingPage(props: {
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="font-semibold text-[#C9D1D9]">{g.label}</p>
+                            <p className="font-semibold text-[#C9D1D9]">
+                              {g.label}
+                            </p>
                             {g.transportType && (
                               <span className="mt-1 inline-block rounded-[2px] bg-[#21262D] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E]">
                                 {TRANSPORT_TYPE_LABELS[g.transportType] ??

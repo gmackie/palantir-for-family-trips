@@ -102,9 +102,7 @@ export function createSettlementSummaryStore(db: any): SettlementSummaryStore {
           userId: lineItemClaims.userId,
         })
         .from(lineItemClaims)
-        .where(
-          inArray(lineItemClaims.lineItemId, lineItemIds),
-        )) as ClaimRow[];
+        .where(inArray(lineItemClaims.lineItemId, lineItemIds))) as ClaimRow[];
     },
 
     async listMembers(tripId) {

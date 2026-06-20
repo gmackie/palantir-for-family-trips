@@ -203,10 +203,7 @@ export default function PollDetailPage() {
           <EmptyState>No options yet. Add one above.</EmptyState>
         ) : (
           poll.options.map((option) => (
-            <div
-              key={option.id}
-              className="bg-card rounded-[4px] border p-4"
-            >
+            <div key={option.id} className="bg-card rounded-[4px] border p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold">{option.label}</h3>

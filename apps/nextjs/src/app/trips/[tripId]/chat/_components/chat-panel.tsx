@@ -157,7 +157,11 @@ export function ChatPanel(props: {
         className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-4"
       >
         {loading ? (
-          <div className="space-y-3" aria-busy="true" aria-label="Loading messages">
+          <div
+            className="space-y-3"
+            aria-busy="true"
+            aria-label="Loading messages"
+          >
             {[0, 1, 2].map((i) => (
               <div key={i} className="flex flex-col gap-1">
                 <div className="h-2.5 w-24 animate-pulse rounded-[2px] bg-[#21262D]" />

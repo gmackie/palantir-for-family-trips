@@ -69,7 +69,9 @@ export default async function PlanningDashboardPage(props: {
               className="mt-4"
               action={
                 <Button asChild size="sm">
-                  <Link href={`/trips/${tripId}/plan/polls`}>Create a poll</Link>
+                  <Link href={`/trips/${tripId}/plan/polls`}>
+                    Create a poll
+                  </Link>
                 </Button>
               }
             >

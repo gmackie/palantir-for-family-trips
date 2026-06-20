@@ -6,9 +6,8 @@
 // operational empty states, dark semantic critical banner. Use these instead of
 // hand-rolling `bg-card rounded-2xl` cards or centered dashed empties.
 
-import type { ReactNode } from "react";
-
 import { cn } from "@sortey/ui";
+import type { ReactNode } from "react";
 
 /** A flat command-center panel (replaces `bg-card rounded-2xl border`). */
 export function CommandPanel(props: {
@@ -28,7 +27,10 @@ export function CommandPanel(props: {
 }
 
 /** All-caps section eyebrow (the dashboard's section-label treatment). */
-export function PanelEyebrow(props: { children: ReactNode; className?: string }) {
+export function PanelEyebrow(props: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <p
       className={cn(
@@ -64,7 +66,10 @@ export function EmptyState(props: {
 }
 
 /** Dark critical banner for inline errors (replaces light `bg-red-50` banners). */
-export function ErrorBanner(props: { children: ReactNode; className?: string }) {
+export function ErrorBanner(props: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       role="alert"

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type {
-  SettlementSummaryStore,
+  ClaimRow,
   ExpenseRow,
   LineItemRow,
-  ClaimRow,
   MemberRow,
   SettlementRow,
+  SettlementSummaryStore,
 } from "../settlements";
 
 process.env.DATABASE_URL ??=
@@ -84,8 +84,18 @@ describe("buildSettlementSummary — regression (the bug)", () => {
         { lineItemId: "li_1", userId: "user_B" },
       ],
       members: [
-        { tripId: "trip_1", userId: "user_A", displayName: "Alice", venmoHandle: null },
-        { tripId: "trip_1", userId: "user_B", displayName: "Bob", venmoHandle: null },
+        {
+          tripId: "trip_1",
+          userId: "user_A",
+          displayName: "Alice",
+          venmoHandle: null,
+        },
+        {
+          tripId: "trip_1",
+          userId: "user_B",
+          displayName: "Bob",
+          venmoHandle: null,
+        },
       ],
       settlements: [],
     });
@@ -111,8 +121,18 @@ describe("buildSettlementSummary — no expenses", () => {
   it("returns allSettled:true with empty balances and transactions", async () => {
     const { store } = createMemorySettlementStore({
       members: [
-        { tripId: "trip_1", userId: "user_A", displayName: "Alice", venmoHandle: null },
-        { tripId: "trip_1", userId: "user_B", displayName: "Bob", venmoHandle: null },
+        {
+          tripId: "trip_1",
+          userId: "user_A",
+          displayName: "Alice",
+          venmoHandle: null,
+        },
+        {
+          tripId: "trip_1",
+          userId: "user_B",
+          displayName: "Bob",
+          venmoHandle: null,
+        },
       ],
     });
 
@@ -148,8 +168,18 @@ describe("buildSettlementSummary — expense with zero line items", () => {
       lineItems: [], // no line items at all
       claims: [],
       members: [
-        { tripId: "trip_1", userId: "user_A", displayName: "Alice", venmoHandle: null },
-        { tripId: "trip_1", userId: "user_B", displayName: "Bob", venmoHandle: null },
+        {
+          tripId: "trip_1",
+          userId: "user_A",
+          displayName: "Alice",
+          venmoHandle: null,
+        },
+        {
+          tripId: "trip_1",
+          userId: "user_B",
+          displayName: "Bob",
+          venmoHandle: null,
+        },
       ],
       settlements: [],
     });
@@ -189,12 +219,27 @@ describe("buildSettlementSummary — settlement offsets balance", () => {
       ],
       claims: [{ lineItemId: "li_1", userId: "user_B" }],
       members: [
-        { tripId: "trip_1", userId: "user_A", displayName: "Alice", venmoHandle: null },
-        { tripId: "trip_1", userId: "user_B", displayName: "Bob", venmoHandle: null },
+        {
+          tripId: "trip_1",
+          userId: "user_A",
+          displayName: "Alice",
+          venmoHandle: null,
+        },
+        {
+          tripId: "trip_1",
+          userId: "user_B",
+          displayName: "Bob",
+          venmoHandle: null,
+        },
       ],
       settlements: [
         // B already paid A the 1500¢ they owe
-        { tripId: "trip_1", fromUserId: "user_B", toUserId: "user_A", amountCents: 1500 },
+        {
+          tripId: "trip_1",
+          fromUserId: "user_B",
+          toUserId: "user_A",
+          amountCents: 1500,
+        },
       ],
     });
 
@@ -245,8 +290,18 @@ describe("buildSettlementSummary — batching (no N+1)", () => {
       ],
       claims: [{ lineItemId: "li_1", userId: "user_B" }],
       members: [
-        { tripId: "trip_1", userId: "user_A", displayName: "Alice", venmoHandle: null },
-        { tripId: "trip_1", userId: "user_B", displayName: "Bob", venmoHandle: null },
+        {
+          tripId: "trip_1",
+          userId: "user_A",
+          displayName: "Alice",
+          venmoHandle: null,
+        },
+        {
+          tripId: "trip_1",
+          userId: "user_B",
+          displayName: "Bob",
+          venmoHandle: null,
+        },
       ],
       settlements: [],
     });
