@@ -13,11 +13,11 @@ re-audited from scratch.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001  | Fix settlement claims query + add settlements router tests | P1 | M | — | DONE (executed in worktree `worktree-agent-ab02dc91e165d0e1f` @ `9c014c6`, reviewed+approved 2026-06-12; awaiting user merge) |
-| 002  | Scope attachReceiptImage to the current trip | P1 | S | — | IN PROGRESS |
-| 003  | Batch pin attendee queries (list + listForTimeline) | P2 | S | — | IN PROGRESS |
-| 004  | Redact email PII from expo-fallback log | P2 | S | — | IN PROGRESS |
-| 005  | Sync docs/ai/STATUS.md to shipped reality | P2 | S | — | IN PROGRESS |
+| 001  | Fix settlement claims query + add settlements router tests | P1 | M | — | DONE (merged @ `6035474`, reviewed+approved 2026-06-12) |
+| 002  | Scope attachReceiptImage to the current trip | P1 | S | — | DONE (cherry-picked @ `2c8380d`, reviewed+approved 2026-06-12) |
+| 003  | Batch pin attendee queries (list + listForTimeline) | P2 | S | — | DONE (cherry-picked @ `91b37a7`, reviewed+approved 2026-06-12) |
+| 004  | Redact email PII from expo-fallback log | P2 | S | — | DONE (cherry-picked @ `1db3578`, reviewed+approved 2026-06-12) |
+| 005  | Sync docs/ai/STATUS.md to shipped reality | P2 | S | — | DONE (cherry-picked @ `fefae3c`, reviewed+approved 2026-06-12) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
