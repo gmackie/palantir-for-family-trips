@@ -1271,9 +1271,6 @@ importers:
       '@sortey/config':
         specifier: workspace:*
         version: link:../config
-      uploadthing:
-        specifier: ^7.7.4
-        version: 7.7.4(express@5.2.1)(h3@1.15.4)(next@16.2.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(tailwindcss@4.3.0)
     devDependencies:
       '@biomejs/biome':
         specifier: 'catalog:'
@@ -14543,6 +14540,7 @@ snapshots:
       find-my-way-ts: 0.1.6
       msgpackr: 1.11.12
       multipasta: 0.2.7
+    optional: true
 
   '@egjs/hammerjs@2.0.17':
     dependencies:
@@ -19349,7 +19347,8 @@ snapshots:
 
   '@stablelib/base64@1.0.1': {}
 
-  '@standard-schema/spec@1.0.0-beta.4': {}
+  '@standard-schema/spec@1.0.0-beta.4':
+    optional: true
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -20479,13 +20478,15 @@ snapshots:
     optionalDependencies:
       next: 16.2.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
 
-  '@uploadthing/mime-types@0.3.6': {}
+  '@uploadthing/mime-types@0.3.6':
+    optional: true
 
   '@uploadthing/shared@7.1.10':
     dependencies:
       '@uploadthing/mime-types': 0.3.6
       effect: 3.17.7
       sqids: 0.3.0
+    optional: true
 
   '@vercel/og@0.8.6':
     dependencies:
@@ -21968,6 +21969,7 @@ snapshots:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
+    optional: true
 
   electron-to-chromium@1.5.360: {}
 
@@ -23169,6 +23171,7 @@ snapshots:
   fast-check@3.23.2:
     dependencies:
       pure-rand: 6.1.0
+    optional: true
 
   fast-copy@4.0.3: {}
 
@@ -23275,7 +23278,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  find-my-way-ts@0.1.6: {}
+  find-my-way-ts@0.1.6:
+    optional: true
 
   find-up@4.1.0:
     dependencies:
@@ -24657,12 +24661,14 @@ snapshots:
   msgpackr@1.11.12:
     optionalDependencies:
       msgpackr-extract: 3.0.3
+    optional: true
 
   msgpackr@2.0.1:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
-  multipasta@0.2.7: {}
+  multipasta@0.2.7:
+    optional: true
 
   multitars@1.0.0: {}
 
@@ -25511,7 +25517,8 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  pure-rand@6.1.0: {}
+  pure-rand@6.1.0:
+    optional: true
 
   qrcode@1.5.4:
     dependencies:
@@ -26593,7 +26600,8 @@ snapshots:
 
   sprintf-js@1.0.3: {}
 
-  sqids@0.3.0: {}
+  sqids@0.3.0:
+    optional: true
 
   sqlstring@2.3.3:
     optional: true
@@ -27093,6 +27101,7 @@ snapshots:
       h3: 1.15.4
       next: 16.2.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       tailwindcss: 4.3.0
+    optional: true
 
   use-callback-ref@1.3.3(@types/react@19.2.15)(react@19.2.3):
     dependencies:

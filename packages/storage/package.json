@@ -18,8 +18,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
-    "@sortey/config": "workspace:*",
-    "uploadthing": "^7.7.4"
+    "@sortey/config": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
