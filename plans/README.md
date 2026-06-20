@@ -26,6 +26,8 @@ re-audited from scratch.
 | 011  | Upgrade better-auth (clears seroval/h3 advisories) | P2 | M | — | DONE (cherry-picked @ `41b1dbc`, 1.6.11→1.6.20; seroval cleared, typechecks+tests green) — **human sign-in verification on web + Expo still PENDING** |
 | 012  | Move suncalc + polyline-codec to @sortey/api | P3 | S | — | DONE (cherry-picked @ `fc0dee1`, reviewed+approved 2026-06-12) |
 | 013  | E2E test for trip → expense → claim → settle | P2 | M | — | DONE (spec @ `471c4c6`, reviewed+approved; collectable via `playwright --list` but **requires CI to run** — no browser binaries in the exec sandbox) |
+| 014  | Activate the dormant RLS tenant-isolation layer | P2 | L | 007 | **NEEDS DECISION** — corrects the earlier RLS rejection; RLS is implemented but never applied AND its GUCs are never set, so DB-level tenancy is inactive. Architecturally significant + app-breaking-if-wrong; awaiting user go-ahead before any execution. |
+| 015  | Store seam + tests for settlements.record idempotency path | P2 | S | — | IN PROGRESS (closes the test gap deferred by plan 008) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
@@ -64,16 +66,14 @@ REJECTED (with one-line rationale).
 
 So nobody re-audits these:
 
-- **RLS "absent from migrations"** (was queued for planning): **rejected on
-  re-verification at `bbc54f6`.** RLS is fully implemented in
-  `packages/db/src/rls.ts` (`buildWorkspaceRlsStatements` + `applyWorkspaceRls`
-  with a CLI entrypoint), applied via the `pnpm rls` script
-  (`packages/db/package.json:40`), with per-request GUCs (`app.user_id` /
-  `app.workspace_id`) set in `tenant.ts:30-31`, and covered by
-  `packages/db/src/__tests__/rls.test.ts`. The original premise ("DB-level
-  tenancy unenforced") is false. The only residual is operational — confirm
-  `pnpm rls` runs in the deploy pipeline — which is an ops check, not a code
-  plan.
+- **RLS "absent from migrations"**: an earlier pass rejected this as "RLS is
+  fully implemented, premise false." **That rejection was overturned by deeper
+  verification at `2799b55` — see plan 014.** The policy *code* exists, but it
+  is never applied by any pipeline AND the per-request GUCs it needs are never
+  set on the runtime connection (`getDatabaseSessionSettings` is unused;
+  `ctx.db` is the plain pooled client). So DB-level tenancy is in fact inactive
+  — the original finding's premise was correct. Reclassified as a real finding;
+  see `plans/014-activate-dormant-rls.md` (NEEDS DECISION, not auto-executed).
 - **CSRF on tRPC mutations**: Better Auth cookie defaults; no evidence of
   misconfiguration. Speculative.
 - **WS reconnect double-fire hardening**: `packages/realtime/src/reconnect.ts`
