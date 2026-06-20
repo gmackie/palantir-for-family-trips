@@ -22,7 +22,7 @@ re-audited from scratch.
 | 007  | Direct unit tests for the auth guards middleware | P2 | M | — | DONE (cherry-picked @ `8ef6be7`, reviewed+approved 2026-06-12) |
 | 008  | Make setAttendees atomic + settlement idempotency payload guard | P2 | S | — | DONE (source @ `b671c0e`; vacuous logic-mirror test dropped — real test deferred pending a `record` store seam) |
 | 009  | Remove dead uploadthing dependency from @sortey/storage | P2 | S | — | DONE (cherry-picked @ `bb14e27`, reviewed+approved 2026-06-12; storage→h3 path cleared. NB: a second h3 path remains via apps/tanstack-start→nitro→unstorage→uploadthing — scaffold app, out of scope) |
-| 010  | Consolidate the three organizer-check helpers | P3 | M | 007 (soft) | TODO |
+| 010  | Consolidate the three organizer-check helpers | P3 | M | 007 (soft) | DONE (cherry-picked @ `9c57910`, reviewed+approved 2026-06-12; expenses.ts conflict w/ plan-002 seam resolved by hand; messages preserved) |
 | 011  | Upgrade better-auth (clears seroval/h3 advisories) | P2 | M | — | TODO |
 | 012  | Move suncalc + polyline-codec to @sortey/api | P3 | S | — | DONE (cherry-picked @ `fc0dee1`, reviewed+approved 2026-06-12) |
 | 013  | E2E test for trip → expense → claim → settle | P2 | M | — | DONE (spec @ `471c4c6`, reviewed+approved; collectable via `playwright --list` but **requires CI to run** — no browser binaries in the exec sandbox) |
