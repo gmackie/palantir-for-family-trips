@@ -6,6 +6,7 @@ import { createHash } from "crypto";
 import superjson from "superjson";
 import { ZodError, z } from "zod/v4";
 
+import { getRateLimitRuntime } from "./ratelimit-runtime";
 import { getRealtimeRuntime } from "./realtime-runtime";
 
 export type ApiKeyPermission = "read" | "write" | "delete" | "admin";
@@ -200,6 +201,10 @@ export const createTRPCContext = async (opts: {
           // runtime) via `runWithRealtimeRuntime`; `null` everywhere else
           // (unit tests, non-Workers callers) so the broadcast is skipped.
           realtime: getRealtimeRuntime(),
+          // Rate-limit seam. Populated by the worker entry via
+          // `runWithRateLimitRuntime`; `null` in tests / non-Workers callers
+          // so `ctx.rateLimit?.check(...)` is a safe no-op.
+          rateLimit: getRateLimitRuntime(),
         };
       }
     }
@@ -229,6 +234,8 @@ export const createTRPCContext = async (opts: {
     db,
     // See note above: the worker populates this; `null` in tests / non-Workers.
     realtime: getRealtimeRuntime(),
+    // Rate-limit seam. See ratelimit-runtime.ts. `null` in tests / non-Workers.
+    rateLimit: getRateLimitRuntime(),
     _expoAuthDiag:
       !session && source === "expo-react"
         ? `fallback=${fallbackAttempted}, cookie_len=${cookieHeader?.length ?? 0}, cookie_start=${cookieHeader?.substring(0, 80) ?? "none"}`

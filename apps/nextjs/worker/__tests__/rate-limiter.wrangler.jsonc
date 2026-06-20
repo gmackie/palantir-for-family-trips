@@ -1,0 +1,13 @@
+{
+  // Test-only wrangler config for the RateLimiter DO harness. Mirrors
+  // trip-room.wrangler.jsonc but points at the RateLimiter class instead.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rate-limiter-test",
+  "main": "./rate-limiter.test-entry.ts",
+  "compatibility_date": "2026-04-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiter"] }]
+}

@@ -52,7 +52,13 @@
     }
   ],
   "durable_objects": {
-    "bindings": [{ "name": "TRIP_ROOM", "class_name": "TripRoom" }]
+    "bindings": [
+      { "name": "TRIP_ROOM", "class_name": "TripRoom" },
+      { "name": "RATE_LIMITER", "class_name": "RateLimiter" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TripRoom"] }]
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["TripRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["RateLimiter"] }
+  ]
 }

@@ -226,8 +226,17 @@ export const chatRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // TODO(ratelimit): chat send is a high-frequency authenticated write —
-      // wrap with a per-user / per-trip rate limiter once a shared util exists.
+      const rl = await ctx.rateLimit?.check({
+        key: `chat-send:${ctx.session.user.id}:${ctx.tripId}`,
+        limit: 30,
+        windowMs: 60_000,
+      });
+      if (rl && !rl.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "You're sending messages too quickly. Please slow down.",
+        });
+      }
       const message = await sendMessage(createChatStore(ctx.db), {
         tripId: ctx.tripId,
         userId: ctx.session.user.id,

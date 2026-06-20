@@ -1084,8 +1084,17 @@ export const tripsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // TODO(ratelimit): this is an unauthenticated-token entry point — wrap
-      // with a per-IP / per-user rate limiter once a shared util exists.
+      const rl = await ctx.rateLimit?.check({
+        key: `share-join:${ctx.session.user.id}`,
+        limit: 10,
+        windowMs: 60_000,
+      });
+      if (rl && !rl.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many join attempts. Please wait a moment.",
+        });
+      }
       const result = await joinTripByShareToken(createTripStore(ctx.db), {
         token: input.token,
         userId: ctx.session.user.id,

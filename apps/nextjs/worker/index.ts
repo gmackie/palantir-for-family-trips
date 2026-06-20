@@ -1,5 +1,6 @@
 import { wrapFetch } from "@forgegraph/otel/workers";
-import { runWithRealtimeRuntime } from "@sortey/api";
+import type { RateLimitCheck, RateLimitResult } from "@sortey/api";
+import { runWithRateLimitRuntime, runWithRealtimeRuntime } from "@sortey/api";
 import { and, eq } from "@sortey/db";
 import { db } from "@sortey/db/client";
 import { runWithDatabaseRuntime } from "@sortey/db/runtime";
@@ -41,6 +42,7 @@ interface DurableObjectNamespace {
 export interface Env {
   APP_ENV?: "development" | "staging" | "production";
   TRIP_ROOM: DurableObjectNamespace;
+  RATE_LIMITER: DurableObjectNamespace;
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
@@ -114,6 +116,45 @@ function broadcastToTripRoom(env: Env, tripId: string, payload: unknown): void {
   } catch {
     // `idFromName`/`get` should not throw, but never let a fan-out problem
     // surface into the persisted mutation.
+  }
+}
+
+// Rate-limit seam. Calls the RateLimiter DO's POST /check endpoint with the
+// bucket key + policy params and returns the result. Fails open: if the DO is
+// unreachable or returns an unexpected payload, we return `allowed: true` so a
+// limiter outage never blocks legitimate traffic — and we log it.
+async function checkRateLimit(
+  env: Env,
+  input: RateLimitCheck,
+): Promise<RateLimitResult> {
+  try {
+    const id = env.RATE_LIMITER.idFromName(input.key);
+    const stub = env.RATE_LIMITER.get(id);
+    const res = await stub.fetch("https://do/check", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "content-type": "application/json" },
+    });
+    if (!res.ok) {
+      console.warn(
+        `[rate-limiter] DO returned ${res.status} for key ${input.key}; failing open`,
+      );
+      return {
+        allowed: true,
+        remaining: input.limit,
+        resetAt: Date.now() + input.windowMs,
+      };
+    }
+    return (await res.json()) as RateLimitResult;
+  } catch (err) {
+    console.warn(
+      `[rate-limiter] error checking key ${input.key}: ${String(err)}; failing open`,
+    );
+    return {
+      allowed: true,
+      remaining: input.limit,
+      resetAt: Date.now() + input.windowMs,
+    };
   }
 }
 
@@ -284,12 +325,22 @@ const instrumentedFetch = wrapFetch(
         // `createTRPCContext` reads this via `getRealtimeRuntime()` and exposes
         // it as `ctx.realtime`. In unit tests there is no runtime, so the
         // broadcast is skipped. `broadcast` is best-effort and never throws.
+        //
+        // The RateLimiter seam is nested inside: `createTRPCContext` reads it
+        // via `getRateLimitRuntime()` and exposes it as `ctx.rateLimit`. Fails
+        // open on any DO error so a limiter outage never blocks all writes.
         return runWithRealtimeRuntime(
           {
             broadcast: (tripId, payload) =>
               broadcastToTripRoom(env, tripId, payload),
           },
-          () => handler.fetch(request, env, ctx),
+          () =>
+            runWithRateLimitRuntime(
+              {
+                check: (input) => checkRateLimit(env, input),
+              },
+              () => handler.fetch(request, env, ctx),
+            ),
         );
       },
     );
@@ -297,8 +348,10 @@ const instrumentedFetch = wrapFetch(
   { serviceName: "sortey" },
 );
 
-// The `TripRoom` Durable Object class must be exported from the worker entry
-// module so wrangler can bind it (see `durable_objects` in wrangler.jsonc).
+export { RateLimiter } from "./rate-limiter";
+// The `TripRoom` and `RateLimiter` Durable Object classes must be exported from
+// the worker entry module so wrangler can bind them (see `durable_objects` in
+// wrangler.jsonc).
 export { TripRoom } from "./trip-room";
 
 export default {
