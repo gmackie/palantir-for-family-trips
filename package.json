@@ -72,16 +72,11 @@
     "@commitlint/config-conventional": "catalog:",
     "@forgegraph/cli": "^0.3.1",
     "@turbo/gen": "^2.9.14",
-    "@types/suncalc": "^1.9.2",
     "dotenv-cli": "^11.0.0",
     "knip": "catalog:",
     "lefthook": "catalog:",
     "oxlint": "catalog:",
     "turbo": "^2.9.14",
     "typescript": "catalog:"
-  },
-  "dependencies": {
-    "@googlemaps/polyline-codec": "^1.0.28",
-    "suncalc": "^1.9.0"
   }
 }
