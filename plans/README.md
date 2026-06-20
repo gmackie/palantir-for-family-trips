@@ -18,53 +18,40 @@ re-audited from scratch.
 | 003  | Batch pin attendee queries (list + listForTimeline) | P2 | S | — | DONE (cherry-picked @ `91b37a7`, reviewed+approved 2026-06-12) |
 | 004  | Redact email PII from expo-fallback log | P2 | S | — | DONE (cherry-picked @ `1db3578`, reviewed+approved 2026-06-12) |
 | 005  | Sync docs/ai/STATUS.md to shipped reality | P2 | S | — | DONE (cherry-picked @ `fefae3c`, reviewed+approved 2026-06-12) |
+| 006  | DO-backed rate limiter for chat.send + share-link join | P2 | L | — | TODO |
+| 007  | Direct unit tests for the auth guards middleware | P2 | M | — | TODO |
+| 008  | Make setAttendees atomic + settlement idempotency payload guard | P2 | S | — | TODO |
+| 009  | Remove dead uploadthing dependency from @sortey/storage | P2 | S | — | TODO |
+| 010  | Consolidate the three organizer-check helpers | P3 | M | 007 (soft) | TODO |
+| 011  | Upgrade better-auth (clears seroval/h3 advisories) | P2 | M | — | TODO |
+| 012  | Move suncalc + polyline-codec to @sortey/api | P3 | S | — | TODO |
+| 013  | E2E test for trip → expense → claim → settle | P2 | M | — | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
 
+> Plans 006–013 generated 2026-06-12 against commit `bbc54f6`, after
+> re-verifying each finding at HEAD. The RLS finding was **rejected** on
+> verification (see below). better-auth (011) is HIGH risk: green CI is
+> necessary but NOT sufficient — a human must verify sign-in on web + Expo.
+
 ## Dependency notes
 
-- All five plans are independent of each other and can run in parallel **in
-  separate worktrees**. 001 and 002 both modify files under
-  `packages/api/src/router/` (different files) — fine in parallel, trivial to
-  rebase.
-- 001 deliberately absorbs the settlements half of the N+1 finding (same
-  lines as the bug); 003 covers only the pins half. Do not "also batch
-  settlements" in 003 — it's done in 001.
-- 005 should ideally land after 001/002 so the status doc can mention the
-  fixes, but it is not blocked by them.
+- 001–005 are DONE and merged to the session branch.
+- 006–013 are mutually independent **except** for two shared-file collisions
+  that determine execution waves (run in separate worktrees, merge per wave):
+  - **006 and 010 both edit `trips.ts`** → do not run in the same parallel
+    wave; land one, then rebase the other.
+  - **009, 011, 012 all edit package manifests + `pnpm-lock.yaml`** → don't
+    regenerate the lockfile in parallel; sequence them, or have each touch only
+    its manifest and regenerate the lockfile once at merge time.
+  - Suggested waves: **W1** 007, 008, 012, 013 (disjoint) · **W2** 006, 009
+    (disjoint) · **W3** 010, 011 (disjoint; 010 rebases on 006, 011 on 009).
+- 010 should land after 007 (soft) so the guards/auth tests provide a safety
+  net for the organizer-helper refactor.
 
 ## Findings audited but not yet planned
 
-Vetted findings from the same audit, in leverage order, available for a
-future planning pass:
-
-- **Rate limiting** on chat send (`chat.ts:229` TODO), the unauthenticated
-  share-link lookup (`trips.ts:1087` TODO), and the chat WS upgrade
-  (`apps/nextjs/worker/index.ts`). Security, M.
-- **`guards.ts` has zero direct tests** — the middleware gating every API
-  call. Tests, M.
-- **RLS absent from all migrations** — helpers exist in
-  `packages/db/src/{rls,tenant}.ts` but no `CREATE POLICY` anywhere; DB-level
-  tenancy unenforced. Security, M, MED confidence (verify whether policies
-  are applied through a non-migration path before planning).
-- **Transactions/idempotency batch**: `pins.setAttendees` delete+insert not
-  transactional (`pins.ts:283–295`); `claimLineItem` check-then-insert race
-  (`expenses.ts:645–712`); `settlements.record` idempotency lookup doesn't
-  compare retry payload (`settlements.ts:191–211`). Correctness, M.
-- **Remove dead `uploadthing` dependency** from `packages/storage`
-  (`package.json:22`) — storage migrated to R2; this dep is the only path
-  pulling the advisory-laden `h3` into the tree. Deps, S.
-- **Organizer-check duplication** — three variants across ~18 routers
-  (`requireOrganizerOrSelf`, `requireOrganizer`, `requireOrganizerTripRole`).
-  Debt, M. Should follow guards tests.
-- **Expo-chain dependency advisories** (`seroval` via better-auth HIGH;
-  `shell-quote` dev-tooling CRITICAL) — better-auth upgrade is the real item.
-  Deps, M–L.
-- **Root `package.json` deps** (`suncalc`, `@googlemaps/polyline-codec`)
-  belong in `packages/api`. Debt, S.
-- **E2E coverage is sign-in only** — no trip→expense→claim→settle flow test.
-  Tests, M.
 - **Direction options** (maintainer's call, not problems): post-trip
   close-out flow (timely: lifecycle `completed` enforced at `trips.ts:454`,
   Venmo handles on members, reunion ends 2026-06-15); road-trip prediction
@@ -77,6 +64,16 @@ future planning pass:
 
 So nobody re-audits these:
 
+- **RLS "absent from migrations"** (was queued for planning): **rejected on
+  re-verification at `bbc54f6`.** RLS is fully implemented in
+  `packages/db/src/rls.ts` (`buildWorkspaceRlsStatements` + `applyWorkspaceRls`
+  with a CLI entrypoint), applied via the `pnpm rls` script
+  (`packages/db/package.json:40`), with per-request GUCs (`app.user_id` /
+  `app.workspace_id`) set in `tenant.ts:30-31`, and covered by
+  `packages/db/src/__tests__/rls.test.ts`. The original premise ("DB-level
+  tenancy unenforced") is false. The only residual is operational — confirm
+  `pnpm rls` runs in the deploy pipeline — which is an ops check, not a code
+  plan.
 - **CSRF on tRPC mutations**: Better Auth cookie defaults; no evidence of
   misconfiguration. Speculative.
 - **WS reconnect double-fire hardening**: `packages/realtime/src/reconnect.ts`
