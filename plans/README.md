@@ -18,10 +18,10 @@ re-audited from scratch.
 | 003  | Batch pin attendee queries (list + listForTimeline) | P2 | S | — | DONE (cherry-picked @ `91b37a7`, reviewed+approved 2026-06-12) |
 | 004  | Redact email PII from expo-fallback log | P2 | S | — | DONE (cherry-picked @ `1db3578`, reviewed+approved 2026-06-12) |
 | 005  | Sync docs/ai/STATUS.md to shipped reality | P2 | S | — | DONE (cherry-picked @ `fefae3c`, reviewed+approved 2026-06-12) |
-| 006  | DO-backed rate limiter for chat.send + share-link join | P2 | L | — | TODO |
+| 006  | DO-backed rate limiter for chat.send + share-link join | P2 | L | — | DONE (cherry-picked @ `2b40a4a`, reviewed+approved 2026-06-12; worker tests 13/13, api no-op verified) |
 | 007  | Direct unit tests for the auth guards middleware | P2 | M | — | DONE (cherry-picked @ `8ef6be7`, reviewed+approved 2026-06-12) |
 | 008  | Make setAttendees atomic + settlement idempotency payload guard | P2 | S | — | DONE (source @ `b671c0e`; vacuous logic-mirror test dropped — real test deferred pending a `record` store seam) |
-| 009  | Remove dead uploadthing dependency from @sortey/storage | P2 | S | — | TODO |
+| 009  | Remove dead uploadthing dependency from @sortey/storage | P2 | S | — | DONE (cherry-picked @ `bb14e27`, reviewed+approved 2026-06-12; storage→h3 path cleared. NB: a second h3 path remains via apps/tanstack-start→nitro→unstorage→uploadthing — scaffold app, out of scope) |
 | 010  | Consolidate the three organizer-check helpers | P3 | M | 007 (soft) | TODO |
 | 011  | Upgrade better-auth (clears seroval/h3 advisories) | P2 | M | — | TODO |
 | 012  | Move suncalc + polyline-codec to @sortey/api | P3 | S | — | DONE (cherry-picked @ `fc0dee1`, reviewed+approved 2026-06-12) |
