@@ -1,11 +1,25 @@
-import { ClaudeReceiptExtractor } from "./claude-extractor";
+import Anthropic from "@anthropic-ai/sdk";
+
+import {
+  ClaudeReceiptExtractor,
+  FERRY_EXTRACTION_SYSTEM_PROMPT,
+} from "./claude-extractor";
+import { extractStructured } from "./extract-structured";
 import { GeminiReceiptExtractor } from "./gemini-extractor";
 import { MockOCRProvider } from "./mock-provider";
 import { type ReconcileResult, reconcileReceipt } from "./reconcile";
 import type { OcrProvider } from "./review";
-import type { ReceiptExtraction } from "./schema";
+import {
+  type FerryBooking,
+  ferryBookingSchema,
+  type ReceiptExtraction,
+} from "./schema";
 
-export { ClaudeReceiptExtractor } from "./claude-extractor";
+export {
+  ClaudeReceiptExtractor,
+  FERRY_EXTRACTION_SYSTEM_PROMPT,
+} from "./claude-extractor";
+export { extractStructured } from "./extract-structured";
 export { GeminiReceiptExtractor } from "./gemini-extractor";
 export { MockOCRProvider } from "./mock-provider";
 export type { ReconcileResult } from "./reconcile";
@@ -18,8 +32,8 @@ export {
   type OcrProvider,
   type OcrStatus,
 } from "./review";
-export type { ReceiptExtraction } from "./schema";
-export { receiptExtractionSchema } from "./schema";
+export type { FerryBooking, ReceiptExtraction } from "./schema";
+export { ferryBookingSchema, receiptExtractionSchema } from "./schema";
 
 export interface OCRProvider {
   extract(input: {
@@ -88,4 +102,44 @@ export async function extractAndReconcileReceipt(input: {
     ...reconcileReceipt(extraction),
     provider: resolveOCRProviderName(),
   };
+}
+
+/**
+ * Ferry booking OCR: extract a structured `FerryBooking` from a ticket/
+ * confirmation image.
+ *
+ * Resolves the provider via the SAME env precedence as receipts:
+ * - DEV_MODE=local or OCR_PROVIDER=fixture → MockOCRProvider (reads the ferry
+ *   fixture, no API cost)
+ * - OCR_PROVIDER=claude (and the Gemini default) → Claude via `extractStructured`
+ *   with the ferry schema + prompt.
+ *
+ * Unlike receipts, there is no reconciliation pass — the booking fields are
+ * surfaced directly to the form for review before persist.
+ *
+ * TODO(ferry): gemini ferry extraction — the Gemini receipt extractor isn't
+ * generalized to arbitrary schemas yet, so the non-fixture/non-claude path
+ * routes through Claude's `extractStructured` for v1.
+ */
+export async function extractFerryBooking(input: {
+  imageBytes: Buffer;
+  mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+}): Promise<FerryBooking> {
+  const devMode = process.env.DEV_MODE === "local";
+  const ocrOverride = process.env.OCR_PROVIDER;
+
+  if (devMode || ocrOverride === "fixture") {
+    const mock = new MockOCRProvider();
+    return mock.extractFerry(input.imageBytes);
+  }
+
+  return extractStructured({
+    client: new Anthropic(),
+    model: "claude-sonnet-4-6",
+    systemPrompt: FERRY_EXTRACTION_SYSTEM_PROMPT,
+    userText: "Extract this ferry booking into the structured JSON format.",
+    schema: ferryBookingSchema,
+    imageBytes: input.imageBytes,
+    mimeType: input.mimeType,
+  });
 }

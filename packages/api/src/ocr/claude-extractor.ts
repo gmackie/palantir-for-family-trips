@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
+import { extractStructured } from "./extract-structured";
 import { type ReceiptExtraction, receiptExtractionSchema } from "./schema";
 
 /**
@@ -39,6 +39,21 @@ Rules:
 
 Return only the JSON object matching the schema. No prose, no explanation.`;
 
+export const FERRY_EXTRACTION_SYSTEM_PROMPT = `You are a ferry booking extraction system. Given an image (or PDF page) of a ferry ticket or booking confirmation, produce a structured JSON object matching the provided schema.
+
+Rules:
+- operator: the ferry operator or line as printed, e.g. "Washington State Ferries", "BC Ferries", "Caledonian MacBrayne".
+- departureTerminal / arrivalTerminal: the dock/terminal names for the crossing, e.g. "Edmonds" → "Kingston". Use the printed terminal names, not city names, when both appear.
+- departureAt: the scheduled departure as an ISO 8601 string. Use the printed sailing date and time. If only a date is printed with no time, use 12:00:00 in local time.
+- confirmationNumber: the booking/confirmation/reservation number if printed, otherwise null.
+- fareCents: the total fare actually charged, in minor currency units (cents for USD, pence for GBP, etc.). If no price is printed, return null. Do not invent a fare.
+- currency: the ISO 4217 code detected from the symbol or printed code (USD for $, EUR for €, GBP for £, CAD, etc.).
+- vehicleReservation: true if the booking includes a reserved vehicle space (car/RV/motorcycle), false for a passenger-only/walk-on ticket.
+- passengerNote: a short free-text summary of what was booked, e.g. "Car + 2 passengers" or "2 adult walk-on", if such detail is printed; otherwise null.
+- Do not include card numbers, loyalty numbers, or other PII in any field.
+
+Return only the JSON object matching the schema. No prose, no explanation.`;
+
 export interface ClaudeOCROptions {
   /** Override the default Anthropic client (e.g. for tests). */
   client?: Anthropic;
@@ -64,48 +79,14 @@ export class ClaudeReceiptExtractor {
     imageBytes: Buffer;
     mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
   }): Promise<ReceiptExtraction> {
-    const response = await this.client.messages.parse({
+    return extractStructured({
+      client: this.client,
       model: this.model,
-      max_tokens: 4096,
-      // Cache the large system prompt — every subsequent request only pays
-      // for the image + response tokens.
-      system: [
-        {
-          type: "text",
-          text: this.systemPrompt,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: input.mimeType,
-                data: input.imageBytes.toString("base64"),
-              },
-            },
-            {
-              type: "text",
-              text: "Extract this receipt into the structured JSON format.",
-            },
-          ],
-        },
-      ],
-      output_config: {
-        format: zodOutputFormat(receiptExtractionSchema),
-      },
+      systemPrompt: this.systemPrompt,
+      userText: "Extract this receipt into the structured JSON format.",
+      schema: receiptExtractionSchema,
+      imageBytes: input.imageBytes,
+      mimeType: input.mimeType,
     });
-
-    if (!response.parsed_output) {
-      throw new Error(
-        `Claude vision failed to produce a valid receipt extraction. Stop reason: ${response.stop_reason}`,
-      );
-    }
-
-    return response.parsed_output;
   }
 }
