@@ -916,6 +916,7 @@ export const transitTypeEnum = [
   "train",
   "bus",
   "car",
+  "ferry",
   "other",
 ] as const;
 export type TransitType = (typeof transitTypeEnum)[number];
