@@ -1250,6 +1250,10 @@ export const vanProfiles = pgTable("van_profile", (t) => ({
   tankGallons: t.numeric(),
   heightInches: t.integer(),
   lengthFeet: t.integer(),
+  // Links this van to a driftport "rig" for live van-system telemetry. NULLABLE
+  // and intentionally NOT a foreign key: the referenced row lives in driftport's
+  // separate Postgres database, reached over a service-token HTTP call.
+  driftportRigId: t.uuid(),
   createdAt: t.timestamp().defaultNow().notNull(),
   updatedAt: t
     .timestamp({ mode: "date", withTimezone: true })

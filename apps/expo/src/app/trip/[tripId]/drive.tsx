@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { FerryDriveCard } from "~/components/trip/ferry-drive-card";
+import { VanStatusCard } from "~/components/trip/van-status-card";
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
@@ -314,6 +315,10 @@ export default function DriveScreen() {
 
         {/* 3 — NEXT FERRY (read-only; renders nothing when no upcoming ferry) */}
         <FerryDriveCard tripId={tripId ?? ""} workspaceId={workspaceId} />
+
+        {/* 3b — VAN STATUS (read-only; renders nothing unless telemetry is
+            flag-enabled and the van is linked to a driftport rig) */}
+        <VanStatusCard tripId={tripId ?? ""} workspaceId={workspaceId} />
 
         {/* 4 — FUEL RANGE */}
         {(() => {

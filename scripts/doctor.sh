@@ -127,6 +127,14 @@ if [ -f "$ROOT_DIR/.forgegraph.yaml" ]; then
   check_env_group "ForgeGraph deploy values" "DATABASE_URL" "AUTH_SECRET"
 fi
 
+if [ "$HAS_ENV" -eq 1 ]; then
+  if grep -Eq "^DRIFTPORT_API_KEY=" "$ROOT_DIR/.env" && grep -Eq "^DRIFTPORT_API_URL=" "$ROOT_DIR/.env"; then
+    ok "driftport van-telemetry: DRIFTPORT_API_URL + DRIFTPORT_API_KEY set (real provider)"
+  else
+    warn "driftport van-telemetry: DRIFTPORT_API_URL/DRIFTPORT_API_KEY not set; van telemetry uses the mock provider"
+  fi
+fi
+
 echo ""
 echo "Checking shared platform primitives..."
 ok "Feature flags: local scaffolding with room for PostHog migration later"

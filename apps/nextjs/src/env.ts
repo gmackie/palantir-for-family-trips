@@ -16,6 +16,11 @@ export const env = createEnv({
   server: {
     APP_URL: z.string().url().optional(),
     DATABASE_URL: z.url().optional(),
+    // driftport van-telemetry integration (optional until the service-account
+    // key is provisioned). Both are needed for the real telemetry provider;
+    // absent → the mock provider is used.
+    DRIFTPORT_API_URL: z.string().url().optional(),
+    DRIFTPORT_API_KEY: z.string().optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),

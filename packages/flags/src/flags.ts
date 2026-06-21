@@ -72,6 +72,22 @@ export const flagDefinitions = {
   },
 
   /**
+   * Driftport van-telemetry preview
+   * Gates the live van-system telemetry overlay (battery / solar / climate /
+   * water) sourced from driftport in mobile Driving Mode. Off in prod until the
+   * service-account key is provisioned; on in dev/staging for the spike.
+   */
+  driftportTelemetryPreview: {
+    defaultValue: false,
+    description: "Enable the driftport van-telemetry preview in Driving Mode",
+    environments: {
+      production: false,
+      staging: true,
+      development: true,
+    },
+  },
+
+  /**
    * Example: Maintenance mode
    * Quick toggle for maintenance windows
    */

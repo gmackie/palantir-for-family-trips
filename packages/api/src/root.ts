@@ -18,6 +18,7 @@ import { settingsRouter } from "./router/settings";
 import { settlementsRouter } from "./router/settlements";
 import { tripsRouter } from "./router/trips";
 import { vanProfilesRouter } from "./router/van-profiles";
+import { vanTelemetryRouter } from "./router/van-telemetry";
 import { createTRPCRouter } from "./trpc";
 
 export const appRouter = createTRPCRouter({
@@ -41,6 +42,7 @@ export const appRouter = createTRPCRouter({
   settlements: settlementsRouter,
   trips: tripsRouter,
   vanProfiles: vanProfilesRouter,
+  vanTelemetry: vanTelemetryRouter,
 });
 
 export type AppRouter = typeof appRouter;

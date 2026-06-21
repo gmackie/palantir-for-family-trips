@@ -1,0 +1,1 @@
+ALTER TABLE "van_profile" ADD COLUMN "driftport_rig_id" uuid;
