@@ -13,6 +13,7 @@ import {
   insertExpenseDraft,
   updateTransportDraftAmount,
 } from "../expenses/transport-draft";
+import { extractFerryBooking, type FerryBooking } from "../ocr";
 
 // Ferry fares are a single splittable transport leg cost. The expense category
 // enum has no dedicated "transport" value — `transit` is the closest existing
@@ -244,6 +245,44 @@ export async function deleteFerryCrossing(
   return { deleted: true };
 }
 
+// ── OCR pre-fill (no persistence) ────────────────────────────────────────────
+
+// Image MIME types accepted by `extractFromImage`. PDF is intentionally absent.
+// TODO(ferry): PDF rasterization — accept application/pdf by rasterizing the
+// first page to an image before extraction. Out of scope for v1.
+const FERRY_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
+
+export type FerryExtractResult =
+  | { ok: true; booking: FerryBooking }
+  | { ok: false };
+
+/**
+ * Decode a base64 ferry ticket image and run it through the ferry booking
+ * extractor, returning the parsed fields for the form to pre-fill. Persists
+ * nothing. Never throws to the client — any decode/extraction failure is
+ * folded into `{ ok: false }`.
+ */
+export async function extractFerryFromImage(input: {
+  imageBase64: string;
+  mimeType: (typeof FERRY_IMAGE_MIME_TYPES)[number];
+}): Promise<FerryExtractResult> {
+  try {
+    const imageBytes = Buffer.from(input.imageBase64, "base64");
+    const booking = await extractFerryBooking({
+      imageBytes,
+      mimeType: input.mimeType,
+    });
+    return { ok: true, booking };
+  } catch {
+    return { ok: false };
+  }
+}
+
 // ── Real DB-backed store ─────────────────────────────────────────────────────
 
 // biome-ignore lint/suspicious/noExplicitAny: Drizzle db type is complex
@@ -463,5 +502,23 @@ export const ferriesRouter = {
     )
     .query(({ ctx }) =>
       listFerryCrossings(createFerryStore(ctx.db), { tripId: ctx.tripId }),
+    ),
+
+  // OCR pre-fill: parse a ferry ticket image into structured fields for the
+  // form to review before submit. Persists nothing; never throws to the client.
+  extractFromImage: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        imageBase64: z.string().min(1),
+        mimeType: z.enum(FERRY_IMAGE_MIME_TYPES),
+      }),
+    )
+    .mutation(({ input }) =>
+      extractFerryFromImage({
+        imageBase64: input.imageBase64,
+        mimeType: input.mimeType,
+      }),
     ),
 } satisfies TRPCRouterRecord;

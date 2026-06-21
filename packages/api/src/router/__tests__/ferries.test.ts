@@ -10,6 +10,7 @@ const { resolveTripAccess } = await import("../../auth/guards");
 const {
   createFerryCrossing,
   deleteFerryCrossing,
+  extractFerryFromImage,
   listFerryCrossings,
   updateFerryCrossing,
 } = await import("../ferries");
@@ -425,6 +426,58 @@ describe("ferries router — fare → draft transport expense", () => {
 
     expect(state.ferries).toHaveLength(0);
     expect(state.expenses).toHaveLength(0);
+  });
+});
+
+describe("ferries router — extractFromImage", () => {
+  it("returns the fixture booking fields and persists nothing", async () => {
+    const prev = process.env.OCR_PROVIDER;
+    process.env.OCR_PROVIDER = "fixture";
+    try {
+      const { state } = createFerryStore();
+      const imageBase64 = Buffer.from("any-ferry-ticket").toString("base64");
+
+      const result = await extractFerryFromImage({
+        imageBase64,
+        mimeType: "image/png",
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.booking.arrivalTerminal).toBe("Kingston");
+        expect(result.booking.departureTerminal).toBe("Edmonds");
+        expect(result.booking.fareCents).toBe(1675);
+        expect(result.booking.currency).toBe("USD");
+      }
+      // No persistence happened.
+      expect(state.ferries).toHaveLength(0);
+      expect(state.expenses).toHaveLength(0);
+    } finally {
+      if (prev === undefined) {
+        process.env.OCR_PROVIDER = undefined;
+      } else {
+        process.env.OCR_PROVIDER = prev;
+      }
+    }
+  });
+
+  it("returns { ok: false } on a malformed base64 / extraction failure without throwing", async () => {
+    const prev = process.env.OCR_PROVIDER;
+    // Force a non-fixture provider with no API key so extraction fails.
+    process.env.OCR_PROVIDER = "claude";
+    try {
+      const result = await extractFerryFromImage({
+        imageBase64: Buffer.from("x").toString("base64"),
+        mimeType: "image/png",
+      });
+      expect(result.ok).toBe(false);
+    } finally {
+      if (prev === undefined) {
+        process.env.OCR_PROVIDER = undefined;
+      } else {
+        process.env.OCR_PROVIDER = prev;
+      }
+    }
   });
 });
 
