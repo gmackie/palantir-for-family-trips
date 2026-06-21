@@ -33,12 +33,6 @@ export default async function HomePage() {
           >
             Get Started
           </Link>
-          <Link
-            href="/demo"
-            className="inline-flex h-11 items-center rounded-[4px] border border-[#21262D] px-8 text-sm font-semibold text-[#8B949E] transition-colors hover:border-[#484F58] hover:text-[#C9D1D9]"
-          >
-            View Demo
-          </Link>
         </div>
       </div>
 
