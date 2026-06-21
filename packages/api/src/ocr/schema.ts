@@ -82,3 +82,45 @@ export const receiptExtractionSchema = z.object({
 });
 
 export type ReceiptExtraction = z.infer<typeof receiptExtractionSchema>;
+
+/**
+ * Zod schema for structured ferry-booking OCR output from a vision model.
+ *
+ * Used by the generalized `extractStructured` helper with `messages.parse()`
+ * to guarantee a valid `FerryBooking` shape from a ferry ticket/confirmation
+ * image or PDF.
+ */
+export const ferryBookingSchema = z.object({
+  operator: z
+    .string()
+    .describe("Ferry operator/line, e.g. 'Washington State Ferries'"),
+  departureTerminal: z.string().describe("Departure terminal/dock name"),
+  arrivalTerminal: z.string().describe("Arrival terminal/dock name"),
+  departureAt: z
+    .string()
+    .describe("ISO 8601 scheduled departure. If no time, use 12:00:00 local."),
+  confirmationNumber: z
+    .string()
+    .nullable()
+    .default(null)
+    .describe("Booking/confirmation number if printed"),
+  fareCents: z
+    .number()
+    .int()
+    .nonnegative()
+    .nullable()
+    .default(null)
+    .describe("Total fare in minor units (cents)"),
+  currency: z.string().min(3).max(3).describe("ISO 4217 currency code"),
+  vehicleReservation: z
+    .boolean()
+    .default(false)
+    .describe("True if a vehicle space is reserved"),
+  passengerNote: z
+    .string()
+    .nullable()
+    .default(null)
+    .describe("Free text e.g. 'Car + 2 passengers'"),
+});
+
+export type FerryBooking = z.infer<typeof ferryBookingSchema>;
