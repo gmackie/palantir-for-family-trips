@@ -49,6 +49,7 @@
     "@sortey/auth": "workspace:*",
     "@sortey/config": "workspace:*",
     "@sortey/db": "workspace:*",
+    "@sortey/flags": "workspace:*",
     "@sortey/realtime": "workspace:*",
     "@sortey/validators": "workspace:*",
     "@trpc/server": "catalog:",
