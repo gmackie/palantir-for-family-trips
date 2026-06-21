@@ -1,6 +1,7 @@
 import { decode, encode } from "@googlemaps/polyline-codec";
 import { eq } from "@sortey/db";
-import { tripSegments, trips } from "@sortey/db/schema";
+import { db } from "@sortey/db/client";
+import { ferryCrossings, tripSegments, trips } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import SunCalc from "suncalc";
@@ -8,6 +9,9 @@ import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
 import { protectedProcedure } from "../trpc";
+import { computeLeaveBy, ferryNonDrivableMinutes } from "./ferry-eta";
+
+type Db = typeof db;
 
 const MAX_DRIVING_HOURS = 12;
 const PACK_UP_HOURS = 1;
@@ -161,6 +165,131 @@ function autoSplitRoute(
   }
 
   return segments;
+}
+
+/**
+ * A drive leg the ferry gating cares about: it has an id (segment id), the name
+ * of the place the drive ends (terminal candidate), and the drive minutes spent
+ * reaching that destination.
+ */
+export interface FerryGatingLeg {
+  id: string;
+  destinationName: string | null;
+  durationMinutes: number | null;
+}
+
+/** The subset of a ferry crossing the planner needs to gate a leg. */
+export interface FerryGatingCrossing {
+  id: string;
+  departureTerminal: string | null;
+  afterSegmentId: string | null;
+  scheduledDepartureAt: Date | null;
+  durationMinutes: number | null;
+  arrivalCutoffMinutes: number;
+}
+
+/** Ferry data attached to a leg whose drive ends at the departure terminal. */
+export interface AttachedFerry {
+  /** Latest a traveler can leave to make the boat, or null if unknown. */
+  leaveBy: Date | null;
+  /**
+   * Minutes the crossing + arrival cutoff consume. This is *non-driving* time:
+   * it never counts toward the 12h driving budget.
+   */
+  nonDrivableMinutes: number;
+}
+
+export type FerryGatedLeg<TLeg extends FerryGatingLeg> = TLeg & {
+  ferry: AttachedFerry | null;
+};
+
+export interface FerryGatingResult<TLeg extends FerryGatingLeg> {
+  legs: Array<FerryGatedLeg<TLeg>>;
+  /**
+   * Total ferry non-drivable minutes across all matched legs. Surfaced so
+   * callers can confirm this time is withheld from the driving-hours cap rather
+   * than spent driving — a ferry can interrupt a day without counting toward
+   * the 12h budget.
+   */
+  totalNonDrivableMinutes: number;
+}
+
+/**
+ * Attach ferry gating data to drive legs without changing the legs' driving
+ * math. A crossing is matched to the leg it follows by `afterSegmentId` first,
+ * then by `departureTerminal` matching the leg's `destinationName`. The matched
+ * leg's drive minutes are used as the drive time to the terminal for the
+ * leave-by deadline. Ferry non-drivable minutes are reported separately and are
+ * never added to any leg's `durationMinutes`, so the 12h driving budget is
+ * unaffected.
+ *
+ * Pure: no DB, no mutation of inputs. Backward-compatible — with zero crossings
+ * every leg gets `ferry: null` and `totalNonDrivableMinutes` is 0.
+ */
+export function applyFerryGating<TLeg extends FerryGatingLeg>(
+  legs: TLeg[],
+  crossings: FerryGatingCrossing[],
+): FerryGatingResult<TLeg> {
+  let totalNonDrivableMinutes = 0;
+
+  const gatedLegs = legs.map((leg): FerryGatedLeg<TLeg> => {
+    const crossing = crossings.find((c) => {
+      if (c.afterSegmentId !== null) {
+        return c.afterSegmentId === leg.id;
+      }
+      return (
+        c.departureTerminal !== null &&
+        leg.destinationName !== null &&
+        c.departureTerminal === leg.destinationName
+      );
+    });
+
+    if (!crossing) {
+      return { ...leg, ferry: null };
+    }
+
+    const nonDrivableMinutes = ferryNonDrivableMinutes({
+      durationMinutes: crossing.durationMinutes,
+      arrivalCutoffMinutes: crossing.arrivalCutoffMinutes,
+    });
+    totalNonDrivableMinutes += nonDrivableMinutes;
+
+    const leaveBy = computeLeaveBy({
+      scheduledDepartureAt: crossing.scheduledDepartureAt,
+      arrivalCutoffMinutes: crossing.arrivalCutoffMinutes,
+      driveMinutesToTerminal: leg.durationMinutes ?? 0,
+    });
+
+    return { ...leg, ferry: { leaveBy, nonDrivableMinutes } };
+  });
+
+  return { legs: gatedLegs, totalNonDrivableMinutes };
+}
+
+/**
+ * Read the trip's ferry crossings and attach gating data to the planner's
+ * returned segments. Additive: the segment rows are returned unchanged plus a
+ * `ferry` field. Used by `planRoute` so it can stay backward-compatible when a
+ * trip has no crossings (every segment gets `ferry: null`).
+ */
+async function gateSegmentsWithFerries<TLeg extends FerryGatingLeg>(
+  db: Db,
+  tripId: string,
+  segments: TLeg[],
+): Promise<FerryGatingResult<TLeg>> {
+  const crossings = await db
+    .select({
+      id: ferryCrossings.id,
+      departureTerminal: ferryCrossings.departureTerminal,
+      afterSegmentId: ferryCrossings.afterSegmentId,
+      scheduledDepartureAt: ferryCrossings.scheduledDepartureAt,
+      durationMinutes: ferryCrossings.durationMinutes,
+      arrivalCutoffMinutes: ferryCrossings.arrivalCutoffMinutes,
+    })
+    .from(ferryCrossings)
+    .where(eq(ferryCrossings.tripId, tripId));
+
+  return applyFerryGating(segments, crossings);
 }
 
 export const routePlannerRouter = {
@@ -325,15 +454,25 @@ export const routePlannerRouter = {
               sortOrder: i,
             })
             .returning();
+          if (!row) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to create trip segment",
+            });
+          }
           created.push(row);
         }
+
+        const { legs: gatedSegments, totalNonDrivableMinutes } =
+          await gateSegmentsWithFerries(ctx.db, ctx.tripId, created);
 
         return {
           totalMiles,
           totalMinutes,
           fullPolyline,
-          segments: created,
-          segmentCount: created.length,
+          segments: gatedSegments,
+          segmentCount: gatedSegments.length,
+          ferryNonDrivableMinutes: totalNonDrivableMinutes,
         };
       }
 
@@ -359,12 +498,23 @@ export const routePlannerRouter = {
         })
         .returning();
 
+      if (!single) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create trip segment",
+        });
+      }
+
+      const { legs: gatedSingle, totalNonDrivableMinutes } =
+        await gateSegmentsWithFerries(ctx.db, ctx.tripId, [single]);
+
       return {
         totalMiles,
         totalMinutes,
         fullPolyline,
-        segments: [single],
-        segmentCount: 1,
+        segments: gatedSingle,
+        segmentCount: gatedSingle.length,
+        ferryNonDrivableMinutes: totalNonDrivableMinutes,
       };
     }),
 

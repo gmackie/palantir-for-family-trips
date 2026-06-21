@@ -50,6 +50,13 @@
       "when": 1776338435128,
       "tag": "0006_tan_gorilla_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782074495800,
+      "tag": "0007_tired_wallop",
+      "breakpoints": true
     }
   ]
 }

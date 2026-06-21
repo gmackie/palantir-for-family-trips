@@ -2,16 +2,28 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { type ReceiptExtraction, receiptExtractionSchema } from "./schema";
+import {
+  type FerryBooking,
+  ferryBookingSchema,
+  type ReceiptExtraction,
+  receiptExtractionSchema,
+} from "./schema";
+
+interface LoadedFixtures {
+  receipts: Map<string, ReceiptExtraction>;
+  receiptDefault: ReceiptExtraction | null;
+  ferries: Map<string, FerryBooking>;
+  ferryDefault: FerryBooking | null;
+}
 
 /**
  * MockOCRProvider — for DEV_MODE=local and tests.
  *
  * Reads canned JSON responses from `packages/api/src/ocr/__fixtures__/*.json`
  * keyed by SHA-256 hash of the image bytes. Falls back to `default.json`
- * if no hash match is found.
+ * (receipts) or any single ferry fixture if no hash match is found.
  *
- * Fixture shape:
+ * Receipt fixture shape:
  * ```json
  * {
  *   "hash": "a1b2c3...",        // optional — matches image hash
@@ -20,11 +32,20 @@ import { type ReceiptExtraction, receiptExtractionSchema } from "./schema";
  * }
  * ```
  *
+ * Ferry fixture shape (discriminated by `"kind": "ferry"`):
+ * ```json
+ * {
+ *   "kind": "ferry",
+ *   "hash": "a1b2c3...",        // optional — matches image hash
+ *   "name": "wsf-edmonds-kingston",
+ *   "booking": { ... }          // matches FerryBooking shape
+ * }
+ * ```
+ *
  * Test-only. The real OCR pipeline uses `claude-extractor.ts`.
  */
 export class MockOCRProvider {
-  private fixtureCache: Map<string, ReceiptExtraction> | null = null;
-  private defaultFixture: ReceiptExtraction | null = null;
+  private fixtureCache: LoadedFixtures | null = null;
 
   constructor(private fixturesDir?: string) {}
 
@@ -32,17 +53,31 @@ export class MockOCRProvider {
     const fixtures = await this.loadFixtures();
     const hash = createHash("sha256").update(imageBytes).digest("hex");
 
-    const matched = fixtures.get(hash);
+    const matched = fixtures.receipts.get(hash);
     if (matched) return matched;
 
-    if (this.defaultFixture) return this.defaultFixture;
+    if (fixtures.receiptDefault) return fixtures.receiptDefault;
 
     throw new Error(
-      `No fixture found for image hash ${hash.slice(0, 12)}... and no default.json in ${this.fixturesDir ?? "__fixtures__"}`,
+      `No receipt fixture found for image hash ${hash.slice(0, 12)}... and no default.json in ${this.fixturesDir ?? "__fixtures__"}`,
     );
   }
 
-  private async loadFixtures(): Promise<Map<string, ReceiptExtraction>> {
+  async extractFerry(imageBytes: Buffer): Promise<FerryBooking> {
+    const fixtures = await this.loadFixtures();
+    const hash = createHash("sha256").update(imageBytes).digest("hex");
+
+    const matched = fixtures.ferries.get(hash);
+    if (matched) return matched;
+
+    if (fixtures.ferryDefault) return fixtures.ferryDefault;
+
+    throw new Error(
+      `No ferry fixture found for image hash ${hash.slice(0, 12)}... and no ferry fixture in ${this.fixturesDir ?? "__fixtures__"}`,
+    );
+  }
+
+  private async loadFixtures(): Promise<LoadedFixtures> {
     if (this.fixtureCache) return this.fixtureCache;
 
     const dir =
@@ -52,13 +87,19 @@ export class MockOCRProvider {
         "__fixtures__",
       );
 
-    const cache = new Map<string, ReceiptExtraction>();
+    const loaded: LoadedFixtures = {
+      receipts: new Map(),
+      receiptDefault: null,
+      ferries: new Map(),
+      ferryDefault: null,
+    };
+
     let files: string[];
     try {
       files = await readdir(dir);
     } catch {
-      this.fixtureCache = cache;
-      return cache;
+      this.fixtureCache = loaded;
+      return loaded;
     }
 
     for (const file of files) {
@@ -66,20 +107,31 @@ export class MockOCRProvider {
       try {
         const raw = await readFile(join(dir, file), "utf-8");
         const parsed = JSON.parse(raw);
-        const extraction = receiptExtractionSchema.parse(parsed.extraction);
 
+        if (parsed.kind === "ferry") {
+          const booking = ferryBookingSchema.parse(parsed.booking);
+          // The single canned ferry fixture also serves as the default so a
+          // fixture-mode extraction works without a hash match.
+          loaded.ferryDefault = booking;
+          if (typeof parsed.hash === "string") {
+            loaded.ferries.set(parsed.hash, booking);
+          }
+          continue;
+        }
+
+        const extraction = receiptExtractionSchema.parse(parsed.extraction);
         if (file === "default.json") {
-          this.defaultFixture = extraction;
+          loaded.receiptDefault = extraction;
         }
         if (typeof parsed.hash === "string") {
-          cache.set(parsed.hash, extraction);
+          loaded.receipts.set(parsed.hash, extraction);
         }
       } catch {
         // Skip malformed fixtures silently — they'll fail the test that uses them
       }
     }
 
-    this.fixtureCache = cache;
-    return cache;
+    this.fixtureCache = loaded;
+    return loaded;
   }
 }

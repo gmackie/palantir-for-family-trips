@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { FerryDriveCard } from "~/components/trip/ferry-drive-card";
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
@@ -311,7 +312,10 @@ export default function DriveScreen() {
           )}
         </BlockShell>
 
-        {/* 3 — FUEL RANGE */}
+        {/* 3 — NEXT FERRY (read-only; renders nothing when no upcoming ferry) */}
+        <FerryDriveCard tripId={tripId ?? ""} workspaceId={workspaceId} />
+
+        {/* 4 — FUEL RANGE */}
         {(() => {
           const fr = summary?.fuelRange ?? null;
           const low = fr?.low ?? false;
@@ -421,7 +425,7 @@ export default function DriveScreen() {
           );
         })()}
 
-        {/* 4 — CONVOY */}
+        {/* 5 — CONVOY */}
         <BlockShell label="Convoy" icon="people-outline" iconColor={C.info}>
           {isLoading ? (
             <BlockLoading />

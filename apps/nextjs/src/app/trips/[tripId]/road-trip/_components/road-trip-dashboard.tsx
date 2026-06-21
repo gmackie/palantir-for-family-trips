@@ -8,6 +8,7 @@ import { PoiInfoCard } from "~/components/road-trip/poi-info-card";
 import { RouteGradientMap } from "~/components/road-trip/route-gradient-map";
 import { TripStatsBar } from "~/components/road-trip/trip-stats-bar";
 import { TripTikStrip } from "~/components/road-trip/triptik-strip";
+import { FerrySection } from "./ferry-section";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,7 +107,7 @@ type CorridorPoi = {
   data: unknown;
 };
 
-type InspectorTab = "fuel" | "van" | "pois";
+type InspectorTab = "fuel" | "van" | "pois" | "ferry";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -138,6 +139,7 @@ const TAB_LABELS: Record<InspectorTab, string> = {
   fuel: "Fuel Log",
   van: "Van Profile",
   pois: "POIs",
+  ferry: "Ferries",
 };
 
 // ---------------------------------------------------------------------------
@@ -498,7 +500,7 @@ export function RoadTripDashboard(props: {
         <aside className="w-[360px] shrink-0 overflow-hidden border-l border-[#21262D] bg-[#0D1117]">
           {/* Tab bar */}
           <div className="flex border-b border-[#21262D]">
-            {(["fuel", "van", "pois"] as InspectorTab[]).map((tab) => (
+            {(["fuel", "van", "pois", "ferry"] as InspectorTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -517,6 +519,10 @@ export function RoadTripDashboard(props: {
           <div className="h-[calc(100%-41px)] overflow-y-auto p-4">
             {activeTab === "fuel" && (
               <FuelLogPanel logs={fuelLogs} stats={fuelStats} />
+            )}
+
+            {activeTab === "ferry" && (
+              <FerrySection workspaceId={props.workspaceId} tripId={trip.id} />
             )}
 
             {activeTab === "van" && (

@@ -20,6 +20,7 @@ import { tripProcedure } from "../auth/guards";
 import { clampExpenseListLimit } from "../expenses/list-pagination";
 import { recheckExpenseOcr } from "../expenses/ocr-recheck";
 import { computeExpenseShares } from "../expenses/shares";
+import { insertExpenseDraft } from "../expenses/transport-draft";
 import { sendPushToTripMembers } from "../notifications/send";
 import { OCR_PROVIDERS, OCR_STATUSES } from "../ocr/review";
 
@@ -110,31 +111,21 @@ export const expensesRouter = {
         payerUserId = input.payerUserId;
       }
 
-      const [created] = (await ctx.db
-        .insert(expenses)
-        .values({
-          tripId: ctx.tripId,
-          segmentId: input.segmentId,
-          payerUserId,
-          merchant: input.merchant,
-          category: input.category,
-          occurredAt: new Date(input.occurredAt),
-          currency: input.currency,
-          subtotalCents: input.subtotalCents,
-          taxCents: input.taxCents,
-          tipCents: input.tipCents,
-          totalCents: input.totalCents,
-          notes: input.notes ?? null,
-          status: "draft",
-        })
-        .returning()) as Array<typeof expenses.$inferSelect>;
-
-      if (!created) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create expense.",
-        });
-      }
+      const created = await insertExpenseDraft({
+        db: ctx.db,
+        tripId: ctx.tripId,
+        segmentId: input.segmentId,
+        payerUserId,
+        merchant: input.merchant,
+        category: input.category,
+        occurredAt: new Date(input.occurredAt),
+        currency: input.currency,
+        subtotalCents: input.subtotalCents,
+        taxCents: input.taxCents,
+        tipCents: input.tipCents,
+        totalCents: input.totalCents,
+        notes: input.notes ?? null,
+      });
 
       void sendPushToTripMembers(ctx.db, {
         tripId: ctx.tripId,
