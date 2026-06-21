@@ -68,7 +68,7 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - Line-item schema: `expenses`, `lineItems`, `lineItemClaims`, `expenseShares` in `packages/db/src/schema.ts`
 - Web: `apps/nextjs/src/app/trips/[tripId]/expenses/`
 - Mobile: `apps/expo/src/app/trip/[tripId]/expenses.tsx`, `new-expense.tsx`, `expense/[expenseId]/`
-- **OCR pipeline**: extractors + reconciler + fixtures exist in `packages/api/src/ocr/` (Claude + Gemini providers, `reconcile.ts`, tests) — **not wired to any router**; no mutation calls the extractors
+- **OCR pipeline**: extractors + reconciler + fixtures exist in `packages/api/src/ocr/` (Claude + Gemini providers, `reconcile.ts`, tests). Receipt extraction is **not yet wired to the expenses router**, but as of the ferry feature the vision extractor was generalized (`extract-structured.ts`) and OCR now has its **first write-path consumer** via `ferries.extractFromImage` (ferry-booking extraction). Wiring receipt OCR into `expenses` can reuse the same generalized plumbing.
 
 ### Phase 4 — Settlement ✅ IMPLEMENTED (known bug being fixed)
 - `packages/api/src/router/settlements.ts` (295 lines) — `summary`, `record`, `undo`
@@ -88,6 +88,15 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - Web: `apps/nextjs/src/app/trips/[tripId]/map/`, `[tripId]/itinerary/`, `[tripId]/road-trip/`
 - Mobile: `apps/expo/src/app/trip/[tripId]/map.tsx`, `itinerary.tsx`, `plan-route.tsx`
 - Route gradient visualization: `apps/nextjs/src/components/road-trip/route-gradient-map.tsx` (partially built — web map component exists; not yet in mobile Driving Mode)
+
+### Ferry legs — first-class road-trip crossings ✅ COMPLETE
+- `ferry_crossing` table + `ferry` added to `transitTypeEnum` (`packages/db/src/schema.ts`); migration `0007_tired_wallop.sql`
+- `packages/api/src/router/ferries.ts` — `create`/`update`/`delete`/`listForTrip`/`extractFromImage`, all under `tripProcedure`; cross-trip `afterSegmentId` validated; fare spawns a splittable draft `transit` expense via shared `packages/api/src/expenses/transport-draft.ts`
+- OCR: ferry-booking extraction (`ferryBookingSchema` + generalized `extract-structured.ts`) — OCR's first write-path consumer; `extractFromImage` is fail-safe (returns `{ ok: false }`, never throws) and bounded
+- Route planner: `applyFerryGating` attaches `{ leaveBy, nonDrivableMinutes }` to the leg ending at a ferry terminal; crossing time never counts against the 12 h driving budget (`packages/api/src/router/ferry-eta.ts`, `route-planner.ts`)
+- UI: `@sortey/ui` `ferry-leg-card` + `ferry-input-form` (Manual / Scan-ticket tabs); web "Ferries" tab on the road-trip dashboard; read-only ferry card in mobile Driving Mode (`apps/expo/.../ferry-drive-card.tsx`)
+- Tests: 19 router tests + OCR/leave-by/planner unit tests; full suite 261 green
+- Design + plan: `docs/plans/2026-06-21-ferry-leg-ocr-design.md`, `docs/plans/2026-06-21-ferry-leg-ocr.md`
 
 ### Phase 6 — Dashboard adaptation ✅ WIRED
 - Live trip command-center dashboard at `apps/nextjs/src/app/trips/[tripId]/dashboard/page.tsx` — wired to live DB data
