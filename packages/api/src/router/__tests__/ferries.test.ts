@@ -1,0 +1,330 @@
+import { randomUUID } from "node:crypto";
+import { describe, expect, it } from "vitest";
+import type { TripAccessStore } from "../../auth/guards";
+import type { FerryStore } from "../ferries";
+
+process.env.DATABASE_URL ??=
+  "postgresql://postgres:postgres@localhost:5432/gmacko_test";
+
+const { resolveTripAccess } = await import("../../auth/guards");
+const {
+  createFerryCrossing,
+  deleteFerryCrossing,
+  listFerryCrossings,
+  updateFerryCrossing,
+} = await import("../ferries");
+
+type WorkspaceRole = "owner" | "admin" | "member";
+type TripRole = "organizer" | "member";
+
+type WorkspaceMembershipRecord = {
+  workspaceId: string;
+  userId: string;
+  role: WorkspaceRole;
+};
+
+type TripRecord = { id: string; workspaceId: string };
+type TripMemberRecord = { tripId: string; userId: string; role: TripRole };
+
+type FerryRow = {
+  id: string;
+  tripId: string;
+  createdByUserId: string;
+  operator: string | null;
+  departureTerminal: string | null;
+  arrivalTerminal: string | null;
+  scheduledDepartureAt: Date | null;
+  durationMinutes: number | null;
+  arrivalCutoffMinutes: number;
+  vehicleReservation: boolean;
+  confirmationNumber: string | null;
+  fareCents: number | null;
+  currency: string;
+  fareNote: string | null;
+  afterSegmentId: string | null;
+  source: "manual" | "ocr";
+  sourceRaw: string | null;
+  ocrProvider: string | null;
+  ocrConfidence: string | null;
+  expenseId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type ExpenseRow = {
+  id: string;
+  tripId: string;
+  segmentId: string;
+  payerUserId: string;
+  merchant: string;
+  category: string;
+  currency: string;
+  subtotalCents: number;
+  totalCents: number;
+  status: "draft" | "finalized";
+};
+
+// ── Guard access store fake (mirrors trips.test.ts) ──────────────────────────
+
+function createAccessStore(input?: {
+  workspaceMemberships?: WorkspaceMembershipRecord[];
+  trips?: TripRecord[];
+  tripMembers?: TripMemberRecord[];
+}) {
+  const state = {
+    workspaceMemberships: [...(input?.workspaceMemberships ?? [])],
+    trips: [...(input?.trips ?? [])],
+    tripMembers: [...(input?.tripMembers ?? [])],
+  };
+
+  const store: TripAccessStore = {
+    findWorkspaceAccess: async ({ userId, workspaceId }) => {
+      const membership =
+        state.workspaceMemberships.find(
+          (entry) =>
+            entry.userId === userId && entry.workspaceId === workspaceId,
+        ) ?? null;
+      return membership
+        ? {
+            workspaceId: membership.workspaceId,
+            workspaceRole: membership.role,
+          }
+        : null;
+    },
+    findTripAccess: async ({ userId, workspaceId, tripId }) => {
+      const trip =
+        state.trips.find(
+          (entry) => entry.id === tripId && entry.workspaceId === workspaceId,
+        ) ?? null;
+      const member =
+        state.tripMembers.find(
+          (entry) => entry.tripId === tripId && entry.userId === userId,
+        ) ?? null;
+      const workspaceMembership =
+        state.workspaceMemberships.find(
+          (entry) =>
+            entry.userId === userId && entry.workspaceId === workspaceId,
+        ) ?? null;
+
+      if (!trip || !member || !workspaceMembership) {
+        return null;
+      }
+
+      return {
+        tripId: trip.id,
+        tripRole: member.role,
+        workspaceId,
+        workspaceRole: workspaceMembership.role,
+      };
+    },
+  };
+
+  return { state, store };
+}
+
+// ── Ferry store fake ─────────────────────────────────────────────────────────
+
+function createFerryStore(input?: {
+  ferries?: FerryRow[];
+  expenses?: ExpenseRow[];
+  tripMemberUserIds?: string[];
+}) {
+  const state = {
+    ferries: [...(input?.ferries ?? [])],
+    expenses: [...(input?.expenses ?? [])],
+    tripMemberUserIds: [...(input?.tripMemberUserIds ?? [])],
+  };
+
+  const store: FerryStore = {
+    insertFerry: async (values) => {
+      const row: FerryRow = {
+        id: randomUUID(),
+        tripId: values.tripId,
+        createdByUserId: values.createdByUserId,
+        operator: values.operator ?? null,
+        departureTerminal: values.departureTerminal ?? null,
+        arrivalTerminal: values.arrivalTerminal ?? null,
+        scheduledDepartureAt: values.scheduledDepartureAt ?? null,
+        durationMinutes: values.durationMinutes ?? null,
+        arrivalCutoffMinutes: values.arrivalCutoffMinutes ?? 30,
+        vehicleReservation: values.vehicleReservation ?? false,
+        confirmationNumber: values.confirmationNumber ?? null,
+        fareCents: values.fareCents ?? null,
+        currency: values.currency ?? "USD",
+        fareNote: values.fareNote ?? null,
+        afterSegmentId: values.afterSegmentId ?? null,
+        source: values.source ?? "manual",
+        sourceRaw: null,
+        ocrProvider: null,
+        ocrConfidence: null,
+        expenseId: null,
+        createdAt: new Date("2026-06-21T12:00:00.000Z"),
+        updatedAt: new Date("2026-06-21T12:00:00.000Z"),
+      };
+      state.ferries.push(row);
+      return row;
+    },
+    getFerry: async ({ id, tripId }) =>
+      state.ferries.find((f) => f.id === id && f.tripId === tripId) ?? null,
+    updateFerry: async ({ id, tripId, patch }) => {
+      const index = state.ferries.findIndex(
+        (f) => f.id === id && f.tripId === tripId,
+      );
+      if (index === -1) return null;
+      state.ferries[index] = { ...state.ferries[index]!, ...patch };
+      return state.ferries[index]!;
+    },
+    deleteFerry: async ({ id, tripId }) => {
+      const before = state.ferries.length;
+      state.ferries = state.ferries.filter(
+        (f) => !(f.id === id && f.tripId === tripId),
+      );
+      return state.ferries.length < before;
+    },
+    listFerries: async ({ tripId }) =>
+      state.ferries.filter((f) => f.tripId === tripId),
+    listTripMemberUserIds: async () => [...state.tripMemberUserIds],
+    insertTransportDraft: async (values) => {
+      const row: ExpenseRow = {
+        id: randomUUID(),
+        tripId: values.tripId,
+        segmentId: values.segmentId,
+        payerUserId: values.payerUserId,
+        merchant: values.merchant,
+        category: values.category,
+        currency: values.currency,
+        subtotalCents: values.amountCents,
+        totalCents: values.amountCents,
+        status: "draft",
+      };
+      state.expenses.push(row);
+      return { id: row.id };
+    },
+    updateExpenseAmount: async ({ expenseId, amountCents, currency }) => {
+      const index = state.expenses.findIndex((e) => e.id === expenseId);
+      if (index === -1) return;
+      state.expenses[index] = {
+        ...state.expenses[index]!,
+        subtotalCents: amountCents,
+        totalCents: amountCents,
+        currency,
+      };
+    },
+    deleteExpense: async ({ expenseId }) => {
+      state.expenses = state.expenses.filter((e) => e.id !== expenseId);
+    },
+  };
+
+  return { state, store };
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+
+describe("ferries router — guard", () => {
+  it("rejects a non-member calling listForTrip", async () => {
+    const { store } = createAccessStore({
+      workspaceMemberships: [
+        { workspaceId: "ws_1", userId: "user_1", role: "owner" },
+      ],
+      trips: [{ id: "trip_1", workspaceId: "ws_1" }],
+      // user_1 is a workspace member but NOT a trip member
+    });
+
+    await expect(
+      resolveTripAccess(store, {
+        userId: "user_1",
+        workspaceId: "ws_1",
+        tripId: "trip_1",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("ferries router — CRUD", () => {
+  it("create returns a trip-scoped row with manual source and the caller as creator", async () => {
+    const { state, store } = createFerryStore();
+
+    const created = await createFerryCrossing(store, {
+      tripId: "trip_1",
+      createdByUserId: "user_1",
+      operator: "Washington State Ferries",
+      departureTerminal: "Edmonds",
+      arrivalTerminal: "Kingston",
+      currency: "USD",
+    });
+
+    expect(created.tripId).toBe("trip_1");
+    expect(created.createdByUserId).toBe("user_1");
+    expect(created.source).toBe("manual");
+    expect(created.arrivalTerminal).toBe("Kingston");
+    expect(created.expenseId).toBeNull();
+    expect(state.ferries).toHaveLength(1);
+  });
+
+  it("listForTrip returns only ferries for the requested trip", async () => {
+    const { store } = createFerryStore({
+      ferries: [
+        makeFerryRow({ id: "f1", tripId: "trip_1" }),
+        makeFerryRow({ id: "f2", tripId: "trip_2" }),
+      ],
+    });
+
+    const rows = await listFerryCrossings(store, { tripId: "trip_1" });
+    expect(rows.map((r) => r.id)).toEqual(["f1"]);
+  });
+
+  it("update mutates an existing trip-scoped row", async () => {
+    const { store } = createFerryStore({
+      ferries: [makeFerryRow({ id: "f1", tripId: "trip_1" })],
+    });
+
+    const updated = await updateFerryCrossing(store, {
+      id: "f1",
+      tripId: "trip_1",
+      operator: "BC Ferries",
+    });
+
+    expect(updated.operator).toBe("BC Ferries");
+  });
+
+  it("delete removes a trip-scoped row", async () => {
+    const { state, store } = createFerryStore({
+      ferries: [makeFerryRow({ id: "f1", tripId: "trip_1" })],
+    });
+
+    const result = await deleteFerryCrossing(store, {
+      id: "f1",
+      tripId: "trip_1",
+    });
+
+    expect(result.deleted).toBe(true);
+    expect(state.ferries).toHaveLength(0);
+  });
+});
+
+function makeFerryRow(overrides: Partial<FerryRow> & { id: string }): FerryRow {
+  return {
+    tripId: "trip_1",
+    createdByUserId: "user_1",
+    operator: "WSF",
+    departureTerminal: "Edmonds",
+    arrivalTerminal: "Kingston",
+    scheduledDepartureAt: null,
+    durationMinutes: null,
+    arrivalCutoffMinutes: 30,
+    vehicleReservation: false,
+    confirmationNumber: null,
+    fareCents: null,
+    currency: "USD",
+    fareNote: null,
+    afterSegmentId: null,
+    source: "manual",
+    sourceRaw: null,
+    ocrProvider: null,
+    ocrConfidence: null,
+    expenseId: null,
+    createdAt: new Date("2026-06-21T12:00:00.000Z"),
+    updatedAt: new Date("2026-06-21T12:00:00.000Z"),
+    ...overrides,
+  };
+}
