@@ -961,6 +961,50 @@ export const memberTransits = pgTable("member_transit", (t) => ({
     .$onUpdateFn(() => sql`now()`),
 }));
 
+export const ferrySourceEnum = ["manual", "ocr"] as const;
+export type FerrySource = (typeof ferrySourceEnum)[number];
+
+export const ferryCrossings = pgTable("ferry_crossing", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  createdByUserId: t
+    .text()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  operator: t.varchar({ length: 200 }),
+  departureTerminal: t.varchar({ length: 200 }),
+  arrivalTerminal: t.varchar({ length: 200 }),
+  scheduledDepartureAt: t.timestamp({ mode: "date", withTimezone: true }),
+  durationMinutes: t.integer(),
+  arrivalCutoffMinutes: t.integer().notNull().default(30),
+  vehicleReservation: t.boolean().notNull().default(false),
+  confirmationNumber: t.varchar({ length: 100 }),
+  fareCents: t.integer(),
+  currency: t.varchar({ length: 3 }).notNull().default("USD"),
+  fareNote: t.varchar({ length: 200 }),
+  afterSegmentId: t
+    .uuid()
+    .references(() => tripSegments.id, { onDelete: "set null" }),
+  source: t.text().$type<FerrySource>().notNull().default("manual"),
+  sourceRaw: t.text(),
+  ocrProvider: t.varchar({ length: 20 }),
+  ocrConfidence: t.numeric({ precision: 4, scale: 3 }),
+  expenseId: t.uuid().references(() => expenses.id, { onDelete: "set null" }),
+  createdAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}));
+
+export const insertFerryCrossingSchema = createInsertSchema(ferryCrossings);
+
 export const groundTransportTypeEnum = [
   "rental_car",
   "taxi",
