@@ -11,7 +11,9 @@ const {
   createFerryCrossing,
   deleteFerryCrossing,
   extractFerryFromImage,
+  ferryExtractInputSchema,
   listFerryCrossings,
+  MAX_FERRY_IMAGE_BASE64_CHARS,
   updateFerryCrossing,
 } = await import("../ferries");
 
@@ -129,13 +131,22 @@ function createFerryStore(input?: {
   ferries?: FerryRow[];
   expenses?: ExpenseRow[];
   tripMemberUserIds?: string[];
-  defaultSegmentId?: string;
+  defaultSegmentId?: string | null;
+  // Map of segmentId → tripId, used by `segmentBelongsToTrip`. When omitted, the
+  // `defaultSegmentId` (if any) is treated as belonging to every trip the fake
+  // is asked about so existing fare tests keep working.
+  segments?: Array<{ id: string; tripId: string }>;
 }) {
+  const defaultSegmentId =
+    input?.defaultSegmentId === undefined
+      ? "seg_default"
+      : input.defaultSegmentId;
   const state = {
     ferries: [...(input?.ferries ?? [])],
     expenses: [...(input?.expenses ?? [])],
     tripMemberUserIds: [...(input?.tripMemberUserIds ?? [])],
-    defaultSegmentId: input?.defaultSegmentId ?? "seg_default",
+    defaultSegmentId,
+    segments: [...(input?.segments ?? [])],
   };
 
   const store: FerryStore = {
@@ -188,6 +199,16 @@ function createFerryStore(input?: {
       state.ferries.filter((f) => f.tripId === tripId),
     resolveSegmentId: async ({ afterSegmentId }) =>
       afterSegmentId ?? state.defaultSegmentId,
+    segmentBelongsToTrip: async ({ tripId, segmentId }) => {
+      if (state.segments.length > 0) {
+        return state.segments.some(
+          (s) => s.id === segmentId && s.tripId === tripId,
+        );
+      }
+      // No explicit segment table configured: the default segment belongs to
+      // whatever trip is asked, everything else is foreign.
+      return segmentId === state.defaultSegmentId;
+    },
     insertTransportDraft: async (values) => {
       const row: ExpenseRow = {
         id: randomUUID(),
@@ -289,6 +310,57 @@ describe("ferries router — CRUD", () => {
     });
 
     expect(updated.operator).toBe("BC Ferries");
+  });
+
+  // C1: a partial update must touch ONLY the supplied field. Defaulted columns
+  // (currency / arrivalCutoffMinutes / vehicleReservation) must survive an edit
+  // of an unrelated field, and the linked fare expense must NOT be reconciled.
+  it("partial update of one field leaves defaulted columns and the linked expense untouched", async () => {
+    const { state, store } = createFerryStore({
+      defaultSegmentId: "seg_1",
+      ferries: [
+        makeFerryRow({
+          id: "f1",
+          tripId: "trip_1",
+          currency: "CAD",
+          arrivalCutoffMinutes: 45,
+          vehicleReservation: true,
+          fareCents: 1675,
+          expenseId: "exp_1",
+        }),
+      ],
+      expenses: [
+        {
+          id: "exp_1",
+          tripId: "trip_1",
+          segmentId: "seg_1",
+          payerUserId: "user_1",
+          merchant: "WSF ferry",
+          category: "transit",
+          currency: "CAD",
+          subtotalCents: 1675,
+          totalCents: 1675,
+          status: "draft",
+        },
+      ],
+    });
+
+    const updated = await updateFerryCrossing(store, {
+      id: "f1",
+      tripId: "trip_1",
+      operator: "BC Ferries",
+    });
+
+    // Only the operator changed.
+    expect(updated.operator).toBe("BC Ferries");
+    // Defaulted columns are preserved, NOT reset to USD / 30 / false.
+    expect(updated.currency).toBe("CAD");
+    expect(updated.arrivalCutoffMinutes).toBe(45);
+    expect(updated.vehicleReservation).toBe(true);
+    // The linked fare expense is untouched (no force-reconcile).
+    expect(state.expenses).toHaveLength(1);
+    expect(state.expenses[0]!.subtotalCents).toBe(1675);
+    expect(state.expenses[0]!.currency).toBe("CAD");
   });
 
   it("delete removes a trip-scoped row", async () => {
@@ -427,6 +499,87 @@ describe("ferries router — fare → draft transport expense", () => {
     expect(state.ferries).toHaveLength(0);
     expect(state.expenses).toHaveLength(0);
   });
+
+  // I1: an afterSegmentId that belongs to this trip is accepted.
+  it("create accepts an afterSegmentId that belongs to the trip", async () => {
+    const { state, store } = createFerryStore({
+      segments: [{ id: "seg_in", tripId: "trip_1" }],
+    });
+
+    const created = await createFerryCrossing(store, {
+      tripId: "trip_1",
+      createdByUserId: "user_1",
+      departureTerminal: "Edmonds",
+      arrivalTerminal: "Kingston",
+      fareCents: 1675,
+      currency: "USD",
+      afterSegmentId: "seg_in",
+    });
+
+    expect(created.afterSegmentId).toBe("seg_in");
+    expect(created.expenseId).not.toBeNull();
+    expect(state.expenses[0]!.segmentId).toBe("seg_in");
+  });
+
+  // I1: an afterSegmentId from another trip is rejected (BAD_REQUEST), not
+  // silently accepted — mirrors expenses.create.
+  it("create rejects an afterSegmentId from a foreign trip", async () => {
+    const { state, store } = createFerryStore({
+      segments: [{ id: "seg_other", tripId: "trip_2" }],
+    });
+
+    await expect(
+      createFerryCrossing(store, {
+        tripId: "trip_1",
+        createdByUserId: "user_1",
+        departureTerminal: "Edmonds",
+        arrivalTerminal: "Kingston",
+        fareCents: 1675,
+        currency: "USD",
+        afterSegmentId: "seg_other",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    // Nothing was written.
+    expect(state.ferries).toHaveLength(0);
+    expect(state.expenses).toHaveLength(0);
+  });
+
+  it("update rejects an afterSegmentId from a foreign trip", async () => {
+    const { store } = createFerryStore({
+      segments: [{ id: "seg_other", tripId: "trip_2" }],
+      ferries: [makeFerryRow({ id: "f1", tripId: "trip_1" })],
+    });
+
+    await expect(
+      updateFerryCrossing(store, {
+        id: "f1",
+        tripId: "trip_1",
+        afterSegmentId: "seg_other",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  // I2: a positive fare with no resolvable segment must throw, not silently
+  // drop the expense and leave expenseId null.
+  it("create with a fare but no resolvable segment throws PRECONDITION_FAILED", async () => {
+    const { state, store } = createFerryStore({
+      defaultSegmentId: null,
+    });
+
+    await expect(
+      createFerryCrossing(store, {
+        tripId: "trip_1",
+        createdByUserId: "user_1",
+        departureTerminal: "Edmonds",
+        arrivalTerminal: "Kingston",
+        fareCents: 1675,
+        currency: "USD",
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    expect(state.expenses).toHaveLength(0);
+  });
 });
 
 describe("ferries router — extractFromImage", () => {
@@ -459,6 +612,29 @@ describe("ferries router — extractFromImage", () => {
         process.env.OCR_PROVIDER = prev;
       }
     }
+  });
+
+  // I3: the input schema bounds the base64 payload size.
+  it("rejects an over-limit imageBase64 at the input boundary", () => {
+    const tooBig = "a".repeat(MAX_FERRY_IMAGE_BASE64_CHARS + 1);
+    const result = ferryExtractInputSchema.safeParse({
+      workspaceId: "ws_1",
+      tripId: "trip_1",
+      imageBase64: tooBig,
+      mimeType: "image/png",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts an imageBase64 at the size limit", () => {
+    const atLimit = "a".repeat(MAX_FERRY_IMAGE_BASE64_CHARS);
+    const result = ferryExtractInputSchema.safeParse({
+      workspaceId: "ws_1",
+      tripId: "trip_1",
+      imageBase64: atLimit,
+      mimeType: "image/png",
+    });
+    expect(result.success).toBe(true);
   });
 
   it("returns { ok: false } on a malformed base64 / extraction failure without throwing", async () => {

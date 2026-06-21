@@ -65,6 +65,15 @@ export interface FerryStore {
     tripId: string;
     afterSegmentId: string | null;
   }): Promise<string | null>;
+  /**
+   * True when the segment exists AND belongs to `tripId`. Used to reject a
+   * caller-supplied `afterSegmentId` that points at another trip's segment —
+   * mirrors the "segment belongs to this trip" check in `expenses.create`.
+   */
+  segmentBelongsToTrip(input: {
+    tripId: string;
+    segmentId: string;
+  }): Promise<boolean>;
   insertTransportDraft(input: {
     tripId: string;
     segmentId: string;
@@ -86,6 +95,30 @@ export interface FerryStore {
 
 // ── Orchestration (store-backed, DB-agnostic) ────────────────────────────────
 
+/**
+ * Reject a caller-supplied `afterSegmentId` that doesn't belong to this trip.
+ * Mirrors `expenses.create`'s "segment belongs to this trip" guard (same
+ * `BAD_REQUEST` code). A `null`/absent value is fine — it just means "fall back
+ * to the trip's first segment" downstream.
+ */
+async function assertAfterSegmentInTrip(
+  store: FerryStore,
+  tripId: string,
+  afterSegmentId: string | null | undefined,
+): Promise<void> {
+  if (!afterSegmentId) return;
+  const belongs = await store.segmentBelongsToTrip({
+    tripId,
+    segmentId: afterSegmentId,
+  });
+  if (!belongs) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Segment does not belong to this trip.",
+    });
+  }
+}
+
 function ferryFareMerchant(row: {
   operator: string | null;
   departureTerminal: string | null;
@@ -102,19 +135,25 @@ function ferryFareMerchant(row: {
  * Spawn a draft transit expense for the fare and return its id. The fare is a
  * single splittable amount (subtotal == total) under the `transit` category,
  * split across trip members via the existing expense shares path at read time.
- * Returns null when no segment can be resolved (a crossing without segments
- * can't carry an expense — segmentId is NOT NULL).
+ * Throws `PRECONDITION_FAILED` when no segment can be resolved: a crossing
+ * without any segment can't carry an expense (segmentId is NOT NULL), and
+ * silently dropping the fare would leave the user with no signal.
  */
 async function spawnFareExpense(
   store: FerryStore,
   ferry: FerryCrossingRow,
   fareCents: number,
-): Promise<string | null> {
+): Promise<string> {
   const segmentId = await store.resolveSegmentId({
     tripId: ferry.tripId,
     afterSegmentId: ferry.afterSegmentId,
   });
-  if (!segmentId) return null;
+  if (!segmentId) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Cannot add a ferry fare before the trip has a segment.",
+    });
+  }
 
   const occurredAt = ferry.scheduledDepartureAt ?? new Date();
   const { id } = await store.insertTransportDraft({
@@ -138,19 +177,21 @@ export async function createFerryCrossing(
     createdByUserId: string;
   },
 ): Promise<FerryCrossingRow> {
+  // Reject a supplied afterSegmentId that points at another trip's segment
+  // before we write anything.
+  await assertAfterSegmentInTrip(store, input.tripId, input.afterSegmentId);
+
   const created = await store.insertFerry({ ...input, source: "manual" });
 
   // A positive fare spawns a splittable draft transit expense and links it.
   if (created.fareCents && created.fareCents > 0) {
     const expenseId = await spawnFareExpense(store, created, created.fareCents);
-    if (expenseId) {
-      const linked = await store.updateFerry({
-        id: created.id,
-        tripId: created.tripId,
-        patch: { expenseId },
-      });
-      return linked ?? { ...created, expenseId };
-    }
+    const linked = await store.updateFerry({
+      id: created.id,
+      tripId: created.tripId,
+      patch: { expenseId },
+    });
+    return linked ?? { ...created, expenseId };
   }
 
   return created;
@@ -168,6 +209,11 @@ export async function updateFerryCrossing(
   input: FerryWriteFields & { id: string; tripId: string },
 ): Promise<FerryCrossingRow> {
   const { id, tripId, ...fields } = input;
+
+  // Reject a supplied afterSegmentId that points at another trip's segment
+  // before we write the patch.
+  await assertAfterSegmentInTrip(store, tripId, fields.afterSegmentId);
+
   const patch: Partial<FerryCrossingRow> = {};
   for (const [key, value] of Object.entries(fields)) {
     if (value !== undefined) {
@@ -202,15 +248,12 @@ export async function updateFerryCrossing(
   if (fareCents > 0 && !updated.expenseId) {
     // Fare added to a previously fare-less crossing — spawn + link.
     const expenseId = await spawnFareExpense(store, updated, fareCents);
-    if (expenseId) {
-      const linked = await store.updateFerry({
-        id,
-        tripId,
-        patch: { expenseId },
-      });
-      return linked ?? { ...updated, expenseId };
-    }
-    return updated;
+    const linked = await store.updateFerry({
+      id,
+      tripId,
+      patch: { expenseId },
+    });
+    return linked ?? { ...updated, expenseId };
   }
 
   if (fareCents <= 0 && updated.expenseId) {
@@ -231,8 +274,13 @@ export async function deleteFerryCrossing(
   store: FerryStore,
   input: { id: string; tripId: string },
 ): Promise<{ deleted: boolean }> {
-  // Hard-delete the linked draft first (mirrors the row-scoped expenses.delete
-  // rule) so it doesn't dangle once the crossing is gone.
+  // Hard-delete the linked draft first so it doesn't dangle once the crossing
+  // is gone. Unlike `expenses.delete`, this intentionally skips the
+  // organizer/payer (`requireOrganizerOrSelf`) check: a ferry-fare draft is
+  // always an unfinalized, trip-scoped, system-spawned row owned by the
+  // crossing's lifecycle — anyone authorized to delete the crossing (already
+  // gated by `tripProcedure`) deletes its fare with it. It never carries a
+  // finalized, settlement-bearing balance someone else owns.
   const existing = await store.getFerry(input);
   if (existing?.expenseId) {
     await store.deleteExpense({ expenseId: existing.expenseId });
@@ -256,6 +304,22 @@ const FERRY_IMAGE_MIME_TYPES = [
   "image/webp",
   "image/gif",
 ] as const;
+
+// Upper bound on the base64-encoded ticket image. ~10 MB of raw image is plenty
+// for a phone photo of a ferry ticket; base64 inflates ~4/3, so 10 MB ≈
+// 14_000_000 chars. No other image-ingest input in the codebase defines a cap,
+// so this is the local source of truth. Bounds the payload before we even
+// allocate a Buffer for it.
+export const MAX_FERRY_IMAGE_BASE64_CHARS = 14_000_000;
+
+// Input schema for `extractFromImage`, exported so the base64 size bound can be
+// exercised directly in tests (the router wires this up below).
+export const ferryExtractInputSchema = z.object({
+  workspaceId: z.string().min(1),
+  tripId: z.string().min(1),
+  imageBase64: z.string().min(1).max(MAX_FERRY_IMAGE_BASE64_CHARS),
+  mimeType: z.enum(FERRY_IMAGE_MIME_TYPES),
+});
 
 export type FerryExtractResult =
   | { ok: true; booking: FerryBooking }
@@ -349,6 +413,16 @@ function createFerryStore(db: any): FerryStore {
         .limit(1)) as Array<{ id: string }>;
       return seg?.id ?? null;
     },
+    segmentBelongsToTrip: async ({ tripId, segmentId }) => {
+      const [seg] = (await db
+        .select({ id: tripSegments.id })
+        .from(tripSegments)
+        .where(
+          and(eq(tripSegments.id, segmentId), eq(tripSegments.tripId, tripId)),
+        )
+        .limit(1)) as Array<{ id: string }>;
+      return seg != null;
+    },
     insertTransportDraft: async (values) => {
       const created = await insertExpenseDraft({
         db,
@@ -382,8 +456,10 @@ function createFerryStore(db: any): FerryStore {
 }
 
 // Local re-export shim so the store can delete a linked draft via the shared
-// expense path. Kept here (rather than a third import) because deletion mirrors
-// the row-scoped `expenses.delete` rule: hard-delete the linked draft.
+// expense path. Kept here (rather than a third import) because the ferry path
+// hard-deletes its own system-spawned, always-unfinalized fare draft as part of
+// the crossing lifecycle — it does not reuse `expenses.delete`'s organizer/self
+// authorization (see `deleteFerryCrossing`).
 async function deleteTransportDraft(input: {
   // biome-ignore lint/suspicious/noExplicitAny: Drizzle db type is complex
   db: any;
@@ -397,27 +473,43 @@ async function deleteTransportDraft(input: {
 
 const isoDateTimeSchema = z.string().datetime({ offset: true });
 
-const ferryWriteSchema = z.object({
+// Base write shape carries NO `.default()`s. The CREATE path layers defaults on
+// top (so a fresh row gets cutoff/vehicleReservation/currency); the UPDATE path
+// is `.partial()` of the BASE so an omitted field stays omitted — Zod v4's
+// `.partial()` does not strip inner `.default()`s, so a defaulted base would
+// silently reset currency/cutoff/vehicleReservation on every single-field edit.
+const ferryWriteBaseSchema = z.object({
   operator: z.string().max(200).nullish(),
   departureTerminal: z.string().max(200).nullish(),
   arrivalTerminal: z.string().max(200).nullish(),
   scheduledDepartureAt: isoDateTimeSchema.nullish(),
   durationMinutes: z.number().int().nonnegative().nullish(),
-  arrivalCutoffMinutes: z.number().int().nonnegative().default(30),
-  vehicleReservation: z.boolean().default(false),
+  arrivalCutoffMinutes: z.number().int().nonnegative(),
+  vehicleReservation: z.boolean(),
   confirmationNumber: z.string().max(100).nullish(),
   fareCents: z.number().int().nonnegative().nullish(),
-  currency: z.string().length(3).toUpperCase().default("USD"),
+  currency: z.string().length(3).toUpperCase(),
   fareNote: z.string().max(200).nullish(),
   afterSegmentId: z.string().uuid().nullish(),
 });
+
+// CREATE input: the base shape with defaults applied for the fields a fresh row
+// needs. UPDATE input: the base shape made partial, with no defaults — only the
+// fields the caller supplies are written.
+const ferryCreateSchema = ferryWriteBaseSchema.extend({
+  arrivalCutoffMinutes: z.number().int().nonnegative().default(30),
+  vehicleReservation: z.boolean().default(false),
+  currency: z.string().length(3).toUpperCase().default("USD"),
+});
+
+const ferryUpdateSchema = ferryWriteBaseSchema.partial();
 
 // Maps a (possibly partial) parsed input into store write fields. `undefined`
 // values are left as `undefined` so the update path skips them; explicit
 // `null`s pass through to clear a column. The `scheduledDepartureAt` string is
 // coerced to a Date here (the single place that owns the conversion).
 function normalizeWriteFields(
-  input: Partial<z.infer<typeof ferryWriteSchema>>,
+  input: Partial<z.infer<typeof ferryWriteBaseSchema>>,
 ): FerryWriteFields {
   const fields: FerryWriteFields = {};
   if (input.operator !== undefined) fields.operator = input.operator;
@@ -448,7 +540,7 @@ function normalizeWriteFields(
 export const ferriesRouter = {
   create: tripProcedure()
     .input(
-      ferryWriteSchema.extend({
+      ferryCreateSchema.extend({
         workspaceId: z.string().min(1),
         tripId: z.string().min(1),
       }),
@@ -463,7 +555,7 @@ export const ferriesRouter = {
 
   update: tripProcedure()
     .input(
-      ferryWriteSchema.partial().extend({
+      ferryUpdateSchema.extend({
         workspaceId: z.string().min(1),
         tripId: z.string().min(1),
         ferryId: z.string().uuid(),
@@ -507,14 +599,7 @@ export const ferriesRouter = {
   // OCR pre-fill: parse a ferry ticket image into structured fields for the
   // form to review before submit. Persists nothing; never throws to the client.
   extractFromImage: tripProcedure()
-    .input(
-      z.object({
-        workspaceId: z.string().min(1),
-        tripId: z.string().min(1),
-        imageBase64: z.string().min(1),
-        mimeType: z.enum(FERRY_IMAGE_MIME_TYPES),
-      }),
-    )
+    .input(ferryExtractInputSchema)
     .mutation(({ input }) =>
       extractFerryFromImage({
         imageBase64: input.imageBase64,
