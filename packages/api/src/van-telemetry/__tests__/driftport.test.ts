@@ -26,9 +26,8 @@ describe("DriftportTelemetryProvider", () => {
       // service token and a superjson-wrapped rigId input.
       expect(url).toContain("/api/trpc/system.dashboard?input=");
       expect(url).toContain(encodeURIComponent('{"json":{"rigId":'));
-      expect((init?.headers as Record<string, string>).Authorization).toBe(
-        "Bearer gmk_test_key",
-      );
+      const headers = init?.headers as Record<string, string> | undefined;
+      expect(headers?.Authorization).toBe("Bearer gmk_test_key");
 
       return new Response(
         JSON.stringify({
