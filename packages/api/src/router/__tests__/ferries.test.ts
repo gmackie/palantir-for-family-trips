@@ -128,11 +128,13 @@ function createFerryStore(input?: {
   ferries?: FerryRow[];
   expenses?: ExpenseRow[];
   tripMemberUserIds?: string[];
+  defaultSegmentId?: string;
 }) {
   const state = {
     ferries: [...(input?.ferries ?? [])],
     expenses: [...(input?.expenses ?? [])],
     tripMemberUserIds: [...(input?.tripMemberUserIds ?? [])],
+    defaultSegmentId: input?.defaultSegmentId ?? "seg_default",
   };
 
   const store: FerryStore = {
@@ -183,7 +185,8 @@ function createFerryStore(input?: {
     },
     listFerries: async ({ tripId }) =>
       state.ferries.filter((f) => f.tripId === tripId),
-    listTripMemberUserIds: async () => [...state.tripMemberUserIds],
+    resolveSegmentId: async ({ afterSegmentId }) =>
+      afterSegmentId ?? state.defaultSegmentId,
     insertTransportDraft: async (values) => {
       const row: ExpenseRow = {
         id: randomUUID(),
@@ -299,6 +302,129 @@ describe("ferries router — CRUD", () => {
 
     expect(result.deleted).toBe(true);
     expect(state.ferries).toHaveLength(0);
+  });
+});
+
+describe("ferries router — fare → draft transport expense", () => {
+  it("create with fareCents > 0 spawns a draft transit expense and links it", async () => {
+    const { state, store } = createFerryStore({
+      tripMemberUserIds: ["user_1", "user_2"],
+      defaultSegmentId: "seg_1",
+    });
+
+    const created = await createFerryCrossing(store, {
+      tripId: "trip_1",
+      createdByUserId: "user_1",
+      operator: "WSF",
+      departureTerminal: "Edmonds",
+      arrivalTerminal: "Kingston",
+      fareCents: 1675,
+      currency: "USD",
+    });
+
+    expect(created.expenseId).not.toBeNull();
+    expect(state.expenses).toHaveLength(1);
+    const expense = state.expenses[0]!;
+    expect(expense.id).toBe(created.expenseId);
+    expect(expense.category).toBe("transit");
+    expect(expense.subtotalCents).toBe(1675);
+    expect(expense.totalCents).toBe(1675);
+    expect(expense.currency).toBe("USD");
+    expect(expense.segmentId).toBe("seg_1");
+    expect(expense.status).toBe("draft");
+  });
+
+  it("create with no fare leaves expenseId null and creates no expense", async () => {
+    const { state, store } = createFerryStore({
+      tripMemberUserIds: ["user_1", "user_2"],
+    });
+
+    const created = await createFerryCrossing(store, {
+      tripId: "trip_1",
+      createdByUserId: "user_1",
+      departureTerminal: "Edmonds",
+      arrivalTerminal: "Kingston",
+      currency: "USD",
+    });
+
+    expect(created.expenseId).toBeNull();
+    expect(state.expenses).toHaveLength(0);
+  });
+
+  it("update changing the fare updates the linked expense amount + currency", async () => {
+    const { state, store } = createFerryStore({
+      tripMemberUserIds: ["user_1", "user_2"],
+      defaultSegmentId: "seg_1",
+    });
+
+    const created = await createFerryCrossing(store, {
+      tripId: "trip_1",
+      createdByUserId: "user_1",
+      departureTerminal: "Edmonds",
+      arrivalTerminal: "Kingston",
+      fareCents: 1675,
+      currency: "USD",
+    });
+
+    await updateFerryCrossing(store, {
+      id: created.id,
+      tripId: "trip_1",
+      fareCents: 2000,
+      currency: "CAD",
+    });
+
+    expect(state.expenses).toHaveLength(1);
+    expect(state.expenses[0]!.subtotalCents).toBe(2000);
+    expect(state.expenses[0]!.totalCents).toBe(2000);
+    expect(state.expenses[0]!.currency).toBe("CAD");
+  });
+
+  it("update adding a fare to a fare-less ferry spawns and links a new expense", async () => {
+    const { state, store } = createFerryStore({
+      tripMemberUserIds: ["user_1"],
+      defaultSegmentId: "seg_1",
+    });
+
+    const created = await createFerryCrossing(store, {
+      tripId: "trip_1",
+      createdByUserId: "user_1",
+      departureTerminal: "Edmonds",
+      arrivalTerminal: "Kingston",
+      currency: "USD",
+    });
+    expect(created.expenseId).toBeNull();
+
+    const updated = await updateFerryCrossing(store, {
+      id: created.id,
+      tripId: "trip_1",
+      fareCents: 900,
+    });
+
+    expect(updated.expenseId).not.toBeNull();
+    expect(state.expenses).toHaveLength(1);
+    expect(state.expenses[0]!.subtotalCents).toBe(900);
+  });
+
+  it("delete removes the linked draft expense", async () => {
+    const { state, store } = createFerryStore({
+      tripMemberUserIds: ["user_1"],
+      defaultSegmentId: "seg_1",
+    });
+
+    const created = await createFerryCrossing(store, {
+      tripId: "trip_1",
+      createdByUserId: "user_1",
+      departureTerminal: "Edmonds",
+      arrivalTerminal: "Kingston",
+      fareCents: 1200,
+      currency: "USD",
+    });
+    expect(state.expenses).toHaveLength(1);
+
+    await deleteFerryCrossing(store, { id: created.id, tripId: "trip_1" });
+
+    expect(state.ferries).toHaveLength(0);
+    expect(state.expenses).toHaveLength(0);
   });
 });
 

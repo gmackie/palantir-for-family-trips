@@ -3,7 +3,7 @@ import {
   type ExpenseCategory,
   type FerrySource,
   ferryCrossings,
-  tripMembers,
+  tripSegments,
 } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
@@ -55,7 +55,15 @@ export interface FerryStore {
   }): Promise<FerryCrossingRow | null>;
   deleteFerry(input: { id: string; tripId: string }): Promise<boolean>;
   listFerries(input: { tripId: string }): Promise<FerryCrossingRow[]>;
-  listTripMemberUserIds(input: { tripId: string }): Promise<string[]>;
+  /**
+   * Resolve the segment the fare expense should hang off of. Prefers the
+   * ferry's `afterSegmentId` when set, otherwise the trip's first segment.
+   * Expenses require a non-null segmentId (segments all the way down).
+   */
+  resolveSegmentId(input: {
+    tripId: string;
+    afterSegmentId: string | null;
+  }): Promise<string | null>;
   insertTransportDraft(input: {
     tripId: string;
     segmentId: string;
@@ -77,6 +85,51 @@ export interface FerryStore {
 
 // ── Orchestration (store-backed, DB-agnostic) ────────────────────────────────
 
+function ferryFareMerchant(row: {
+  operator: string | null;
+  departureTerminal: string | null;
+  arrivalTerminal: string | null;
+}): string {
+  const route =
+    row.departureTerminal && row.arrivalTerminal
+      ? `${row.departureTerminal} → ${row.arrivalTerminal}`
+      : (row.departureTerminal ?? row.arrivalTerminal ?? "crossing");
+  return row.operator ? `${row.operator} ferry (${route})` : `Ferry (${route})`;
+}
+
+/**
+ * Spawn a draft transit expense for the fare and return its id. The fare is a
+ * single splittable amount (subtotal == total) under the `transit` category,
+ * split across trip members via the existing expense shares path at read time.
+ * Returns null when no segment can be resolved (a crossing without segments
+ * can't carry an expense — segmentId is NOT NULL).
+ */
+async function spawnFareExpense(
+  store: FerryStore,
+  ferry: FerryCrossingRow,
+  fareCents: number,
+): Promise<string | null> {
+  const segmentId = await store.resolveSegmentId({
+    tripId: ferry.tripId,
+    afterSegmentId: ferry.afterSegmentId,
+  });
+  if (!segmentId) return null;
+
+  const occurredAt = ferry.scheduledDepartureAt ?? new Date();
+  const { id } = await store.insertTransportDraft({
+    tripId: ferry.tripId,
+    segmentId,
+    payerUserId: ferry.createdByUserId,
+    merchant: ferryFareMerchant(ferry),
+    category: FERRY_EXPENSE_CATEGORY,
+    currency: ferry.currency,
+    amountCents: fareCents,
+    occurredAt,
+    notes: ferry.fareNote ?? null,
+  });
+  return id;
+}
+
 export async function createFerryCrossing(
   store: FerryStore,
   input: FerryWriteFields & {
@@ -85,6 +138,20 @@ export async function createFerryCrossing(
   },
 ): Promise<FerryCrossingRow> {
   const created = await store.insertFerry({ ...input, source: "manual" });
+
+  // A positive fare spawns a splittable draft transit expense and links it.
+  if (created.fareCents && created.fareCents > 0) {
+    const expenseId = await spawnFareExpense(store, created, created.fareCents);
+    if (expenseId) {
+      const linked = await store.updateFerry({
+        id: created.id,
+        tripId: created.tripId,
+        patch: { expenseId },
+      });
+      return linked ?? { ...created, expenseId };
+    }
+  }
+
   return created;
 }
 
@@ -111,6 +178,51 @@ export async function updateFerryCrossing(
   if (!updated) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Ferry not found." });
   }
+
+  // Reconcile the linked fare expense when fare/currency changed on this update.
+  const fareTouched =
+    fields.fareCents !== undefined || fields.currency !== undefined;
+  if (!fareTouched) {
+    return updated;
+  }
+
+  const fareCents = updated.fareCents ?? 0;
+
+  if (fareCents > 0 && updated.expenseId) {
+    // Existing link — push the new amount/currency onto the draft.
+    await store.updateExpenseAmount({
+      expenseId: updated.expenseId,
+      amountCents: fareCents,
+      currency: updated.currency,
+    });
+    return updated;
+  }
+
+  if (fareCents > 0 && !updated.expenseId) {
+    // Fare added to a previously fare-less crossing — spawn + link.
+    const expenseId = await spawnFareExpense(store, updated, fareCents);
+    if (expenseId) {
+      const linked = await store.updateFerry({
+        id,
+        tripId,
+        patch: { expenseId },
+      });
+      return linked ?? { ...updated, expenseId };
+    }
+    return updated;
+  }
+
+  if (fareCents <= 0 && updated.expenseId) {
+    // Fare cleared — drop the linked draft and unlink.
+    await store.deleteExpense({ expenseId: updated.expenseId });
+    const unlinked = await store.updateFerry({
+      id,
+      tripId,
+      patch: { expenseId: null },
+    });
+    return unlinked ?? { ...updated, expenseId: null };
+  }
+
   return updated;
 }
 
@@ -118,6 +230,13 @@ export async function deleteFerryCrossing(
   store: FerryStore,
   input: { id: string; tripId: string },
 ): Promise<{ deleted: boolean }> {
+  // Hard-delete the linked draft first (mirrors the row-scoped expenses.delete
+  // rule) so it doesn't dangle once the crossing is gone.
+  const existing = await store.getFerry(input);
+  if (existing?.expenseId) {
+    await store.deleteExpense({ expenseId: existing.expenseId });
+  }
+
   const deleted = await store.deleteFerry(input);
   if (!deleted) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Ferry not found." });
@@ -181,12 +300,15 @@ function createFerryStore(db: any): FerryStore {
           asc(ferryCrossings.scheduledDepartureAt),
           asc(ferryCrossings.createdAt),
         )) as FerryCrossingRow[],
-    listTripMemberUserIds: async ({ tripId }) => {
-      const rows = (await db
-        .select({ userId: tripMembers.userId })
-        .from(tripMembers)
-        .where(eq(tripMembers.tripId, tripId))) as Array<{ userId: string }>;
-      return rows.map((r) => r.userId);
+    resolveSegmentId: async ({ tripId, afterSegmentId }) => {
+      if (afterSegmentId) return afterSegmentId;
+      const [seg] = (await db
+        .select({ id: tripSegments.id })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, tripId))
+        .orderBy(asc(tripSegments.sortOrder))
+        .limit(1)) as Array<{ id: string }>;
+      return seg?.id ?? null;
     },
     insertTransportDraft: async (values) => {
       const created = await insertExpenseDraft({
