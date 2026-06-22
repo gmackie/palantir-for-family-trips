@@ -908,6 +908,39 @@ export const lodgingGuests = pgTable(
   ],
 );
 
+// Sleeping arrangements within a lodging: named rooms + who occupies each.
+export const roomAssignments = pgTable("room_assignment", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  lodgingId: t
+    .uuid()
+    .notNull()
+    .references(() => lodgings.id, { onDelete: "cascade" }),
+  roomLabel: t.varchar({ length: 120 }).notNull(),
+  sortOrder: t.integer().notNull().default(0),
+  createdAt: t.timestamp().defaultNow().notNull(),
+}));
+
+export const roomOccupants = pgTable(
+  "room_occupant",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    roomAssignmentId: t
+      .uuid()
+      .notNull()
+      .references(() => roomAssignments.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  }),
+  (table) => [
+    unique("room_occupant_room_user_unique").on(
+      table.roomAssignmentId,
+      table.userId,
+    ),
+  ],
+);
+
 export const transitDirectionEnum = ["arrival", "departure"] as const;
 export type TransitDirection = (typeof transitDirectionEnum)[number];
 
