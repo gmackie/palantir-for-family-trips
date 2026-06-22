@@ -10,6 +10,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
+import { CorridorSearch } from "./_components/corridor-search";
 import { DirectionsPanel } from "./_components/directions-panel";
 import { PinList } from "./_components/pin-list";
 import type { TripMapPin } from "./_components/trip-map";
@@ -225,16 +226,24 @@ export default function MapPage() {
         </div>
 
         {/* Pin list — 1/3 width */}
-        <div className="max-h-[700px] overflow-y-auto">
+        <div className="max-h-[700px] space-y-4 overflow-y-auto">
           {activeSegmentId ? (
-            <PinList
-              workspaceId={workspaceId}
-              tripId={tripId}
-              segmentId={activeSegmentId}
-              initialPins={pinList ?? []}
-              prefillLat={prefillLat}
-              prefillLng={prefillLng}
-            />
+            <>
+              <CorridorSearch
+                workspaceId={workspaceId}
+                tripId={tripId}
+                segmentId={activeSegmentId}
+                center={mapCenter}
+              />
+              <PinList
+                workspaceId={workspaceId}
+                tripId={tripId}
+                segmentId={activeSegmentId}
+                initialPins={pinList ?? []}
+                prefillLat={prefillLat}
+                prefillLng={prefillLng}
+              />
+            </>
           ) : (
             <p className="text-muted-foreground py-6 text-center text-sm">
               No segments found. Create a segment first.
