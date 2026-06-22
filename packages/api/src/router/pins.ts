@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from "@sortey/db";
 import {
   pinAttendees,
   pins,
+  pinTypeEnum,
   tripMembers,
   tripSegments,
 } from "@sortey/db/schema";
@@ -11,15 +12,10 @@ import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
 
-const pinTypeSchema = z.enum([
-  "lodging",
-  "activity",
-  "meal",
-  "transit",
-  "drinks",
-  "tickets",
-  "custom",
-]);
+// Derive from the canonical column enum so the create/update API accepts every
+// valid pin type (incl. van-friendly: campsite, water, dump_station, propane,
+// fuel, etc.) rather than a stale hardcoded subset.
+const pinTypeSchema = z.enum(pinTypeEnum);
 
 /** Lock TTL in milliseconds (15 seconds). */
 const LOCK_TTL_MS = 15_000;
