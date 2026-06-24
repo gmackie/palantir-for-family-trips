@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireTripsWorkspace } from "../../_lib/server";
+import { RoomBoard } from "./_components/room-board";
 
 const PROVIDER_LABELS: Record<string, string> = {
   airbnb: "Airbnb",
@@ -53,9 +54,10 @@ export default async function LodgingPage(props: {
   const { caller, workspace } = await requireTripsWorkspace();
 
   try {
-    const [trip, segments] = await Promise.all([
+    const [trip, segments, members] = await Promise.all([
       caller.trips.get({ workspaceId: workspace.id, tripId }),
       caller.trips.listSegments({ workspaceId: workspace.id, tripId }),
+      caller.trips.listMembers({ workspaceId: workspace.id, tripId }),
     ]);
 
     // Fetch data for all segments in parallel
@@ -165,6 +167,12 @@ export default async function LodgingPage(props: {
                             {l.guestCount} guest{l.guestCount !== 1 ? "s" : ""}
                           </p>
                         </div>
+                        <RoomBoard
+                          workspaceId={workspace.id}
+                          tripId={tripId}
+                          lodgingId={l.id}
+                          members={members}
+                        />
                       </div>
                     ))}
                   </div>
