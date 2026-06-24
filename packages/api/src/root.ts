@@ -13,6 +13,7 @@ import { photosRouter } from "./router/photos";
 import { pinsRouter } from "./router/pins";
 import { planningRouter } from "./router/planning";
 import { postRouter } from "./router/post";
+import { roomsRouter } from "./router/rooms";
 import { routePlannerRouter } from "./router/route-planner";
 import { settingsRouter } from "./router/settings";
 import { settlementsRouter } from "./router/settlements";
@@ -37,6 +38,7 @@ export const appRouter = createTRPCRouter({
   pins: pinsRouter,
   planning: planningRouter,
   post: postRouter,
+  rooms: roomsRouter,
   routePlanner: routePlannerRouter,
   settings: settingsRouter,
   settlements: settlementsRouter,
