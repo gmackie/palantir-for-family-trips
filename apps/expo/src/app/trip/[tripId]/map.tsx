@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { LocationEvent } from "@sortey/realtime";
 import { useTripLocations } from "@sortey/realtime";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -15,7 +16,7 @@ import {
 import type { Region } from "react-native-maps";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 
-import { trpc, trpcClient } from "~/utils/api";
+import { type RouterInputs, trpc, trpcClient } from "~/utils/api";
 import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, PALETTE, R } from "~/utils/design";
 import { useLocationSharing } from "~/utils/use-location-sharing";
@@ -242,6 +243,49 @@ export default function MapScreen() {
       tripId: tripId ?? "",
       segmentId: selectedSegmentId ?? undefined,
     }),
+  );
+
+  const queryClient = useQueryClient();
+  const createPin = useMutation(
+    trpc.pins.create.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(trpc.pins.pathFilter());
+      },
+      onError: () => Alert.alert("Couldn't save", "Failed to add the pin."),
+    }),
+  );
+
+  // Save a corridor POI as a trip pin. Categories (campsite/water/dump_station/…)
+  // are valid pin types, so they map straight through.
+  const savePoiAsPin = useCallback(
+    (poi: { name: string; category: string; lat: unknown; lng: unknown }) => {
+      const segmentId = selectedSegmentId ?? segments?.[0]?.id;
+      if (!segmentId) {
+        Alert.alert("No segment", "Create a trip segment before saving pins.");
+        return;
+      }
+      Alert.alert(
+        "Save to trip?",
+        `Add "${poi.name}" as a ${poi.category.replace(/_/g, " ")} pin.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Save",
+            onPress: () =>
+              createPin.mutate({
+                workspaceId,
+                tripId: tripId ?? "",
+                segmentId,
+                title: poi.name,
+                type: poi.category as RouterInputs["pins"]["create"]["type"],
+                lat: String(poi.lat),
+                lng: String(poi.lng),
+              }),
+          },
+        ],
+      );
+    },
+    [selectedSegmentId, segments, workspaceId, tripId, createPin],
   );
 
   // Polled source: the persisted roster positions. Kept as the cold-start /
@@ -594,9 +638,10 @@ export default function MapScreen() {
               longitude: Number(poi.lng),
             }}
             title={poi.name}
-            description={poi.category}
+            description={`${poi.category.replace(/_/g, " ")} · tap to save as pin`}
             pinColor={POI_COLOR_MAP[poi.category] ?? C.muted}
             opacity={0.85}
+            onCalloutPress={() => savePoiAsPin(poi)}
           />
         ))}
 
