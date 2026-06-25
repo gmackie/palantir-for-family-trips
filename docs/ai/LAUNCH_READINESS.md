@@ -41,12 +41,13 @@ An automated audit overstated or mis-reported two items; verified reality:
 
 ## Underdeveloped features (ranked by readiness-to-finish)
 
-1. **Ferry legs** — ✅ shipped (this is the feature that prompted this doc).
-2. **Room assignments** — schema + storage exist; **no UI**. ~1-2 days.
-3. **Corridor / van-POI search** — PostGIS backend ready (`corridor.ts`); **no UI, no data import** (iOverlander/Rec.gov). The campsite/dump-station discovery story.
-4. **AviationStack live transit** — `memberTransits` populated; live-flight API never wired.
-5. **Road-trip core (designed, ~0 code):** predicted stop, side-trip detection, fuel zones, route-gradient on mobile.
-6. **Receipt OCR write-path** — extractors exist; ferry just proved the write path (`extract-structured.ts`). Wire it into `expenses` reusing that plumbing.
+1. **Ferry legs** — ✅ shipped (the feature that prompted this doc).
+2. **Room assignments** — ✅ shipped full-stack (schema + `rooms` router + per-lodging board UI + 17 guard tests). Audit's "schema present" was wrong — it was unbuilt.
+3. **Corridor / van-POI search** — ✅ web shipped (CorridorSearch on the trip map; also fixed a stale `pins.create` enum that blocked van pin types). **Remaining:** run the OSM/iOverlander import to populate POI data (`pnpm -F @sortey/db tsx scripts/import-ioverlander.ts`), and a mobile surface.
+4. **Receipt OCR write-path** — ✅ shipped (`expenses.extractFromReceipt` + scan-receipt prefill on the new-expense form). The dangling OCR pipeline is now wired.
+5. **AviationStack live transit** — `memberTransits` populated; live-flight API never wired. *(open)*
+6. **Road-trip core (designed, ~0 code):** predicted stop, side-trip detection, fuel zones, route-gradient on mobile. *(open)*
+7. **Mobile parity** — corridor search + receipt scan are web-only so far; the Expo capture surface is the natural follow-on. *(open)*
 
 ## driftport integration (van road-trips) — recommended, post-private-launch
 

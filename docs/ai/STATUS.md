@@ -68,7 +68,7 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - Line-item schema: `expenses`, `lineItems`, `lineItemClaims`, `expenseShares` in `packages/db/src/schema.ts`
 - Web: `apps/nextjs/src/app/trips/[tripId]/expenses/`
 - Mobile: `apps/expo/src/app/trip/[tripId]/expenses.tsx`, `new-expense.tsx`, `expense/[expenseId]/`
-- **OCR pipeline**: extractors + reconciler + fixtures exist in `packages/api/src/ocr/` (Claude + Gemini providers, `reconcile.ts`, tests). Receipt extraction is **not yet wired to the expenses router**, but as of the ferry feature the vision extractor was generalized (`extract-structured.ts`) and OCR now has its **first write-path consumer** via `ferries.extractFromImage` (ferry-booking extraction). Wiring receipt OCR into `expenses` can reuse the same generalized plumbing.
+- **OCR pipeline ✅ WIRED**: extractors + reconciler + fixtures in `packages/api/src/ocr/` (Claude + Gemini, `reconcile.ts`, tests). Receipt extraction is now wired via **`expenses.extractFromReceipt`** (fail-safe, bounded; returns reconciled fields + ocr provenance for form pre-fill) with a "Scan receipt" affordance on the new-expense form. The vision extractor was generalized (`extract-structured.ts`) during the ferry feature; `ferries.extractFromImage` was the first consumer, receipts the second.
 
 ### Phase 4 — Settlement ✅ IMPLEMENTED (known bug being fixed)
 - `packages/api/src/router/settlements.ts` (295 lines) — `summary`, `record`, `undo`
