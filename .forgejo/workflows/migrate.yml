@@ -1,0 +1,58 @@
+# Applies schema changes to the production database via `drizzle-kit push`.
+#
+# Lives in .forgejo/ (not .github/) so it runs ONLY on the ForgeGraph/Forgejo
+# runner, where the production DB is reachable and the DATABASE_URL secret lives
+# — never on GitHub.
+#
+# PREREQUISITES (one-time, see docs/forgegraph/reassign-table-ownership.sql):
+#   1. Prod table ownership reconciled to `trip_app` — otherwise push fails with
+#      "must be owner of table ..." on legacy postgres-owned tables.
+#   2. A `DATABASE_URL` secret set in the Forgejo repo, using a transport the
+#      runner can reach (the trip DB's `tunnel` transport works from CI;
+#      `mesh`/Tailscale only if the runner is on the tailnet).
+#
+# SAFETY: no `--force`, so additive changes apply non-interactively but any
+# data-loss statement halts (and, with no TTY, fails the job) for human review
+# instead of truncating prod. Gated to packages/db changes on main only.
+#
+# Once `forge db migrate` reliably injects creds + handles ownership from CI,
+# this can be simplified to a single `forge db migrate --stage production` step.
+
+name: DB Migrate (production)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/db/**"
+
+concurrency:
+  group: db-migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: drizzle-kit push (production)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply schema (drizzle-kit push, no --force)
+        working-directory: packages/db
+        timeout-minutes: 5
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm exec drizzle-kit push
