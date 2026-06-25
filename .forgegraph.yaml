@@ -1,3 +1,8 @@
 app: trip
 db:
   type: postgres
+  # `forge db migrate` injects the per-stage DATABASE_URL and runs this command.
+  # Runs drizzle-kit push from packages/db (where drizzle.config.ts lives).
+  # No --force: additive changes apply non-interactively, but any data-loss
+  # statement halts for human review instead of truncating prod.
+  migrate: pnpm --filter @sortey/db exec drizzle-kit push
