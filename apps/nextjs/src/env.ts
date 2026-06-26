@@ -21,6 +21,9 @@ export const env = createEnv({
     // absent → the mock provider is used.
     DRIFTPORT_API_URL: z.string().url().optional(),
     DRIFTPORT_API_KEY: z.string().optional(),
+    // AviationStack live flight tracking (optional; absent → refreshTransitStatus
+    // is a no-op and the arrivals board shows manually-entered times only).
+    AVIATIONSTACK_API_KEY: z.string().optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),
