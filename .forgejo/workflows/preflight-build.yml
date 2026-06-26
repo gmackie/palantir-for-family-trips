@@ -90,3 +90,4 @@ jobs:
           WF=$(echo "${RESP}" | sed -n 's/.*"workflow":{"id":"\([^"]*\)".*/\1/p')
           echo "Queued Preflight workflow: ${WF}"
           echo "Track it: ${PREFLIGHT_API} → Queue board (workspace ${WORKSPACE_ID})"
+# preflight CI
