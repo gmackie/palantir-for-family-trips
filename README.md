@@ -46,8 +46,8 @@ It uses [Turborepo](https://turborepo.com) and contains:
   └─ Recommended extensions and settings for VSCode users
 apps
   ├─ expo
-  │   ├─ Expo SDK 55
-  │   ├─ React Native 0.84 using React 19
+  │   ├─ Expo SDK 56
+  │   ├─ React Native 0.85 using React 19
   │   ├─ Navigation using Expo Router
   │   ├─ Tailwind CSS v4 using NativeWind v5
   │   └─ Typesafe API calls using tRPC
@@ -216,11 +216,21 @@ Expo development should prefer development builds plus Expo Orbit over long-term
 
 ```bash
 pnpm --filter @sortey/expo build:device:ios
+pnpm --filter @sortey/expo build:device:android
 pnpm --filter @sortey/expo dev:client
 pnpm --filter @sortey/expo check:app-store
 ```
 
 Orbit gives you a cleaner device/simulator install loop once the development build exists. `check:app-store` fails fast if the scaffold still contains placeholder App Store metadata, Expo project IDs, or associated-domain values.
+
+For repeatable smoke checks, use Preflight simulator proofs:
+
+```bash
+/Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform ios --lane simulator --wait-for-runner
+/Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform android --lane simulator --wait-for-runner
+```
+
+Physical-device proofs require the phone or tablet to be online and trusted first. Check `adb devices -l` for Android and `xcrun xctrace list devices` for iOS before starting a development-lane proof. Android local builds should run with Java 17 and `ANDROID_HOME` pointed at the installed SDK; `scripts/dev-mobile.sh` sets these defaults on a standard Homebrew/Android Studio Mac.
 
 #### Use iOS Simulator
 

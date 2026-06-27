@@ -1,6 +1,6 @@
 # Implementation Status
 
-Updated 2026-06-12, commit `2408b3e` (branch `master`).
+Updated 2026-06-27, working copy `wnmyulyn` / Git parent `1c3c087d` (branch `master`).
 
 Known bugs and active implementation plans are tracked in `plans/README.md` at the repo root.
 
@@ -120,6 +120,16 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 - Native share-invite button; magic-link deep-link callback (`sortey://`)
 - Fuel-log gas-split creates a group expense on the trip; member location sharing
 
+### Mobile deploy + Preflight status — 2026-06-27
+- Production web is deployed and healthy at `https://sortey.app` via ForgeGraph deploy `2b79fed3-1c09-43fd-938f-8acda19d43f9`; `/api/health` returns healthy.
+- Expo is on SDK 56 / React Native 0.85 with EAS `development-device` profiles for iOS and Android.
+- Preflight iOS simulator proof passed: workflow `pfw_cb8cfcc0-61f8-4c3e-9b9c-905c8a12c4c5`, Maestro JUnit `.preflight/maestro/pfjob_7208a38a-4f17-4bad-a3fc-3df7ffa94161/junit.xml`, `tests=1`, `failures=0`.
+- Preflight Android emulator proof passed: workflow `pfw_ffce5206-bac4-486b-b919-4406cd008389`, app-open job `pfjob_8ead2345-0f96-4b46-aa14-6cff0de55165`, Maestro job `pfjob_91c716cf-a276-42ec-af25-c315ad141e1d`, `tests=1`, `failures=0`.
+- Android EAS development-device build is queued/running: build `71566a55-16e8-45d5-8b62-01dd411493c9`, profile `development-device`, channel `development`, distribution `internal`, Expo project `@gmacko/sortie`.
+- Android build caveat: the submitted build uses Git commit `1c3c087d` because the active JJ working-copy commit has not been exported to Git.
+- iOS EAS development-device build is blocked by Apple credentials/provisioning: the main app profile needs the iPad UDID added, and the `SorteyShare` extension needs credentials for `com.gmacko.sortey.dev.share-extension`.
+- Physical-device proof is not yet complete: `adb devices -l` currently shows only the emulator, and local iPhone/iPad devices are offline in `xcrun xctrace list devices`.
+
 ### Realtime — Group chat + live locations ✅ COMPLETE
 - `TripRoom` Durable Object (Cloudflare Workers) — one WS room per trip
 - `packages/api/src/router/chat.ts` — send/history/soft-delete
@@ -173,7 +183,15 @@ Note: **Route Gradient** — a color gradient applied to the route polyline enco
 
 ## Build Status
 
-Last verified earlier in development; re-verify with:
+Latest focused mobile verification (2026-06-27):
+
+```
+pnpm --filter @sortey/expo typecheck
+pnpm --filter @sortey/expo check:app-store
+bash -n scripts/dev-mobile.sh
+```
+
+All three pass. For the broader web/package gate, re-verify with:
 
 ```
 pnpm turbo run build --filter='!@sortey/tanstack-start' --filter='!@sortey/expo' --filter='*'
@@ -183,6 +201,6 @@ Excluded: `@sortey/tanstack-start` (not used in v1), `@sortey/expo` (native buil
 
 ## Current Branch
 
-`master` at commit `2408b3e`. This document was verified against the git history and file tree at that commit.
+`master` with active JJ working-copy commit `wnmyulyn` on top of Git commit `1c3c087d`.
 
 Active implementation work is tracked in `plans/README.md` (advisor plans index in the repo root, uncommitted to git).

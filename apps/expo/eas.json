@@ -30,7 +30,7 @@
         "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
       },
       "ios": {
-        "simulator": false
+        "simulator": true
       },
       "android": {
         "buildType": "apk",
@@ -38,13 +38,10 @@
       },
       "channel": "development"
     },
-    "development:simulator": {
+    "development-device": {
       "extends": "development",
-      "env": {
-        "APP_VARIANT": "development"
-      },
       "ios": {
-        "simulator": true
+        "simulator": false
       }
     },
     "preview": {

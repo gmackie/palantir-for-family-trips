@@ -10,6 +10,33 @@ Use development builds as the default mobile workflow for this app.
 
 Expo Go is useful for quick checks, but the long-term default for product work should be a development build.
 
+## Preflight Proofs
+
+Use Preflight for the repeatable mobile smoke proof:
+
+```bash
+/Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform ios --lane simulator --wait-for-runner
+/Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform android --lane simulator --wait-for-runner
+```
+
+Android local builds require Java 17 plus the Android SDK:
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export ANDROID_SDK_ROOT=$ANDROID_HOME
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
+```
+
+Physical-device proofs require the device to be visible to the host first:
+
+```bash
+adb devices -l
+xcrun xctrace list devices
+```
+
+If an iPhone or iPad appears offline, unlock it, trust the Mac, and rerun the target discovery before starting a development-lane proof.
+
 ## Release Readiness
 
 - Set `EXPO_PUBLIC_APP_DOMAIN` before you configure associated domains and deep-link verification.

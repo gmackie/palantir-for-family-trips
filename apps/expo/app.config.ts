@@ -17,7 +17,7 @@ const GOOGLE_MAPS_API_KEY =
   process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
   "";
 const ASSOCIATED_DOMAIN =
-  process.env.EXPO_PUBLIC_APP_DOMAIN ?? "change-me.example.com";
+  process.env.EXPO_PUBLIC_APP_DOMAIN ?? "sortey.app";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
 const POSTHOG_KEY = process.env.POSTHOG_KEY;

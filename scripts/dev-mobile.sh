@@ -104,6 +104,27 @@ if ! command -v jq &> /dev/null; then
     error "jq is not installed. Install with: brew install jq"
 fi
 
+# Expo/RN Android builds expect a Java 17 toolchain. Homebrew's latest
+# openjdk can be newer than Gradle/plugin support, so prefer openjdk@17
+# when it is present and JAVA_HOME was not explicitly set by the caller.
+if [ -z "${JAVA_HOME:-}" ] && [ -d "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]; then
+    export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+    export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+    info "Using Java 17 from Homebrew for Android builds"
+fi
+
+if [ -z "${ANDROID_HOME:-}" ] && [ -d "$HOME/Library/Android/sdk" ]; then
+    export ANDROID_HOME="$HOME/Library/Android/sdk"
+fi
+
+if [ -z "${ANDROID_SDK_ROOT:-}" ] && [ -n "${ANDROID_HOME:-}" ]; then
+    export ANDROID_SDK_ROOT="$ANDROID_HOME"
+fi
+
+if [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME/platform-tools" ]; then
+    export PATH="$ANDROID_HOME/platform-tools:$PATH"
+fi
+
 # Check ngrok auth
 if ! ngrok config check &> /dev/null 2>&1; then
     warn "ngrok may not be authenticated"
@@ -151,13 +172,13 @@ if [[ "$BUILD_DEV_CLIENT" == true ]]; then
     cd apps/expo
     case $PLATFORM in
         ios)
-            eas build --profile development --platform ios
+            eas build --profile development-device --platform ios
             ;;
         android)
-            eas build --profile development --platform android
+            eas build --profile development-device --platform android
             ;;
         both)
-            eas build --profile development --platform all
+            eas build --profile development-device --platform all
             ;;
         *)
             warn "Skipping dev client build"

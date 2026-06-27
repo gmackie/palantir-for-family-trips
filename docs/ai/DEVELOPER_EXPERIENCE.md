@@ -101,10 +101,13 @@ Keep generated guidance honest. If a capability is only scaffolded as a hook or 
 
 Current mobile DX recommendations:
 
-- Expo SDK 55 / React Native 0.84 in the repo should be kept current with Expo's stable line.
+- Expo SDK 56 / React Native 0.85 in the repo should be kept current with Expo's stable line.
 - Prefer development builds over long-term Expo Go usage for production-grade apps.
 - Use Expo Orbit for one-click simulator/device launches and build installs.
 - Keep React Native New Architecture assumptions in mind when evaluating third-party libraries.
+- Use Java 17 for Android native builds. On Macs with Homebrew, `scripts/dev-mobile.sh` will use `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` when it is present.
+- Keep `ANDROID_HOME`/`ANDROID_SDK_ROOT` pointed at the installed Android SDK before running local Preflight Android proofs.
+- Preflight simulator proofs are the default automated smoke check; physical-device proofs require `adb devices -l` or `xcrun xctrace list devices` to show an online trusted handset first.
 
 ## Repo Standards
 
