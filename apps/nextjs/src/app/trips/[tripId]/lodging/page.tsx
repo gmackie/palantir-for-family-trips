@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { requireTripsWorkspace } from "../../_lib/server";
 import { RoomBoard } from "./_components/room-board";
+import { TransitRefreshButton } from "./_components/transit-refresh-button";
 
 const PROVIDER_LABELS: Record<string, string> = {
   airbnb: "Airbnb",
@@ -230,13 +231,27 @@ export default async function LodgingPage(props: {
                         </div>
                         <div className="text-right">
                           <p className="font-mono text-xs">
-                            {formatDate(t.scheduledAt)}
+                            {formatDate(t.estimatedAt ?? t.scheduledAt)}
                           </p>
-                          <span
-                            className={`mt-1 inline-block rounded-[2px] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLORS[t.trackingStatus] ?? "bg-[#8B949E]/15 text-[#8B949E]"}`}
-                          >
-                            {t.trackingStatus.replace("_", " ")}
-                          </span>
+                          {t.estimatedAt && (
+                            <p className="text-[10px] text-[#8B949E] line-through">
+                              {formatDate(t.scheduledAt)}
+                            </p>
+                          )}
+                          <div className="mt-1 flex items-center justify-end gap-2">
+                            <span
+                              className={`inline-block rounded-[2px] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLORS[t.trackingStatus] ?? "bg-[#8B949E]/15 text-[#8B949E]"}`}
+                            >
+                              {t.trackingStatus.replace("_", " ")}
+                            </span>
+                            {t.transitType === "flight" && t.transitNumber && (
+                              <TransitRefreshButton
+                                workspaceId={workspace.id}
+                                tripId={tripId}
+                                transitId={t.id}
+                              />
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -22,7 +22,14 @@ import { recheckExpenseOcr } from "../expenses/ocr-recheck";
 import { computeExpenseShares } from "../expenses/shares";
 import { insertExpenseDraft } from "../expenses/transport-draft";
 import { sendPushToTripMembers } from "../notifications/send";
-import { OCR_PROVIDERS, OCR_STATUSES } from "../ocr/review";
+import { extractAndReconcileReceipt } from "../ocr";
+import {
+  needsOcrReview,
+  OCR_PROVIDERS,
+  OCR_STATUSES,
+  type OcrProvider,
+  type OcrStatus,
+} from "../ocr/review";
 
 const expenseCategoryEnum = z.enum([
   "meal",
@@ -47,6 +54,109 @@ function requireOrganizerOrSelf(
     code: "FORBIDDEN",
     message: "Only the payer or a trip organizer can modify this expense.",
   });
+}
+
+// ── Receipt OCR pre-fill (no persistence) ────────────────────────────────────
+
+// Image MIME types accepted by `extractFromReceipt`. Mirrors the receipt OCR
+// pipeline's accepted inputs. PDF is intentionally absent (no rasterization).
+const RECEIPT_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
+
+// Upper bound on the base64-encoded receipt image. ~10 MB of raw image is plenty
+// for a phone photo of a receipt; base64 inflates ~4/3, so 10 MB ≈ 14_000_000
+// chars. Matches `MAX_FERRY_IMAGE_BASE64_CHARS` (ferries.ts) so both image-ingest
+// surfaces bound their payload identically. Bounds the input before we even
+// allocate a Buffer for it.
+export const MAX_RECEIPT_IMAGE_BASE64_CHARS = 14_000_000;
+
+// Input schema for `extractFromReceipt`, exported so the base64 size bound can be
+// exercised directly in tests (the router wires this up below).
+export const receiptExtractInputSchema = z.object({
+  workspaceId: z.string().min(1),
+  tripId: z.string().min(1),
+  imageBase64: z.string().min(1).max(MAX_RECEIPT_IMAGE_BASE64_CHARS),
+  mimeType: z.enum(RECEIPT_IMAGE_MIME_TYPES),
+});
+
+// The reconciled, form-ready fields surfaced to the create form for review.
+// `occurredAt` is an ISO string (the create form re-submits it via
+// `expenses.create`). Amounts are minor units (cents).
+export interface ExtractedReceipt {
+  merchant: string;
+  occurredAt: string;
+  currency: string;
+  subtotalCents: number;
+  taxCents: number;
+  tipCents: number;
+  totalCents: number;
+  lineItems: Array<{
+    name: string;
+    quantity: number;
+    unitPriceCents: number;
+    lineTotalCents: number;
+  }>;
+  ocrProvider: OcrProvider;
+  ocrConfidence: number;
+  ocrWarnings: string[];
+  ocrStatus: OcrStatus;
+  /** True when the extraction warrants a human review before it's trusted. */
+  needsReview: boolean;
+}
+
+export type ReceiptExtractResult =
+  | { ok: true; receipt: ExtractedReceipt }
+  | { ok: false };
+
+/**
+ * Decode a base64 receipt image, run it through the receipt OCR + reconcile
+ * pipeline, and return the sanitized, reconciled fields for the create form to
+ * pre-fill. Persists nothing — `expenses.create` owns draft creation from the
+ * reviewed values. Never throws to the client: any decode/extraction failure is
+ * folded into `{ ok: false }`. Mirrors `ferries.extractFromImage`.
+ */
+export async function extractReceiptFromImage(input: {
+  imageBase64: string;
+  mimeType: (typeof RECEIPT_IMAGE_MIME_TYPES)[number];
+}): Promise<ReceiptExtractResult> {
+  try {
+    const imageBytes = Buffer.from(input.imageBase64, "base64");
+    const { sanitized, confidence, warnings, provider } =
+      await extractAndReconcileReceipt({
+        imageBytes,
+        mimeType: input.mimeType,
+      });
+    const ocrStatus: OcrStatus = "success";
+    return {
+      ok: true,
+      receipt: {
+        merchant: sanitized.merchant,
+        occurredAt: sanitized.occurredAt,
+        currency: sanitized.currency,
+        subtotalCents: sanitized.subtotalCents,
+        taxCents: sanitized.taxCents,
+        tipCents: sanitized.tipCents,
+        totalCents: sanitized.totalCents,
+        lineItems: sanitized.lineItems.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitPriceCents: item.unitPriceCents,
+          lineTotalCents: item.lineTotalCents,
+        })),
+        ocrProvider: provider,
+        ocrConfidence: confidence,
+        ocrWarnings: warnings,
+        ocrStatus,
+        needsReview: needsOcrReview({ ocrConfidence: confidence, ocrStatus }),
+      },
+    };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export const expensesRouter = {
@@ -958,4 +1068,18 @@ export const expensesRouter = {
 
       return created;
     }),
+
+  /**
+   * Receipt OCR pre-fill: parse a receipt image into reconciled, form-ready
+   * fields for the create form to review before submit. Persists nothing; never
+   * throws to the client. Mirrors `ferries.extractFromImage`.
+   */
+  extractFromReceipt: tripProcedure()
+    .input(receiptExtractInputSchema)
+    .mutation(({ input }) =>
+      extractReceiptFromImage({
+        imageBase64: input.imageBase64,
+        mimeType: input.mimeType,
+      }),
+    ),
 } satisfies TRPCRouterRecord;

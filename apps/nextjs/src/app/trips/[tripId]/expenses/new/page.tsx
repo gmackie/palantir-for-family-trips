@@ -4,9 +4,10 @@ import { OCR_REVIEW_CONFIDENCE_THRESHOLD } from "@sortey/api/ocr/review";
 import { Button } from "@sortey/ui/button";
 import { Field, FieldContent, FieldGroup, FieldLabel } from "@sortey/ui/field";
 import { Input } from "@sortey/ui/input";
+import { toast } from "@sortey/ui/toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
@@ -20,10 +21,60 @@ const CATEGORIES = [
   { value: "general", label: "General" },
 ] as const;
 
+type ExpenseCategory = (typeof CATEGORIES)[number]["value"];
+
+// Image MIME types `expenses.extractFromReceipt` accepts. Kept in sync with
+// `receiptExtractInputSchema` server-side; narrowing here lets us drop a
+// non-image file early with a clear message instead of round-tripping a reject.
+const RECEIPT_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
+type ReceiptImageMime = (typeof RECEIPT_IMAGE_MIME_TYPES)[number];
+
+function isReceiptImageMime(value: string): value is ReceiptImageMime {
+  return (RECEIPT_IMAGE_MIME_TYPES as readonly string[]).includes(value);
+}
+
+type ScannedLineItem = {
+  name: string;
+  quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+};
+
 function dollarsToCents(value: string): number {
   const num = parseFloat(value);
   if (isNaN(num) || num < 0) return 0;
   return Math.round(num * 100);
+}
+
+function centsToDollars(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+/**
+ * Read a `File` as base64 and strip the `data:<mime>;base64,` prefix so the API
+ * receives the bare base64 payload its `imageBase64` input expects.
+ */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Unexpected file read result"));
+        return;
+      }
+      const comma = result.indexOf(",");
+      resolve(comma === -1 ? result : result.slice(comma + 1));
+    };
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("File read failed"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function NewExpensePage() {
@@ -34,6 +85,28 @@ export default function NewExpensePage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Controlled prefillable fields so a receipt scan can populate them for the
+  // user to review/edit before submit. Defaults preserve the manual-entry path.
+  const today = new Date().toISOString().split("T")[0] ?? "";
+  const [merchant, setMerchant] = useState("");
+  const [occurredAt, setOccurredAt] = useState(today);
+  const [category, setCategory] = useState<ExpenseCategory>("general");
+  const [subtotal, setSubtotal] = useState("");
+  const [tax, setTax] = useState("");
+  const [tip, setTip] = useState("");
+  const [total, setTotal] = useState("");
+  const [currency, setCurrency] = useState("USD");
+
+  // Scan state. Line items from the scan are stashed here and attached after the
+  // draft is created (the create form has no inline line-item editor).
+  const [scanning, setScanning] = useState(false);
+  const [scannedLineItems, setScannedLineItems] = useState<ScannedLineItem[]>(
+    [],
+  );
+  const [scanNote, setScanNote] = useState<string | null>(null);
+  const scanInputRef = useRef<HTMLInputElement>(null);
+
   // Fetch workspace context to get workspaceId
   const workspaceQuery = useQuery(
     trpc.settings.getWorkspaceContext.queryOptions(),
@@ -55,6 +128,58 @@ export default function NewExpensePage() {
   const updateExpense = useMutation(
     trpc.expenses.updateDraft.mutationOptions(),
   );
+  const extractReceipt = useMutation(
+    trpc.expenses.extractFromReceipt.mutationOptions(),
+  );
+
+  async function handleScan(file: File) {
+    if (!workspaceId) return;
+    if (!isReceiptImageMime(file.type)) {
+      toast.error("Couldn't read the receipt — enter manually");
+      return;
+    }
+    const mimeType = file.type;
+    setScanning(true);
+    setScanNote(null);
+    try {
+      const imageBase64 = await fileToBase64(file);
+      const result = await extractReceipt.mutateAsync({
+        workspaceId,
+        tripId,
+        imageBase64,
+        mimeType,
+      });
+      if (!result.ok) {
+        toast.error("Couldn't read the receipt — enter manually");
+        return;
+      }
+      const { receipt } = result;
+      // Pre-fill the form for review. The user can edit anything before submit.
+      if (receipt.merchant) setMerchant(receipt.merchant);
+      const datePart = receipt.occurredAt.split("T")[0];
+      if (datePart) setOccurredAt(datePart);
+      if (receipt.currency) setCurrency(receipt.currency.toUpperCase());
+      setSubtotal(centsToDollars(receipt.subtotalCents));
+      setTax(centsToDollars(receipt.taxCents));
+      setTip(centsToDollars(receipt.tipCents));
+      setTotal(centsToDollars(receipt.totalCents));
+      setScannedLineItems(receipt.lineItems);
+      setScanNote(
+        receipt.needsReview
+          ? "Scanned — low confidence, please double-check the amounts."
+          : `Scanned ${receipt.lineItems.length} item${
+              receipt.lineItems.length === 1 ? "" : "s"
+            } — review and submit.`,
+      );
+      toast.success("Receipt scanned");
+    } catch {
+      toast.error("Couldn't read the receipt — enter manually");
+    } finally {
+      setScanning(false);
+      // Allow re-selecting the same file to re-scan.
+      if (scanInputRef.current) scanInputRef.current.value = "";
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -64,15 +189,12 @@ export default function NewExpensePage() {
     setError(null);
 
     const form = new FormData(e.currentTarget);
-
-    const merchant = form.get("merchant") as string;
-    const occurredAt = form.get("occurredAt") as string;
-    const category = form.get("category") as string;
     const segmentId = form.get("segmentId") as string;
-    const subtotalCents = dollarsToCents(form.get("subtotal") as string);
-    const taxCents = dollarsToCents(form.get("tax") as string);
-    const tipCents = dollarsToCents(form.get("tip") as string);
-    const totalCents = dollarsToCents(form.get("total") as string);
+
+    const subtotalCents = dollarsToCents(subtotal);
+    const taxCents = dollarsToCents(tax);
+    const tipCents = dollarsToCents(tip);
+    const totalCents = dollarsToCents(total);
 
     try {
       const expense = await createExpense.mutateAsync({
@@ -81,19 +203,34 @@ export default function NewExpensePage() {
         segmentId,
         merchant,
         occurredAt: new Date(occurredAt).toISOString(),
-        category: category as
-          | "meal"
-          | "transit"
-          | "lodging"
-          | "activity"
-          | "drinks"
-          | "tickets"
-          | "general",
+        category,
+        currency: currency.toUpperCase(),
         subtotalCents,
         taxCents,
         tipCents,
         totalCents,
       });
+
+      // Attach line items captured from a receipt scan (the create form has no
+      // inline line-item editor). Best-effort — failure doesn't block navigation.
+      if (scannedLineItems.length > 0 && expense.id) {
+        try {
+          await addLineItems.mutateAsync({
+            workspaceId,
+            tripId,
+            expenseId: expense.id,
+            items: scannedLineItems.map((item, i) => ({
+              name: item.name,
+              quantity: item.quantity,
+              unitPriceCents: item.unitPriceCents,
+              lineTotalCents: item.lineTotalCents,
+              sortOrder: i,
+            })),
+          });
+        } catch {
+          // Line items are optional; don't block navigation.
+        }
+      }
 
       if (receiptFile && expense.id) {
         try {
@@ -183,8 +320,8 @@ export default function NewExpensePage() {
         </p>
         <h1 className="text-4xl font-black tracking-tight">Add an expense</h1>
         <p className="text-muted-foreground max-w-2xl text-sm sm:text-base">
-          Record what was spent. You can add line items and finalize after
-          creating.
+          Record what was spent. Scan a receipt to pre-fill the fields, or enter
+          them manually. You can add line items and finalize after creating.
         </p>
       </div>
 
@@ -194,9 +331,44 @@ export default function NewExpensePage() {
         </div>
       )}
 
+      {/* Scan-to-prefill: reads a receipt image and populates the form below for
+          review before submit. Independent of the manual-entry path. */}
+      <div className="mt-8 rounded-[4px] border border-[#58A6FF]/30 bg-[#58A6FF]/5 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
+              Scan receipt
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {scanNote ??
+                "Snap or upload a receipt to auto-fill merchant, amounts, and items."}
+            </p>
+          </div>
+          <input
+            ref={scanInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleScan(file);
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={scanning || isLoading}
+            onClick={() => scanInputRef.current?.click()}
+          >
+            {scanning ? "Scanning..." : "Scan receipt"}
+          </Button>
+        </div>
+      </div>
+
       <form
         onSubmit={handleSubmit}
-        className="bg-card mt-8 rounded-3xl border p-6"
+        className="bg-card mt-6 rounded-3xl border p-6"
       >
         <FieldGroup>
           <Field>
@@ -207,6 +379,8 @@ export default function NewExpensePage() {
                 name="merchant"
                 placeholder="Restaurant name, store, etc."
                 required
+                value={merchant}
+                onChange={(e) => setMerchant(e.target.value)}
               />
             </FieldContent>
           </Field>
@@ -219,8 +393,9 @@ export default function NewExpensePage() {
                   id="occurredAt"
                   name="occurredAt"
                   type="date"
-                  defaultValue={new Date().toISOString().split("T")[0]}
                   required
+                  value={occurredAt}
+                  onChange={(e) => setOccurredAt(e.target.value)}
                 />
               </FieldContent>
             </Field>
@@ -231,7 +406,10 @@ export default function NewExpensePage() {
                 <select
                   id="category"
                   name="category"
-                  defaultValue="general"
+                  value={category}
+                  onChange={(e) =>
+                    setCategory(e.target.value as ExpenseCategory)
+                  }
                   className="border-input bg-background h-11 w-full rounded-md border px-3 text-sm"
                 >
                   {CATEGORIES.map((cat) => (
@@ -280,6 +458,8 @@ export default function NewExpensePage() {
                   min="0"
                   placeholder="0.00"
                   className="tabular-nums"
+                  value={subtotal}
+                  onChange={(e) => setSubtotal(e.target.value)}
                 />
               </FieldContent>
             </Field>
@@ -295,6 +475,8 @@ export default function NewExpensePage() {
                   min="0"
                   placeholder="0.00"
                   className="tabular-nums"
+                  value={tax}
+                  onChange={(e) => setTax(e.target.value)}
                 />
               </FieldContent>
             </Field>
@@ -310,6 +492,8 @@ export default function NewExpensePage() {
                   min="0"
                   placeholder="0.00"
                   className="tabular-nums"
+                  value={tip}
+                  onChange={(e) => setTip(e.target.value)}
                 />
               </FieldContent>
             </Field>
@@ -326,10 +510,39 @@ export default function NewExpensePage() {
                   placeholder="0.00"
                   required
                   className="tabular-nums"
+                  value={total}
+                  onChange={(e) => setTotal(e.target.value)}
                 />
               </FieldContent>
             </Field>
           </div>
+
+          {scannedLineItems.length > 0 && (
+            <div className="rounded-[4px] border border-[#21262D] bg-[#0D1117] p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8B949E]">
+                Scanned items ({scannedLineItems.length})
+              </p>
+              <ul className="mt-2 space-y-1">
+                {scannedLineItems.map((item, i) => (
+                  <li
+                    key={`${item.name}-${i}`}
+                    className="flex justify-between text-xs text-[#C9D1D9]"
+                  >
+                    <span className="truncate pr-2">
+                      {item.quantity > 1 ? `${item.quantity}× ` : ""}
+                      {item.name}
+                    </span>
+                    <span className="tabular-nums text-[#8B949E]">
+                      ${centsToDollars(item.lineTotalCents)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-muted-foreground mt-2 text-[11px]">
+                Items are attached to the expense after you create it.
+              </p>
+            </div>
+          )}
 
           <Field>
             <FieldLabel htmlFor="receipt">Receipt image (optional)</FieldLabel>

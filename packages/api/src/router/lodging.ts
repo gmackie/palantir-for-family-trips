@@ -12,6 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { fetchFlightStatus } from "../transit/aviationstack";
 import { validateSegmentBelongsToTrip } from "../trips/segment-guard";
 
 const lodgingProviderSchema = z.enum([
@@ -437,6 +438,61 @@ export const lodgingRouter = {
       }
 
       return updated;
+    }),
+
+  /**
+   * Refresh a flight transit's live status from AviationStack. Best-effort:
+   * non-flights, missing flight number, or any provider failure leave the row
+   * unchanged and return `{ refreshed: false }` — never throws to the client.
+   */
+  refreshTransitStatus: tripProcedure()
+    .input(tripScopedInput.extend({ transitId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const [transit] = (await ctx.db
+        .select()
+        .from(memberTransits)
+        .where(eq(memberTransits.id, input.transitId))
+        .limit(1)) as (typeof memberTransits.$inferSelect)[];
+
+      if (!transit) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Transit not found.",
+        });
+      }
+      // Verify the transit's segment belongs to this trip (cross-trip guard).
+      await validateSegmentBelongsToTrip(ctx.db, transit.segmentId, ctx.tripId);
+
+      if (transit.transitType !== "flight" || !transit.transitNumber) {
+        return { transit, refreshed: false as const };
+      }
+
+      // The flight number may be "UA 123" (full IATA) or just digits; prefer the
+      // number when it already carries a letter code, else prepend the carrier.
+      const num = transit.transitNumber.replace(/\s+/g, "");
+      const flightIata = /[A-Za-z]/.test(num)
+        ? num
+        : `${transit.carrier ?? ""}${num}`;
+
+      const status = await fetchFlightStatus({
+        flightIata,
+        scheduledDate: transit.scheduledAt.toISOString().slice(0, 10),
+      });
+      if (!status) {
+        return { transit, refreshed: false as const };
+      }
+
+      const [updated] = (await ctx.db
+        .update(memberTransits)
+        .set({
+          estimatedAt: status.estimatedAt,
+          actualAt: status.actualAt,
+          trackingStatus: status.trackingStatus,
+        })
+        .where(eq(memberTransits.id, transit.id))
+        .returning()) as (typeof memberTransits.$inferSelect)[];
+
+      return { transit: updated ?? transit, refreshed: true as const };
     }),
 
   listTransitsForSegment: tripProcedure()
