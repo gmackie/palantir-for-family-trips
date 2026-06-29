@@ -1,13 +1,26 @@
 import { decode, encode } from "@googlemaps/polyline-codec";
-import { eq } from "@sortey/db";
+import { and, desc, eq, isNotNull } from "@sortey/db";
 import { db } from "@sortey/db/client";
-import { ferryCrossings, tripSegments, trips } from "@sortey/db/schema";
+import {
+  ferryCrossings,
+  fuelLogs,
+  tripSegments,
+  trips,
+  vanProfiles,
+} from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import SunCalc from "suncalc";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import {
+  computeFuelZones,
+  computeOvernightZones,
+  fuelRangeMiles,
+  type LatLng as ZoneLatLng,
+  type ZoneSegment,
+} from "../route-planner/zones";
 import { protectedProcedure } from "../trpc";
 import { computeLeaveBy, ferryNonDrivableMinutes } from "./ferry-eta";
 
@@ -547,6 +560,130 @@ export const routePlannerRouter = {
         segmentCount: rows.length,
         totalMiles: Math.round(totalMiles * 10) / 10,
         totalMinutes,
+      };
+    }),
+
+  /**
+   * Predict the Fuel Zones + Overnight Zones for a planned road trip, feeding
+   * the markers the route-gradient map and TripTik strip already render.
+   *
+   * Fail-soft: an incomplete van model (no MPG/tank) simply yields no fuel
+   * zones; overnight zones come from the auto-split segment boundaries and need
+   * no van data.
+   */
+  predictZones: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      const [trip] = await ctx.db
+        .select({ workspaceId: trips.workspaceId })
+        .from(trips)
+        .where(eq(trips.id, ctx.tripId))
+        .limit(1);
+
+      const segments = await ctx.db
+        .select({
+          sortOrder: tripSegments.sortOrder,
+          originLat: tripSegments.originLat,
+          originLng: tripSegments.originLng,
+          destinationLat: tripSegments.destinationLat,
+          destinationLng: tripSegments.destinationLng,
+          routePolyline: tripSegments.routePolyline,
+          distanceMiles: tripSegments.distanceMiles,
+        })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, ctx.tripId));
+
+      segments.sort((a, b) => a.sortOrder - b.sortOrder);
+
+      // Van fuel model (optional — drives fuel zones only). Prefer the van
+      // actually used on this trip (latest fuel log), else the workspace's sole
+      // van profile.
+      let mpg: number | null = null;
+      let tankGallons: number | null = null;
+      let vanProfileId: string | null = null;
+
+      const [latestFuelLog] = await ctx.db
+        .select({ vanProfileId: fuelLogs.vanProfileId })
+        .from(fuelLogs)
+        .where(
+          and(
+            eq(fuelLogs.tripId, ctx.tripId),
+            isNotNull(fuelLogs.vanProfileId),
+          ),
+        )
+        .orderBy(desc(fuelLogs.loggedAt))
+        .limit(1);
+      vanProfileId = latestFuelLog?.vanProfileId ?? null;
+
+      if (!vanProfileId && trip) {
+        const workspaceVans = await ctx.db
+          .select({ id: vanProfiles.id })
+          .from(vanProfiles)
+          .where(eq(vanProfiles.workspaceId, trip.workspaceId))
+          .limit(2);
+        if (workspaceVans.length === 1) {
+          vanProfileId = workspaceVans[0]!.id;
+        }
+      }
+
+      if (vanProfileId) {
+        const [van] = await ctx.db
+          .select({
+            mpgEstimate: vanProfiles.mpgEstimate,
+            tankGallons: vanProfiles.tankGallons,
+          })
+          .from(vanProfiles)
+          .where(eq(vanProfiles.id, vanProfileId))
+          .limit(1);
+        mpg = van?.mpgEstimate != null ? Number(van.mpgEstimate) : null;
+        tankGallons = van?.tankGallons != null ? Number(van.tankGallons) : null;
+      }
+
+      // Build the route polyline: prefer each segment's encoded polyline, else
+      // fall back to its origin → destination endpoints.
+      const points: ZoneLatLng[] = [];
+      const pushPoint = (lat: number, lng: number) => {
+        const last = points[points.length - 1];
+        if (last && last.lat === lat && last.lng === lng) return;
+        points.push({ lat, lng });
+      };
+      for (const seg of segments) {
+        if (seg.routePolyline) {
+          for (const [lat, lng] of decode(seg.routePolyline, 5)) {
+            pushPoint(lat, lng);
+          }
+          continue;
+        }
+        if (seg.originLat != null && seg.originLng != null) {
+          pushPoint(Number(seg.originLat), Number(seg.originLng));
+        }
+        if (seg.destinationLat != null && seg.destinationLng != null) {
+          pushPoint(Number(seg.destinationLat), Number(seg.destinationLng));
+        }
+      }
+
+      const rangeMiles = fuelRangeMiles(mpg, tankGallons);
+      const fuelZones = computeFuelZones(points, rangeMiles);
+
+      const zoneSegments: ZoneSegment[] = segments.map((s) => ({
+        destinationLat:
+          s.destinationLat != null ? Number(s.destinationLat) : null,
+        destinationLng:
+          s.destinationLng != null ? Number(s.destinationLng) : null,
+        distanceMiles: s.distanceMiles != null ? Number(s.distanceMiles) : null,
+      }));
+      const overnightZones = computeOvernightZones(zoneSegments);
+
+      return {
+        fuelZones,
+        overnightZones,
+        rangeMiles: Math.round(rangeMiles),
+        hasVanModel: rangeMiles > 0,
       };
     }),
 

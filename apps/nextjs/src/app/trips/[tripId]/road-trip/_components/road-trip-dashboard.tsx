@@ -255,6 +255,13 @@ export function RoadTripDashboard(props: {
   googleMapsApiKey?: string;
   vanProfiles?: VanProfile[];
   corridorPois?: CorridorPoi[];
+  fuelZones?: Array<{ lat: number; lng: number; mileMarker: number }>;
+  overnightZones?: Array<{
+    lat: number;
+    lng: number;
+    radiusMiles: number;
+    mileMarker: number;
+  }>;
   deleteTripAction: () => Promise<{ error?: string }>;
   setStatusAction: (status: Trip["status"]) => Promise<{ error?: string }>;
 }) {
@@ -265,6 +272,8 @@ export function RoadTripDashboard(props: {
     fuelStats,
     vanProfiles = [],
     corridorPois = [],
+    fuelZones = [],
+    overnightZones = [],
   } = props;
 
   const router = useRouter();
@@ -448,6 +457,8 @@ export function RoadTripDashboard(props: {
               <RouteGradientMap
                 encodedPolyline={encodedPolyline}
                 pois={filteredPois}
+                fuelZones={fuelZones}
+                overnightZones={overnightZones}
                 onPoiClick={(poiId) => {
                   const poi = corridorPois.find((p) => p.id === poiId);
                   if (poi) {

@@ -64,6 +64,19 @@ export default async function RoadTripPage(props: {
   let corridorPois: Awaited<ReturnType<typeof caller.corridor.searchImported>> =
     [];
 
+  const emptyZones = {
+    fuelZones: [] as Array<{ lat: number; lng: number; mileMarker: number }>,
+    overnightZones: [] as Array<{
+      lat: number;
+      lng: number;
+      radiusMiles: number;
+      mileMarker: number;
+    }>,
+    rangeMiles: 0,
+    hasVanModel: false,
+  };
+  let zones: typeof emptyZones = emptyZones;
+
   if (hasRoute) {
     const midSegment = segments[Math.floor(segments.length / 2)];
     if (midSegment?.destinationLat && midSegment?.destinationLng) {
@@ -78,6 +91,10 @@ export default async function RoadTripPage(props: {
         })
         .catch(() => []);
     }
+
+    zones = await caller.routePlanner
+      .predictZones({ workspaceId: workspace.id, tripId })
+      .catch(() => emptyZones);
   }
 
   async function planRouteAction(
@@ -239,6 +256,8 @@ export default async function RoadTripPage(props: {
       googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
       vanProfiles={vanProfiles}
       corridorPois={corridorPois}
+      fuelZones={zones.fuelZones}
+      overnightZones={zones.overnightZones}
     />
   );
 }
