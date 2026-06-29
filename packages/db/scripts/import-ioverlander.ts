@@ -1,29 +1,57 @@
 /**
- * POI Import Script — OpenStreetMap Overpass API
+ * Corridor POI Import — OpenStreetMap Overpass API
  *
- * Imports van-life amenities (fuel, campgrounds, water, dump stations, rest
- * areas, grocery) from OpenStreetMap along a given bounding box. Default
- * covers the Seattle → Des Moines corridor via I-90/I-35.
+ * Imports Van Life Amenities (fuel, campsites, water, dump stations, rest
+ * areas, grocery, showers, propane, scenic) from OpenStreetMap into the
+ * `imported_poi` table, where `corridor.searchImported` serves them to the
+ * web + mobile map.
  *
- * Run: DATABASE_URL="..." npx tsx packages/db/scripts/import-ioverlander.ts
+ * The bounding box is selectable so you can import the corridor for *your*
+ * actual route, not just the built-in Seattle → Des Moines demo box:
+ *
+ *   # Derive the box from a real trip's segments (origin/dest + route polyline):
+ *   DATABASE_URL="..." pnpm -F @sortey/db tsx scripts/import-ioverlander.ts --trip <tripId>
+ *
+ *   # Explicit box (south,west,north,east):
+ *   DATABASE_URL="..." pnpm -F @sortey/db tsx scripts/import-ioverlander.ts --bbox 40.5,-123,48.5,-93
+ *
+ *   # Default (Seattle → Des Moines I-90 corridor), all categories:
+ *   DATABASE_URL="..." pnpm -F @sortey/db tsx scripts/import-ioverlander.ts
+ *
+ * Flags:
+ *   --trip <id>            derive bbox from a trip's segments, padded by --pad
+ *   --bbox <s,w,n,e>       explicit bounding box (decimal degrees)
+ *   --pad <miles>          padding around a --trip box (default 30 = corridor radius)
+ *   --categories <a,b,c>   restrict to a subset of categories
+ *   --source <name>        source label stored on each row (default "osm")
  *
  * iOverlander's API is auth-gated behind Cloudflare, so we use OSM Overpass
  * which is free, no auth, and has excellent amenity coverage.
  */
 
+import { eq } from "drizzle-orm";
+
 import { db } from "../src/client";
-import { importedPois } from "../src/schema";
+import { importedPois, tripSegments, trips } from "../src/schema";
 
-const SOURCE = "osm";
 const BATCH_SIZE = 500;
-
-// Seattle → Des Moines bounding box (with padding for I-90 corridor)
-const SOUTH = 40.5;
-const NORTH = 48.5;
-const WEST = -123.0;
-const EAST = -93.0;
-
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const MILES_PER_DEGREE_LAT = 69;
+
+// Default bounding box: Seattle → Des Moines (with padding for the I-90 corridor).
+const DEFAULT_BBOX: BBox = {
+  south: 40.5,
+  west: -123.0,
+  north: 48.5,
+  east: -93.0,
+};
+
+interface BBox {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
 
 interface OsmElement {
   type: string;
@@ -34,91 +62,212 @@ interface OsmElement {
   tags?: Record<string, string>;
 }
 
-// Narrower corridor around I-90 for high-density categories
-const I90_SOUTH = 42.0;
-const I90_NORTH = 48.0;
+interface PoiRow {
+  source: string;
+  externalId: string;
+  name: string;
+  category: string;
+  lat: string;
+  lng: string;
+  data: unknown;
+}
 
-const QUERIES: Array<{ category: string; query: string }> = [
-  {
-    category: "fuel",
-    query: `node["amenity"="fuel"](${I90_SOUTH},${WEST},${I90_NORTH},${EAST});`,
-  },
-  {
-    category: "campsite",
-    query: `(
-      node["tourism"="camp_site"](${SOUTH},${WEST},${NORTH},${EAST});
-      way["tourism"="camp_site"](${SOUTH},${WEST},${NORTH},${EAST});
-      node["tourism"="caravan_site"](${SOUTH},${WEST},${NORTH},${EAST});
-      way["tourism"="caravan_site"](${SOUTH},${WEST},${NORTH},${EAST});
-    );`,
-  },
-  {
-    category: "water",
-    query: `(
-      node["amenity"="drinking_water"](${SOUTH},${WEST},${NORTH},${EAST});
-      node["amenity"="water_point"](${SOUTH},${WEST},${NORTH},${EAST});
-    );`,
-  },
-  {
-    category: "dump_station",
-    query: `node["amenity"="sanitary_dump_station"](${SOUTH},${WEST},${NORTH},${EAST});`,
-  },
-  {
-    category: "rest_area",
-    query: `(
-      node["highway"="rest_area"](${SOUTH},${WEST},${NORTH},${EAST});
-      way["highway"="rest_area"](${SOUTH},${WEST},${NORTH},${EAST});
-      node["highway"="services"](${SOUTH},${WEST},${NORTH},${EAST});
-      way["highway"="services"](${SOUTH},${WEST},${NORTH},${EAST});
-    );`,
-  },
-  {
-    category: "grocery",
-    query: `node["shop"="supermarket"](${SOUTH},${WEST},${NORTH},${EAST});`,
-  },
-  {
-    category: "shower",
-    query: `node["amenity"="shower"](${SOUTH},${WEST},${NORTH},${EAST});`,
-  },
-  {
-    category: "propane",
-    query: `node["fuel:lpg"="yes"](${SOUTH},${WEST},${NORTH},${EAST});`,
-  },
-  {
-    category: "scenic",
-    query: `node["tourism"="viewpoint"](${SOUTH},${WEST},${NORTH},${EAST});`,
-  },
-];
+// Category → Overpass element selectors, evaluated against a bbox `(s,w,n,e)`.
+const CATEGORY_SELECTORS: Record<string, (b: string) => string> = {
+  fuel: (b) => `node["amenity"="fuel"](${b});`,
+  campsite: (b) => `(
+    node["tourism"="camp_site"](${b});
+    way["tourism"="camp_site"](${b});
+    node["tourism"="caravan_site"](${b});
+    way["tourism"="caravan_site"](${b});
+  );`,
+  water: (b) => `(
+    node["amenity"="drinking_water"](${b});
+    node["amenity"="water_point"](${b});
+  );`,
+  dump_station: (b) => `node["amenity"="sanitary_dump_station"](${b});`,
+  rest_area: (b) => `(
+    node["highway"="rest_area"](${b});
+    way["highway"="rest_area"](${b});
+    node["highway"="services"](${b});
+    way["highway"="services"](${b});
+  );`,
+  grocery: (b) => `node["shop"="supermarket"](${b});`,
+  shower: (b) => `node["amenity"="shower"](${b});`,
+  propane: (b) => `node["fuel:lpg"="yes"](${b});`,
+  scenic: (b) => `node["tourism"="viewpoint"](${b});`,
+};
+
+/** Parse `--flag value` pairs and `--flag` booleans from argv. */
+function parseArgs(argv: string[]): Record<string, string | boolean> {
+  const out: Record<string, string | boolean> = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (!arg?.startsWith("--")) continue;
+    const key = arg.slice(2);
+    const next = argv[i + 1];
+    if (next && !next.startsWith("--")) {
+      out[key] = next;
+      i++;
+    } else {
+      out[key] = true;
+    }
+  }
+  return out;
+}
+
+/** Standard Google/Mapbox encoded-polyline decoder (precision 5). Zero-dep. */
+function decodePolyline(str: string, precision = 5): Array<[number, number]> {
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const coordinates: Array<[number, number]> = [];
+  const factor = 10 ** precision;
+
+  while (index < str.length) {
+    let result = 1;
+    let shift = 0;
+    let b: number;
+    do {
+      b = str.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+    result = 1;
+    shift = 0;
+    do {
+      b = str.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+    coordinates.push([lat / factor, lng / factor]);
+  }
+  return coordinates;
+}
+
+/** Grow a bbox to include a point. */
+function extend(box: BBox | null, lat: number, lng: number): BBox {
+  if (!box) return { south: lat, north: lat, west: lng, east: lng };
+  return {
+    south: Math.min(box.south, lat),
+    north: Math.max(box.north, lat),
+    west: Math.min(box.west, lng),
+    east: Math.max(box.east, lng),
+  };
+}
+
+/** Pad a bbox by a number of miles (longitude scaled by latitude). */
+function padBox(box: BBox, miles: number): BBox {
+  const latPad = miles / MILES_PER_DEGREE_LAT;
+  const midLat = (box.south + box.north) / 2;
+  const lngPad =
+    miles /
+    (MILES_PER_DEGREE_LAT * Math.max(0.01, Math.cos((midLat * Math.PI) / 180)));
+  return {
+    south: box.south - latPad,
+    north: box.north + latPad,
+    west: box.west - lngPad,
+    east: box.east + lngPad,
+  };
+}
+
+/** Derive a corridor bbox from a trip's segments (endpoints + route polylines). */
+async function bboxFromTrip(tripId: string, padMiles: number): Promise<BBox> {
+  const [trip] = await db
+    .select({ id: trips.id })
+    .from(trips)
+    .where(eq(trips.id, tripId))
+    .limit(1);
+  if (!trip) {
+    throw new Error(`Trip ${tripId} not found.`);
+  }
+
+  const segments = await db
+    .select({
+      originLat: tripSegments.originLat,
+      originLng: tripSegments.originLng,
+      destinationLat: tripSegments.destinationLat,
+      destinationLng: tripSegments.destinationLng,
+      routePolyline: tripSegments.routePolyline,
+    })
+    .from(tripSegments)
+    .where(eq(tripSegments.tripId, tripId));
+
+  let box: BBox | null = null;
+  let pointCount = 0;
+  const consider = (lat: string | null, lng: string | null) => {
+    if (lat == null || lng == null) return;
+    const latN = Number(lat);
+    const lngN = Number(lng);
+    if (!Number.isFinite(latN) || !Number.isFinite(lngN)) return;
+    box = extend(box, latN, lngN);
+    pointCount++;
+  };
+
+  for (const seg of segments) {
+    consider(seg.originLat, seg.originLng);
+    consider(seg.destinationLat, seg.destinationLng);
+    if (seg.routePolyline) {
+      for (const [lat, lng] of decodePolyline(seg.routePolyline)) {
+        box = extend(box, lat, lng);
+        pointCount++;
+      }
+    }
+  }
+
+  if (!box || pointCount === 0) {
+    throw new Error(
+      `Trip ${tripId} has no segment coordinates or route polylines to derive a corridor from. ` +
+        `Plan the route first, or pass --bbox explicitly.`,
+    );
+  }
+
+  console.log(
+    `  Derived corridor from ${segments.length} segment(s), ${pointCount} point(s), padded ${padMiles}mi.`,
+  );
+  return padBox(box, padMiles);
+}
+
+function parseBboxFlag(value: string): BBox {
+  const parts = value.split(",").map((s) => Number(s.trim()));
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+    throw new Error(`--bbox must be "south,west,north,east", got "${value}"`);
+  }
+  const [south, west, north, east] = parts as [number, number, number, number];
+  return { south, west, north, east };
+}
+
+function bboxToOverpass(box: BBox): string {
+  // Overpass bbox order is (south,west,north,east).
+  return `${box.south},${box.west},${box.north},${box.east}`;
+}
 
 function getName(el: OsmElement, category: string): string {
   const tags = el.tags ?? {};
-  return (
-    tags.name ?? tags.brand ?? tags.operator ?? `${category} (OSM ${el.id})`
-  );
+  return tags.name ?? tags.brand ?? tags.operator ?? `${category} (OSM ${el.id})`;
 }
 
 async function fetchCategory(
   category: string,
-  overpassQuery: string,
-): Promise<
-  Array<{
-    source: string;
-    externalId: string;
-    name: string;
-    category: string;
-    lat: string;
-    lng: string;
-    data: unknown;
-  }>
-> {
-  const query = `[out:json][timeout:90];${overpassQuery}out center;`;
+  bboxStr: string,
+  source: string,
+): Promise<PoiRow[]> {
+  const selector = CATEGORY_SELECTORS[category];
+  if (!selector) {
+    console.error(`  Unknown category "${category}", skipping.`);
+    return [];
+  }
+  const query = `[out:json][timeout:90];${selector(bboxStr)}out center;`;
 
   console.log(`  Fetching ${category}...`);
-  const body = new URLSearchParams({ data: query });
   const res = await fetch(OVERPASS_URL, {
     method: "POST",
     headers: { "User-Agent": "Sortey/1.0 (trip-planner)" },
-    body,
+    body: new URLSearchParams({ data: query }),
   });
 
   if (!res.ok) {
@@ -128,17 +277,16 @@ async function fetchCategory(
     return [];
   }
 
-  const data = (await res.json()) as { elements: OsmElement[] };
+  const data = (await res.json()) as { elements?: OsmElement[] };
   const elements = data.elements ?? [];
 
-  const rows = [];
+  const rows: PoiRow[] = [];
   for (const el of elements) {
     const lat = el.lat ?? el.center?.lat;
     const lon = el.lon ?? el.center?.lon;
-    if (!lat || !lon) continue;
-
+    if (lat == null || lon == null) continue;
     rows.push({
-      source: SOURCE,
+      source,
       externalId: `${el.type}/${el.id}`,
       name: getName(el, category),
       category,
@@ -148,37 +296,43 @@ async function fetchCategory(
     });
   }
 
-  console.log(
-    `  ${category}: ${elements.length} elements → ${rows.length} valid`,
-  );
+  console.log(`  ${category}: ${elements.length} elements → ${rows.length} valid`);
   return rows;
 }
 
 async function main() {
-  console.log("POI Import: OpenStreetMap Overpass API");
-  console.log(
-    `  Bounding box: ${SOUTH},${WEST} → ${NORTH},${EAST} (Seattle→Des Moines corridor)\n`,
-  );
+  const args = parseArgs(process.argv.slice(2));
+  const source = typeof args.source === "string" ? args.source : "osm";
+  const padMiles = typeof args.pad === "string" ? Number(args.pad) : 30;
 
-  const allRows: Array<{
-    source: string;
-    externalId: string;
-    name: string;
-    category: string;
-    lat: string;
-    lng: string;
-    data: unknown;
-  }> = [];
+  let box: BBox;
+  if (typeof args.trip === "string") {
+    box = await bboxFromTrip(args.trip, padMiles);
+  } else if (typeof args.bbox === "string") {
+    box = parseBboxFlag(args.bbox);
+  } else {
+    box = DEFAULT_BBOX;
+  }
 
-  for (const { category, query } of QUERIES) {
-    const rows = await fetchCategory(category, query);
+  const categories =
+    typeof args.categories === "string"
+      ? args.categories.split(",").map((c) => c.trim())
+      : Object.keys(CATEGORY_SELECTORS);
+
+  const bboxStr = bboxToOverpass(box);
+  console.log("Corridor POI Import: OpenStreetMap Overpass API");
+  console.log(`  Bounding box (S,W,N,E): ${bboxStr}`);
+  console.log(`  Categories: ${categories.join(", ")}\n`);
+
+  const allRows: PoiRow[] = [];
+  for (const category of categories) {
+    const rows = await fetchCategory(category, bboxStr, source);
     allRows.push(...rows);
-    // Overpass rate limit: 2 req/sec
+    // Overpass rate limit: ~2 req/sec.
     await new Promise((r) => setTimeout(r, 1500));
   }
 
   console.log(`\nTotal POIs to import: ${allRows.length}\n`);
-
   if (allRows.length === 0) {
     console.log("Nothing to import.");
     process.exit(0);
@@ -186,18 +340,15 @@ async function main() {
 
   let processed = 0;
   const totalBatches = Math.ceil(allRows.length / BATCH_SIZE);
-
   for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
     const batch = allRows.slice(i, i + BATCH_SIZE);
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-
     await db
       .insert(importedPois)
       .values(batch)
       .onConflictDoNothing({
         target: [importedPois.source, importedPois.externalId],
       });
-
     processed += batch.length;
     console.log(
       `  Batch ${batchNum}/${totalBatches}: ${batch.length} rows (${processed}/${allRows.length})`,
@@ -207,7 +358,6 @@ async function main() {
   console.log(`\nImport complete!`);
   console.log(`  Total fetched: ${allRows.length}`);
   console.log(`  Duplicates silently skipped via ON CONFLICT DO NOTHING`);
-
   process.exit(0);
 }
 
