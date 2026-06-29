@@ -35,7 +35,14 @@ import { db } from "../src/client";
 import { importedPois, tripSegments, trips } from "../src/schema";
 
 const BATCH_SIZE = 500;
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+// Overpass mirrors, tried in order. The public de instance frequently returns
+// 504 on large boxes, so we fail over to community mirrors before giving up.
+const OVERPASS_MIRRORS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+const MAX_ATTEMPTS_PER_CATEGORY = 4;
 const MILES_PER_DEGREE_LAT = 69;
 
 // Default bounding box: Seattle → Des Moines (with padding for the I-90 corridor).
@@ -248,7 +255,9 @@ function bboxToOverpass(box: BBox): string {
 
 function getName(el: OsmElement, category: string): string {
   const tags = el.tags ?? {};
-  return tags.name ?? tags.brand ?? tags.operator ?? `${category} (OSM ${el.id})`;
+  return (
+    tags.name ?? tags.brand ?? tags.operator ?? `${category} (OSM ${el.id})`
+  );
 }
 
 async function fetchCategory(
@@ -264,21 +273,40 @@ async function fetchCategory(
   const query = `[out:json][timeout:90];${selector(bboxStr)}out center;`;
 
   console.log(`  Fetching ${category}...`);
-  const res = await fetch(OVERPASS_URL, {
-    method: "POST",
-    headers: { "User-Agent": "Sortey/1.0 (trip-planner)" },
-    body: new URLSearchParams({ data: query }),
-  });
 
-  if (!res.ok) {
+  // Retry across mirrors with backoff — public Overpass 504s on big boxes.
+  let elements: OsmElement[] | null = null;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_CATEGORY; attempt++) {
+    const url = OVERPASS_MIRRORS[attempt % OVERPASS_MIRRORS.length]!;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "User-Agent": "Sortey/1.0 (trip-planner)" },
+        body: new URLSearchParams({ data: query }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { elements?: OsmElement[] };
+        elements = data.elements ?? [];
+        break;
+      }
+      console.error(
+        `  ${category}: ${res.status} ${res.statusText} from ${new URL(url).host} (attempt ${attempt + 1})`,
+      );
+    } catch (err) {
+      console.error(
+        `  ${category}: ${(err as Error).message} from ${new URL(url).host} (attempt ${attempt + 1})`,
+      );
+    }
+    // Backoff before the next mirror/attempt.
+    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+  }
+
+  if (elements == null) {
     console.error(
-      `  Failed to fetch ${category}: ${res.status} ${res.statusText}`,
+      `  Gave up on ${category} after ${MAX_ATTEMPTS_PER_CATEGORY} attempts.`,
     );
     return [];
   }
-
-  const data = (await res.json()) as { elements?: OsmElement[] };
-  const elements = data.elements ?? [];
 
   const rows: PoiRow[] = [];
   for (const el of elements) {
@@ -296,7 +324,9 @@ async function fetchCategory(
     });
   }
 
-  console.log(`  ${category}: ${elements.length} elements → ${rows.length} valid`);
+  console.log(
+    `  ${category}: ${elements.length} elements → ${rows.length} valid`,
+  );
   return rows;
 }
 

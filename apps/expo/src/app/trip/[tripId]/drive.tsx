@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { FerryDriveCard } from "~/components/trip/ferry-drive-card";
+import { RouteAheadCard } from "~/components/trip/route-ahead-card";
 import { VanStatusCard } from "~/components/trip/van-status-card";
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
@@ -312,6 +313,10 @@ export default function DriveScreen() {
             </View>
           )}
         </BlockShell>
+
+        {/* 2b — ROUTE AHEAD (route gradient + predicted zones; renders nothing
+            without a planned route) */}
+        <RouteAheadCard tripId={tripId ?? ""} workspaceId={workspaceId} />
 
         {/* 3 — NEXT FERRY (read-only; renders nothing when no upcoming ferry) */}
         <FerryDriveCard tripId={tripId ?? ""} workspaceId={workspaceId} />
