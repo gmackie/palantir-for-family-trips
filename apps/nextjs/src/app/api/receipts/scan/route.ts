@@ -83,7 +83,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await request.formData();
+  // Cast around the @types/node web-globals vs `dom` lib FormData conflict
+  // (the global FormData type resolves without `.get`; it exists at runtime).
+  const formData = (await request.formData()) as unknown as {
+    get(name: string): File | string | null;
+  };
   const file = formData.get("file");
 
   if (!(file instanceof File)) {

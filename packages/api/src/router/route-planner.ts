@@ -479,11 +479,12 @@ export const routePlannerRouter = {
         const { legs: gatedSegments, totalNonDrivableMinutes } =
           await gateSegmentsWithFerries(ctx.db, ctx.tripId, created);
 
+        // Lean return: clients re-fetch segments via listSegments. Returning
+        // the full FerryGatedLeg[] here bloated tRPC RouterOutputs past TS's
+        // inference ceiling (collapsing app-wide types to `any`).
         return {
           totalMiles,
           totalMinutes,
-          fullPolyline,
-          segments: gatedSegments,
           segmentCount: gatedSegments.length,
           ferryNonDrivableMinutes: totalNonDrivableMinutes,
         };
@@ -524,8 +525,6 @@ export const routePlannerRouter = {
       return {
         totalMiles,
         totalMinutes,
-        fullPolyline,
-        segments: gatedSingle,
         segmentCount: gatedSingle.length,
         ferryNonDrivableMinutes: totalNonDrivableMinutes,
       };
