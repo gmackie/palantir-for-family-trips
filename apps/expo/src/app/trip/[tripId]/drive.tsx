@@ -131,6 +131,18 @@ export default function DriveScreen() {
       params: { tripId: tripId ?? "" },
     });
 
+  const goLogStop = () =>
+    router.push({
+      pathname: "/trip/[tripId]/log-stop" as any,
+      params: { tripId: tripId ?? "" },
+    });
+
+  const goJourneyLog = () =>
+    router.push({
+      pathname: "/trip/[tripId]/journey-log" as any,
+      params: { tripId: tripId ?? "" },
+    });
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
@@ -144,6 +156,50 @@ export default function DriveScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}
       >
+        {/* LOG A STOP — capture where you are right now */}
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Pressable
+            onPress={goLogStop}
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: C.success,
+              backgroundColor: C.successBg,
+              borderRadius: R.md,
+              paddingVertical: 14,
+              minHeight: 48,
+            }}
+          >
+            <Ionicons name="location" size={18} color={C.success} />
+            <Text style={{ color: C.success, fontSize: 15, fontWeight: "700" }}>
+              Log a stop
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={goJourneyLog}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: C.border,
+              borderRadius: R.md,
+              paddingHorizontal: 16,
+              minHeight: 48,
+            }}
+          >
+            <Ionicons name="list-outline" size={18} color={C.info} />
+            <Text style={{ color: C.info, fontSize: 15, fontWeight: "600" }}>
+              Log
+            </Text>
+          </Pressable>
+        </View>
+
         {isError && (
           <View
             style={{
