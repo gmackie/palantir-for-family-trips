@@ -320,6 +320,8 @@ export default async function TripDashboardPage(props: {
             </h2>
             <div className="space-y-2">
               {[
+                { href: `/trips/${tripId}/journey`, label: "Journey Log" },
+                { href: `/trips/${tripId}/road-trip`, label: "Road Trip" },
                 { href: `/trips/${tripId}/plan`, label: "Planning" },
                 { href: `/trips/${tripId}/itinerary`, label: "Itinerary" },
                 {
