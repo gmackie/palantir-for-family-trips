@@ -6,7 +6,15 @@
     "paths": {
       "~/*": ["./src/*"]
     },
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    // Restrict ambient type packages to what this app actually uses.
+    // Without this, TS auto-includes every package under node_modules
+    // that ships its own types (e.g. react-native, hoisted here as a
+    // dependency of apps/expo). react-native's global .d.ts redeclares
+    // FormData/Request/Response/etc. with incompatible signatures,
+    // which silently strips methods like FormData.get() from the
+    // merged global type and breaks route handlers using request.formData().
+    "types": ["node", "google.maps"]
   },
   "include": [
     ".",
