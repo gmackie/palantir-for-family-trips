@@ -6,6 +6,7 @@ import { expensesRouter } from "./router/expenses";
 import { ferriesRouter } from "./router/ferries";
 import { fuelLogsRouter } from "./router/fuel-logs";
 import { itineraryRouter } from "./router/itinerary";
+import { journeyRouter } from "./router/journey";
 import { locationRouter } from "./router/location";
 import { lodgingRouter } from "./router/lodging";
 import { notificationsRouter } from "./router/notifications";
@@ -31,6 +32,7 @@ export const appRouter = createTRPCRouter({
   ferries: ferriesRouter,
   fuelLogs: fuelLogsRouter,
   itinerary: itineraryRouter,
+  journey: journeyRouter,
   location: locationRouter,
   lodging: lodgingRouter,
   notifications: notificationsRouter,
