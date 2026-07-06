@@ -20,6 +20,7 @@ import { roomsRouter } from "./router/rooms";
 import { routePlannerRouter } from "./router/route-planner";
 import { settingsRouter } from "./router/settings";
 import { settlementsRouter } from "./router/settlements";
+import { shareRouter } from "./router/share";
 import { tripsRouter } from "./router/trips";
 import { vanProfilesRouter } from "./router/van-profiles";
 import { vanTelemetryRouter } from "./router/van-telemetry";
@@ -48,6 +49,7 @@ export const appRouter = createTRPCRouter({
   routePlanner: routePlannerRouter,
   settings: settingsRouter,
   settlements: settlementsRouter,
+  share: shareRouter,
   trips: tripsRouter,
   vanProfiles: vanProfilesRouter,
   vanTelemetry: vanTelemetryRouter,

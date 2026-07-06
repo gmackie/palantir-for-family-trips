@@ -6,6 +6,7 @@ import { requireTripsWorkspace } from "../../_lib/server";
 import { AnchorsCard } from "./_components/anchors-card";
 import { JourneyEditor } from "./_components/journey-editor";
 import { PoiUpload } from "./_components/poi-upload";
+import { ShareCard } from "./_components/share-card";
 import { TrackRecorder } from "./_components/track-recorder";
 import { VanStateCard } from "./_components/van-state-card";
 
@@ -45,6 +46,8 @@ export default async function JourneyPage(props: {
       <TrackRecorder workspaceId={workspace.id} tripId={tripId} />
 
       <PoiUpload workspaceId={workspace.id} tripId={tripId} />
+
+      <ShareCard workspaceId={workspace.id} tripId={tripId} />
 
       <JourneyEditor workspaceId={workspace.id} tripId={tripId} />
     </div>

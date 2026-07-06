@@ -1394,6 +1394,25 @@ export const gpsTrackPoints = pgTable("gps_track_point", (t) => ({
   recordedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
 }));
 
+// A shareable public link for a trip's journal/recap. The token is the
+// capability; when enabled, /share/<token> renders a read-only recap (traveled
+// route, stops, states, driven miles) with NO private data — no expenses, no
+// member PII, and no workspace-scoped iOverlander POIs (non-redistributable).
+export const tripShares = pgTable("trip_share", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .unique()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  token: t.varchar({ length: 64 }).notNull().unique(),
+  enabled: t.boolean().notNull().default(true),
+  createdAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}));
+
 // Fixed commitments on a trip — a place you must be on a date (a conference,
 // campground reservation, family visit, a booked hotel). Anchors constrain the
 // day-map: the briefing counts down to the next one and flags when you're too
