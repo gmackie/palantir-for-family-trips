@@ -33,6 +33,7 @@ const USEFUL_CATEGORIES = [
   "grocery",
   "trailhead",
   "scenic",
+  "wild_camping",
   "campsite",
   "fuel",
   "rest_area",

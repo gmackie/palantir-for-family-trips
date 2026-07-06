@@ -113,7 +113,8 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
   const work = pickPoi(input.pois, workCats);
   const food = pickPoi(input.pois, ["restaurant", "grocery"]);
   const experience = pickPoi(input.pois, ["trailhead", "scenic"]);
-  const camp = pickPoi(input.pois, ["campsite"]);
+  // Prefer free legal van spots (iOverlander wild camping) then campgrounds.
+  const camp = pickPoi(input.pois, ["wild_camping", "campsite"]);
   const fuel = pickPoi(input.pois, ["fuel"]);
 
   const urgent = input.serviceAlerts
