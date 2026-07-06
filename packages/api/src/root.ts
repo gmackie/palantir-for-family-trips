@@ -2,6 +2,7 @@ import { adminRouter } from "./router/admin";
 import { authRouter } from "./router/auth";
 import { chatRouter } from "./router/chat";
 import { corridorRouter } from "./router/corridor";
+import { daymapRouter } from "./router/daymap";
 import { expensesRouter } from "./router/expenses";
 import { ferriesRouter } from "./router/ferries";
 import { fuelLogsRouter } from "./router/fuel-logs";
@@ -28,6 +29,7 @@ export const appRouter = createTRPCRouter({
   auth: authRouter,
   chat: chatRouter,
   corridor: corridorRouter,
+  daymap: daymapRouter,
   expenses: expensesRouter,
   ferries: ferriesRouter,
   fuelLogs: fuelLogsRouter,
