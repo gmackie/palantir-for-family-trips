@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^10.53.1",
-    "@sentry/react-native": "^8.11.1",
+    "@sentry/react-native": "~7.11.0",
     "@sortey/config": "workspace:*"
   },
   "devDependencies": {

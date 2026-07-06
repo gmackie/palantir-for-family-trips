@@ -80,5 +80,24 @@
   "dependencies": {
     "@googlemaps/polyline-codec": "^1.0.28",
     "suncalc": "^1.9.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "19.2.3",
+      "react-dom": "19.2.3",
+      "react-native": "0.85.3",
+      "react-native-worklets": "0.8.3",
+      "react-native-reanimated": "4.3.1",
+      "@react-native/babel-plugin-codegen": "0.85.3",
+      "@react-native/babel-preset": "0.85.3",
+      "@react-native/codegen": "0.85.3",
+      "@react-native/js-polyfills": "0.85.3",
+      "@react-native/metro-babel-transformer": "0.85.3",
+      "@react-native/metro-config": "0.85.3",
+      "@react-native/assets-registry": "0.85.3",
+      "@react-native/normalize-colors": "0.85.3",
+      "@react-native/virtualized-lists": "0.85.3",
+      "@react-native/gradle-plugin": "0.85.3"
+    }
   }
 }

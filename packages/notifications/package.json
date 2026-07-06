@@ -19,9 +19,9 @@
   },
   "dependencies": {
     "@sortey/config": "workspace:*",
-    "expo-constants": "~56.0.14",
+    "expo-constants": "~56.0.19",
     "expo-device": "~55.0.17",
-    "expo-notifications": "~56.0.15"
+    "expo-notifications": "~56.0.19"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
