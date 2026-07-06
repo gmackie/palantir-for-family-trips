@@ -1,4 +1,4 @@
-import { and, eq, gte, lte } from "@sortey/db";
+import { and, eq, gte, isNull, lte, or } from "@sortey/db";
 import { importedPois, poiCache } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
@@ -31,6 +31,12 @@ export const corridorRouter = {
         lte(importedPois.lat, (input.centerLat + latDelta).toString()),
         gte(importedPois.lng, (input.centerLng - lngDelta).toString()),
         lte(importedPois.lng, (input.centerLng + lngDelta).toString()),
+        // Shared (OSM) POIs OR this workspace's private uploads (iOverlander) —
+        // never another workspace's non-redistributable data.
+        or(
+          isNull(importedPois.workspaceId),
+          eq(importedPois.workspaceId, input.workspaceId),
+        ),
       ];
 
       if (input.category) {

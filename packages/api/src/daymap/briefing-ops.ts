@@ -4,7 +4,7 @@
  * nearby POIs, and sunset — into a time-blocked day via `assembleBriefing`.
  */
 
-import { and, eq, gte, inArray, lte } from "@sortey/db";
+import { and, eq, gte, inArray, isNull, lte, or } from "@sortey/db";
 import { importedPois, tripSegments } from "@sortey/db/schema";
 import SunCalc from "suncalc";
 
@@ -57,7 +57,12 @@ function clock(d: Date, tz: string): string {
 // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
 export async function computeBriefing(
   db: any,
-  p: { tripId: string; date?: string; levels?: ServiceLevels },
+  p: {
+    tripId: string;
+    workspaceId?: string;
+    date?: string;
+    levels?: ServiceLevels;
+  },
 ): Promise<DayBriefing | null> {
   const date = p.date ?? today();
 
@@ -147,6 +152,12 @@ export async function computeBriefing(
         lte(importedPois.lat, (position.lat + NEARBY_DEGREES).toString()),
         gte(importedPois.lng, (position.lng - NEARBY_DEGREES).toString()),
         lte(importedPois.lng, (position.lng + NEARBY_DEGREES).toString()),
+        p.workspaceId
+          ? or(
+              isNull(importedPois.workspaceId),
+              eq(importedPois.workspaceId, p.workspaceId),
+            )
+          : isNull(importedPois.workspaceId),
       ),
     )
     .limit(2000)) as Array<{
@@ -172,6 +183,7 @@ export async function computeBriefing(
 
   const { alerts } = await computeServiceAlerts(db, {
     tripId: p.tripId,
+    workspaceId: p.workspaceId,
     levels: p.levels,
   });
 

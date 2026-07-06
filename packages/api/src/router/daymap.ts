@@ -35,6 +35,7 @@ export const daymapRouter = {
     .query(({ ctx, input }) =>
       computeBriefing(ctx.db, {
         tripId: ctx.tripId,
+        workspaceId: input.workspaceId,
         date: input.date,
         levels: input.levels,
       }),
@@ -64,6 +65,7 @@ export const daymapRouter = {
     .query(({ ctx, input }) =>
       computeServiceAlerts(ctx.db, {
         tripId: ctx.tripId,
+        workspaceId: input.workspaceId,
         levels: input.levels,
       }),
     ),

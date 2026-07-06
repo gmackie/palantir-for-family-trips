@@ -79,6 +79,16 @@ async function tripOwner(tripId: string): Promise<string> {
   return t.u;
 }
 
+async function tripWorkspace(tripId: string): Promise<string> {
+  const [t] = await db
+    .select({ w: trips.workspaceId })
+    .from(trips)
+    .where(eq(trips.id, tripId))
+    .limit(1);
+  if (!t) throw new Error(`Trip ${tripId} not found`);
+  return t.w;
+}
+
 /** Resolve a --place (geocode) or --lat/--lng into coords + a name. */
 async function resolvePoint(flags: Record<string, string>): Promise<{
   lat: number;
@@ -267,6 +277,7 @@ async function main() {
         typeof flags[k] === "string" ? Number(flags[k]) : undefined;
       const { position, alerts } = await computeServiceAlerts(db, {
         tripId,
+        workspaceId: await tripWorkspace(tripId),
         levels: {
           grey: num("grey"),
           black: num("black"),
@@ -298,6 +309,7 @@ async function main() {
         typeof flags[k] === "string" ? Number(flags[k]) : undefined;
       const b = await computeBriefing(db, {
         tripId,
+        workspaceId: await tripWorkspace(tripId),
         date: flags.date,
         levels: {
           grey: num("grey"),

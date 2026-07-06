@@ -1335,6 +1335,12 @@ export const importedPois = pgTable(
     lat: t.numeric().notNull(),
     lng: t.numeric().notNull(),
     data: t.jsonb(),
+    // NULL = globally shared (e.g. OSM). Set = a single workspace's private
+    // upload (e.g. iOverlander, which can't be redistributed) — queries must
+    // filter `workspaceId IS NULL OR workspaceId = :currentWorkspace`.
+    workspaceId: t
+      .uuid()
+      .references(() => workspace.id, { onDelete: "cascade" }),
     importedAt: t
       .timestamp({ mode: "date", withTimezone: true })
       .defaultNow()

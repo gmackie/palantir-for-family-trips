@@ -3,7 +3,7 @@
  * agents and the app compute identical alerts. Takes a Drizzle db + params.
  */
 
-import { and, eq, gte, inArray, lte } from "@sortey/db";
+import { and, eq, gte, inArray, isNull, lte, or } from "@sortey/db";
 import { importedPois, tripSegments } from "@sortey/db/schema";
 
 import {
@@ -36,7 +36,7 @@ export interface ServiceAlertsResult {
 // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
 export async function computeServiceAlerts(
   db: any,
-  p: { tripId: string; levels?: ServiceLevels },
+  p: { tripId: string; workspaceId?: string; levels?: ServiceLevels },
 ): Promise<ServiceAlertsResult> {
   const segments = (await db
     .select({
@@ -82,6 +82,12 @@ export async function computeServiceAlerts(
         lte(importedPois.lat, (position.lat + NEARBY_DEGREES).toString()),
         gte(importedPois.lng, (position.lng - NEARBY_DEGREES).toString()),
         lte(importedPois.lng, (position.lng + NEARBY_DEGREES).toString()),
+        p.workspaceId
+          ? or(
+              isNull(importedPois.workspaceId),
+              eq(importedPois.workspaceId, p.workspaceId),
+            )
+          : isNull(importedPois.workspaceId),
       ),
     )
     .limit(1000)) as Array<{

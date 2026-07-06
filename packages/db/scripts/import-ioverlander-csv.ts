@@ -101,6 +101,7 @@ interface PoiRow {
   lat: string;
   lng: string;
   data: unknown;
+  workspaceId: string | null;
 }
 
 function parseArgs(argv: string[]): Record<string, string | boolean> {
@@ -123,6 +124,10 @@ async function main() {
   const file = typeof args.file === "string" ? args.file : null;
   if (!file) throw new Error("--file <iOverlander.csv> is required");
   const dryRun = args["dry-run"] === true;
+  // Scope this upload to a workspace (iOverlander can't be redistributed, so a
+  // user's POIs stay private). Omit only for shared datasets.
+  const workspaceId = typeof args.workspace === "string" ? args.workspace : null;
+  const wsPrefix = workspaceId ? `${workspaceId}/` : "";
 
   const rows = parseCsv(readFileSync(file, "utf8"));
   if (rows.length < 2) throw new Error("CSV has no data rows");
@@ -152,8 +157,8 @@ async function main() {
     const name = (row[iName] ?? "").trim() || `${category} (iOverlander)`;
     const externalId =
       iId >= 0 && row[iId]
-        ? `iov/${row[iId]}`
-        : `iov/${lat},${lng}/${slug(name).slice(0, 40)}`;
+        ? `iov/${wsPrefix}${row[iId]}`
+        : `iov/${wsPrefix}${lat},${lng}/${slug(name).slice(0, 40)}`;
     out.push({
       source: SOURCE,
       externalId,
@@ -162,6 +167,7 @@ async function main() {
       lat: lat.toString(),
       lng: lng.toString(),
       data: { rawCategory: rawCat },
+      workspaceId,
     });
     catCounts[category] = (catCounts[category] ?? 0) + 1;
   }
