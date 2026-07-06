@@ -55,6 +55,8 @@ export interface SegmentLike {
   destinationLat: string | null;
   destinationLng: string | null;
   destinationName: string | null;
+  /** Present when the caller selects it — enables date-aware "current position". */
+  startDate?: string | null;
 }
 
 export interface Point {
@@ -81,6 +83,23 @@ export function resolvePrevPoint(segments: SegmentLike[]): Point | null {
     lng: Number(last.destinationLng),
     name: last.destinationName ?? "Previous stop",
   };
+}
+
+/**
+ * Where the traveler actually is *now*: the destination of the last segment
+ * whose `startDate` is on/before `today` (a traveled leg), ignoring future
+ * planned legs. Falls back to the last segment overall when no dates are known.
+ * Requires segments loaded with `startDate`.
+ */
+export function resolveCurrentPoint(
+  segments: SegmentLike[],
+  today: string,
+): Point | null {
+  const traveled = segments.filter(
+    (s) => s.startDate == null || s.startDate <= today,
+  );
+  const pool = traveled.length > 0 ? traveled : segments;
+  return resolvePrevPoint(pool);
 }
 
 /** Straight-line miles fallback when routing is unavailable. */

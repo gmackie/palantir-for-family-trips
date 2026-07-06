@@ -24,6 +24,7 @@ import { asc, eq } from "@sortey/db";
 import { db } from "@sortey/db/client";
 import { tripSegments, trips } from "@sortey/db/schema";
 
+import { computeServiceAlerts } from "../src/daymap/service-ops";
 import type { StopKind } from "../src/route-planner/journey-logic";
 import {
   deleteStopOp,
@@ -183,6 +184,37 @@ async function main() {
         lng: Number(requireFlag(flags, "lng")),
       });
       console.log(g ? JSON.stringify(g) : "No result");
+      break;
+    }
+
+    case "service-alerts": {
+      const tripId = requireFlag(flags, "trip");
+      const num = (k: string) =>
+        typeof flags[k] === "string" ? Number(flags[k]) : undefined;
+      const { position, alerts } = await computeServiceAlerts(db, {
+        tripId,
+        levels: {
+          grey: num("grey"),
+          black: num("black"),
+          fresh: num("fresh"),
+          propane: num("propane"),
+        },
+      });
+      console.log(
+        `Position: ${position?.name ?? "unknown"}${position ? ` (${position.lat.toFixed(3)}, ${position.lng.toFixed(3)})` : ""}`,
+      );
+      if (alerts.length === 0) {
+        console.log("No alerts (provide --grey/--black/--fresh/--propane %).");
+      }
+      for (const a of alerts) {
+        const when = a.daysUntil <= 0 ? "DUE NOW" : `in ~${a.daysUntil}d`;
+        const where = a.stop
+          ? `→ ${a.stop.name} (${a.stop.milesAway}mi)`
+          : "→ no service POI nearby";
+        console.log(
+          `  [${a.urgency.toUpperCase()}] ${a.label} ${a.levelPct}% · ${when}  ${where}`,
+        );
+      }
       break;
     }
 

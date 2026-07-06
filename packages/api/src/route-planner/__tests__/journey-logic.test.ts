@@ -5,6 +5,7 @@ import {
   kindToPinType,
   nextSortOrder,
   planHeal,
+  resolveCurrentPoint,
   resolvePrevPoint,
   type SegmentLike,
   STOP_KINDS,
@@ -76,6 +77,48 @@ describe("resolvePrevPoint", () => {
   });
   it("returns null when the last segment lacks coords", () => {
     expect(resolvePrevPoint([seg({ id: "a", sortOrder: 0 })])).toBeNull();
+  });
+});
+
+describe("resolveCurrentPoint", () => {
+  const segs = [
+    seg({
+      id: "a",
+      sortOrder: 0,
+      startDate: "2026-07-05",
+      destinationLat: "45.7",
+      destinationLng: "-121.0",
+      destinationName: "Avery Park",
+    }),
+    seg({
+      id: "b",
+      sortOrder: 1,
+      startDate: "2026-07-08",
+      destinationLat: "44.0",
+      destinationLng: "-121.3",
+      destinationName: "Bend (planned)",
+    }),
+    seg({
+      id: "c",
+      sortOrder: 2,
+      startDate: "2026-08-03",
+      destinationLat: "42.4",
+      destinationLng: "-83.5",
+      destinationName: "Plymouth (planned)",
+    }),
+  ];
+  it("returns the last TRAVELED stop, ignoring future planned legs", () => {
+    expect(resolveCurrentPoint(segs, "2026-07-06")?.name).toBe("Avery Park");
+  });
+  it("advances as planned dates become today/past", () => {
+    expect(resolveCurrentPoint(segs, "2026-07-09")?.name).toBe(
+      "Bend (planned)",
+    );
+  });
+  it("falls back to the last segment when no dates are traveled yet", () => {
+    expect(resolveCurrentPoint(segs, "2026-06-01")?.name).toBe(
+      "Plymouth (planned)",
+    );
   });
 });
 
