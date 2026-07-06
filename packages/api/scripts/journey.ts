@@ -23,7 +23,7 @@
 import { writeFileSync } from "node:fs";
 import { asc, eq } from "@sortey/db";
 import { db } from "@sortey/db/client";
-import { tripSegments, trips } from "@sortey/db/schema";
+import { pins, tripSegments, trips } from "@sortey/db/schema";
 
 import type { DayBriefing } from "../src/daymap/briefing";
 import { computeBriefing } from "../src/daymap/briefing-ops";
@@ -34,6 +34,7 @@ import {
   logStopOp,
   updateStopOp,
 } from "../src/route-planner/journey-ops";
+import { buildRecap, type TripRecap } from "../src/route-planner/recap";
 import { geocode, reverseGeocode } from "../src/route-planner/routing";
 
 function parseArgs(argv: string[]): {
@@ -145,6 +146,22 @@ function renderBriefing(b: DayBriefing): string {
   if (b.notes.length > 0) {
     L.push("", "## Notes");
     for (const n of b.notes) L.push(`- ${n}`);
+  }
+  return L.join("\n");
+}
+
+function renderRecap(r: TripRecap): string {
+  const L: string[] = [];
+  L.push(`# Trip Recap — ${r.from ?? "?"} → ${r.to ?? "?"}`, "");
+  L.push(
+    `**${r.dateStart} → ${r.dateEnd}** · ${r.days} days · ${r.totalMiles} mi · ${r.stopCount} stops`,
+  );
+  if (r.states.length > 0) L.push(`**States:** ${r.states.join(" → ")}`);
+  if (r.longestLeg)
+    L.push(`**Longest leg:** ${r.longestLeg.miles} mi → ${r.longestLeg.name}`);
+  if (r.camps.length > 0) {
+    L.push("", `## Camps (${r.campCount})`);
+    for (const c of r.camps) L.push(`- 🏕 ${c}`);
   }
   return L.join("\n");
 }
@@ -303,9 +320,40 @@ async function main() {
       break;
     }
 
+    case "recap": {
+      const tripId = requireFlag(flags, "trip");
+      const segRows = await db
+        .select({
+          name: tripSegments.name,
+          destinationName: tripSegments.destinationName,
+          distanceMiles: tripSegments.distanceMiles,
+          startDate: tripSegments.startDate,
+        })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, tripId));
+      const pinRows = await db
+        .select({
+          title: pins.title,
+          type: pins.type,
+          segmentDate: tripSegments.startDate,
+        })
+        .from(pins)
+        .innerJoin(tripSegments, eq(pins.segmentId, tripSegments.id))
+        .where(eq(pins.tripId, tripId));
+      const today = flags.date ?? new Date().toISOString().slice(0, 10);
+      const md = renderRecap(buildRecap(segRows, pinRows, today));
+      console.log(md);
+      if (flags.obsidian) {
+        const path = `${process.env.HOME}/obsidian/Captures/${today} - Trip Recap.md`;
+        writeFileSync(path, md);
+        console.log(`\n(written to ${path})`);
+      }
+      break;
+    }
+
     default:
       console.log(
-        "Commands: list | log | update | delete | geocode | reverse | service-alerts | briefing\n" +
+        "Commands: list | log | update | delete | geocode | reverse | service-alerts | briefing | recap\n" +
           "See the header of scripts/journey.ts for flags.",
       );
   }
