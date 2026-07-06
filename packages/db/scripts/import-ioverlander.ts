@@ -103,6 +103,19 @@ const CATEGORY_SELECTORS: Record<string, (b: string) => string> = {
   shower: (b) => `node["amenity"="shower"](${b});`,
   propane: (b) => `node["fuel:lpg"="yes"](${b});`,
   scenic: (b) => `node["tourism"="viewpoint"](${b});`,
+  // Work spots (Starlink-clear / wifi / power) — for the day-map work window.
+  cafe: (b) => `node["amenity"="cafe"](${b});`,
+  library: (b) => `node["amenity"="library"](${b});`,
+  coworking: (b) => `(
+    node["office"="coworking"](${b});
+    node["amenity"="coworking_space"](${b});
+  );`,
+  // Food + experiences — so the day-map pulls genuinely useful stops.
+  restaurant: (b) => `node["amenity"="restaurant"](${b});`,
+  trailhead: (b) => `(
+    node["highway"="trailhead"](${b});
+    node["information"="trailhead"](${b});
+  );`,
 };
 
 /** Parse `--flag value` pairs and `--flag` booleans from argv. */

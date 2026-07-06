@@ -20,10 +20,13 @@
  *   reverse --lat <n> --lng <n>
  */
 
+import { writeFileSync } from "node:fs";
 import { asc, eq } from "@sortey/db";
 import { db } from "@sortey/db/client";
 import { tripSegments, trips } from "@sortey/db/schema";
 
+import type { DayBriefing } from "../src/daymap/briefing";
+import { computeBriefing } from "../src/daymap/briefing-ops";
 import { computeServiceAlerts } from "../src/daymap/service-ops";
 import type { StopKind } from "../src/route-planner/journey-logic";
 import {
@@ -90,6 +93,56 @@ async function resolvePoint(flags: Record<string, string>): Promise<{
     return { lat: g.lat, lng: g.lng, name: flags.name ?? flags.place };
   }
   return null;
+}
+
+function renderBriefing(b: DayBriefing): string {
+  const L: string[] = [];
+  L.push(`# Sortey Day-Map — ${b.date}`, "");
+  L.push(`**Position:** ${b.positionName}`);
+  if (b.drive)
+    L.push(
+      `**Drive:** ${b.drive.fromName} → ${b.drive.toName} · ${b.drive.miles}mi ~${b.drive.hours}h`,
+    );
+  else L.push("**Drive:** parked day");
+  if (b.weather)
+    L.push(
+      `**Weather:** ${b.weather.label}, ${b.weather.highF}°/${b.weather.lowF}° · ${b.weather.precipProbability}% rain`,
+    );
+  L.push("", "## Schedule");
+  for (const s of b.schedule)
+    L.push(
+      `- **${s.part[0]!.toUpperCase()}${s.part.slice(1)}** — ${s.title}: ${s.detail}`,
+    );
+  L.push("", "## Pulled for today");
+  const p = b.pois;
+  if (p.work)
+    L.push(
+      `- 💼 Work: ${p.work.name} (${p.work.category}, ${p.work.milesAway}mi)`,
+    );
+  if (p.food) L.push(`- 🍽 Food: ${p.food.name} (${p.food.milesAway}mi)`);
+  if (p.experience)
+    L.push(
+      `- 🥾 Experience: ${p.experience.name} (${p.experience.milesAway}mi)`,
+    );
+  if (p.camp) L.push(`- 🏕 Camp: ${p.camp.name} (${p.camp.milesAway}mi)`);
+  if (p.fuel) L.push(`- ⛽ Fuel: ${p.fuel.name} (${p.fuel.milesAway}mi)`);
+  if (b.serviceAlerts.length > 0) {
+    L.push("", "## Service");
+    for (const a of b.serviceAlerts) {
+      const when = a.daysUntil <= 0 ? "DUE NOW" : `~${a.daysUntil}d`;
+      const where = a.stop
+        ? `→ ${a.stop.name} (${a.stop.milesAway}mi)`
+        : "→ no POI nearby";
+      L.push(
+        `- [${a.urgency.toUpperCase()}] ${a.label} ${a.levelPct}% · ${when} ${where}`,
+      );
+    }
+  }
+  if (b.notes.length > 0) {
+    L.push("", "## Notes");
+    for (const n of b.notes) L.push(`- ${n}`);
+  }
+  return L.join("\n");
 }
 
 async function main() {
@@ -218,9 +271,37 @@ async function main() {
       break;
     }
 
+    case "briefing": {
+      const tripId = requireFlag(flags, "trip");
+      const num = (k: string) =>
+        typeof flags[k] === "string" ? Number(flags[k]) : undefined;
+      const b = await computeBriefing(db, {
+        tripId,
+        date: flags.date,
+        levels: {
+          grey: num("grey"),
+          black: num("black"),
+          fresh: num("fresh"),
+          propane: num("propane"),
+        },
+      });
+      if (!b) {
+        console.log("No briefing (no current position).");
+        break;
+      }
+      const md = renderBriefing(b);
+      console.log(md);
+      if (flags.obsidian) {
+        const path = `${process.env.HOME}/obsidian/Captures/${b.date} - Sortey Day-Map.md`;
+        writeFileSync(path, md);
+        console.log(`\n(written to ${path})`);
+      }
+      break;
+    }
+
     default:
       console.log(
-        "Commands: list | log | update | delete | geocode | reverse\n" +
+        "Commands: list | log | update | delete | geocode | reverse | service-alerts | briefing\n" +
           "See the header of scripts/journey.ts for flags.",
       );
   }
