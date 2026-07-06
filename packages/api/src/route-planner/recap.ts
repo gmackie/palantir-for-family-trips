@@ -31,6 +31,8 @@ export interface TripRecap {
   campCount: number;
   camps: string[];
   longestLeg: { name: string; miles: number } | null;
+  /** Actual GPS-driven miles (from breadcrumbs), when a track exists. */
+  actualMiles: number | null;
   highlights: string[];
 }
 
@@ -53,6 +55,7 @@ export function buildRecap(
   segments: RecapSegment[],
   pins: RecapPin[],
   today: string,
+  track?: { actualMiles: number; points: number } | null,
 ): TripRecap {
   const traveled = segments
     .filter((s) => s.startDate != null && s.startDate <= today)
@@ -96,12 +99,16 @@ export function buildRecap(
     }
   }
 
+  const actualMiles =
+    track && track.points > 1 ? Math.round(track.actualMiles) : null;
+
   const highlights: string[] = [];
   if (states.length > 0)
     highlights.push(`${states.length} states: ${states.join(" → ")}`);
   if (camps.length > 0) highlights.push(`${camps.length} camps`);
   if (longestLeg)
     highlights.push(`longest leg ${longestLeg.miles} mi to ${longestLeg.name}`);
+  if (actualMiles != null) highlights.push(`${actualMiles} mi driven (GPS)`);
 
   return {
     from: traveled[0]?.name?.split(" → ")[0] ?? null,
@@ -115,6 +122,7 @@ export function buildRecap(
     campCount: camps.length,
     camps,
     longestLeg,
+    actualMiles,
     highlights,
   };
 }

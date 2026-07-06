@@ -41,6 +41,7 @@ import {
 } from "../src/route-planner/journey-ops";
 import { buildRecap, type TripRecap } from "../src/route-planner/recap";
 import { geocode, reverseGeocode } from "../src/route-planner/routing";
+import { getTrackStats } from "../src/route-planner/track-ops";
 
 function parseArgs(argv: string[]): {
   command: string;
@@ -190,6 +191,8 @@ function renderRecap(r: TripRecap): string {
   L.push(
     `**${r.dateStart} → ${r.dateEnd}** · ${r.days} days · ${r.totalMiles} mi · ${r.stopCount} stops`,
   );
+  if (r.actualMiles != null)
+    L.push(`**Driven (GPS):** ${r.actualMiles} mi`);
   if (r.states.length > 0) L.push(`**States:** ${r.states.join(" → ")}`);
   if (r.longestLeg)
     L.push(`**Longest leg:** ${r.longestLeg.miles} mi → ${r.longestLeg.name}`);
@@ -365,13 +368,28 @@ async function main() {
         .innerJoin(tripSegments, eq(pins.segmentId, tripSegments.id))
         .where(eq(pins.tripId, tripId));
       const today = flags.date ?? new Date().toISOString().slice(0, 10);
-      const md = renderRecap(buildRecap(segRows, pinRows, today));
+      const track = await getTrackStats(db, tripId);
+      const md = renderRecap(buildRecap(segRows, pinRows, today, track));
       console.log(md);
       if (flags.obsidian) {
         const path = `${process.env.HOME}/obsidian/Captures/${today} - Trip Recap.md`;
         writeFileSync(path, md);
         console.log(`\n(written to ${path})`);
       }
+      break;
+    }
+
+    case "track": {
+      const tripId = requireFlag(flags, "trip");
+      const stats = await getTrackStats(db, tripId, { since: flags.since });
+      if (stats.points === 0) {
+        console.log("No breadcrumbs logged yet.");
+        break;
+      }
+      console.log(
+        `Track: ${stats.points} points · ${stats.actualMiles} mi driven\n` +
+          `  ${stats.firstAt?.slice(0, 16)} → ${stats.lastAt?.slice(0, 16)}`,
+      );
       break;
     }
 
@@ -423,7 +441,7 @@ async function main() {
     default:
       console.log(
         "Commands: list | log | update | delete | geocode | reverse | " +
-          "service-alerts | briefing | recap | reading | vanstate\n" +
+          "service-alerts | briefing | recap | reading | vanstate | track\n" +
           "  reading  --trip <id> --resource grey|black|fresh|propane|fuel --level <0-100> [--note ...]\n" +
           "  vanstate --trip <id>\n" +
           "See the header of scripts/journey.ts for other flags.",

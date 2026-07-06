@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { requireTripsWorkspace } from "../../_lib/server";
 import { JourneyEditor } from "./_components/journey-editor";
 import { PoiUpload } from "./_components/poi-upload";
+import { TrackRecorder } from "./_components/track-recorder";
 import { VanStateCard } from "./_components/van-state-card";
 
 export default async function JourneyPage(props: {
@@ -37,6 +38,8 @@ export default async function JourneyPage(props: {
       </div>
 
       <VanStateCard workspaceId={workspace.id} tripId={tripId} />
+
+      <TrackRecorder workspaceId={workspace.id} tripId={tripId} />
 
       <PoiUpload workspaceId={workspace.id} tripId={tripId} />
 

@@ -4,6 +4,12 @@ import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import {
+  getTrackPath,
+  getTrackStats,
+  recordBreadcrumbs,
+} from "../route-planner/track-ops";
+import { downsamplePath } from "../route-planner/track";
 
 const tripScopedInput = z.object({
   workspaceId: z.string().min(1),
@@ -178,5 +184,57 @@ export const locationRouter = {
         displayName: r.displayName,
         colorHex: r.colorHex,
       }));
+    }),
+
+  /**
+   * Append GPS breadcrumbs (the append-only trail, distinct from live
+   * presence). Clients batch fixes while driving; we store the actual path so
+   * the recap can report *driven* miles and the map can draw the real route.
+   */
+  recordBreadcrumbs: tripProcedure()
+    .input(
+      tripScopedInput.extend({
+        segmentId: z.string().uuid().nullable().optional(),
+        points: z
+          .array(
+            z.object({
+              lat: z.number().min(-90).max(90),
+              lng: z.number().min(-180).max(180),
+              speed: z.number().nullable().optional(),
+              recordedAt: z.string().datetime().optional(),
+            }),
+          )
+          .min(1)
+          .max(1000),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      recordBreadcrumbs(ctx.db, {
+        tripId: ctx.tripId,
+        segmentId: input.segmentId,
+        points: input.points,
+      }),
+    ),
+
+  /** Actual-path stats: driven miles, bounds, time span. */
+  trackStats: tripProcedure()
+    .input(tripScopedInput.extend({ since: z.string().datetime().optional() }))
+    .query(({ ctx, input }) =>
+      getTrackStats(ctx.db, ctx.tripId, { since: input.since }),
+    ),
+
+  /** The ordered breadcrumb path, downsampled for map display. */
+  trackPath: tripProcedure()
+    .input(
+      tripScopedInput.extend({
+        since: z.string().datetime().optional(),
+        max: z.number().int().min(2).max(2000).default(500),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const path = await getTrackPath(ctx.db, ctx.tripId, {
+        since: input.since,
+      });
+      return downsamplePath(path, input.max);
     }),
 } satisfies TRPCRouterRecord;
