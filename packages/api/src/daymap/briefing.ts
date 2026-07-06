@@ -8,6 +8,7 @@
  * service gets a block, a big drive lands in the morning, camp before sunset.
  */
 
+import type { AnchorPacing } from "../route-planner/anchors";
 import type { AirQuality } from "../weather/air-quality";
 import type { ServiceAlert } from "./service";
 
@@ -57,6 +58,8 @@ export interface DayBriefing {
     fuel?: BriefingPoi;
   };
   serviceAlerts: ServiceAlert[];
+  /** The next fixed commitment (conference, reservation) + pacing, if any. */
+  anchor: AnchorPacing | null;
   notes: string[];
 }
 
@@ -94,6 +97,8 @@ export interface BriefingInput {
   /** Sunset clock time for the destination, e.g. "20:41", if known. */
   sunset?: string;
   airQuality?: AirQuality | null;
+  /** Next fixed commitment + pacing (from route-planner/anchors), if any. */
+  anchor?: AnchorPacing | null;
 }
 
 const WET = 50; // precip % above which we push work indoors
@@ -205,6 +210,27 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
   if (!input.drive)
     notes.push("Parked day — no drive; work/service/experience here.");
 
+  // ── Anchor: count down to the next fixed commitment, warn if behind pace ──
+  const anchor = input.anchor ?? null;
+  if (anchor) {
+    const a = anchor.anchor;
+    const when =
+      anchor.daysUntil <= 0
+        ? "today"
+        : anchor.daysUntil === 1
+          ? "tomorrow"
+          : `in ${anchor.daysUntil} days`;
+    const where = a.placeName ? ` at ${a.placeName}` : "";
+    const dist = anchor.milesAway != null ? ` · ${anchor.milesAway} mi away` : "";
+    if (anchor.behind) {
+      notes.push(
+        `⚠️ ${a.title} ${when}${where}${dist} — need ~${anchor.milesPerDay} mi/day to make it. Push on.`,
+      );
+    } else {
+      notes.push(`📌 ${a.title} ${when}${where}${dist}.`);
+    }
+  }
+
   return {
     date: input.date,
     positionName: input.positionName,
@@ -215,6 +241,7 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     schedule,
     pois: { work, food, experience, camp, fuel },
     serviceAlerts: urgent,
+    anchor,
     notes,
   };
 }

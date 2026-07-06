@@ -1394,6 +1394,32 @@ export const gpsTrackPoints = pgTable("gps_track_point", (t) => ({
   recordedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
 }));
 
+// Fixed commitments on a trip — a place you must be on a date (a conference,
+// campground reservation, family visit, a booked hotel). Anchors constrain the
+// day-map: the briefing counts down to the next one and flags when you're too
+// far to make it at your current pace. See route-planner/anchors.
+export const tripAnchors = pgTable("trip_anchor", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  title: t.varchar({ length: 300 }).notNull(),
+  kind: t.varchar({ length: 32 }).notNull().default("event"), // event/reservation/lodging/must_see
+  placeName: t.varchar({ length: 300 }),
+  lat: t.numeric(),
+  lng: t.numeric(),
+  startDate: t.date().notNull(), // YYYY-MM-DD
+  endDate: t.date(),
+  confirmationCode: t.varchar({ length: 100 }),
+  url: t.varchar({ length: 500 }),
+  note: t.varchar({ length: 1000 }),
+  createdAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}));
+
 // Historical resource-level readings (grey/black/fresh/propane/fuel), from
 // manual entry or DriftPort telemetry. The latest reading per resource is the
 // current level; the series feeds consumption-rate learning so predictive

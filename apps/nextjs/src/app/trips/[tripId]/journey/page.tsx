@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireTripsWorkspace } from "../../_lib/server";
+import { AnchorsCard } from "./_components/anchors-card";
 import { JourneyEditor } from "./_components/journey-editor";
 import { PoiUpload } from "./_components/poi-upload";
 import { TrackRecorder } from "./_components/track-recorder";
@@ -36,6 +37,8 @@ export default async function JourneyPage(props: {
           ← Road trip
         </Link>
       </div>
+
+      <AnchorsCard workspaceId={workspace.id} tripId={tripId} />
 
       <VanStateCard workspaceId={workspace.id} tripId={tripId} />
 

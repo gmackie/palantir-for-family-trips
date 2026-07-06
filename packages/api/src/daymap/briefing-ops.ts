@@ -8,6 +8,7 @@ import { and, eq, gte, inArray, isNull, lte, or } from "@sortey/db";
 import { importedPois, tripSegments } from "@sortey/db/schema";
 import SunCalc from "suncalc";
 
+import { computeNextAnchor } from "../route-planner/anchor-ops";
 import {
   resolveCurrentPoint,
   type SegmentLike,
@@ -187,6 +188,12 @@ export async function computeBriefing(
     levels: p.levels,
   });
 
+  const anchor = await computeNextAnchor(db, {
+    tripId: p.tripId,
+    from: position,
+    today: date,
+  });
+
   return assembleBriefing({
     date,
     positionName: position.name,
@@ -197,5 +204,6 @@ export async function computeBriefing(
     serviceAlerts: alerts,
     pois,
     sunset,
+    anchor,
   });
 }

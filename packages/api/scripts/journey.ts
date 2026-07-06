@@ -42,6 +42,11 @@ import {
 import { buildRecap, type TripRecap } from "../src/route-planner/recap";
 import { geocode, reverseGeocode } from "../src/route-planner/routing";
 import { getTrackStats } from "../src/route-planner/track-ops";
+import {
+  createAnchor,
+  deleteAnchor,
+  listAnchors,
+} from "../src/route-planner/anchor-ops";
 
 function parseArgs(argv: string[]): {
   command: string;
@@ -148,6 +153,13 @@ function renderBriefing(b: DayBriefing): string {
     L.push(
       `**Air:** ${b.airQuality.category} (AQI ${b.airQuality.usAqi}, PM2.5 ${b.airQuality.pm25})`,
     );
+  if (b.anchor) {
+    const a = b.anchor;
+    const when = a.daysUntil <= 0 ? "today" : `in ${a.daysUntil}d`;
+    const dist = a.milesAway != null ? ` · ${a.milesAway}mi` : "";
+    const pace = a.behind ? ` ⚠️ need ~${a.milesPerDay}mi/day` : "";
+    L.push(`**Next anchor:** ${a.anchor.title} ${when}${dist}${pace}`);
+  }
   L.push("", "## Schedule");
   for (const s of b.schedule)
     L.push(
@@ -393,6 +405,43 @@ async function main() {
       break;
     }
 
+    case "anchor": {
+      const tripId = requireFlag(flags, "trip");
+      const sub = positional[0] ?? "list";
+      if (sub === "add") {
+        const point = await resolvePoint(flags); // optional --place / --lat/--lng
+        const { id } = await createAnchor(db, {
+          tripId,
+          title: requireFlag(flags, "title"),
+          kind: flags.kind,
+          placeName: point?.name ?? flags.place ?? null,
+          lat: point?.lat ?? null,
+          lng: point?.lng ?? null,
+          startDate: requireFlag(flags, "date"),
+          endDate: flags.end ?? null,
+          confirmationCode: flags.code ?? null,
+          url: flags.url ?? null,
+          note: flags.note ?? null,
+        });
+        console.log(`Added anchor ${id}: ${flags.title} on ${flags.date}.`);
+      } else if (sub === "delete") {
+        await deleteAnchor(db, requireFlag(flags, "anchor"));
+        console.log("Deleted anchor.");
+      } else {
+        const rows = await listAnchors(db, tripId);
+        if (rows.length === 0) {
+          console.log("No anchors (use `anchor add --title ... --date ...`).");
+          break;
+        }
+        for (const a of rows) {
+          const range = a.endDate ? `${a.startDate}–${a.endDate}` : a.startDate;
+          const where = a.placeName ? ` @ ${a.placeName}` : "";
+          console.log(`  ${range}  ${a.title}${where}  [${a.kind}]  ${a.id}`);
+        }
+      }
+      break;
+    }
+
     case "reading": {
       const tripId = requireFlag(flags, "trip");
       const resource = requireFlag(flags, "resource");
@@ -441,7 +490,9 @@ async function main() {
     default:
       console.log(
         "Commands: list | log | update | delete | geocode | reverse | " +
-          "service-alerts | briefing | recap | reading | vanstate | track\n" +
+          "service-alerts | briefing | recap | reading | vanstate | track | anchor\n" +
+          "  anchor add --trip <id> --title \"Open Sauce\" --date YYYY-MM-DD [--place \"...\"] [--end YYYY-MM-DD] [--kind event]\n" +
+          "  anchor list --trip <id>\n" +
           "  reading  --trip <id> --resource grey|black|fresh|propane|fuel --level <0-100> [--note ...]\n" +
           "  vanstate --trip <id>\n" +
           "See the header of scripts/journey.ts for other flags.",
