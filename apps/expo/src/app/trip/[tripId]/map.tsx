@@ -380,6 +380,15 @@ export default function MapScreen() {
     activePoiCategories.has(p.category),
   );
 
+  // Actual driven path from GPS breadcrumbs (distinct from the planned route).
+  const { data: trackPath } = useQuery(
+    trpc.location.trackPath.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+      max: 1000,
+    }),
+  );
+
   const {
     isSharing,
     startSharing,
@@ -456,6 +465,11 @@ export default function MapScreen() {
       coordinates: decodePolyline(s.routePolyline!),
       color: PALETTE[i % PALETTE.length]!,
     }));
+
+  const trackCoordinates = (trackPath ?? []).map((p) => ({
+    latitude: p.lat,
+    longitude: p.lng,
+  }));
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -586,7 +600,7 @@ export default function MapScreen() {
         customMapStyle={darkMapStyle}
         onRegionChangeComplete={handleRegionChange}
       >
-        {/* Route polylines */}
+        {/* Route polylines (planned) */}
         {segmentPolylines.map((poly) => (
           <Polyline
             key={`route-${poly.id}`}
@@ -595,6 +609,15 @@ export default function MapScreen() {
             strokeWidth={3}
           />
         ))}
+
+        {/* Actual driven path from GPS breadcrumbs — amber, drawn on top */}
+        {trackCoordinates.length >= 2 && (
+          <Polyline
+            coordinates={trackCoordinates}
+            strokeColor={C.warning}
+            strokeWidth={4}
+          />
+        )}
 
         {/* Segment destination markers */}
         {(segments ?? [])
