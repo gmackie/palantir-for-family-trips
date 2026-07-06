@@ -8,6 +8,7 @@
  * service gets a block, a big drive lands in the morning, camp before sunset.
  */
 
+import type { AirQuality } from "../weather/air-quality";
 import type { ServiceAlert } from "./service";
 
 export interface BriefingPoi {
@@ -45,6 +46,7 @@ export interface DayBriefing {
   drive: DrivePlan | null;
   stopName: string | null;
   weather: WeatherBrief | null;
+  airQuality: AirQuality | null;
   schedule: ScheduleBlock[];
   /** The useful POIs pulled for today, one per role. */
   pois: {
@@ -91,15 +93,21 @@ export interface BriefingInput {
   pois: BriefingPoi[];
   /** Sunset clock time for the destination, e.g. "20:41", if known. */
   sunset?: string;
+  airQuality?: AirQuality | null;
 }
 
 const WET = 50; // precip % above which we push work indoors
 
 export function assembleBriefing(input: BriefingInput): DayBriefing {
   const rainy = (input.weather?.precipProbability ?? 0) >= WET;
+  const smoky =
+    input.airQuality?.concern === "unhealthy" ||
+    input.airQuality?.concern === "hazardous";
+  // Rain OR smoke pushes work (and life) indoors.
+  const indoors = rainy || smoky;
 
-  // Pull the useful POIs (roles), rain steering the work spot indoors.
-  const workCats = rainy
+  // Pull the useful POIs (roles), weather/smoke steering the work spot indoors.
+  const workCats = indoors
     ? ["library", "cafe", "coworking"]
     : ["coworking", "cafe", "library", "scenic", "rest_area"];
   const work = pickPoi(input.pois, workCats);
@@ -122,11 +130,14 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
       title: `Drive → ${input.drive.toName}`,
       detail: `${input.drive.miles} mi · ~${input.drive.hours}h. Leave after pack-up to bank daylight.`,
     });
-  } else if (rainy && work) {
+  } else if (indoors && work) {
+    const why = smoky
+      ? `Smoke (AQI ${input.airQuality?.usAqi})`
+      : `Rain likely (${input.weather?.precipProbability}%)`;
     schedule.push({
       part: "morning",
       title: `Indoor work block — ${work.name}`,
-      detail: `Rain likely (${input.weather?.precipProbability}%); grab power + a table (${work.milesAway} mi).`,
+      detail: `${why}; grab power + a table (${work.milesAway} mi).`,
     });
   } else if (work) {
     schedule.push({
@@ -154,7 +165,7 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
   }
 
   // ── Afternoon: experience, or work if not done in the morning ──
-  if (experience && !rainy) {
+  if (experience && !indoors) {
     schedule.push({
       part: "afternoon",
       title: `Experience — ${experience.name}`,
@@ -180,6 +191,10 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     });
   }
 
+  if (smoky)
+    notes.push(
+      `⚠️ Air ${input.airQuality?.category} (AQI ${input.airQuality?.usAqi}, PM2.5 ${input.airQuality?.pm25}) — limit outdoor time; consider moving to cleaner air.`,
+    );
   if (rainy)
     notes.push(
       `Rain likely (${input.weather?.precipProbability}%) — indoor work, dry camp.`,
@@ -195,6 +210,7 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     drive: input.drive,
     stopName: input.stopName,
     weather: input.weather,
+    airQuality: input.airQuality ?? null,
     schedule,
     pois: { work, food, experience, camp, fuel },
     serviceAlerts: urgent,

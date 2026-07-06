@@ -108,6 +108,10 @@ function renderBriefing(b: DayBriefing): string {
     L.push(
       `**Weather:** ${b.weather.label}, ${b.weather.highF}°/${b.weather.lowF}° · ${b.weather.precipProbability}% rain`,
     );
+  if (b.airQuality)
+    L.push(
+      `**Air:** ${b.airQuality.category} (AQI ${b.airQuality.usAqi}, PM2.5 ${b.airQuality.pm25})`,
+    );
   L.push("", "## Schedule");
   for (const s of b.schedule)
     L.push(

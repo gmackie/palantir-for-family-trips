@@ -13,6 +13,7 @@ import {
   type SegmentLike,
 } from "../route-planner/journey-logic";
 import { haversineMiles } from "../trips/driving-summary";
+import { fetchAirQuality } from "../weather/air-quality";
 import { fetchDailyForecast } from "../weather/open-meteo";
 import {
   assembleBriefing,
@@ -126,6 +127,7 @@ export async function computeBriefing(
       .sunset,
     tz,
   );
+  const airQuality = await fetchAirQuality({ lat: focus.lat, lng: focus.lng });
 
   // Curated POIs near the current position.
   const rows = (await db
@@ -178,6 +180,7 @@ export async function computeBriefing(
     drive,
     stopName: drive?.toName ?? position.name,
     weather,
+    airQuality,
     serviceAlerts: alerts,
     pois,
     sunset,
