@@ -27,7 +27,12 @@ import { pins, tripSegments, trips } from "@sortey/db/schema";
 
 import type { DayBriefing } from "../src/daymap/briefing";
 import { computeBriefing } from "../src/daymap/briefing-ops";
-import { computeServiceAlerts } from "../src/daymap/service-ops";
+import { computeServiceAlerts, type ServiceLevels } from "../src/daymap/service-ops";
+import {
+  recordReading,
+  resolveVanState,
+  TRACKED_RESOURCES,
+} from "../src/daymap/vanstate-ops";
 import type { StopKind } from "../src/route-planner/journey-logic";
 import {
   deleteStopOp,
@@ -87,6 +92,25 @@ async function tripWorkspace(tripId: string): Promise<string> {
     .limit(1);
   if (!t) throw new Error(`Trip ${tripId} not found`);
   return t.w;
+}
+
+/**
+ * Build a levels object from --grey/--black/--fresh/--propane flags, or
+ * `undefined` when none are set — so service-alerts/briefing fall back to the
+ * trip's persisted VanState instead of an all-undefined override.
+ */
+function levelsFromFlags(
+  flags: Record<string, string>,
+): ServiceLevels | undefined {
+  const num = (k: string) =>
+    typeof flags[k] === "string" ? Number(flags[k]) : undefined;
+  const levels: ServiceLevels = {
+    grey: num("grey"),
+    black: num("black"),
+    fresh: num("fresh"),
+    propane: num("propane"),
+  };
+  return Object.values(levels).some((v) => v != null) ? levels : undefined;
 }
 
 /** Resolve a --place (geocode) or --lat/--lng into coords + a name. */
@@ -273,23 +297,18 @@ async function main() {
 
     case "service-alerts": {
       const tripId = requireFlag(flags, "trip");
-      const num = (k: string) =>
-        typeof flags[k] === "string" ? Number(flags[k]) : undefined;
       const { position, alerts } = await computeServiceAlerts(db, {
         tripId,
         workspaceId: await tripWorkspace(tripId),
-        levels: {
-          grey: num("grey"),
-          black: num("black"),
-          fresh: num("fresh"),
-          propane: num("propane"),
-        },
+        levels: levelsFromFlags(flags),
       });
       console.log(
         `Position: ${position?.name ?? "unknown"}${position ? ` (${position.lat.toFixed(3)}, ${position.lng.toFixed(3)})` : ""}`,
       );
       if (alerts.length === 0) {
-        console.log("No alerts (provide --grey/--black/--fresh/--propane %).");
+        console.log(
+          "No alerts (log readings with `reading`, or pass --grey/--black/--fresh/--propane %).",
+        );
       }
       for (const a of alerts) {
         const when = a.daysUntil <= 0 ? "DUE NOW" : `in ~${a.daysUntil}d`;
@@ -305,18 +324,11 @@ async function main() {
 
     case "briefing": {
       const tripId = requireFlag(flags, "trip");
-      const num = (k: string) =>
-        typeof flags[k] === "string" ? Number(flags[k]) : undefined;
       const b = await computeBriefing(db, {
         tripId,
         workspaceId: await tripWorkspace(tripId),
         date: flags.date,
-        levels: {
-          grey: num("grey"),
-          black: num("black"),
-          fresh: num("fresh"),
-          propane: num("propane"),
-        },
+        levels: levelsFromFlags(flags),
       });
       if (!b) {
         console.log("No briefing (no current position).");
@@ -363,10 +375,58 @@ async function main() {
       break;
     }
 
+    case "reading": {
+      const tripId = requireFlag(flags, "trip");
+      const resource = requireFlag(flags, "resource");
+      if (!TRACKED_RESOURCES.includes(resource)) {
+        throw new Error(
+          `--resource must be one of: ${TRACKED_RESOURCES.join(", ")}`,
+        );
+      }
+      const level = Number(requireFlag(flags, "level"));
+      if (!Number.isFinite(level) || level < 0 || level > 100) {
+        throw new Error("--level must be 0–100");
+      }
+      await recordReading(db, {
+        tripId,
+        resource,
+        levelPct: level,
+        note: flags.note,
+      });
+      console.log(`Logged ${resource} at ${level}%.`);
+      const state = await resolveVanState(db, tripId);
+      if (state) {
+        console.log(
+          `Learned rate ${resource}: ~${state.rates[resource]}%/day.`,
+        );
+      }
+      break;
+    }
+
+    case "vanstate": {
+      const tripId = requireFlag(flags, "trip");
+      const state = await resolveVanState(db, tripId);
+      if (!state) {
+        console.log("No readings logged yet (use `reading`).");
+        break;
+      }
+      console.log("VanState (latest level · learned rate):");
+      for (const [resource, level] of Object.entries(state.levels)) {
+        const updated = state.updatedAt[resource]?.slice(0, 10) ?? "";
+        console.log(
+          `  ${resource}: ${level}% · ~${state.rates[resource]}%/day  (as of ${updated})`,
+        );
+      }
+      break;
+    }
+
     default:
       console.log(
-        "Commands: list | log | update | delete | geocode | reverse | service-alerts | briefing | recap\n" +
-          "See the header of scripts/journey.ts for flags.",
+        "Commands: list | log | update | delete | geocode | reverse | " +
+          "service-alerts | briefing | recap | reading | vanstate\n" +
+          "  reading  --trip <id> --resource grey|black|fresh|propane|fuel --level <0-100> [--note ...]\n" +
+          "  vanstate --trip <id>\n" +
+          "See the header of scripts/journey.ts for other flags.",
       );
   }
   process.exit(0);

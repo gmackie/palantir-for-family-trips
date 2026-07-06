@@ -11,12 +11,15 @@ import {
   type SegmentLike,
 } from "../route-planner/journey-logic";
 import {
+  DEFAULT_RATES_PCT_PER_DAY,
+  DEFAULT_RESOURCE_MODELS,
   matchServiceStops,
   predictServiceNeeds,
   type ResourceLevel,
   type ServiceAlert,
   type ServicePoi,
 } from "./service";
+import { resolveVanState } from "./vanstate-ops";
 
 const SERVICE_CATEGORIES = ["dump_station", "water", "propane"];
 const NEARBY_DEGREES = 1.5; // ~100mi box around current position
@@ -55,7 +58,14 @@ export async function computeServiceAlerts(
 
   const today = new Date().toISOString().slice(0, 10);
   const position = resolveCurrentPoint(segments, today);
-  const levels: ResourceLevel[] = Object.entries(p.levels ?? {})
+
+  // Levels + rates: explicit `levels` win (e.g. a what-if); otherwise use the
+  // trip's persisted VanState — latest reading per resource + rates learned
+  // from this van's real history (falls back to defaults when history is thin).
+  const vanState = p.levels ? null : await resolveVanState(db, p.tripId);
+  const levelsObj = p.levels ?? vanState?.levels ?? {};
+  const rates = vanState?.rates ?? DEFAULT_RATES_PCT_PER_DAY;
+  const levels: ResourceLevel[] = Object.entries(levelsObj)
     .filter(([, v]) => v != null)
     .map(([resource, levelPct]) => ({
       resource,
@@ -108,6 +118,6 @@ export async function computeServiceAlerts(
       lng: Number(r.lng),
     }));
 
-  const needs = predictServiceNeeds(levels);
+  const needs = predictServiceNeeds(levels, DEFAULT_RESOURCE_MODELS, rates);
   return { position, alerts: matchServiceStops(needs, pois, position) };
 }

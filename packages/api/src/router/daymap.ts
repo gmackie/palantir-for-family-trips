@@ -4,6 +4,11 @@ import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
 import { computeBriefing } from "../daymap/briefing-ops";
 import { computeServiceAlerts } from "../daymap/service-ops";
+import {
+  recordReading,
+  resolveVanState,
+  TRACKED_RESOURCES,
+} from "../daymap/vanstate-ops";
 
 const levelsInput = z
   .object({
@@ -67,6 +72,45 @@ export const daymapRouter = {
         tripId: ctx.tripId,
         workspaceId: input.workspaceId,
         levels: input.levels,
+      }),
+    ),
+
+  /**
+   * The trip's persisted VanState: latest level per resource + consumption
+   * rates learned from this van's reading history. Null when nothing's logged.
+   */
+  vanState: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(({ ctx }) => resolveVanState(ctx.db, ctx.tripId)),
+
+  /**
+   * Log a resource-level reading (0–100%). The latest reading per resource
+   * becomes the current level and the series teaches predictive service alerts
+   * this van's real drain/fill rate — so service alerts need no manual levels.
+   */
+  recordReading: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        resource: z.enum(TRACKED_RESOURCES as [string, ...string[]]),
+        levelPct: z.number().min(0).max(100),
+        source: z.enum(["manual", "driftport"]).default("manual"),
+        note: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      recordReading(ctx.db, {
+        tripId: ctx.tripId,
+        resource: input.resource,
+        levelPct: input.levelPct,
+        source: input.source,
+        note: input.note,
       }),
     ),
 } satisfies TRPCRouterRecord;

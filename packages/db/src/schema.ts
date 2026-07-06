@@ -1394,6 +1394,26 @@ export const gpsTrackPoints = pgTable("gps_track_point", (t) => ({
   recordedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
 }));
 
+// Historical resource-level readings (grey/black/fresh/propane/fuel), from
+// manual entry or DriftPort telemetry. The latest reading per resource is the
+// current level; the series feeds consumption-rate learning so predictive
+// service alerts use *this van's* real drain/fill behavior. See daymap/vanstate.
+export const vanStateReadings = pgTable("van_state_reading", (t) => ({
+  id: t.uuid().notNull().primaryKey().defaultRandom(),
+  tripId: t
+    .uuid()
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  resource: t.varchar({ length: 32 }).notNull(), // grey/black/fresh/propane/fuel
+  levelPct: t.numeric().notNull(), // 0–100
+  source: t.varchar({ length: 32 }).notNull().default("manual"), // manual/driftport
+  note: t.varchar({ length: 500 }),
+  recordedAt: t
+    .timestamp({ mode: "date", withTimezone: true })
+    .defaultNow()
+    .notNull(),
+}));
+
 export const memberLocations = pgTable(
   "member_location",
   (t) => ({

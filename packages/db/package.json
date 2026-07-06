@@ -12,7 +12,7 @@
       "default": "./src/client.ts"
     },
     "./schema": {
-      "types": "./dist/schema.d.ts",
+      "types": "./src/schema.ts",
       "default": "./src/schema.ts"
     },
     "./ioverlander": {
