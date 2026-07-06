@@ -14,6 +14,7 @@ import { VanStatusCard } from "~/components/trip/van-status-card";
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import { useBreadcrumbRecorder } from "~/utils/use-breadcrumb-recorder";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 // ---- formatting helpers -------------------------------------------------
@@ -125,6 +126,14 @@ export default function DriveScreen() {
 
   const summary: DrivingSummary | undefined = data;
 
+  const track = useBreadcrumbRecorder(workspaceId, tripId ?? "");
+
+  const goVanState = () =>
+    router.push({
+      pathname: "/trip/[tripId]/log-vanstate" as any,
+      params: { tripId: tripId ?? "" },
+    });
+
   const openMap = () =>
     router.push({
       pathname: "/trip/[tripId]/map" as any,
@@ -196,6 +205,60 @@ export default function DriveScreen() {
             <Ionicons name="list-outline" size={18} color={C.info} />
             <Text style={{ color: C.info, fontSize: 15, fontWeight: "600" }}>
               Log
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* RECORD TRACK + VAN STATE */}
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Pressable
+            onPress={() => (track.recording ? track.stop() : track.start())}
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: track.recording ? C.critical : C.border,
+              backgroundColor: track.recording ? C.criticalBg : C.surface,
+              borderRadius: R.md,
+              paddingVertical: 14,
+              minHeight: 48,
+            }}
+          >
+            <Ionicons
+              name={track.recording ? "stop-circle" : "radio-button-on"}
+              size={18}
+              color={track.recording ? C.critical : C.info}
+            />
+            <Text
+              style={{
+                color: track.recording ? C.critical : C.fg,
+                fontSize: 15,
+                fontWeight: "700",
+              }}
+            >
+              {track.recording ? `Recording · ${track.count}` : "Record track"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={goVanState}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: C.border,
+              borderRadius: R.md,
+              paddingHorizontal: 16,
+              minHeight: 48,
+            }}
+          >
+            <Ionicons name="speedometer-outline" size={18} color={C.info} />
+            <Text style={{ color: C.info, fontSize: 15, fontWeight: "600" }}>
+              Van state
             </Text>
           </Pressable>
         </View>
