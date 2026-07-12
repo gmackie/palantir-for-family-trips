@@ -30,6 +30,9 @@ export interface TripDayRow {
   segmentId: string | null;
   sortOrder: number;
   note: string | null;
+  status: string;
+  completedAt: Date | null;
+  actualNote: string | null;
 }
 
 const SELECT = {
@@ -49,6 +52,9 @@ const SELECT = {
   segmentId: tripDays.segmentId,
   sortOrder: tripDays.sortOrder,
   note: tripDays.note,
+  status: tripDays.status,
+  completedAt: tripDays.completedAt,
+  actualNote: tripDays.actualNote,
 };
 
 export async function listDays(
@@ -62,6 +68,13 @@ export async function listDays(
     .where(eq(tripDays.tripId, tripId))
     .orderBy(asc(tripDays.date))) as TripDayRow[];
 }
+
+export type DayStatus =
+  | "planned"
+  | "active"
+  | "done"
+  | "skipped"
+  | "partial";
 
 export interface UpsertDayInput {
   tripId: string;
@@ -79,6 +92,8 @@ export interface UpsertDayInput {
   segmentId?: string | null;
   note?: string | null;
   sortOrder?: number;
+  status?: DayStatus;
+  actualNote?: string | null;
 }
 
 export async function upsertDay(
@@ -92,7 +107,7 @@ export async function upsertDay(
     .where(and(eq(tripDays.tripId, p.tripId), eq(tripDays.date, p.date)))
     .limit(1)) as Array<{ id: string }>;
 
-  const values = {
+  const values: Record<string, unknown> = {
     intent: p.intent ?? "drive",
     title: p.title ?? null,
     overnightName: p.overnightName ?? null,
@@ -109,6 +124,16 @@ export async function upsertDay(
     note: p.note ?? null,
     sortOrder: p.sortOrder ?? 0,
   };
+  if (p.status != null) {
+    values.status = p.status;
+    values.completedAt =
+      p.status === "done" || p.status === "partial" || p.status === "skipped"
+        ? new Date()
+        : null;
+  }
+  if (p.actualNote !== undefined) {
+    values.actualNote = p.actualNote;
+  }
 
   if (existing[0]) {
     await db

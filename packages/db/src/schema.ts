@@ -20,6 +20,18 @@ export const tripStatusEnum = [
 export type TripStatus = (typeof tripStatusEnum)[number];
 export const tripModeEnum = ["destination", "roadtrip"] as const;
 export type TripMode = (typeof tripModeEnum)[number];
+/** Execution state on the road — orthogonal to trip.status lifecycle. */
+export const tripRunStateEnum = ["on_plan", "side_trip", "paused"] as const;
+export type TripRunState = (typeof tripRunStateEnum)[number];
+/** Actuals vs plan for one Trip Day. */
+export const tripDayStatusEnum = [
+  "planned",
+  "active",
+  "done",
+  "skipped",
+  "partial",
+] as const;
+export type TripDayStatus = (typeof tripDayStatusEnum)[number];
 export const tripClaimModeEnum = ["organizer", "tap"] as const;
 export type TripClaimMode = (typeof tripClaimModeEnum)[number];
 export const tripMemberRoleEnum = ["organizer", "member"] as const;
@@ -213,6 +225,10 @@ export const trips = pgTable("trip", (t) => ({
   shareInviteToken: t.varchar({ length: 64 }).unique(),
   shareInviteEnabled: t.boolean().notNull().default(true),
   shareInviteCreatedAt: t.timestamp({ mode: "date", withTimezone: true }),
+  /** Van execution: on plan vs exploring off-corridor vs paused. */
+  runState: t.text().$type<TripRunState>().notNull().default("on_plan"),
+  runStateSince: t.timestamp({ mode: "date", withTimezone: true }),
+  runStateNote: t.varchar({ length: 500 }),
   createdAt: t.timestamp().defaultNow().notNull(),
   updatedAt: t
     .timestamp({ mode: "date", withTimezone: true })
@@ -1490,6 +1506,10 @@ export const tripDays = pgTable(
     }),
     sortOrder: t.integer().notNull().default(0),
     note: t.varchar({ length: 1000 }),
+    /** Actuals vs plan — Today Command mark done/partial/skipped. */
+    status: t.text().$type<TripDayStatus>().notNull().default("planned"),
+    completedAt: t.timestamp({ mode: "date", withTimezone: true }),
+    actualNote: t.varchar({ length: 500 }),
     createdAt: t
       .timestamp({ mode: "date", withTimezone: true })
       .defaultNow()
