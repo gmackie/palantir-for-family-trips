@@ -17,9 +17,17 @@ import {
   View,
 } from "react-native";
 
+import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import {
+  loadTodaySnapshot,
+  saveTodaySnapshot,
+} from "~/utils/today-cache";
+import { useDwellSuggest } from "~/utils/use-dwell-suggest";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
+
+type TodayCommand = RouterOutputs["planner"]["todayCommand"];
 
 function openMaps(lat: number, lng: number, label: string) {
   const q = encodeURIComponent(`${lat},${lng}`);
@@ -52,6 +60,10 @@ export default function TodayScreen() {
   const [odo, setOdo] = useState("");
   const [gallons, setGallons] = useState("");
   const [ppg, setPpg] = useState("");
+  const [cached, setCached] = useState<TodayCommand | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { suggestion: dwell, dismiss: dismissDwell } = useDwellSuggest(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +89,20 @@ export default function TodayScreen() {
     };
   }, []);
 
-  const { data, isLoading, isError, refetch, isRefetching } = useQuery(
+  useEffect(() => {
+    if (!tripId) return;
+    void loadTodaySnapshot<TodayCommand>(tripId, todayStr).then((snap) => {
+      if (snap?.payload) setCached(snap.payload);
+    });
+  }, [tripId, todayStr]);
+
+  const {
+    data: live,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useQuery(
     trpc.planner.todayCommand.queryOptions(
       {
         workspaceId,
@@ -85,9 +110,27 @@ export default function TodayScreen() {
         lat: coords?.lat,
         lng: coords?.lng,
       },
-      { enabled: Boolean(workspaceId && tripId), refetchInterval: 60_000 },
+      {
+        enabled: Boolean(workspaceId && tripId),
+        refetchInterval: 60_000,
+        placeholderData: (prev) => prev ?? cached ?? undefined,
+      },
     ),
   );
+
+  useEffect(() => {
+    if (live && tripId) {
+      setFromCache(false);
+      setCached(live);
+      void saveTodaySnapshot(tripId, live.date, live);
+    }
+  }, [live, tripId]);
+
+  useEffect(() => {
+    if (isError && cached) setFromCache(true);
+  }, [isError, cached]);
+
+  const data = live ?? cached;
 
   const { data: preview, isFetching: previewLoading } = useQuery(
     trpc.planner.replanPreview.queryOptions(
@@ -194,7 +237,7 @@ export default function TodayScreen() {
     );
   }
 
-  if (isError || !data) {
+  if (!data) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, padding: 16 }}>
         <Stack.Screen options={{ title: "Today" }} />
@@ -239,9 +282,59 @@ export default function TodayScreen() {
           <Text style={{ color: C.muted, fontSize: 11, fontWeight: "700" }}>
             {data.date} · {data.day?.intent ?? "—"} · {data.runState}
             {data.dayStatus !== "planned" ? ` · ${data.dayStatus}` : ""}
+            {fromCache ? " · offline" : ""}
             {isRefetching ? " · …" : ""}
           </Text>
         </Pressable>
+
+        {fromCache && (
+          <Text style={{ color: C.warning, fontSize: 12 }}>
+            Showing last cached Today — reconnect to refresh or replan.
+          </Text>
+        )}
+
+        {dwell && (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: C.info + "88",
+              backgroundColor: C.surface,
+              padding: 14,
+              gap: 8,
+              borderRadius: R.md,
+            }}
+          >
+            <Text style={{ color: C.info, fontWeight: "700" }}>
+              Stopped ~{dwell.minutes} min — log this place?
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <ActionBtn
+                label="Log stop"
+                onPress={() => {
+                  dismissDwell();
+                  go("/trip/[tripId]/log-stop");
+                }}
+                tone={C.info}
+              />
+              <ActionBtn label="Dismiss" onPress={dismissDwell} />
+            </View>
+          </View>
+        )}
+
+        {showFull && data.vanLevels && (
+          <Text style={{ color: C.muted, fontSize: 11, fontFamily: mono }}>
+            Tanks
+            {data.vanLevels.fresh != null
+              ? ` · fresh ${Math.round(data.vanLevels.fresh)}%`
+              : ""}
+            {data.vanLevels.grey != null
+              ? ` · grey ${Math.round(data.vanLevels.grey)}%`
+              : ""}
+            {data.vanLevels.fuel != null
+              ? ` · fuel ${Math.round(data.vanLevels.fuel)}%`
+              : ""}
+          </Text>
+        )}
 
         {/* Plan vs actual strip */}
         {showFull && (data.recentDays?.length ?? 0) > 0 && (

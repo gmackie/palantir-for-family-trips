@@ -61,4 +61,15 @@ describe("buildServiceQueue", () => {
     });
     expect(q[0]!.kind).toBe("dump");
   });
+
+  it("elevates water when needWater flag set", () => {
+    const q = buildServiceQueue({
+      dump,
+      water,
+      fuel,
+      overnight,
+      needWater: true,
+    });
+    expect(q[0]!.kind).toBe("water");
+  });
 });

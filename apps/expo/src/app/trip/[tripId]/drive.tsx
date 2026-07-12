@@ -16,6 +16,7 @@ import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import { useBreadcrumbRecorder } from "~/utils/use-breadcrumb-recorder";
+import { useDwellSuggest } from "~/utils/use-dwell-suggest";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 // ---- formatting helpers -------------------------------------------------
@@ -156,6 +157,7 @@ export default function DriveScreen() {
   const summary: DrivingSummary | undefined = data;
 
   const track = useBreadcrumbRecorder(workspaceId, tripId ?? "");
+  const { suggestion: dwell, dismiss: dismissDwell } = useDwellSuggest(true);
 
   const goVanState = () =>
     router.push({
@@ -235,6 +237,31 @@ export default function DriveScreen() {
             Open Today Command →
           </Text>
         </Pressable>
+
+        {dwell && (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: C.info + "88",
+              backgroundColor: C.surface,
+              borderRadius: R.md,
+              padding: 14,
+              gap: 8,
+            }}
+          >
+            <Text style={{ color: C.info, fontWeight: "700", fontSize: 14 }}>
+              Parked ~{dwell.minutes} min — log a stop?
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable onPress={() => { dismissDwell(); goLogStop(); }}>
+                <Text style={{ color: C.info, fontWeight: "700" }}>Log stop</Text>
+              </Pressable>
+              <Pressable onPress={dismissDwell}>
+                <Text style={{ color: C.muted }}>Dismiss</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* TODAY'S PLAN — from multi-day itinerary + briefing */}
         {briefing && (
