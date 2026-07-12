@@ -2,9 +2,14 @@
  * Apply a multi-stop itinerary: route legs, write segments + trip days + anchors.
  */
 
-import polylineCodec from "@googlemaps/polyline-codec";
+import * as polylineCodec from "@googlemaps/polyline-codec";
 
-const { encode } = polylineCodec;
+// Dual CJS/ESM interop (vinext named export + tsx/node default).
+const encode: (path: Array<[number, number]>, precision?: number) => string =
+  // biome-ignore lint/suspicious/noExplicitAny: dual package shape
+  (polylineCodec as any).encode ??
+  // biome-ignore lint/suspicious/noExplicitAny: dual package shape
+  (polylineCodec as any).default?.encode;
 import { and, asc, eq, gte, isNull, lt, or } from "@sortey/db";
 import {
   tripAnchors,

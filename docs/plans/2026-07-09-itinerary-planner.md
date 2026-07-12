@@ -1,7 +1,7 @@
 # Itinerary Planner — Design & Implementation Plan
 
 **Date:** 2026-07-09  
-**Status:** P0/P1 in progress  
+**Status:** P0–P3.5 shipped (2026-07-12); P2 hour packer / P4 dual-candidate / formal pause state remaining  
 **Dogfood scenario:** Open Sauce 2026 road trip (Hood → Bend → Crater → coast → San Mateo → Yosemite → Moab)
 
 ## Problem
@@ -118,6 +118,7 @@ P1 algorithm: pack must-visits left-to-right across the date range; mark `playDa
 | **P2** | Date-aware packer uses max drive hours | Partial (waypoint packer; hour-split still for plain A→B) |
 | **P4** | Must-visit waypoints + route candidates | Partial (template stops; no dual-candidate UI) |
 | **P5** | Experience POIs + cut-if-behind automation | Partial (cut text + hero blocks seeded) |
+| **P6** | Side-trip detect + prompt | ✅ `assessSideTrip` + Drive banner (no paused-trip state yet) |
 
 ### End-to-end loop (shipped)
 

@@ -6,6 +6,7 @@ import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
 import { sendPushToTripMembers } from "../notifications/send";
+import { assertRateLimit } from "../rate-limit";
 
 const MAX_BODY_LENGTH = 4000;
 const MAX_HISTORY_LIMIT = 50;
@@ -226,8 +227,12 @@ export const chatRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // TODO(ratelimit): chat send is a high-frequency authenticated write —
-      // wrap with a per-user / per-trip rate limiter once a shared util exists.
+      assertRateLimit({
+        key: `chat:send:${ctx.session.user.id}:${ctx.tripId}`,
+        limit: 30,
+        windowMs: 60_000,
+        message: "You're sending messages too quickly. Wait a moment.",
+      });
       const message = await sendMessage(createChatStore(ctx.db), {
         tripId: ctx.tripId,
         userId: ctx.session.user.id,

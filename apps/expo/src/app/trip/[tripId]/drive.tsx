@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { FerryDriveCard } from "~/components/trip/ferry-drive-card";
 import { RouteAheadCard } from "~/components/trip/route-ahead-card";
+import { SideTripCard } from "~/components/trip/side-trip-card";
 import { VanStatusCard } from "~/components/trip/van-status-card";
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
@@ -188,6 +189,14 @@ export default function DriveScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}
       >
+        {/* SIDE TRIP — off planned corridor by >2 mi */}
+        <SideTripCard
+          tripId={tripId ?? ""}
+          workspaceId={workspaceId}
+          onLogStop={goLogStop}
+          onOpenMap={openMap}
+        />
+
         {/* TODAY'S PLAN — from multi-day itinerary + briefing */}
         {briefing && (
           <Pressable onPress={goDayPlan}>
