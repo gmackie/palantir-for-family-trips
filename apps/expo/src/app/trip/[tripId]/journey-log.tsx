@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   Text,
@@ -14,10 +15,14 @@ import {
 
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
+import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, R } from "~/utils/design";
+import type { JourneyOutboxEntry } from "~/utils/journey-outbox";
+import { journeyOutbox } from "~/utils/journey-outbox-native";
+import { mergeJourneyTimeline } from "~/utils/journey-timeline";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-type Segment = RouterOutputs["trips"]["listSegments"][number];
+type JourneyStop = RouterOutputs["journey"]["list"][number];
 
 export default function JourneyLogScreen() {
   "use no memo";
@@ -25,15 +30,28 @@ export default function JourneyLogScreen() {
   const workspaceId = getActiveWorkspaceId() ?? "";
   const router = useRouter();
 
-  const segments = useQuery(
-    trpc.trips.listSegments.queryOptions({
+  const stops = useQuery(
+    trpc.journey.list.queryOptions({
       workspaceId,
       tripId: tripId ?? "",
     }),
   );
 
-  const ordered = [...(segments.data ?? [])].sort(
+  const ordered = [...(stops.data ?? [])].sort(
     (a, b) => a.sortOrder - b.sortOrder,
+  );
+  const [queued, setQueued] = useState<JourneyOutboxEntry[]>([]);
+
+  useEffect(() => {
+    void journeyOutbox.list().then(setQueued);
+  }, []);
+
+  const timelineIds = mergeJourneyTimeline(
+    ordered.map((stop) => ({ id: stop.id, arrivedAt: stop.arrivedAt })),
+    queued.map((entry) => entry.command),
+  );
+  const pending = timelineIds.filter(
+    (item) => "syncState" in item && item.syncState === "queued",
   );
 
   return (
@@ -75,7 +93,27 @@ export default function JourneyLogScreen() {
           </Text>
         </Pressable>
 
-        {segments.isLoading ? (
+        {pending.map((item) => (
+          <View
+            key={item.id}
+            style={{
+              borderWidth: 1,
+              borderColor: C.warning,
+              backgroundColor: C.warningBg,
+              borderRadius: R.md,
+              padding: 14,
+            }}
+          >
+            <Text style={{ color: C.fg, fontWeight: "700" }}>
+              {"name" in item ? item.name : "Queued stop"}
+            </Text>
+            <Text style={{ color: C.warning, fontSize: 12 }}>
+              Saved on this phone · waiting to sync
+            </Text>
+          </View>
+        ))}
+
+        {stops.isLoading ? (
           <ActivityIndicator size="small" color={C.muted} />
         ) : ordered.length === 0 ? (
           <Text style={{ color: C.muted, fontSize: 14, paddingVertical: 8 }}>
@@ -85,7 +123,7 @@ export default function JourneyLogScreen() {
           ordered.map((seg) => (
             <StopRow
               key={seg.id}
-              segment={seg}
+              stop={seg}
               workspaceId={workspaceId}
               tripId={tripId ?? ""}
             />
@@ -97,24 +135,25 @@ export default function JourneyLogScreen() {
 }
 
 function StopRow({
-  segment,
+  stop,
   workspaceId,
   tripId,
 }: {
-  segment: Segment;
+  stop: JourneyStop;
   workspaceId: string;
   tripId: string;
 }) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
-  const [name, setName] = useState(
-    segment.destinationName ?? segment.name ?? "",
+  const [name, setName] = useState(stop.name ?? "");
+  const [date, setDate] = useState(
+    new Date(stop.arrivedAt).toISOString().slice(0, 10),
   );
-  const [date, setDate] = useState(segment.startDate ?? "");
+  const [note, setNote] = useState(stop.note ?? "");
 
   function invalidate() {
     void qc.invalidateQueries({
-      queryKey: trpc.trips.listSegments.queryKey({ workspaceId, tripId }),
+      queryKey: trpc.journey.list.queryKey({ workspaceId, tripId }),
     });
     void qc.invalidateQueries({
       queryKey: trpc.routePlanner.predictZones.queryKey({
@@ -140,10 +179,20 @@ function StopRow({
       onError: (e) => Alert.alert("Couldn't delete", e.message),
     }),
   );
+  const move = useMutation(
+    trpc.journey.moveStop.mutationOptions({
+      onSuccess: invalidate,
+      onError: (e) => Alert.alert("Couldn't reorder", e.message),
+    }),
+  );
+  const retryRoute = useMutation(
+    trpc.journey.retryRoute.mutationOptions({
+      onSuccess: invalidate,
+      onError: (e) => Alert.alert("Couldn't retry route", e.message),
+    }),
+  );
 
-  const miles = segment.distanceMiles
-    ? Math.round(Number(segment.distanceMiles))
-    : 0;
+  const miles = stop.distanceMiles ? Math.round(Number(stop.distanceMiles)) : 0;
 
   return (
     <View
@@ -169,7 +218,7 @@ function StopRow({
             style={{ color: C.fg, fontSize: 15, fontWeight: "600" }}
             numberOfLines={1}
           >
-            {segment.destinationName ?? segment.name}
+            {stop.name}
           </Text>
           <Text
             style={{
@@ -179,7 +228,8 @@ function StopRow({
               fontVariant: ["tabular-nums"],
             }}
           >
-            {segment.startDate ?? "no date"} · {miles} mi
+            {new Date(stop.arrivedAt).toLocaleDateString()} · {stop.kind} ·{" "}
+            {miles} mi
           </Text>
         </View>
         <Ionicons
@@ -206,6 +256,67 @@ function StopRow({
             style={rowInput}
           />
           <TextInput
+            value={note}
+            onChangeText={setNote}
+            placeholder="Note"
+            placeholderTextColor={C.placeholder}
+            multiline
+            style={rowInput}
+          />
+          {stop.photos.length > 0 && (
+            <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+              {stop.photos.map((photo) => (
+                <Image
+                  key={photo.id}
+                  source={{
+                    uri: `${getBaseUrl()}/api/storage/${photo.storageKey}`,
+                  }}
+                  style={{ width: 72, height: 72, borderRadius: R.sm }}
+                />
+              ))}
+            </ScrollView>
+          )}
+          {stop.routeStatus === "pending" && (
+            <Pressable
+              onPress={() =>
+                retryRoute.mutate({ workspaceId, tripId, stopId: stop.id })
+              }
+              style={{ paddingVertical: 8 }}
+            >
+              <Text style={{ color: C.warning, fontWeight: "700" }}>
+                Route pending · tap to retry
+              </Text>
+            </Pressable>
+          )}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable
+              onPress={() =>
+                move.mutate({
+                  workspaceId,
+                  tripId,
+                  stopId: stop.id,
+                  direction: "earlier",
+                })
+              }
+              style={{ flex: 1, paddingVertical: 8, alignItems: "center" }}
+            >
+              <Text style={{ color: C.info }}>Move earlier</Text>
+            </Pressable>
+            <Pressable
+              onPress={() =>
+                move.mutate({
+                  workspaceId,
+                  tripId,
+                  stopId: stop.id,
+                  direction: "later",
+                })
+              }
+              style={{ flex: 1, paddingVertical: 8, alignItems: "center" }}
+            >
+              <Text style={{ color: C.info }}>Move later</Text>
+            </Pressable>
+          </View>
+          <TextInput
             value={date}
             onChangeText={setDate}
             placeholder="YYYY-MM-DD"
@@ -219,9 +330,10 @@ function StopRow({
                 update.mutate({
                   workspaceId,
                   tripId,
-                  segmentId: segment.id,
+                  stopId: stop.id,
                   name: name.trim() || undefined,
                   date: date.trim() || undefined,
+                  note: note.trim() || null,
                 })
               }
               disabled={update.isPending}
@@ -260,7 +372,7 @@ function StopRow({
                         del.mutate({
                           workspaceId,
                           tripId,
-                          segmentId: segment.id,
+                          stopId: stop.id,
                         }),
                     },
                   ],

@@ -113,7 +113,7 @@ export const journeyRouter = {
         date: dateInput.optional(),
         arrivedAt: z.string().datetime().optional(),
         kind: z.enum(STOP_KINDS).default("custom"),
-        note: z.string().max(1000).optional(),
+        note: z.string().max(1000).nullish(),
         tz: z.string().optional(),
       }),
     )
@@ -131,7 +131,7 @@ export const journeyRouter = {
             ? new Date(`${input.date}T12:00:00.000Z`)
             : new Date(),
         kind: input.kind,
-        note: input.note,
+        note: input.note ?? undefined,
         tz: input.tz,
       }),
     ),
@@ -152,7 +152,7 @@ export const journeyRouter = {
         lat: z.number().optional(),
         lng: z.number().optional(),
         kind: z.enum(STOP_KINDS).optional(),
-        note: z.string().max(1000).optional(),
+        note: z.string().max(1000).nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -181,7 +181,7 @@ export const journeyRouter = {
         lat: input.lat,
         lng: input.lng,
         kind: input.kind,
-        note: input.note,
+        note: input.note ?? undefined,
       });
       if (!result) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Stop not found." });
