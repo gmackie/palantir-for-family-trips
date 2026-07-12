@@ -36,7 +36,7 @@ export function JourneyEditor({
   const qc = useQueryClient();
 
   const segmentsQuery = useQuery(
-    trpc.trips.listSegments.queryOptions({ workspaceId, tripId }),
+    trpc.journey.list.queryOptions({ workspaceId, tripId }),
   );
   const ordered = [...(segmentsQuery.data ?? [])].sort(
     (a, b) => a.sortOrder - b.sortOrder,
@@ -44,7 +44,7 @@ export function JourneyEditor({
 
   function invalidate() {
     void qc.invalidateQueries({
-      queryKey: trpc.trips.listSegments.queryKey({ workspaceId, tripId }),
+      queryKey: trpc.journey.list.queryKey({ workspaceId, tripId }),
     });
   }
 
@@ -241,13 +241,14 @@ function AddStop({
         onClick={() =>
           coords &&
           logStop.mutate({
+            stopId: crypto.randomUUID(),
             workspaceId,
             tripId,
             name: name.trim(),
             lat: coords.lat,
             lng: coords.lng,
             kind,
-            date,
+            arrivedAt: new Date(`${date}T12:00:00`).toISOString(),
             note: note.trim() || undefined,
           })
         }
@@ -261,11 +262,15 @@ function AddStop({
 
 type Segment = {
   id: string;
+  segmentId: string;
   sortOrder: number;
-  name: string;
-  destinationName: string | null;
-  startDate: string | null;
+  name: string | null;
+  arrivedAt: Date;
+  kind: string;
+  note: string | null;
+  routeStatus: "ready" | "pending";
   distanceMiles: string | null;
+  photos: Array<{ id: string; storageKey: string; caption: string | null }>;
 };
 
 function StopRow({
@@ -281,8 +286,11 @@ function StopRow({
 }) {
   const trpc = useTRPC();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState(seg.destinationName ?? seg.name);
-  const [date, setDate] = useState(seg.startDate ?? "");
+  const [name, setName] = useState(seg.name ?? "");
+  const [date, setDate] = useState(
+    new Date(seg.arrivedAt).toISOString().slice(0, 10),
+  );
+  const [note, setNote] = useState(seg.note ?? "");
 
   const update = useMutation(
     trpc.journey.updateStop.mutationOptions({
@@ -303,6 +311,18 @@ function StopRow({
       onError: (e) => toast.error(e.message),
     }),
   );
+  const move = useMutation(
+    trpc.journey.moveStop.mutationOptions({
+      onSuccess: onChanged,
+      onError: (e) => toast.error(e.message),
+    }),
+  );
+  const retryRoute = useMutation(
+    trpc.journey.retryRoute.mutationOptions({
+      onSuccess: onChanged,
+      onError: (e) => toast.error(e.message),
+    }),
+  );
 
   const miles = seg.distanceMiles ? Math.round(Number(seg.distanceMiles)) : 0;
 
@@ -315,10 +335,11 @@ function StopRow({
       >
         <div className="min-w-0">
           <div className="truncate text-sm font-medium text-[#C9D1D9]">
-            {seg.destinationName ?? seg.name}
+            {seg.name}
           </div>
           <div className="font-mono text-xs text-[#8B949E]">
-            {seg.startDate ?? "no date"} · {miles} mi
+            {new Date(seg.arrivedAt).toLocaleDateString()} · {seg.kind} ·{" "}
+            {miles} mi
           </div>
         </div>
         <span className="text-[#8B949E]">{open ? "▲" : "▼"}</span>
@@ -332,6 +353,65 @@ function StopRow({
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Note"
+          />
+          {seg.photos.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto">
+              {seg.photos.map((photo) => (
+                // biome-ignore lint/performance/noImgElement: authenticated storage URL
+                <img
+                  key={photo.id}
+                  src={`/api/storage/${photo.storageKey}`}
+                  alt={photo.caption ?? seg.name ?? "Journey photo"}
+                  className="h-20 w-20 rounded-md object-cover"
+                />
+              ))}
+            </div>
+          )}
+          {seg.routeStatus === "pending" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                retryRoute.mutate({ workspaceId, tripId, stopId: seg.id })
+              }
+            >
+              Retry pending route
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                move.mutate({
+                  workspaceId,
+                  tripId,
+                  stopId: seg.id,
+                  direction: "earlier",
+                })
+              }
+            >
+              Move earlier
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                move.mutate({
+                  workspaceId,
+                  tripId,
+                  stopId: seg.id,
+                  direction: "later",
+                })
+              }
+            >
+              Move later
+            </Button>
+          </div>
           <div className="flex gap-2">
             <Button
               type="button"
@@ -339,9 +419,10 @@ function StopRow({
                 update.mutate({
                   workspaceId,
                   tripId,
-                  segmentId: seg.id,
+                  stopId: seg.id,
                   name: name.trim() || undefined,
                   date: date.trim() || undefined,
+                  note: note.trim() || null,
                 })
               }
               disabled={update.isPending}
@@ -353,7 +434,7 @@ function StopRow({
               variant="outline"
               onClick={() => {
                 if (confirm("Delete this stop?")) {
-                  del.mutate({ workspaceId, tripId, segmentId: seg.id });
+                  del.mutate({ workspaceId, tripId, stopId: seg.id });
                 }
               }}
               disabled={del.isPending}
