@@ -10,6 +10,7 @@
     "dev:ios": "expo start --ios",
     "build:device:ios": "eas build --profile development-device --platform ios",
     "build:device:android": "eas build --profile development-device --platform android",
+    "eas-build-post-install": "pnpm --workspace-root turbo run build --filter=@sortey/expo...",
     "update:development": "npx eas-cli@20.5.1 update --channel development --environment development",
     "update:preview": "npx eas-cli@20.5.1 update --channel preview --environment preview",
     "update:production": "npx eas-cli@20.5.1 update --channel production --environment production",
