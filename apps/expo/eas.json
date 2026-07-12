@@ -47,7 +47,10 @@
     "trip-device": {
       "extends": "development-device",
       "environment": "development",
-      "developmentClient": false
+      "developmentClient": false,
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
     },
     "preview": {
       "extends": "base",
