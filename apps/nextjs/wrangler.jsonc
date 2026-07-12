@@ -30,7 +30,10 @@
     "FG_APP": "sortey",
     "APP_URL": "https://sortey.app",
     "NEXT_PUBLIC_APP_URL": "https://sortey.app",
-    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCCz6GZeB8qfIXJhCmKtHqhhY9kW23IllQ"
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCCz6GZeB8qfIXJhCmKtHqhhY9kW23IllQ",
+    "NEXT_PUBLIC_SENTRY_DSN": "https://569e9c22f10b15178541b945bf15a88f@o4509749405810688.ingest.us.sentry.io/4511437067911168",
+    "SENTRY_ORG": "sortie-app",
+    "SENTRY_PROJECT": "sortie-app"
   },
   "env": {
     "staging": {

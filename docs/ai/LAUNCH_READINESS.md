@@ -1,7 +1,7 @@
 # Launch Readiness
 
 **Last assessed:** 2026-07-12  
-**Method:** code-grounded audit against `master` + planner/OTA ship + remaining gap implementation.
+**Method:** code-grounded audit against `master` + planner/OTA ship + remaining gap implementation + ops smoke.
 
 This is a living checklist. It distinguishes a **private launch** (trusted dogfood / family beta) from a later **public launch**.
 
@@ -13,8 +13,9 @@ Private launch is **ready for dogfood** on `sortey.app` + Expo OTA:
 - Production API + web deployed; planner OTA on production/preview/development
 - Van Journey (Open Sauce arc) seeded with curated overnights
 - Launch hardening landed: rate limits (chat + share-link), legal/pricing copy, workspace setup error page, side-trip probe, push client flag ON
+- Magic-link API smokes green; Sentry DSN wired on Worker (shared with Expo)
 
-Remaining private gaps are **ops** (Resend domain, Sentry/PostHog keys) not product code.
+Remaining private gaps: **inbox confirmation** of magic-link email, optional PostHog key, device OTA smoke.
 
 Public launch still needs RLS wiring (session context), stronger global rate limits, and a billing decision when charging users.
 
@@ -26,7 +27,7 @@ Public launch still needs RLS wiring (session context), stronger global rate lim
 
 | Item | Status | Notes |
 |---|---|---|
-| Magic-link sending domain in Resend (`noreply@…`) | **OPS** | Cannot finish in code. Smoke magic-link on production after DNS verify. |
+| Magic-link sending domain | ✅ API OK | From `Sortey <noreply@gmac.io>`; `RESEND_API_KEY` on Worker; `POST /api/auth/sign-in/magic-link` → `{"status":true}`. Confirm inbox for your mailbox. |
 | Production API + web | ✅ | `https://sortey.app` — planner procedures live |
 | Mobile JS (planner + amenities) via OTA | ✅ | Fingerprint runtimes; see `MOBILE_OTA_PREFLIGHT.md` |
 | `/api/dev/auto-login` guarded outside dev | ✅ | `assertDevAuthEnabled` |
@@ -44,7 +45,8 @@ Public launch still needs RLS wiring (session context), stronger global rate lim
 | Pricing (free beta decision explicit) | ✅ | `/pricing` — $0 free beta; paid later |
 | Privacy policy | ✅ | Already real (`/privacy`) |
 | Push registration flag | ✅ | `integrations.notifications = true` |
-| Sentry/PostHog DSNs in deploy env | **OPS** | Config defaults ON; missing keys no-op |
+| Sentry DSN on Worker | ✅ | `NEXT_PUBLIC_SENTRY_DSN` + org/project (shared Expo project) |
+| PostHog | ⏳ | No key configured — silent no-op until `NEXT_PUBLIC_POSTHOG_KEY` set |
 
 ### Road-trip / planner (dogfood)
 
@@ -69,7 +71,7 @@ Public launch still needs RLS wiring (session context), stronger global rate lim
 | Item | Status | Notes |
 |---|---|---|
 | Real legal + pricing | ✅ for free public soft-launch | Revisit if charging |
-| Enable Row-Level Security | ⏳ **Deferred** | Policy builders in `packages/db/src/{tenant,rls}.ts` exist. **Must not** `ENABLE/FORCE RLS` until every request path calls `applyDatabaseSessionContext` (sets `app.user_id` / `app.workspace_id`). App-level `tripProcedure` remains primary control. |
+| Enable Row-Level Security | ⏳ **Deferred** | Policy builders exist. Do not FORCE RLS until every request sets `app.user_id` / `app.workspace_id` via `applyDatabaseSessionContext`. |
 | Rate limiting (chat + share) | ✅ best-effort per isolate | Upgrade to DO/CF binding for global quotas at scale |
 | Billing decision | ✅ free beta | Stripe/RevenueCat stay `false` until paywall designed |
 
@@ -106,10 +108,12 @@ Public launch still needs RLS wiring (session context), stronger global rate lim
 2. [x] Apply `0010_trip_day_planner` migration
 3. [x] Publish EAS Update production / preview / development
 4. [x] Seed Open Sauce remaining arc + curated overnights
-5. [ ] Verify Resend domain + magic-link E2E
-6. [ ] Confirm Sentry + PostHog project DSNs on Worker
-7. [ ] Device: OTA pull → Day plan / Drive / Map smoke
+5. [x] Magic-link API smoke: `POST /api/auth/sign-in/magic-link` → `{"status":true}` HTTP 200; from `noreply@gmac.io`; `RESEND_API_KEY` on Worker. **Still confirm inbox delivery** for your real mailbox.
+6. [x] Sentry DSN on Worker vars (`NEXT_PUBLIC_SENTRY_DSN` + org/project; shared with Expo EAS). PostHog still unset.
+7. [ ] Device: OTA pull → Day plan / Drive / Map + side-trip banner smoke
 8. [ ] Optional: new native build for pre-fingerprint binaries
+9. [x] Legal pages live: `/terms`, `/pricing`, `/trips/setup-error`
+10. [x] Health: `/api/health` healthy + DB pass
 
 ---
 
@@ -124,6 +128,7 @@ Public launch still needs RLS wiring (session context), stronger global rate lim
 | Workspace error | `apps/nextjs/src/app/trips/setup-error/page.tsx` |
 | Terms / pricing | `apps/nextjs/src/app/terms/page.tsx`, `pricing/page.tsx` |
 | Config flags | `packages/config/src/integrations.ts` |
+| Worker Sentry vars | `apps/nextjs/wrangler.jsonc`, `worker/index.ts` |
 | OTA preflight | `docs/ai/MOBILE_OTA_PREFLIGHT.md` |
 | Planner design | `docs/plans/2026-07-09-itinerary-planner.md` |
 
@@ -131,4 +136,4 @@ Public launch still needs RLS wiring (session context), stronger global rate lim
 
 ## Verified solid (no action)
 
-Auth (magic link + social), expenses + claims + OCR, settlement algorithm, chat WS, share invites, Cloudflare Workers/Hyperdrive/R2, planner + amenities, mobile driving mode, ferry, rooms.
+Auth (magic link API + social), expenses + claims + OCR, settlement algorithm, chat WS, share invites, Cloudflare Workers/Hyperdrive/R2, planner + amenities, mobile driving mode, ferry, rooms.
