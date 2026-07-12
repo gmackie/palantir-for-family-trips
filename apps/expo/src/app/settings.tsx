@@ -19,10 +19,12 @@ import {
   View,
 } from "react-native";
 
+import { env } from "~/config/env";
 import { queryClient, trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { C, mono, R } from "~/utils/design";
 import { setLocale } from "~/utils/i18n";
+import { useOtaUpdates } from "~/utils/use-ota-updates";
 
 const PERMISSIONS = ["read", "write", "delete", "admin"] as const;
 const COLLABORATION_ROLES = ["member", "admin"] as const;
@@ -1196,6 +1198,100 @@ function AccountSection() {
   );
 }
 
+function OtaUpdatesSection() {
+  "use no memo";
+  const ota = useOtaUpdates({ promptOnReady: false, autoCheck: false });
+
+  return (
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.surface,
+        borderRadius: R.md,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 18,
+          fontWeight: "600",
+          marginBottom: 8,
+        }}
+      >
+        App updates
+      </Text>
+      <Text style={{ color: C.muted, marginBottom: 12, fontSize: 14 }}>
+        Over-the-air updates deliver day plan, amenities, and route tools without
+        a store rebuild. Channel follows the EAS profile (
+        {ota.channel ?? (env.isDevelopment ? "metro" : "unknown")}).
+      </Text>
+      {ota.updateId && (
+        <Text
+          style={{
+            color: C.muted,
+            fontFamily: mono,
+            fontSize: 11,
+            marginBottom: 8,
+          }}
+        >
+          Running: {ota.updateId.slice(0, 12)}…
+        </Text>
+      )}
+      {ota.error && (
+        <Text style={{ color: C.critical, fontSize: 13, marginBottom: 8 }}>
+          {ota.error}
+        </Text>
+      )}
+      {ota.available && (
+        <Text style={{ color: C.success, fontSize: 13, marginBottom: 8 }}>
+          Update downloaded — restart to apply.
+        </Text>
+      )}
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Pressable
+          onPress={() => void ota.check()}
+          disabled={ota.checking || ota.downloading}
+          style={{
+            flex: 1,
+            backgroundColor: C.info,
+            borderRadius: R.md,
+            minHeight: 44,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: ota.checking || ota.downloading ? 0.5 : 1,
+          }}
+        >
+          <Text style={{ color: C.white, fontWeight: "700" }}>
+            {ota.checking
+              ? "Checking…"
+              : ota.downloading
+                ? "Downloading…"
+                : "Check for update"}
+          </Text>
+        </Pressable>
+        {ota.available && (
+          <Pressable
+            onPress={() => void ota.apply()}
+            style={{
+              flex: 1,
+              backgroundColor: C.success,
+              borderRadius: R.md,
+              minHeight: 44,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: C.bg, fontWeight: "700" }}>Restart now</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   "use no memo";
   return (
@@ -1220,6 +1316,7 @@ export default function SettingsScreen() {
         </Text>
         <SignOutSection />
         <PreferencesSection />
+        <OtaUpdatesSection />
         <ApiKeysSection />
         <BillingUsageSection />
         <CollaborationSection />

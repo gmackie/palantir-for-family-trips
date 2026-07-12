@@ -9,8 +9,8 @@ export const integrations = {
   // Payments - Mobile (default OFF)
   revenuecat: false,
 
-  // Push Notifications (default OFF)
-  notifications: false,
+  // Push Notifications — Expo push token registration + trip alerts
+  notifications: true,
 
   // Communication (default OFF)
   email: {
@@ -68,7 +68,15 @@ export const platformPrimitives = {
   },
   rateLimits: {
     enabled: true,
-    scopes: ["auth", "contact", "signup", "api-keys", "operator-api"] as const,
+    scopes: [
+      "auth",
+      "contact",
+      "signup",
+      "api-keys",
+      "operator-api",
+      "chat",
+      "share-link",
+    ] as const,
   },
   botProtection: {
     enabled: true,

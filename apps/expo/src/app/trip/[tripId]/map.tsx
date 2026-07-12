@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { LocationEvent } from "@sortey/realtime";
 import { useTripLocations } from "@sortey/realtime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -118,16 +118,34 @@ const PIN_COLORS: Record<string, string> = {
 
 const POI_CATEGORIES = [
   {
-    key: "fuel",
-    label: "Fuel",
-    icon: "flame-outline" as const,
-    color: "#f97316",
+    key: "wild_camping",
+    label: "Wild",
+    icon: "leaf-outline" as const,
+    color: "#22c55e",
   },
   {
     key: "campsite",
     label: "Camp",
     icon: "bonfire-outline" as const,
-    color: "#22c55e",
+    color: "#16a34a",
+  },
+  {
+    key: "parking_overnight",
+    label: "ON park",
+    icon: "car-outline" as const,
+    color: "#84cc16",
+  },
+  {
+    key: "parking",
+    label: "Park",
+    icon: "car-sport-outline" as const,
+    color: "#a3e635",
+  },
+  {
+    key: "fuel",
+    label: "Fuel",
+    icon: "flame-outline" as const,
+    color: "#f97316",
   },
   {
     key: "rest_area",
@@ -136,22 +154,10 @@ const POI_CATEGORIES = [
     color: "#8b5cf6",
   },
   {
-    key: "grocery",
-    label: "Grocery",
-    icon: "cart-outline" as const,
-    color: "#3b82f6",
-  },
-  {
     key: "water",
     label: "Water",
     icon: "water-outline" as const,
     color: "#06b6d4",
-  },
-  {
-    key: "scenic",
-    label: "Scenic",
-    icon: "eye-outline" as const,
-    color: "#eab308",
   },
   {
     key: "dump_station",
@@ -160,10 +166,40 @@ const POI_CATEGORIES = [
     color: "#6b7280",
   },
   {
+    key: "propane",
+    label: "Propane",
+    icon: "flame" as const,
+    color: "#fb923c",
+  },
+  {
+    key: "toll",
+    label: "Toll",
+    icon: "cash-outline" as const,
+    color: "#fbbf24",
+  },
+  {
+    key: "grocery",
+    label: "Grocery",
+    icon: "cart-outline" as const,
+    color: "#3b82f6",
+  },
+  {
     key: "shower",
     label: "Shower",
     icon: "rainy-outline" as const,
     color: "#ec4899",
+  },
+  {
+    key: "laundry",
+    label: "Laundry",
+    icon: "shirt-outline" as const,
+    color: "#a78bfa",
+  },
+  {
+    key: "scenic",
+    label: "Scenic",
+    icon: "eye-outline" as const,
+    color: "#eab308",
   },
 ] as const;
 
@@ -212,6 +248,7 @@ function degreesToMiles(latDelta: number): number {
 export default function MapScreen() {
   "use no memo";
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const router = useRouter();
   const workspaceId = getActiveWorkspaceId() ?? "";
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
     null,
@@ -232,6 +269,13 @@ export default function MapScreen() {
 
   const { data: segments } = useQuery(
     trpc.trips.listSegments.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+    }),
+  );
+
+  const { data: planMap } = useQuery(
+    trpc.planner.getPlanMap.queryOptions({
       workspaceId,
       tripId: tripId ?? "",
     }),
@@ -633,6 +677,40 @@ export default function MapScreen() {
               title={seg.name}
               description={seg.destinationName ?? undefined}
               pinColor={C.info}
+            />
+          ))}
+
+        {/* Multi-day plan overnight / anchor markers — callout opens day editor */}
+        {(planMap?.markers ?? [])
+          .filter((m) => m.kind === "day" || m.kind === "anchor")
+          .map((m) => (
+            <Marker
+              key={`plan-${m.id}`}
+              coordinate={{ latitude: m.lat, longitude: m.lng }}
+              title={m.label}
+              description={
+                m.kind === "anchor"
+                  ? `Anchor · tap callout to open plan`
+                  : `${m.intent ?? "day"}${m.date ? ` · ${m.date}` : ""} · tap to edit`
+              }
+              pinColor={
+                m.kind === "anchor"
+                  ? "#A371F7"
+                  : m.intent === "play"
+                    ? C.success
+                    : m.intent === "event"
+                      ? "#A371F7"
+                      : m.intent === "position"
+                        ? C.warning
+                        : C.info
+              }
+              onCalloutPress={() => {
+                if (!m.date) return;
+                router.push({
+                  pathname: "/trip/[tripId]/day-plan" as any,
+                  params: { tripId: tripId ?? "", date: m.date },
+                });
+              }}
             />
           ))}
 

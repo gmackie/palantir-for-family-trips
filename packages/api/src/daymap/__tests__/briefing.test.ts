@@ -70,6 +70,56 @@ describe("assembleBriefing", () => {
     expect(evening!.detail).toContain("20:41");
   });
 
+  it("uses planned Trip Day blocks when provided", () => {
+    const b = assembleBriefing(
+      baseInput({
+        plannedDay: {
+          intent: "play",
+          title: "Bend",
+          overnightName: "Bend",
+          heroTitle: "Smith Rock",
+          heroDetail: "Morning rim",
+          cutIfBehind: "Skip Newberry",
+          blocks: [
+            {
+              part: "morning",
+              title: "Smith Rock",
+              detail: "Misery Ridge if fit",
+            },
+            {
+              part: "evening",
+              title: "Deschutes",
+              detail: "River walk",
+            },
+          ],
+        },
+      }),
+    );
+    expect(b.schedule).toHaveLength(2);
+    expect(b.schedule[0]!.title).toBe("Smith Rock");
+    expect(b.plannedDay?.intent).toBe("play");
+    expect(b.notes.some((n) => n.includes("Cut if behind"))).toBe(true);
+  });
+
+  it("injects hero for play day without blocks", () => {
+    const b = assembleBriefing(
+      baseInput({
+        drive: null,
+        plannedDay: {
+          intent: "play",
+          title: "Redwoods",
+          overnightName: "Crescent City",
+          heroTitle: "Stout Grove",
+          heroDetail: "One grove only",
+          cutIfBehind: "Drive-through",
+          blocks: null,
+        },
+      }),
+    );
+    expect(b.schedule[0]!.title).toContain("Stout Grove");
+    expect(b.stopName).toBe("Crescent City");
+  });
+
   it("rain pushes work indoors and adds a note", () => {
     const b = assembleBriefing(
       baseInput({

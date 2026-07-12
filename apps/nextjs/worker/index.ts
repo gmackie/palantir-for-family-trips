@@ -80,8 +80,27 @@ const SECRET_KEYS = [
   "ANTHROPIC_API_KEY",
 ] as const;
 
+/** Public/non-secret runtime vars that must also be on process.env for Next/Sentry. */
+const PUBLIC_ENV_KEYS = [
+  "APP_ENV",
+  "APP_URL",
+  "NEXT_PUBLIC_APP_URL",
+  "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
+  "NEXT_PUBLIC_SENTRY_DSN",
+  "NEXT_PUBLIC_POSTHOG_KEY",
+  "NEXT_PUBLIC_POSTHOG_HOST",
+  "SENTRY_ORG",
+  "SENTRY_PROJECT",
+] as const;
+
 function syncEnvSecrets(env: Env) {
   for (const key of SECRET_KEYS) {
+    const val = env[key];
+    if (typeof val === "string" && val) {
+      (process.env as Record<string, string>)[key] = val;
+    }
+  }
+  for (const key of PUBLIC_ENV_KEYS) {
     const val = env[key];
     if (typeof val === "string" && val) {
       (process.env as Record<string, string>)[key] = val;

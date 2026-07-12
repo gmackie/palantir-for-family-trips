@@ -19,6 +19,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
 import { sendPushToTripMembers } from "../notifications/send";
+import { assertRateLimit } from "../rate-limit";
 import { buildDrivingSummary } from "../trips/driving-summary";
 import { assertValidTripStatusTransition } from "../trips/status-transitions";
 import { protectedProcedure, publicProcedure } from "../trpc";
@@ -1107,8 +1108,20 @@ export const tripsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // TODO(ratelimit): this is an unauthenticated-token entry point — wrap
-      // with a per-IP / per-user rate limiter once a shared util exists.
+      // Share-token join is authenticated but not trip-membership-gated —
+      // rate-limit per user and per token to blunt invite spam / brute force.
+      assertRateLimit({
+        key: `share:join:user:${ctx.session.user.id}`,
+        limit: 10,
+        windowMs: 60_000,
+        message: "Too many join attempts. Try again in a minute.",
+      });
+      assertRateLimit({
+        key: `share:join:token:${input.token.slice(0, 64)}`,
+        limit: 30,
+        windowMs: 60_000,
+        message: "This invite link is being used too quickly. Try again shortly.",
+      });
       const result = await joinTripByShareToken(createTripStore(ctx.db), {
         token: input.token,
         userId: ctx.session.user.id,
@@ -1137,9 +1150,17 @@ export const tripsRouter = {
         token: z.string().min(1),
       }),
     )
-    .query(({ ctx, input }) =>
-      getShareLinkPreview(createTripStore(ctx.db), { token: input.token }),
-    ),
+    .query(({ ctx, input }) => {
+      assertRateLimit({
+        key: `share:preview:${input.token.slice(0, 64)}`,
+        limit: 60,
+        windowMs: 60_000,
+        message: "Too many preview requests for this invite.",
+      });
+      return getShareLinkPreview(createTripStore(ctx.db), {
+        token: input.token,
+      });
+    }),
 
   getInviteByToken: publicProcedure
     .input(

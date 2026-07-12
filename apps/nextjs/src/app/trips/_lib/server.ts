@@ -23,6 +23,8 @@ export async function requireTripsWorkspace() {
       "[requireTripsWorkspace] ensurePersonalWorkspace failed:",
       error,
     );
+    // Surface a recoverable error page instead of a silent redirect home.
+    redirect("/trips/setup-error");
   }
 
   const requestHeaders = new Headers(await headers());
@@ -35,7 +37,7 @@ export async function requireTripsWorkspace() {
   const workspaceContext = await caller.settings.getWorkspaceContext();
 
   if (!workspaceContext.workspace) {
-    redirect("/");
+    redirect("/trips/setup-error");
   }
 
   return {

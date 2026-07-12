@@ -73,6 +73,18 @@ export function RoadTripDetail({
     trpc.trips.listSegments.queryOptions({ workspaceId, tripId }),
   );
 
+  const { data: planDays } = useQuery(
+    trpc.planner.listDays.queryOptions({ workspaceId, tripId }),
+  );
+
+  const { data: nextAnchor } = useQuery(
+    trpc.anchors.next.queryOptions({ workspaceId, tripId }),
+  );
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcomingDay =
+    planDays?.find((d) => d.date >= todayStr) ?? planDays?.[0] ?? null;
+
   const updateTrip = useMutation(
     trpc.trips.update.mutationOptions({
       onSuccess: () => {
@@ -132,6 +144,18 @@ export function RoadTripDetail({
       path: "journey-log",
     },
     { key: "drive", label: "Drive", icon: "car-sport-outline", path: "drive" },
+    {
+      key: "day-plan",
+      label: "Day plan",
+      icon: "map-outline",
+      path: "day-plan",
+    },
+    {
+      key: "amenities",
+      label: "Sleep / POIs",
+      icon: "bed-outline",
+      path: "day-plan",
+    },
     { key: "map", label: "Route", icon: "navigate-outline", path: "map" },
     {
       key: "segments",
@@ -434,7 +458,7 @@ export function RoadTripDetail({
       )}
 
       {/* Stats strip */}
-      <View style={{ flexDirection: "row", gap: 12, marginBottom: 24 }}>
+      <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
         <StatCard
           label="Miles"
           value={
@@ -449,8 +473,88 @@ export function RoadTripDetail({
               : "—"
           }
         />
-        <StatCard label="Days" value={days != null ? String(days) : "—"} />
+        <StatCard
+          label="Days"
+          value={
+            planDays && planDays.length > 0
+              ? String(planDays.length)
+              : days != null
+                ? String(days)
+                : "—"
+          }
+        />
       </View>
+
+      {/* Plan preview */}
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: "/trip/[tripId]/day-plan" as any,
+            params: { tripId },
+          })
+        }
+        style={{
+          backgroundColor: C.surface,
+          borderWidth: 1,
+          borderColor: C.border,
+          borderRadius: R.md,
+          padding: 14,
+          marginBottom: 20,
+          gap: 6,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Text
+            style={{
+              color: C.muted,
+              fontSize: 10,
+              fontWeight: "900",
+              letterSpacing: 1.5,
+            }}
+          >
+            DAY PLAN
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={C.muted} />
+        </View>
+        {upcomingDay ? (
+          <>
+            <Text style={{ color: C.fg, fontSize: 16, fontWeight: "700" }}>
+              {upcomingDay.title ??
+                upcomingDay.overnightName ??
+                upcomingDay.date}
+            </Text>
+            <Text style={{ color: C.muted, fontSize: 13 }}>
+              {upcomingDay.date}
+              {upcomingDay.intent ? ` · ${upcomingDay.intent}` : ""}
+              {upcomingDay.heroTitle ? ` · ★ ${upcomingDay.heroTitle}` : ""}
+            </Text>
+          </>
+        ) : (
+          <Text style={{ color: C.muted, fontSize: 14 }}>
+            No plan yet — tap to build multi-day itinerary
+          </Text>
+        )}
+        {nextAnchor && (
+          <Text
+            style={{
+              color: nextAnchor.behind ? C.critical : C.warning,
+              fontSize: 12,
+              marginTop: 2,
+              fontFamily: mono,
+            }}
+          >
+            Next: {nextAnchor.anchor.title}
+            {nextAnchor.daysUntil != null ? ` · ${nextAnchor.daysUntil}d` : ""}
+            {nextAnchor.behind ? " · BEHIND" : ""}
+          </Text>
+        )}
+      </Pressable>
 
       {/* Tab grid */}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>

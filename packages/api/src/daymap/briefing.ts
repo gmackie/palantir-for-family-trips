@@ -61,6 +61,8 @@ export interface DayBriefing {
   /** The next fixed commitment (conference, reservation) + pacing, if any. */
   anchor: AnchorPacing | null;
   notes: string[];
+  /** Planned Trip Day for this date, when present. */
+  plannedDay: PlannedDayBrief | null;
 }
 
 /** Nearest POI whose category is in `cats`, preferring earlier categories. */
@@ -85,6 +87,17 @@ export function pickPoi(
   return best;
 }
 
+/** Planned Trip Day fields that shape the briefing schedule. */
+export interface PlannedDayBrief {
+  intent: string;
+  title: string | null;
+  overnightName: string | null;
+  heroTitle: string | null;
+  heroDetail: string | null;
+  cutIfBehind: string | null;
+  blocks: ScheduleBlock[] | null;
+}
+
 export interface BriefingInput {
   date: string;
   positionName: string;
@@ -99,6 +112,8 @@ export interface BriefingInput {
   airQuality?: AirQuality | null;
   /** Next fixed commitment + pacing (from route-planner/anchors), if any. */
   anchor?: AnchorPacing | null;
+  /** Road-trip Trip Day plan for this date, if any. */
+  plannedDay?: PlannedDayBrief | null;
 }
 
 const WET = 50; // precip % above which we push work indoors
@@ -110,6 +125,7 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     input.airQuality?.concern === "hazardous";
   // Rain OR smoke pushes work (and life) indoors.
   const indoors = rainy || smoky;
+  const planned = input.plannedDay ?? null;
 
   // Pull the useful POIs (roles), weather/smoke steering the work spot indoors.
   const workCats = indoors
@@ -129,72 +145,118 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
   const schedule: ScheduleBlock[] = [];
   const notes: string[] = [];
 
-  // ── Morning ──
-  if (input.drive && input.drive.miles > 40) {
-    schedule.push({
-      part: "morning",
-      title: `Drive → ${input.drive.toName}`,
-      detail: `${input.drive.miles} mi · ~${input.drive.hours}h. Leave after pack-up to bank daylight.`,
-    });
-  } else if (indoors && work) {
-    const why = smoky
-      ? `Smoke (AQI ${input.airQuality?.usAqi})`
-      : `Rain likely (${input.weather?.precipProbability}%)`;
-    schedule.push({
-      part: "morning",
-      title: `Indoor work block — ${work.name}`,
-      detail: `${why}; grab power + a table (${work.milesAway} mi).`,
-    });
-  } else if (work) {
-    schedule.push({
-      part: "morning",
-      title: `Work block — ${work.name}`,
-      detail: `${work.category} · ${work.milesAway} mi.`,
-    });
+  // Prefer explicit Trip Day blocks when the user planned the day.
+  const plannedBlocks = planned?.blocks?.filter((b) => b.title.trim()) ?? [];
+  if (plannedBlocks.length > 0) {
+    schedule.push(...plannedBlocks);
+  } else {
+    // ── Morning ──
+    if (input.drive && input.drive.miles > 40) {
+      schedule.push({
+        part: "morning",
+        title: `Drive → ${input.drive.toName}`,
+        detail: `${input.drive.miles} mi · ~${input.drive.hours}h. Leave after pack-up to bank daylight.`,
+      });
+    } else if (planned?.intent === "play" && planned.heroTitle) {
+      schedule.push({
+        part: "morning",
+        title: `★ ${planned.heroTitle}`,
+        detail:
+          planned.heroDetail ??
+          `${planned.title ?? planned.overnightName ?? "Play day"} — one hero effort.`,
+      });
+    } else if (planned?.intent === "event") {
+      schedule.push({
+        part: "morning",
+        title: planned.title ?? planned.overnightName ?? "Event day",
+        detail: planned.heroDetail ?? "Fixed commitment — protect the calendar.",
+      });
+    } else if (indoors && work) {
+      const why = smoky
+        ? `Smoke (AQI ${input.airQuality?.usAqi})`
+        : `Rain likely (${input.weather?.precipProbability}%)`;
+      schedule.push({
+        part: "morning",
+        title: `Indoor work block — ${work.name}`,
+        detail: `${why}; grab power + a table (${work.milesAway} mi).`,
+      });
+    } else if (work) {
+      schedule.push({
+        part: "morning",
+        title: `Work block — ${work.name}`,
+        detail: `${work.category} · ${work.milesAway} mi.`,
+      });
+    }
+
+    // ── Midday: service (if urgent) + food ──
+    const topService = urgent[0];
+    if (topService?.stop) {
+      schedule.push({
+        part: "midday",
+        title: `Service: ${topService.label} (${topService.levelPct}%)`,
+        detail: `${topService.urgency === "now" ? "Due now" : `~${topService.daysUntil}d`} → ${topService.stop.name} (${topService.stop.milesAway} mi).`,
+      });
+    }
+    if (food) {
+      schedule.push({
+        part: "midday",
+        title: `Food — ${food.name}`,
+        detail: `${food.category} · ${food.milesAway} mi.`,
+      });
+    }
+
+    // ── Afternoon: hero (if not morning) / experience / work ──
+    if (
+      planned?.heroTitle &&
+      planned.intent === "drive" &&
+      input.drive &&
+      input.drive.miles > 40
+    ) {
+      schedule.push({
+        part: "afternoon",
+        title: `★ ${planned.heroTitle}`,
+        detail:
+          planned.heroDetail ??
+          "Optional stop if ahead of schedule — drop first if behind.",
+      });
+    } else if (experience && !indoors) {
+      schedule.push({
+        part: "afternoon",
+        title: `Experience — ${experience.name}`,
+        detail: `${experience.category} · ${experience.milesAway} mi.`,
+      });
+    } else if (work && input.drive && input.drive.miles > 40) {
+      schedule.push({
+        part: "afternoon",
+        title: `Work block — ${work.name}`,
+        detail: `After the drive; ${work.milesAway} mi.`,
+      });
+    }
+
+    // ── Evening: camp before dark ──
+    const campName =
+      camp?.name ??
+      planned?.overnightName ??
+      input.stopName;
+    if (campName) {
+      schedule.push({
+        part: "evening",
+        title: `Camp — ${campName}`,
+        detail: input.sunset
+          ? `Arrive before sunset (${input.sunset}).`
+          : "Settle in; solar tops up for tomorrow.",
+      });
+    }
   }
 
-  // ── Midday: service (if urgent) + food ──
-  const topService = urgent[0];
-  if (topService?.stop) {
-    schedule.push({
-      part: "midday",
-      title: `Service: ${topService.label} (${topService.levelPct}%)`,
-      detail: `${topService.urgency === "now" ? "Due now" : `~${topService.daysUntil}d`} → ${topService.stop.name} (${topService.stop.milesAway} mi).`,
-    });
-  }
-  if (food) {
-    schedule.push({
-      part: "midday",
-      title: `Food — ${food.name}`,
-      detail: `${food.category} · ${food.milesAway} mi.`,
-    });
-  }
-
-  // ── Afternoon: experience, or work if not done in the morning ──
-  if (experience && !indoors) {
-    schedule.push({
-      part: "afternoon",
-      title: `Experience — ${experience.name}`,
-      detail: `${experience.category} · ${experience.milesAway} mi.`,
-    });
-  } else if (work && input.drive && input.drive.miles > 40) {
-    schedule.push({
-      part: "afternoon",
-      title: `Work block — ${work.name}`,
-      detail: `After the drive; ${work.milesAway} mi.`,
-    });
-  }
-
-  // ── Evening: camp before dark ──
-  const campName = camp?.name ?? input.stopName;
-  if (campName) {
-    schedule.push({
-      part: "evening",
-      title: `Camp — ${campName}`,
-      detail: input.sunset
-        ? `Arrive before sunset (${input.sunset}).`
-        : "Settle in; solar tops up for tomorrow.",
-    });
+  // Always surface service urgency even when planned blocks dominate.
+  if (plannedBlocks.length > 0) {
+    const top = urgent[0];
+    if (top?.stop) {
+      notes.push(
+        `Service: ${top.label} (${top.levelPct}%) → ${top.stop.name} (${top.stop.milesAway} mi).`,
+      );
+    }
   }
 
   if (smoky)
@@ -205,10 +267,19 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     notes.push(
       `Rain likely (${input.weather?.precipProbability}%) — indoor work, dry camp.`,
     );
-  if (urgent.length > 0)
+  if (urgent.length > 0 && plannedBlocks.length === 0)
     notes.push(`${urgent.length} service need(s) coming due — see midday.`);
-  if (!input.drive)
+  if (!input.drive && planned?.intent !== "play" && planned?.intent !== "event")
     notes.push("Parked day — no drive; work/service/experience here.");
+
+  if (planned) {
+    notes.push(
+      `Plan · ${planned.intent}${planned.title ? ` · ${planned.title}` : ""}${planned.overnightName ? ` · sleep ${planned.overnightName}` : ""}`,
+    );
+    if (planned.cutIfBehind) {
+      notes.push(`✂️ Cut if behind: ${planned.cutIfBehind}`);
+    }
+  }
 
   // ── Anchor: count down to the next fixed commitment, warn if behind pace ──
   const anchor = input.anchor ?? null;
@@ -235,7 +306,7 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     date: input.date,
     positionName: input.positionName,
     drive: input.drive,
-    stopName: input.stopName,
+    stopName: planned?.overnightName ?? input.stopName,
     weather: input.weather,
     airQuality: input.airQuality ?? null,
     schedule,
@@ -243,5 +314,6 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     serviceAlerts: urgent,
     anchor,
     notes,
+    plannedDay: planned,
   };
 }

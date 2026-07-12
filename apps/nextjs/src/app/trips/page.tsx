@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { WorkspaceSwitcher } from "~/components/workspace/workspace-switcher";
+
 import { requireTripsWorkspace } from "./_lib/server";
 
 function formatTripDates(startDate: string | null, endDate: string | null) {
@@ -41,18 +43,21 @@ export default async function TripsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
-              Command Center
+              Command Center · {workspace.name}
             </p>
             <h1 className="text-4xl font-black tracking-tight text-[#C9D1D9]">
               Your Trips
             </h1>
           </div>
-          <Link
-            href="/trips/new"
-            className="inline-flex h-11 items-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 px-5 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20"
-          >
-            Create Trip
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <WorkspaceSwitcher currentWorkspaceSlug={workspace.slug ?? null} />
+            <Link
+              href="/trips/new"
+              className="inline-flex h-11 items-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 px-5 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20"
+            >
+              Create Trip
+            </Link>
+          </div>
         </div>
 
         {/* Trip grid or empty state */}

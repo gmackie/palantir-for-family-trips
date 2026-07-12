@@ -78,8 +78,36 @@ A 30-mile radius highlighted area near the predicted sunset endpoint for a drivi
 _Avoid_: Camp spot, overnight stop (implies a single location)
 
 **TripTik Strip**:
-A schematic timeline view of the route. Vertical on mobile (primary planning view), horizontal + map side-by-side on desktop. Shows cumulative mile markers from trip start and estimated arrival times. Items are tappable: saved POIs, fuel zones, overnight zones, segment boundaries. Named after the AAA TripTik.
+A schematic timeline view of the route. Vertical on mobile (primary planning view), horizontal + map side-by-side on desktop. Shows cumulative mile markers from trip start and estimated arrival times. Items are tappable: saved POIs, fuel zones, overnight zones, segment boundaries. Named after the AAA TripTik. For road-trip planning, TripTik also edits **Trip Days** (intent, overnight, hero).
 _Avoid_: Timeline (overloaded), itinerary (implies scheduled activities)
+
+**Trip Day**:
+One calendar day on a road trip — the primary planning unit. Has a **Day Intent**, optional overnight, optional **Hero Effort**, time blocks, and cut-if-behind notes. Distinct from a **Segment** (drive geometry). See `docs/plans/2026-07-09-itinerary-planner.md`.
+_Avoid_: Leg, itinerary day (destination-mode phrasing)
+
+**Day Intent**:
+How a Trip Day is used: `play` (stay and do things), `drive` (cover miles with optional stops), `position` (stage near an anchor), `event` (fixed commitment like a festival), `recovery` (light day / hotel reset).
+_Avoid_: Day type, activity mode
+
+**Anchor**:
+A fixed commitment on a date (conference, hotel reservation, must-see window). Constrains replan: days between anchors are flexible; anchors are not. Stored as `trip_anchor`; paced via miles/day to the next one.
+_Avoid_: Hard stop (overloaded with driving), deadline alone
+
+**Hero Effort**:
+At most one featured activity on a Trip Day (a hike, swim, park visit). Keeps days from stacking three full efforts.
+_Avoid_: Activity, attraction (too generic)
+
+**Replan**:
+Regenerate Trip Days from the current position (or a from-date) until the next Anchor, packing must-visits and play days. Draft first, then apply. Does not replace turn-by-turn navigation.
+_Avoid_: Reroute (navigator), reschedule (calendar-only)
+
+**Amenity Scan**:
+Long-term van-planning view of corridor POIs (iOverlander etc.) near each Trip Day overnight: sleep, dump, water, fuel, parking, tolls — plus warnings when gaps exist.
+_Avoid_: POI dump, place search (too generic)
+
+**Overnight Assign**:
+Picking a concrete sleep POI for a Trip Day (wild camping, campground, overnight parking). Auto-assign fills nights from ranked nearby POIs after plan build or on demand; hotels are left alone.
+_Avoid_: Lodging booking (we don't reserve)
 
 **Fuel Log**:
 A first-class record of a fuel fill-up, separate from general expenses. Tracks odometer, gallons, price per gallon, station name/location, and calculates actual MPG since last fill. Can optionally link to a receipt via the OCR pipeline. Distinct from a standard expense entry.

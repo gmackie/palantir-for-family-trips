@@ -1,63 +1,36 @@
 # Launch Readiness
 
-**Last assessed:** 2026-06-21 (master after ferry-legs merge `608d58f`)
-**Method:** code-grounded audit, each claim verified against source — see notes on corrected findings below.
-
-This is a living checklist. It distinguishes a **private launch** (the planned ~30-person family-reunion beta in `LAUNCH_PLAN.md`) from a later **public launch**, because the bar differs sharply.
+**Last assessed:** 2026-07-12  
+**Method:** code-grounded audit + ops smoke + production dogfood.
 
 ## TL;DR
 
-The core product works end-to-end: auth, expenses + line-item claiming, settlement math (plan-001 fixed), realtime, mobile parity, ferry legs. Billing is intentionally dormant. The gap to a **private** launch is small (one ops step + two tiny code fixes, mostly done here). A **public** launch additionally needs real legal/pricing pages, RLS, rate limiting, and a billing decision.
+Private launch is **ready for dogfood** on `sortey.app` + Expo OTA.
 
-## Corrected audit findings (do not re-file these as bugs)
+- Production web/API healthy; planner + side-trip live
+- Magic-link is production sign-in (dev auto-login local only)
+- Sentry DSN on Worker; Resend key present; from `noreply@gmac.io`
+- Legal pages live; free-beta pricing explicit
 
-An automated audit overstated or mis-reported two items; verified reality:
-- **`expenses.list` pagination — NOT missing.** Full keyset pagination (`limit` + `cursor`, clamped) exists (`packages/api/src/router/expenses.ts`, commit `9737839`).
-- **Dev auth endpoints — not "account takeover."** `last-magic-link` was already guarded. `auto-login` lacked the `NODE_ENV` guard, but the real impact was "can trigger a magic-link email to an arbitrary address" (spam/enumeration), not session theft (the attacker never receives the emailed link). Guard added on branch `chore/launch-hardening`.
+**You:** open inbox for magic link · phone OTA smoke.
 
-## Private launch (family-reunion beta)
+## Production ship checklist
 
-### Blockers
-- [ ] **Verify the magic-link sending domain in Resend** (`noreply@gmacko.io`). OPS ACTION — cannot be done in code. Without it, login emails bounce and no one can sign in. Smoke-test the full magic-link path in staging afterward.
-- [x] **Guard `/api/dev/auto-login`** with `assertDevAuthEnabled(env.NODE_ENV)` → 404 outside dev (matches `last-magic-link`). Done (`chore/launch-hardening`).
-- [x] **Unlink `/demo`** from the public homepage CTA. Done. (Full deletion of the ~6k-line legacy `app-shell.tsx` demo route is a separate cleanup — see post-launch.)
+1. [x] Deploy web/API to `sortey.app`
+2. [x] Apply `0010_trip_day_planner` migration
+3. [x] Publish EAS Update production / preview / development
+4. [x] Seed Open Sauce remaining arc + curated overnights
+5. [x] Magic-link API + live send to operator emails (`status:true`); from `noreply@gmac.io`
+6. [x] Production sign-in form defaults to magic link (not `/api/dev/auto-login`)
+7. [x] Sentry DSN on Worker vars (shared Expo project). PostHog still optional.
+8. [x] Legal: `/terms`, `/pricing`, `/trips/setup-error`
+9. [x] Health: `/api/health` healthy + DB pass
+10. [ ] Device: OTA pull → Day plan / Drive / side-trip
+11. [ ] Click magic-link in inbox to complete session E2E
 
-### Should-fix (rough edges, not blockers for a trusted internal group)
-- [ ] Workspace auto-provisioning fails silently (`apps/nextjs/src/app/trips/_lib/server.ts`) — show an error banner + retry instead of a blank redirect.
-- [ ] Confirm Sentry/PostHog DSNs are actually set in the deploy env (config defaults them ON; missing keys silently no-op).
+## Deferred (public launch)
 
-## Public launch (additional to the above)
-
-### Blockers
-- [ ] **Real legal + pricing pages.** `terms/page.tsx` and `pricing/page.tsx` are placeholders ("Replace this…", "Coming soon"). Either write them or remove `pricing` from nav if launching without billing.
-- [ ] **Enable Row-Level Security.** Policy builders exist (`packages/db/src/tenant.ts`) but no `ENABLE ROW LEVEL SECURITY` / `CREATE POLICY` DDL is in the migrations. App-level `tripProcedure` guards are the primary control and are solid; RLS is the missing defense-in-depth layer for a multi-tenant public app.
-- [ ] **Rate limiting.** Two real `TODO(ratelimit)` sites: `chat.ts` (high-freq authenticated write) and `trips.ts` (unauthenticated share-token join). `@sortey/config` already defines `rateLimits` scopes — extend to `chat` + `share-link`.
-- [ ] **Billing decision.** `stripe/billing/revenuecat = false`. Correct for a free internal launch. For public: either keep free-tier explicitly or implement a paywall (e.g. trip limit) + Stripe subscription before flipping it on.
-
-### Should-fix
-- [ ] Mobile bundle id/scheme (`com.gmacko.sortey` / `sortey://`) finalized for the public App Store listing.
-- [ ] Accessibility pass (semantic markup on expenses table, itinerary timeline, settlement cards).
-- [ ] DB-backed integration tests for the settlement flow + a mobile Maestro "receipt → claim → settle" path. Money is the core; coverage is currently in-memory-store only.
-
-## Underdeveloped features (ranked by readiness-to-finish)
-
-1. **Ferry legs** — ✅ shipped (the feature that prompted this doc).
-2. **Room assignments** — ✅ shipped full-stack (schema + `rooms` router + per-lodging board UI + 17 guard tests). Audit's "schema present" was wrong — it was unbuilt.
-3. **Corridor / van-POI search** — ✅ web shipped (CorridorSearch on the trip map; also fixed a stale `pins.create` enum that blocked van pin types). **Remaining:** run the OSM/iOverlander import to populate POI data (`pnpm -F @sortey/db tsx scripts/import-ioverlander.ts`), and a mobile surface.
-4. **Receipt OCR write-path** — ✅ shipped (`expenses.extractFromReceipt` + scan-receipt prefill on the new-expense form). The dangling OCR pipeline is now wired.
-5. **AviationStack live transit** — `memberTransits` populated; live-flight API never wired. *(open)*
-6. **Road-trip core (designed, ~0 code):** predicted stop, side-trip detection, fuel zones, route-gradient on mobile. *(open)*
-7. **Mobile parity** — corridor search + receipt scan are web-only so far; the Expo capture surface is the natural follow-on. *(open)*
-
-## driftport integration (van road-trips) — recommended, post-private-launch
-
-`/Volumes/dev/driftport` is an **IoT control plane for van systems** (battery/solar/climate/water telemetry, remote control, OTA) — vehicle *internals*. Sortey owns trip *externals*. **No feature overlap**; both share the same stack (tRPC + Drizzle + better-auth + CF Workers).
-
-- **Don't duplicate data.** Map `trip.vanProfileId → driftport rig`; one tRPC call (`system.dashboard`) overlays live battery/water/climate on Sortey's **Driving Mode** (where the ferry "leave-by" gating already lives).
-- **Differentiator:** campsite pin (Sortey) + "4h solar left, full by 6pm" (driftport) = "should we move?" No competitor pairs trip planning with power-readiness.
-- **Open seams:** trip-member ↔ rig-member permission federation; merging GPS position + vehicle-state realtime channels.
-- **Caveat:** driftport is also pre-1.0 with dormant billing + a stubbed real-hardware MQTT bridge. Treat as a post-private-launch spike, not a day-0 dependency.
-
-## Verified solid (no action)
-
-Auth (magic link + social), expenses + line-item claims + OCR reconcile, settlement algorithm (plan-001 fixed), realtime claiming/chat/locations, trip invites + share tokens, mobile feature parity, Cloudflare Workers/Hyperdrive/R2 config, full schema migrated, error pages.
+- RLS FORCE (needs session context wiring first)
+- Global rate limits (DO/CF)
+- PostHog key
+- Formal paused-trip state machine
