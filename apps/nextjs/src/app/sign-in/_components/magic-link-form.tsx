@@ -4,6 +4,9 @@ import { startTransition, useState } from "react";
 
 import { authClient } from "~/auth/client";
 
+const isDev =
+  typeof process !== "undefined" && process.env.NODE_ENV === "development";
+
 export function MagicLinkForm() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,7 @@ export function MagicLinkForm() {
     try {
       await authClient.signIn.magicLink({
         email,
-        callbackURL: "/",
+        callbackURL: "/trips",
       });
       setSubmitted(true);
     } catch (submissionError) {
@@ -42,7 +45,7 @@ export function MagicLinkForm() {
       onSubmit={(event) => {
         event.preventDefault();
         startTransition(() => {
-          void handleDevLogin();
+          void handleMagicLink();
         });
       }}
     >
@@ -65,24 +68,31 @@ export function MagicLinkForm() {
 
       <button
         className="flex h-10 w-full items-center justify-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20 disabled:opacity-50"
-        disabled={isPending}
+        disabled={isPending || !email}
         type="submit"
       >
-        {isPending ? "Signing in..." : "Sign in"}
+        {isPending
+          ? "Sending link..."
+          : submitted
+            ? "Link sent — check email"
+            : "Send magic link"}
       </button>
 
-      <button
-        type="button"
-        onClick={() => startTransition(() => void handleMagicLink())}
-        disabled={isPending || !email}
-        className="w-full text-center text-xs text-[#484F58] underline transition-colors hover:text-[#8B949E] disabled:opacity-50"
-      >
-        Send email magic link instead
-      </button>
+      {isDev ? (
+        <button
+          type="button"
+          onClick={() => startTransition(() => handleDevLogin())}
+          disabled={isPending || !email}
+          className="w-full text-center text-xs text-[#484F58] underline transition-colors hover:text-[#8B949E] disabled:opacity-50"
+        >
+          Dev auto-login (local only)
+        </button>
+      ) : null}
 
       {submitted ? (
         <p className="text-sm text-[#8B949E]">
-          Check your email for a sign-in link.
+          Check your email for a sign-in link from{" "}
+          <span className="font-mono text-[#C9D1D9]">noreply@gmac.io</span>.
         </p>
       ) : null}
       {error ? <p className="text-sm text-[#F85149]">{error}</p> : null}
