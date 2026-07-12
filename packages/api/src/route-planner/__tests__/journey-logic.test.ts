@@ -7,12 +7,15 @@ import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import {
+  affectedLegIds,
   fallbackMiles,
   kindToPinType,
   nextSortOrder,
   planHeal,
+  planMove,
   resolveCurrentPoint,
   resolvePrevPoint,
+  resolveRecordedPrevPoint,
   type SegmentLike,
   STOP_KINDS,
 } from "../journey-logic";
@@ -69,6 +72,26 @@ describe("nextSortOrder", () => {
     expect(
       nextSortOrder([{ sortOrder: 0 }, { sortOrder: 2 }, { sortOrder: 1 }]),
     ).toBe(3);
+  });
+});
+
+describe("recorded stop ordering", () => {
+  it("moves a stop one position earlier without disturbing other stops", () => {
+    expect(planMove(["a", "b", "c"], "c", "earlier")).toEqual(["a", "c", "b"]);
+  });
+
+  it("keeps boundary and unknown moves as no-ops", () => {
+    expect(planMove(["a", "b", "c"], "a", "earlier")).toEqual(["a", "b", "c"]);
+    expect(planMove(["a", "b", "c"], "c", "later")).toEqual(["a", "b", "c"]);
+    expect(planMove(["a", "b", "c"], "z", "later")).toEqual(["a", "b", "c"]);
+  });
+
+  it("identifies only legs whose predecessor changed", () => {
+    expect(affectedLegIds(["a", "b", "c", "d"], ["a", "c", "b", "d"])).toEqual([
+      "c",
+      "b",
+      "d",
+    ]);
   });
 });
 
@@ -143,6 +166,44 @@ describe("resolveCurrentPoint", () => {
     expect(resolveCurrentPoint(segs, "2026-06-01")?.name).toBe(
       "Plymouth (planned)",
     );
+  });
+});
+
+describe("resolveRecordedPrevPoint", () => {
+  it("ignores higher-order planned segments", () => {
+    const segments = [
+      seg({
+        id: "recorded-a",
+        sortOrder: 0,
+        destinationLat: "45.7",
+        destinationLng: "-121.0",
+        destinationName: "Avery Park",
+      }),
+      seg({
+        id: "planned",
+        sortOrder: 99,
+        destinationLat: "42.4",
+        destinationLng: "-83.5",
+        destinationName: "Future destination",
+      }),
+      seg({
+        id: "recorded-b",
+        sortOrder: 1,
+        destinationLat: "44.0",
+        destinationLng: "-121.3",
+        destinationName: "Bend",
+      }),
+    ];
+
+    expect(
+      resolveRecordedPrevPoint(
+        [
+          { segmentId: "recorded-a", sortOrder: 0 },
+          { segmentId: "recorded-b", sortOrder: 1 },
+        ],
+        segments,
+      ),
+    ).toEqual({ lat: 44, lng: -121.3, name: "Bend" });
   });
 });
 

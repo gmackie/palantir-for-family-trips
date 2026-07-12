@@ -70,6 +70,38 @@ export function nextSortOrder(segments: Array<{ sortOrder: number }>): number {
   return segments.reduce((max, s) => Math.max(max, s.sortOrder), -1) + 1;
 }
 
+export type MoveDirection = "earlier" | "later";
+
+/** Move one recorded stop by one position, preserving a stable no-op at edges. */
+export function planMove(
+  orderedIds: string[],
+  stopId: string,
+  direction: MoveDirection,
+): string[] {
+  const result = [...orderedIds];
+  const from = result.indexOf(stopId);
+  if (from === -1) return result;
+  const to = direction === "earlier" ? from - 1 : from + 1;
+  if (to < 0 || to >= result.length) return result;
+  [result[from], result[to]] = [result[to]!, result[from]!];
+  return result;
+}
+
+/**
+ * Return the stops whose incoming leg changed between two orderings. A moved
+ * pair can also change the following stop's predecessor, so callers re-route
+ * every returned id rather than only the explicitly moved stop.
+ */
+export function affectedLegIds(before: string[], after: string[]): string[] {
+  const predecessor = (ids: string[], id: string): string | null => {
+    const idx = ids.indexOf(id);
+    return idx > 0 ? ids[idx - 1]! : null;
+  };
+  return after.filter(
+    (id) => predecessor(before, id) !== predecessor(after, id),
+  );
+}
+
 /**
  * The point a newly-logged stop should route FROM: the destination of the
  * last (highest sortOrder) segment, or null when this is the first stop.
@@ -82,6 +114,28 @@ export function resolvePrevPoint(segments: SegmentLike[]): Point | null {
     lat: Number(last.destinationLat),
     lng: Number(last.destinationLng),
     name: last.destinationName ?? "Previous stop",
+  };
+}
+
+/** Resolve the latest recorded stop without considering planned segments. */
+export function resolveRecordedPrevPoint(
+  stops: Array<{ segmentId: string; sortOrder: number }>,
+  segments: SegmentLike[],
+): Point | null {
+  const last = [...stops].sort((a, b) => b.sortOrder - a.sortOrder)[0];
+  if (!last) return null;
+  const segment = segments.find((candidate) => candidate.id === last.segmentId);
+  if (
+    !segment ||
+    segment.destinationLat == null ||
+    segment.destinationLng == null
+  ) {
+    return null;
+  }
+  return {
+    lat: Number(segment.destinationLat),
+    lng: Number(segment.destinationLng),
+    name: segment.destinationName ?? "Previous stop",
   };
 }
 
