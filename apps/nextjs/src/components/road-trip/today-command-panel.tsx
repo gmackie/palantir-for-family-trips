@@ -183,6 +183,21 @@ export function TodayCommandPanel(props: {
         </p>
       )}
 
+      {data.vanLevels && (
+        <p className="text-muted-foreground font-mono text-[10px]">
+          Tanks
+          {data.vanLevels.fresh != null
+            ? ` · fresh ${Math.round(data.vanLevels.fresh)}%`
+            : ""}
+          {data.vanLevels.grey != null
+            ? ` · grey ${Math.round(data.vanLevels.grey)}%`
+            : ""}
+          {data.vanLevels.fuel != null
+            ? ` · fuel ${Math.round(data.vanLevels.fuel)}%`
+            : ""}
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

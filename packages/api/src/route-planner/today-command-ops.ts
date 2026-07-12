@@ -17,6 +17,7 @@ import {
 } from "./leave-by";
 import { assessSideTrip } from "./side-trip";
 import { scanTripAmenities } from "./poi-suggest-ops";
+import { resolveVanState } from "../daymap/vanstate-ops";
 import {
   buildServiceQueue,
   type ServiceStop,
@@ -74,6 +75,14 @@ export interface TodayCommandResult {
     gallons: number | null;
   } | null;
   leaveByMilesSource: "gps" | "segment" | "fallback" | null;
+  /** Latest van tank levels % when available. */
+  vanLevels: {
+    grey?: number;
+    black?: number;
+    fresh?: number;
+    propane?: number;
+    fuel?: number;
+  } | null;
 }
 
 function dayDiff(from: string, to: string): number {
@@ -285,6 +294,29 @@ export async function getTodayCommand(
         }
       : null;
 
+  let vanLevels: TodayCommandResult["vanLevels"] = null;
+  try {
+    const van = await resolveVanState(db, p.tripId);
+    if (van?.levels) {
+      vanLevels = {
+        grey: van.levels.grey,
+        black: van.levels.black,
+        fresh: van.levels.fresh,
+        propane: van.levels.propane,
+        fuel: van.levels.fuel,
+      };
+    }
+  } catch {
+    vanLevels = null;
+  }
+
+  // Grey/black high → dump; fresh/fuel low → elevate those stops
+  const needDump =
+    (vanLevels?.grey != null && vanLevels.grey >= 70) ||
+    (vanLevels?.black != null && vanLevels.black >= 70);
+  const needWater = vanLevels?.fresh != null && vanLevels.fresh <= 30;
+  const needFuel = vanLevels?.fuel != null && vanLevels.fuel <= 25;
+
   const serviceQueue = buildServiceQueue({
     dump: amenities?.dump ?? null,
     water: amenities?.water ?? null,
@@ -307,6 +339,9 @@ export async function getTodayCommand(
         : null,
     parking: amenities?.parking ?? null,
     warnings: amenities?.warnings ?? [],
+    needDump,
+    needWater,
+    needFuel,
   });
 
   const dayIdx = days.findIndex((d) => d.date === date);
@@ -386,6 +421,7 @@ export async function getTodayCommand(
     recentDays,
     lastFuel,
     leaveByMilesSource,
+    vanLevels,
   };
 }
 

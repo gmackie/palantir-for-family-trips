@@ -29,6 +29,7 @@ export interface ServiceLevels {
   black?: number;
   fresh?: number;
   propane?: number;
+  fuel?: number;
 }
 
 export interface ServiceAlertsResult {
