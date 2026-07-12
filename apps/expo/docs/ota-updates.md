@@ -58,3 +58,6 @@ App config aliases (`SENTRY_DSN`, `POSTHOG_KEY`, and `POSTHOG_HOST`) must resolv
 identically from build-profile variables and their `EXPO_PUBLIC_*` EAS
 environment counterparts. A runtime mismatch between `eas build` and
 `eas update` means the update is not deliverable and must not be promoted.
+
+Update scripts pin EAS CLI 20.5.1 because older CLI fingerprint implementations
+can produce runtime versions that do not match current EAS Build fingerprints.
