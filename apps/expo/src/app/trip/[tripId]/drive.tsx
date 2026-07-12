@@ -124,6 +124,23 @@ export default function DriveScreen() {
     ),
   );
 
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: briefing } = useQuery(
+    trpc.daymap.briefing.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+      date: today,
+    }),
+  );
+  const { data: amenityScan } = useQuery(
+    trpc.planner.scanAmenities.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+      maxMiles: 25,
+    }),
+  );
+  const todayAmenities = amenityScan?.find((r) => r.date === today);
+
   const summary: DrivingSummary | undefined = data;
 
   const track = useBreadcrumbRecorder(workspaceId, tripId ?? "");
@@ -152,6 +169,12 @@ export default function DriveScreen() {
       params: { tripId: tripId ?? "" },
     });
 
+  const goDayPlan = () =>
+    router.push({
+      pathname: "/trip/[tripId]/day-plan" as any,
+      params: { tripId: tripId ?? "", date: today },
+    });
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
@@ -165,6 +188,99 @@ export default function DriveScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }}
       >
+        {/* TODAY'S PLAN — from multi-day itinerary + briefing */}
+        {briefing && (
+          <Pressable onPress={goDayPlan}>
+            <BlockShell
+              label="Today's plan"
+              icon="map-outline"
+              iconColor={C.info}
+              borderColor={C.info + "55"}
+            >
+              {briefing.plannedDay && (
+                <Text style={{ color: C.fg, fontSize: 17, fontWeight: "700" }}>
+                  {briefing.plannedDay.title ??
+                    briefing.plannedDay.overnightName ??
+                    "Today"}
+                  <Text style={{ color: C.muted, fontSize: 13, fontWeight: "600" }}>
+                    {"  "}
+                    {briefing.plannedDay.intent}
+                  </Text>
+                </Text>
+              )}
+              {briefing.drive && (
+                <Text
+                  style={{ color: C.muted, fontFamily: mono, fontSize: 13 }}
+                >
+                  {briefing.drive.fromName} → {briefing.drive.toName} ·{" "}
+                  {briefing.drive.miles} mi · ~{briefing.drive.hours}h
+                </Text>
+              )}
+              {briefing.plannedDay?.heroTitle && (
+                <Text style={{ color: C.success, fontSize: 14, fontWeight: "600" }}>
+                  ★ {briefing.plannedDay.heroTitle}
+                </Text>
+              )}
+              {briefing.schedule.slice(0, 3).map((s, i) => (
+                <Text
+                  key={`${s.part}-${i}`}
+                  style={{ color: C.fg, fontSize: 14 }}
+                >
+                  <Text style={{ color: C.muted, fontSize: 11 }}>
+                    {s.part.toUpperCase()}{" "}
+                  </Text>
+                  {s.title}
+                </Text>
+              ))}
+              {briefing.plannedDay?.cutIfBehind && (
+                <Text style={{ color: C.warning, fontSize: 13 }}>
+                  Cut if behind: {briefing.plannedDay.cutIfBehind}
+                </Text>
+              )}
+              {todayAmenities && (
+                <View style={{ gap: 4, marginTop: 4 }}>
+                  {todayAmenities.overnight && (
+                    <Text style={{ color: C.muted, fontSize: 12 }}>
+                      Sleep: {todayAmenities.overnight.name} (
+                      {todayAmenities.overnight.milesAway} mi)
+                    </Text>
+                  )}
+                  {todayAmenities.fuel && (
+                    <Text style={{ color: C.muted, fontSize: 12 }}>
+                      Fuel: {todayAmenities.fuel.name} (
+                      {todayAmenities.fuel.milesAway} mi)
+                    </Text>
+                  )}
+                  {todayAmenities.dump && (
+                    <Text style={{ color: C.muted, fontSize: 12 }}>
+                      Dump: {todayAmenities.dump.name} (
+                      {todayAmenities.dump.milesAway} mi)
+                    </Text>
+                  )}
+                  {todayAmenities.tolls.length > 0 && (
+                    <Text style={{ color: C.warning, fontSize: 12 }}>
+                      Tolls nearby: {todayAmenities.tolls.length}
+                    </Text>
+                  )}
+                  {todayAmenities.warnings.slice(0, 2).map((w) => (
+                    <Text key={w} style={{ color: C.warning, fontSize: 12 }}>
+                      ⚠ {w}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              {briefing.notes.slice(0, 2).map((n) => (
+                <Text key={n} style={{ color: C.warning, fontSize: 12 }}>
+                  {n}
+                </Text>
+              ))}
+              <Text style={{ color: C.info, fontSize: 12, fontWeight: "700" }}>
+                Tap to edit day plan →
+              </Text>
+            </BlockShell>
+          </Pressable>
+        )}
+
         {/* LOG A STOP — capture where you are right now */}
         <View style={{ flexDirection: "row", gap: 10 }}>
           <Pressable

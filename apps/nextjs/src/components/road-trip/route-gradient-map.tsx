@@ -2,6 +2,16 @@
 
 import { useEffect, useRef } from "react";
 
+export interface PlanMapMarker {
+  id: string;
+  kind: "day" | "anchor" | "origin" | "destination";
+  label: string;
+  date?: string | null;
+  intent?: string | null;
+  lat: number;
+  lng: number;
+}
+
 interface RouteGradientMapProps {
   encodedPolyline: string;
   center?: { lat: number; lng: number };
@@ -17,7 +27,12 @@ interface RouteGradientMapProps {
   }>;
   fuelZones?: Array<{ lat: number; lng: number; mileMarker: number }>;
   overnightZones?: Array<{ lat: number; lng: number; radiusMiles: number }>;
+  /** Overnight / anchor markers along the multi-day plan (map itinerary). */
+  planMarkers?: PlanMapMarker[];
+  /** Encoded polyline for the selected day's drive leg (highlighted). */
+  selectedLegPolyline?: string | null;
   onPoiClick?: (poiId: string) => void;
+  onPlanMarkerClick?: (markerId: string) => void;
 }
 
 const GRADIENT_COLORS = [
@@ -61,7 +76,10 @@ export function RouteGradientMap({
   pois = [],
   fuelZones = [],
   overnightZones = [],
+  planMarkers = [],
+  selectedLegPolyline = null,
   onPoiClick,
+  onPlanMarkerClick,
 }: RouteGradientMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -166,9 +184,49 @@ export function RouteGradientMap({
       });
     });
 
-    // Fit bounds to route
+    // Multi-day plan markers (overnight stops + anchors)
+    planMarkers.forEach((m) => {
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        map,
+        position: { lat: m.lat, lng: m.lng },
+        title: m.label,
+        content: createPlanMarkerContent(m),
+      });
+      if (onPlanMarkerClick) {
+        marker.addListener("click", () => onPlanMarkerClick(m.id));
+      }
+    });
+
+    // Selected day's drive leg — bright overlay
+    if (selectedLegPolyline) {
+      try {
+        const legPath =
+          google.maps.geometry.encoding.decodePath(selectedLegPolyline);
+        new google.maps.Polyline({
+          map,
+          path: legPath,
+          strokeColor: "#FFFFFF",
+          strokeOpacity: 0.95,
+          strokeWeight: 7,
+          zIndex: 10,
+        });
+        new google.maps.Polyline({
+          map,
+          path: legPath,
+          strokeColor: "#58A6FF",
+          strokeOpacity: 1,
+          strokeWeight: 4,
+          zIndex: 11,
+        });
+      } catch {
+        // ignore bad polyline
+      }
+    }
+
+    // Fit bounds to route + plan markers
     const bounds = new google.maps.LatLngBounds();
     path.forEach((p) => bounds.extend(p));
+    planMarkers.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
     map.fitBounds(bounds);
   }, [
     encodedPolyline,
@@ -178,7 +236,10 @@ export function RouteGradientMap({
     pois,
     fuelZones,
     overnightZones,
+    planMarkers,
+    selectedLegPolyline,
     onPoiClick,
+    onPlanMarkerClick,
   ]);
 
   return (
@@ -202,4 +263,48 @@ function createFuelZoneMarker(): HTMLElement {
     "flex h-6 w-6 items-center justify-center rounded-full bg-[#D29922] text-xs font-bold text-black";
   div.textContent = "⛽";
   return div;
+}
+
+const INTENT_DOT: Record<string, string> = {
+  play: "#3FB950",
+  drive: "#58A6FF",
+  position: "#D29922",
+  event: "#A371F7",
+  recovery: "#8B949E",
+};
+
+function createPlanMarkerContent(m: PlanMapMarker): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.style.cssText =
+    "display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;";
+
+  const dot = document.createElement("div");
+  const color =
+    m.kind === "anchor"
+      ? "#A371F7"
+      : m.kind === "origin"
+        ? "#3FB950"
+        : m.kind === "destination"
+          ? "#F85149"
+          : (INTENT_DOT[m.intent ?? ""] ?? "#58A6FF");
+  const size = m.kind === "anchor" ? 14 : 11;
+  dot.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #0A0C10;box-shadow:0 0 0 1px ${color}88;`;
+  wrap.appendChild(dot);
+
+  const label = document.createElement("div");
+  label.textContent =
+    m.kind === "anchor" ? `◆ ${m.label}` : m.label.slice(0, 18);
+  label.style.cssText =
+    "font:700 9px/1.2 Inter,system-ui,sans-serif;color:#C9D1D9;background:#0D1117ee;padding:2px 4px;border-radius:2px;border:1px solid #30363D;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;";
+  wrap.appendChild(label);
+
+  if (m.date) {
+    const date = document.createElement("div");
+    date.textContent = m.date.slice(5); // MM-DD
+    date.style.cssText =
+      "font:600 8px/1 Geist Mono,ui-monospace,monospace;color:#8B949E;";
+    wrap.appendChild(date);
+  }
+
+  return wrap;
 }

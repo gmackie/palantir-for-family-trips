@@ -1,13 +1,17 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { DayChips } from "~/components/road-trip/day-chips";
+import { DayPlanPanel } from "~/components/road-trip/day-plan-panel";
 import { FuelLogPanel } from "~/components/road-trip/fuel-log-panel";
 import { PoiInfoCard } from "~/components/road-trip/poi-info-card";
 import { RouteGradientMap } from "~/components/road-trip/route-gradient-map";
 import { TripStatsBar } from "~/components/road-trip/trip-stats-bar";
 import { TripTikStrip } from "~/components/road-trip/triptik-strip";
+import { useTRPC } from "~/trpc/react";
 import { FerrySection } from "./ferry-section";
 
 // ---------------------------------------------------------------------------
@@ -105,9 +109,10 @@ type CorridorPoi = {
   lat: string;
   lng: string;
   data: unknown;
+  milesAway?: number;
 };
 
-type InspectorTab = "fuel" | "van" | "pois" | "ferry";
+type InspectorTab = "plan" | "fuel" | "van" | "pois" | "ferry";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -136,10 +141,11 @@ const POI_ICONS: Record<string, string> = {
 };
 
 const TAB_LABELS: Record<InspectorTab, string> = {
-  fuel: "Fuel Log",
-  van: "Van Profile",
+  plan: "Plan",
+  fuel: "Fuel",
+  van: "Van",
   pois: "POIs",
-  ferry: "Ferries",
+  ferry: "Ferry",
 };
 
 // ---------------------------------------------------------------------------
@@ -277,11 +283,48 @@ export function RoadTripDashboard(props: {
   } = props;
 
   const router = useRouter();
+  const trpc = useTRPC();
   const [isDeleting, startDeleteTransition] = useTransition();
   const [isUpdatingStatus, startStatusTransition] = useTransition();
   const [selectedPoi, setSelectedPoi] = useState<SelectedPoi | null>(null);
-  const [activeTab, setActiveTab] = useState<InspectorTab>("fuel");
+  const [activeTab, setActiveTab] = useState<InspectorTab>("plan");
+  const [leftRail, setLeftRail] = useState<"days" | "segments">("days");
+  const [selectedPlanDate, setSelectedPlanDate] = useState<string | null>(null);
+
+  const planMapQuery = useQuery(
+    trpc.planner.getPlanMap.queryOptions({
+      workspaceId: props.workspaceId,
+      tripId: trip.id,
+    }),
+  );
+  const planMarkers = (planMapQuery.data?.markers ?? [])
+    .filter((m) => m.kind === "day" || m.kind === "anchor")
+    .map((m) => ({
+      id: m.id,
+      kind: m.kind as "day" | "anchor",
+      label: m.label,
+      date: m.date,
+      intent: m.intent,
+      lat: m.lat,
+      lng: m.lng,
+    }));
+  const planDayCount = planMapQuery.data?.days.length ?? 0;
+  const planRouteMiles = planMapQuery.data?.totalMiles ?? 0;
+  const selectedLegPolyline =
+    planMapQuery.data?.legs?.find((l) => l.date === selectedPlanDate)
+      ?.polyline ?? null;
   const [poiFilter, setPoiFilter] = useState<string | null>(null);
+
+  const amenityScanQuery = useQuery(
+    trpc.planner.scanAmenities.queryOptions({
+      workspaceId: props.workspaceId,
+      tripId: trip.id,
+      maxMiles: 25,
+    }),
+  );
+  const amenityByDate = new Map(
+    (amenityScanQuery.data ?? []).map((r) => [r.date, r]),
+  );
 
   function handleDelete() {
     if (!confirm("Delete this trip? This cannot be undone.")) return;
@@ -306,14 +349,16 @@ export function RoadTripDashboard(props: {
     });
   }
 
-  const totalMiles = computeTotalMiles(segments);
+  const segmentMiles = computeTotalMiles(segments);
+  const totalMiles = planRouteMiles > 0 ? planRouteMiles : segmentMiles;
   const { currentDay, totalDays, daysRemaining } = computeTripDays(trip);
+  const planTotalDays = planDayCount > 0 ? planDayCount : totalDays;
   const encodedPolyline = getCombinedPolyline(segments);
   const triptikSegments = buildTripTikSegments(segments);
 
   const completedMiles =
-    totalDays > 0 && currentDay > 0
-      ? Math.round((currentDay / totalDays) * totalMiles)
+    planTotalDays > 0 && currentDay > 0
+      ? Math.round((currentDay / planTotalDays) * totalMiles)
       : 0;
 
   const filteredPois = corridorPois
@@ -408,7 +453,12 @@ export function RoadTripDashboard(props: {
           )}
           {totalMiles > 0 && (
             <span className="font-mono text-xs text-[#484F58]">
-              {totalMiles.toLocaleString()} mi
+              {Math.round(totalMiles).toLocaleString()} mi
+            </span>
+          )}
+          {planDayCount > 0 && (
+            <span className="font-mono text-xs text-[#58A6FF]">
+              {planDayCount} plan days
             </span>
           )}
           {trip.startDate && trip.endDate && (
@@ -430,27 +480,60 @@ export function RoadTripDashboard(props: {
 
       {/* ── Main 3-column body ── */}
       <div className="flex min-h-0 flex-1">
-        {/* Left panel: TripTik strip */}
-        <aside className="w-[320px] shrink-0 overflow-hidden border-r border-[#21262D] bg-[#0D1117]">
-          {triptikSegments.length > 0 ? (
-            <TripTikStrip
-              segments={triptikSegments}
-              totalMiles={Math.round(totalMiles)}
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center p-6">
-              <p className="text-xs text-[#484F58]">No segments planned yet.</p>
-              <Link
-                href={`/trips/${trip.id}`}
-                className="mt-2 text-xs text-[#58A6FF] hover:underline"
-              >
-                Add segments
-              </Link>
-            </div>
-          )}
+        {/* Left panel: Day plan (primary) or segment TripTik */}
+        <aside className="flex w-[320px] shrink-0 flex-col overflow-hidden border-r border-[#21262D] bg-[#0D1117]">
+          <div className="flex shrink-0 border-b border-[#21262D]">
+            <button
+              type="button"
+              onClick={() => setLeftRail("days")}
+              className={`flex-1 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider ${
+                leftRail === "days"
+                  ? "border-b-2 border-[#58A6FF] text-[#58A6FF]"
+                  : "text-[#8B949E]"
+              }`}
+            >
+              Days
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeftRail("segments")}
+              className={`flex-1 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider ${
+                leftRail === "segments"
+                  ? "border-b-2 border-[#58A6FF] text-[#58A6FF]"
+                  : "text-[#8B949E]"
+              }`}
+            >
+              Segments
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {leftRail === "days" ? (
+              <DayPlanPanel
+                workspaceId={props.workspaceId}
+                tripId={trip.id}
+                selectedDate={selectedPlanDate}
+                onSelectedDateChange={setSelectedPlanDate}
+              />
+            ) : triptikSegments.length > 0 ? (
+              <TripTikStrip
+                segments={triptikSegments}
+                totalMiles={Math.round(totalMiles)}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center p-6">
+                <p className="text-xs text-[#484F58]">No segments planned yet.</p>
+                <Link
+                  href={`/trips/${trip.id}`}
+                  className="mt-2 text-xs text-[#58A6FF] hover:underline"
+                >
+                  Add segments
+                </Link>
+              </div>
+            )}
+          </div>
         </aside>
 
-        {/* Center: Route gradient map */}
+        {/* Center: Route gradient map + day chips */}
         <main className="relative min-w-0 flex-1">
           {encodedPolyline ? (
             <>
@@ -459,6 +542,8 @@ export function RoadTripDashboard(props: {
                 pois={filteredPois}
                 fuelZones={fuelZones}
                 overnightZones={overnightZones}
+                planMarkers={planMarkers}
+                selectedLegPolyline={selectedLegPolyline}
                 onPoiClick={(poiId) => {
                   const poi = corridorPois.find((p) => p.id === poiId);
                   if (poi) {
@@ -474,6 +559,38 @@ export function RoadTripDashboard(props: {
                     setActiveTab("pois");
                   }
                 }}
+                onPlanMarkerClick={(markerId) => {
+                  setLeftRail("days");
+                  setActiveTab("plan");
+                  const m = planMarkers.find((x) => x.id === markerId);
+                  if (m?.date) setSelectedPlanDate(m.date);
+                }}
+              />
+
+              <DayChips
+                days={(planMapQuery.data?.days ?? []).map((d) => {
+                  const a = amenityByDate.get(d.date);
+                  const flags: string[] = [];
+                  if (a?.overnight) flags.push("sleep");
+                  if (a?.fuel) flags.push("fuel");
+                  if (a?.dump) flags.push("dump");
+                  if (a?.tolls.length) flags.push("toll");
+                  return {
+                    date: d.date,
+                    intent: d.intent,
+                    title: d.title,
+                    overnightName: d.overnightName,
+                    heroTitle: d.heroTitle,
+                    amenityFlags: flags,
+                    hasWarnings: (a?.warnings.length ?? 0) > 0,
+                  };
+                })}
+                selectedDate={selectedPlanDate}
+                onSelect={(date) => {
+                  setSelectedPlanDate(date);
+                  setLeftRail("days");
+                  setActiveTab("plan");
+                }}
               />
 
               {/* POI info card overlay */}
@@ -488,13 +605,13 @@ export function RoadTripDashboard(props: {
               )}
             </>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center bg-[#0D1117]">
+            <div className="relative flex h-full flex-col items-center justify-center bg-[#0D1117]">
               <div className="rounded-[4px] border border-[#21262D] bg-[#161B22] px-8 py-6 text-center">
                 <p className="text-sm font-semibold text-[#C9D1D9]">
                   No route planned
                 </p>
                 <p className="mt-1 text-xs text-[#8B949E]">
-                  Add a route polyline to your segments to see the gradient map.
+                  Build the full map plan or add a route to see the gradient map.
                 </p>
                 <Link
                   href={`/trips/${trip.id}`}
@@ -503,6 +620,33 @@ export function RoadTripDashboard(props: {
                   Trip settings
                 </Link>
               </div>
+              {(planMapQuery.data?.days.length ?? 0) > 0 && (
+                <DayChips
+                  days={(planMapQuery.data?.days ?? []).map((d) => {
+                    const a = amenityByDate.get(d.date);
+                    const flags: string[] = [];
+                    if (a?.overnight) flags.push("sleep");
+                    if (a?.fuel) flags.push("fuel");
+                    if (a?.dump) flags.push("dump");
+                    if (a?.tolls.length) flags.push("toll");
+                    return {
+                      date: d.date,
+                      intent: d.intent,
+                      title: d.title,
+                      overnightName: d.overnightName,
+                      heroTitle: d.heroTitle,
+                      amenityFlags: flags,
+                      hasWarnings: (a?.warnings.length ?? 0) > 0,
+                    };
+                  })}
+                  selectedDate={selectedPlanDate}
+                  onSelect={(date) => {
+                    setSelectedPlanDate(date);
+                    setLeftRail("days");
+                    setActiveTab("plan");
+                  }}
+                />
+              )}
             </div>
           )}
         </main>
@@ -511,11 +655,14 @@ export function RoadTripDashboard(props: {
         <aside className="w-[360px] shrink-0 overflow-hidden border-l border-[#21262D] bg-[#0D1117]">
           {/* Tab bar */}
           <div className="flex border-b border-[#21262D]">
-            {(["fuel", "van", "pois", "ferry"] as InspectorTab[]).map((tab) => (
+            {(
+              ["plan", "fuel", "van", "pois", "ferry"] as InspectorTab[]
+            ).map((tab) => (
               <button
                 key={tab}
+                type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] transition-colors ${
+                className={`flex-1 px-2 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] transition-colors ${
                   tab === activeTab
                     ? "border-b-2 border-[#58A6FF] text-[#58A6FF]"
                     : "text-[#8B949E] hover:text-[#C9D1D9]"
@@ -527,7 +674,18 @@ export function RoadTripDashboard(props: {
           </div>
 
           {/* Tab content */}
-          <div className="h-[calc(100%-41px)] overflow-y-auto p-4">
+          <div
+            className={`h-[calc(100%-41px)] ${activeTab === "plan" ? "overflow-hidden p-0" : "overflow-y-auto p-4"}`}
+          >
+            {activeTab === "plan" && (
+              <DayPlanPanel
+                workspaceId={props.workspaceId}
+                tripId={trip.id}
+                selectedDate={selectedPlanDate}
+                onSelectedDateChange={setSelectedPlanDate}
+              />
+            )}
+
             {activeTab === "fuel" && (
               <FuelLogPanel logs={fuelLogs} stats={fuelStats} />
             )}
@@ -618,14 +776,20 @@ export function RoadTripDashboard(props: {
                 <div className="flex flex-wrap gap-1.5">
                   {[
                     null,
-                    "fuel",
+                    "wild_camping",
                     "campsite",
-                    "water",
-                    "grocery",
+                    "parking_overnight",
+                    "parking",
                     "rest_area",
+                    "fuel",
+                    "water",
                     "dump_station",
-                    "scenic",
+                    "propane",
                     "shower",
+                    "laundry",
+                    "toll",
+                    "grocery",
+                    "scenic",
                   ].map((cat) => (
                     <button
                       key={cat ?? "all"}
@@ -694,7 +858,7 @@ export function RoadTripDashboard(props: {
         costPerMile={fuelStats.costPerMile}
         daysRemaining={daysRemaining}
         currentDay={currentDay}
-        totalDays={totalDays}
+        totalDays={planTotalDays}
       />
     </div>
   );

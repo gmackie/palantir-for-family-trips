@@ -228,17 +228,26 @@ export default async function RoadTripPage(props: {
   }
 
   if (!hasRoute) {
+    // Route not planned yet — still expose day plan + anchors (P0/P1 planner).
+    const { DayPlanPanel } = await import(
+      "~/components/road-trip/day-plan-panel"
+    );
     return (
-      <div className="flex h-screen flex-col bg-background">
-        <RoutePlannerForm
-          tripId={trip.id}
-          workspaceId={workspace.id}
-          defaultDestination={trip.destinationName ?? ""}
-          defaultStartDate={trip.startDate ?? ""}
-          googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
-          planRouteAction={planRouteAction}
-          deleteTripAction={deleteTripAction}
-        />
+      <div className="flex h-screen flex-col bg-background md:flex-row">
+        <div className="min-h-0 flex-1 overflow-auto">
+          <RoutePlannerForm
+            tripId={trip.id}
+            workspaceId={workspace.id}
+            defaultDestination={trip.destinationName ?? ""}
+            defaultStartDate={trip.startDate ?? ""}
+            googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}
+            planRouteAction={planRouteAction}
+            deleteTripAction={deleteTripAction}
+          />
+        </div>
+        <aside className="h-[45vh] w-full shrink-0 border-t border-[#21262D] bg-[#0D1117] md:h-auto md:w-[360px] md:border-l md:border-t-0">
+          <DayPlanPanel workspaceId={workspace.id} tripId={trip.id} />
+        </aside>
       </div>
     );
   }

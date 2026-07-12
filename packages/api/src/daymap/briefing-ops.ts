@@ -5,7 +5,7 @@
  */
 
 import { and, eq, gte, inArray, isNull, lte, or } from "@sortey/db";
-import { importedPois, tripSegments } from "@sortey/db/schema";
+import { importedPois, tripDays, tripSegments } from "@sortey/db/schema";
 import SunCalc from "suncalc";
 
 import { computeNextAnchor } from "../route-planner/anchor-ops";
@@ -21,6 +21,8 @@ import {
   type BriefingPoi,
   type DayBriefing,
   type DrivePlan,
+  type PlannedDayBrief,
+  type ScheduleBlock,
   type WeatherBrief,
 } from "./briefing";
 import { computeServiceAlerts, type ServiceLevels } from "./service-ops";
@@ -91,7 +93,58 @@ export async function computeBriefing(
     }
   >;
 
-  const position = resolveCurrentPoint(segments, date);
+  // Planned Trip Day for this calendar date (may exist before segments do).
+  const [plannedRow] = (await db
+    .select({
+      intent: tripDays.intent,
+      title: tripDays.title,
+      overnightName: tripDays.overnightName,
+      overnightLat: tripDays.overnightLat,
+      overnightLng: tripDays.overnightLng,
+      heroTitle: tripDays.heroTitle,
+      heroDetail: tripDays.heroDetail,
+      cutIfBehind: tripDays.cutIfBehind,
+      blocksJson: tripDays.blocksJson,
+    })
+    .from(tripDays)
+    .where(and(eq(tripDays.tripId, p.tripId), eq(tripDays.date, date)))
+    .limit(1)) as Array<{
+    intent: string;
+    title: string | null;
+    overnightName: string | null;
+    overnightLat: string | null;
+    overnightLng: string | null;
+    heroTitle: string | null;
+    heroDetail: string | null;
+    cutIfBehind: string | null;
+    blocksJson: ScheduleBlock[] | null;
+  }>;
+
+  const plannedDay: PlannedDayBrief | null = plannedRow
+    ? {
+        intent: plannedRow.intent,
+        title: plannedRow.title,
+        overnightName: plannedRow.overnightName,
+        heroTitle: plannedRow.heroTitle,
+        heroDetail: plannedRow.heroDetail,
+        cutIfBehind: plannedRow.cutIfBehind,
+        blocks: plannedRow.blocksJson,
+      }
+    : null;
+
+  let position = resolveCurrentPoint(segments, date);
+  // Fall back to planned overnight coords when segments aren't logged yet.
+  if (
+    !position &&
+    plannedRow?.overnightLat != null &&
+    plannedRow.overnightLng != null
+  ) {
+    position = {
+      lat: Number(plannedRow.overnightLat),
+      lng: Number(plannedRow.overnightLng),
+      name: plannedRow.overnightName ?? plannedRow.title ?? "Planned stop",
+    };
+  }
   if (!position) return null;
 
   // Today's drive = the segment whose startDate is exactly `date`.
@@ -115,7 +168,14 @@ export async function computeBriefing(
           lng: Number(todaySeg.destinationLng),
           name: drive.toName,
         }
-      : position;
+      : plannedRow?.overnightLat != null && plannedRow.overnightLng != null
+        ? {
+            lat: Number(plannedRow.overnightLat),
+            lng: Number(plannedRow.overnightLng),
+            name:
+              plannedRow.overnightName ?? plannedRow.title ?? position.name,
+          }
+        : position;
   const forecast = await fetchDailyForecast({
     lat: focus.lat,
     lng: focus.lng,
@@ -198,6 +258,7 @@ export async function computeBriefing(
     date,
     positionName: position.name,
     drive,
+    plannedDay,
     stopName: drive?.toName ?? position.name,
     weather,
     airQuality,

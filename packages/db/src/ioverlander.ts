@@ -15,7 +15,7 @@ const SOURCE = "ioverlander";
 const BATCH_SIZE = 500;
 
 /** iOverlander category (lowercased) → our imported_poi category. */
-const CATEGORY_MAP: Record<string, string> = {
+export const CATEGORY_MAP: Record<string, string> = {
   "wild camping": "wild_camping",
   "informal campsite": "wild_camping",
   "established campground": "campsite",
@@ -33,7 +33,55 @@ const CATEGORY_MAP: Record<string, string> = {
   showers: "shower",
   restaurant: "restaurant",
   mechanic: "mechanic",
+  // Sleep / park / road amenities for long-term van planning
+  parking: "parking",
+  "day parking": "parking",
+  "overnight parking": "parking_overnight",
+  "parking lot": "parking",
+  "car park": "parking",
+  "rest area": "rest_area",
+  "rest stop": "rest_area",
+  "picnic area": "rest_area",
+  "toll plaza": "toll",
+  toll: "toll",
+  "toll booth": "toll",
+  "truck stop": "fuel",
+  wifi: "wifi",
+  "wifi hotspot": "wifi",
+  hospital: "medical",
+  pharmacy: "medical",
+  "pet friendly": "pet",
 };
+
+/** Amenity groups used by the road-trip planner UI and corridor filters. */
+export const AMENITY_GROUPS = {
+  sleep: ["wild_camping", "campsite", "parking_overnight", "rest_area"],
+  parking: ["parking", "parking_overnight", "rest_area"],
+  service: ["water", "dump_station", "propane", "shower", "laundry", "mechanic"],
+  fuel: ["fuel"],
+  food: ["grocery", "restaurant"],
+  road: ["toll", "rest_area", "parking"],
+} as const;
+
+export type AmenityGroup = keyof typeof AMENITY_GROUPS;
+
+export const OVERNIGHT_CATEGORIES = [
+  "wild_camping",
+  "campsite",
+  "parking_overnight",
+  "rest_area",
+] as const;
+
+export function overnightKindFromCategory(
+  category: string,
+): "dispersed" | "campground" | "hotel" | "unknown" {
+  if (category === "wild_camping" || category === "parking_overnight") {
+    return "dispersed";
+  }
+  if (category === "campsite") return "campground";
+  if (category === "rest_area" || category === "parking") return "unknown";
+  return "unknown";
+}
 
 export interface IoverlanderPoiRow {
   source: string;
