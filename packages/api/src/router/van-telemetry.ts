@@ -80,6 +80,49 @@ export async function getVanTelemetrySnapshot(args: {
   }
 }
 
+/**
+ * Canonical driftport deep link for a rig. `https://driftport.io/rigs/<rigId>`
+ * is a universal link: it opens the driftport mobile app when installed and
+ * falls back to the driftport web dashboard otherwise. `DRIFTPORT_WEB_URL`
+ * overrides the base for staging setups; it is distinct from
+ * `DRIFTPORT_API_URL` (the server-to-server telemetry endpoint).
+ */
+export function buildDriftportRigUrl(
+  rigId: string,
+  baseUrl = process.env.DRIFTPORT_WEB_URL ?? "https://driftport.io",
+): string {
+  return `${baseUrl.replace(/\/$/, "")}/rigs/${rigId}`;
+}
+
+export interface VanRigLink {
+  rigId: string;
+  url: string;
+}
+
+/**
+ * Pure, testable core of `vanTelemetry.getRigLink`. Same fail-safe contract
+ * and flag gate as the snapshot: `null` hides the link entirely.
+ */
+export async function getVanRigLink(args: {
+  store: VanTelemetryStore;
+  userId: string;
+  tripId: string;
+  baseUrl?: string;
+}): Promise<VanRigLink | null> {
+  const { store, userId, tripId, baseUrl } = args;
+
+  if (!isEnabled("driftportTelemetryPreview", { userId })) {
+    return null;
+  }
+
+  const rigId = await store.findDriftportRigId({ tripId });
+  if (!rigId) {
+    return null;
+  }
+
+  return { rigId, url: buildDriftportRigUrl(rigId, baseUrl) };
+}
+
 export const vanTelemetryRouter = {
   getSnapshot: tripProcedure()
     .input(
@@ -92,6 +135,20 @@ export const vanTelemetryRouter = {
       getVanTelemetrySnapshot({
         store: createVanTelemetryStore(ctx.db),
         provider: resolveTelemetryProvider(),
+        userId: ctx.session.user.id,
+        tripId: ctx.tripId,
+      }),
+    ),
+  getRigLink: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx }) =>
+      getVanRigLink({
+        store: createVanTelemetryStore(ctx.db),
         userId: ctx.session.user.id,
         tripId: ctx.tripId,
       }),

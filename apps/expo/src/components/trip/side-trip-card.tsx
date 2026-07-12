@@ -17,11 +17,17 @@ export function SideTripCard({
   workspaceId,
   onLogStop,
   onOpenMap,
+  onReplan,
+  onExplore,
 }: {
   tripId: string;
   workspaceId: string;
   onLogStop: () => void;
   onOpenMap: () => void;
+  /** Open Today replan with side_trip reason */
+  onReplan?: () => void;
+  /** Mark run_state side_trip */
+  onExplore?: () => void;
 }) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -122,17 +128,47 @@ export function SideTripCard({
         from Day plan / replan when you rejoin the corridor.
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {onExplore ? (
+          <Pressable
+            onPress={onExplore}
+            style={{
+              backgroundColor: C.warning + "22",
+              borderWidth: 1,
+              borderColor: C.warning + "66",
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ color: C.warning, fontWeight: "700", fontSize: 13 }}>
+              Explore
+            </Text>
+          </Pressable>
+        ) : null}
+        {onReplan ? (
+          <Pressable
+            onPress={onReplan}
+            style={{
+              borderWidth: 1,
+              borderColor: C.info + "66",
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ color: C.info, fontWeight: "700", fontSize: 13 }}>
+              Replan from here
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={onLogStop}
           style={{
-            backgroundColor: C.warning + "22",
             borderWidth: 1,
-            borderColor: C.warning + "66",
+            borderColor: C.border,
             paddingHorizontal: 12,
             paddingVertical: 8,
           }}
         >
-          <Text style={{ color: C.warning, fontWeight: "700", fontSize: 13 }}>
+          <Text style={{ color: C.fg, fontWeight: "600", fontSize: 13 }}>
             Log stop
           </Text>
         </Pressable>

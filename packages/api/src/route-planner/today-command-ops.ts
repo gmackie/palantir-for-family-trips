@@ -17,6 +17,10 @@ import {
 } from "./leave-by";
 import { assessSideTrip } from "./side-trip";
 import { scanTripAmenities } from "./poi-suggest-ops";
+import {
+  buildServiceQueue,
+  type ServiceStop,
+} from "./service-queue";
 
 export interface TodayCommandResult {
   date: string;
@@ -41,6 +45,8 @@ export interface TodayCommandResult {
     driveHours: number;
   } | null;
   amenities: Awaited<ReturnType<typeof scanTripAmenities>>[number] | null;
+  /** Ordered dump → water → fuel → sleep (elevated when warnings). */
+  serviceQueue: ServiceStop[];
   tomorrow: {
     date: string;
     title: string | null;
@@ -251,6 +257,30 @@ export async function getTodayCommand(
         }
       : null;
 
+  const serviceQueue = buildServiceQueue({
+    dump: amenities?.dump ?? null,
+    water: amenities?.water ?? null,
+    fuel: amenities?.fuel ?? null,
+    overnight: amenities?.overnight
+      ? {
+          name: amenities.overnight.name,
+          lat: amenities.overnight.lat,
+          lng: amenities.overnight.lng,
+          milesAway: amenities.overnight.milesAway,
+          category: amenities.overnight.category,
+        }
+      : navigateOvernight
+        ? {
+            name: navigateOvernight.label,
+            lat: navigateOvernight.lat,
+            lng: navigateOvernight.lng,
+            milesAway: 0,
+          }
+        : null,
+    parking: amenities?.parking ?? null,
+    warnings: amenities?.warnings ?? [],
+  });
+
   return {
     date,
     tz,
@@ -269,6 +299,7 @@ export async function getTodayCommand(
       : null,
     leaveBy,
     amenities,
+    serviceQueue,
     tomorrow: tomorrowDay
       ? {
           date: tomorrowDay.date,

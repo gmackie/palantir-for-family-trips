@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
@@ -115,6 +115,17 @@ export default function DriveScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const workspaceId = getActiveWorkspaceId() ?? "";
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const setRunState = useMutation(
+    trpc.planner.setRunState.mutationOptions({
+      onSuccess: () => {
+        void queryClient.invalidateQueries(
+          trpc.planner.todayCommand.queryFilter(),
+        );
+      },
+    }),
+  );
 
   const { data, isLoading, isError, refetch } = useQuery(
     trpc.trips.drivingSummary.queryOptions(
@@ -201,6 +212,15 @@ export default function DriveScreen() {
           workspaceId={workspaceId}
           onLogStop={goLogStop}
           onOpenMap={openMap}
+          onExplore={() =>
+            setRunState.mutate({
+              workspaceId,
+              tripId: tripId ?? "",
+              runState: "side_trip",
+              note: "Exploring off plan",
+            })
+          }
+          onReplan={goToday}
         />
 
         <Pressable onPress={goToday}>
