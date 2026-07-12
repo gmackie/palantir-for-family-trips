@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import NetInfo from "@react-native-community/netinfo";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +16,11 @@ import {
 } from "react-native";
 
 import { trpc } from "~/utils/api";
+import { authClient } from "~/utils/auth";
+import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, R } from "~/utils/design";
+import { createJourneyStopId } from "~/utils/journey-outbox";
+import { journeyOutbox } from "~/utils/journey-outbox-native";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 const KINDS = [
@@ -35,7 +41,10 @@ function todayLocal(): string {
 
 export default function LogStopScreen() {
   "use no memo";
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { tripId, quick } = useLocalSearchParams<{
+    tripId: string;
+    quick?: string;
+  }>();
   const workspaceId = getActiveWorkspaceId() ?? "";
   const router = useRouter();
   const qc = useQueryClient();
@@ -49,6 +58,9 @@ export default function LogStopScreen() {
   const [note, setNote] = useState("");
   const [query, setQuery] = useState("");
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [stopId] = useState(createJourneyStopId);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
 
   const search = useQuery({
     ...trpc.routePlanner.searchPlaces.queryOptions({ query }),
@@ -76,11 +88,71 @@ export default function LogStopScreen() {
             tripId: tripId ?? "",
           }),
         });
-        router.back();
       },
-      onError: (e) => Alert.alert("Couldn't log stop", e.message),
     }),
   );
+  const uploadPhoto = useMutation(trpc.photos.upload.mutationOptions());
+
+  async function choosePhotos() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      quality: 0.85,
+    });
+    if (!result.canceled) {
+      setPhotoUris(result.assets.map((asset) => asset.uri));
+    }
+  }
+
+  async function uploadSelectedPhotos() {
+    const cookies = authClient.getCookie();
+    for (const uri of photoUris) {
+      const response = await new Promise<{ ok: boolean; text: string }>(
+        (resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", `${getBaseUrl()}/api/receipts/upload`);
+          if (cookies) xhr.setRequestHeader("Cookie", cookies);
+          xhr.onload = () =>
+            resolve({
+              ok: xhr.status >= 200 && xhr.status < 300,
+              text: xhr.responseText,
+            });
+          xhr.onerror = () => reject(new Error("Photo upload failed"));
+          const formData = new FormData();
+          formData.append("file", {
+            uri,
+            name: "journey-photo.jpg",
+            type: "image/jpeg",
+          } as unknown as Blob);
+          xhr.send(formData);
+        },
+      );
+      if (!response.ok) throw new Error("Photo upload failed");
+      const data = JSON.parse(response.text) as { storageKey?: string };
+      if (data.storageKey) {
+        await uploadPhoto.mutateAsync({
+          workspaceId,
+          tripId: tripId ?? "",
+          storageKey: data.storageKey,
+          journeyStopId: stopId,
+          takenAt: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  async function flushOutbox() {
+    await journeyOutbox.flush((command) => logStop.mutateAsync(command));
+  }
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected) void flushOutbox();
+    });
+    return unsubscribe;
+    // The mutation transport is stable for this mounted screen.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount subscription
+  }, []);
 
   async function useMyLocation() {
     setGpsLoading(true);
@@ -105,20 +177,53 @@ export default function LogStopScreen() {
     }
   }
 
-  const canSave = !!coords && name.trim().length > 0 && !logStop.isPending;
+  useEffect(() => {
+    if (quick === "camp") void useMyLocation();
+    // Run once for the explicit Camp here entry point.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional route-entry behavior
+  }, [quick]);
 
-  function save() {
+  const canSave =
+    !!coords && name.trim().length > 0 && !logStop.isPending && !saving;
+
+  async function save() {
     if (!coords) return;
-    logStop.mutate({
-      workspaceId,
-      tripId: tripId ?? "",
-      name: name.trim(),
-      lat: coords.lat,
-      lng: coords.lng,
-      kind,
-      date,
-      note: note.trim() || undefined,
-    });
+    setSaving(true);
+    try {
+      await journeyOutbox.enqueue({
+        stopId,
+        workspaceId,
+        tripId: tripId ?? "",
+        name: name.trim(),
+        lat: coords.lat,
+        lng: coords.lng,
+        kind,
+        arrivedAt: new Date(`${date}T12:00:00`).toISOString(),
+        note: note.trim() || undefined,
+      });
+      await flushOutbox();
+      const stillQueued = (await journeyOutbox.list()).some(
+        (entry) => entry.command.stopId === stopId,
+      );
+      if (stillQueued) {
+        Alert.alert(
+          "Saved for sync",
+          "This stop is safe on your phone and will upload when you're back online.",
+        );
+      } else if (photoUris.length > 0) {
+        try {
+          await uploadSelectedPhotos();
+        } catch {
+          Alert.alert(
+            "Stop saved",
+            "The stop is recorded, but one or more photos still need to be added from Photos.",
+          );
+        }
+      }
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -293,8 +398,32 @@ export default function LogStopScreen() {
           />
         </View>
 
+        <View style={{ gap: 10 }}>
+          <Label text="Photos (optional)" />
+          <Pressable
+            onPress={() => void choosePhotos()}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: C.border,
+              borderRadius: R.md,
+              minHeight: 48,
+            }}
+          >
+            <Ionicons name="images-outline" size={18} color={C.info} />
+            <Text style={{ color: C.info, fontWeight: "700" }}>
+              {photoUris.length > 0
+                ? `${photoUris.length} selected`
+                : "Add photos"}
+            </Text>
+          </Pressable>
+        </View>
+
         <Pressable
-          onPress={save}
+          onPress={() => void save()}
           disabled={!canSave}
           style={{
             flexDirection: "row",
@@ -307,7 +436,7 @@ export default function LogStopScreen() {
             backgroundColor: canSave ? C.success : C.border,
           }}
         >
-          {logStop.isPending ? (
+          {logStop.isPending || saving ? (
             <ActivityIndicator size="small" color={C.bg} />
           ) : (
             <Ionicons name="add-circle-outline" size={18} color={C.bg} />

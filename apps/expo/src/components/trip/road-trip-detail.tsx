@@ -119,6 +119,18 @@ export function RoadTripDetail({
     path: string;
     params?: Record<string, string>;
   }> = [
+    {
+      key: "log-stop",
+      label: "Log Stop",
+      icon: "location-outline",
+      path: "log-stop",
+    },
+    {
+      key: "journey",
+      label: "Journey",
+      icon: "list-outline",
+      path: "journey-log",
+    },
     { key: "drive", label: "Drive", icon: "car-sport-outline", path: "drive" },
     { key: "map", label: "Route", icon: "navigate-outline", path: "map" },
     {

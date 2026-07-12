@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { JourneyOutbox, type JourneyStopCommand } from "./journey-outbox";
+import {
+  createJourneyStopId,
+  JourneyOutbox,
+  type JourneyStopCommand,
+} from "./journey-outbox";
 
 function memoryStorage(seed?: string) {
   let value = seed ?? null;
@@ -25,6 +29,12 @@ const command: JourneyStopCommand = {
 };
 
 describe("JourneyOutbox", () => {
+  it("creates server-valid stable stop ids", () => {
+    expect(createJourneyStopId()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+  });
+
   it("persists commands and removes them only after confirmed delivery", async () => {
     const storage = memoryStorage();
     const outbox = new JourneyOutbox(storage);

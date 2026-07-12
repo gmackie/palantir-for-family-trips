@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, sql } from "@sortey/db";
 import {
+  journeyStops,
   photoReactions,
   tripMembers,
   tripPhotos,
@@ -23,12 +24,33 @@ export const photosRouter = {
         lat: z.number().optional(),
         lng: z.number().optional(),
         takenAt: z.string().datetime().optional(),
+        journeyStopId: z.string().uuid().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       let segmentId: string | null = null;
 
-      if (input.takenAt) {
+      if (input.journeyStopId) {
+        const [stop] = await ctx.db
+          .select({ segmentId: journeyStops.segmentId })
+          .from(journeyStops)
+          .where(
+            and(
+              eq(journeyStops.id, input.journeyStopId),
+              eq(journeyStops.tripId, ctx.tripId),
+            ),
+          )
+          .limit(1);
+        if (!stop) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Journey stop not found.",
+          });
+        }
+        segmentId = stop.segmentId;
+      }
+
+      if (!segmentId && input.takenAt) {
         const takenDate = new Date(input.takenAt).toISOString().slice(0, 10);
         const segments = await ctx.db
           .select({ id: tripSegments.id })
