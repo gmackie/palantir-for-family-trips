@@ -1,5 +1,15 @@
 # Design System — Palantir-style Situation Dashboard
 
+## Journey capture
+
+Journey is the factual trip record; itinerary is future intent. Use explicit
+`Recorded` and `Planned` language anywhere both appear. The mobile capture
+action must remain thumb-reachable on the active trip and Driving Mode.
+Location failure falls back to search instead of blocking the form. A locally
+saved stop is shown immediately with an honest `waiting to sync` state, while a
+route failure is shown as `route pending` with a retry action. Never imply a
+network write succeeded when only local persistence has completed.
+
 ## Product Context
 - **What this is:** A high-stakes situation dashboard for mission-critical monitoring and response planning.
 - **Who it's for:** Operational commanders, emergency responders, and strategic planners.
