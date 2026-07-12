@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
@@ -33,10 +34,12 @@ export const journeyRouter = {
       z.object({
         workspaceId: z.string().min(1),
         tripId: z.string().min(1),
+        stopId: z.string().uuid().optional(),
         name: z.string().min(1).max(200),
         lat: z.number(),
         lng: z.number(),
         date: dateInput.optional(),
+        arrivedAt: z.string().datetime().optional(),
         kind: z.enum(STOP_KINDS).default("custom"),
         note: z.string().max(1000).optional(),
         tz: z.string().optional(),
@@ -44,12 +47,17 @@ export const journeyRouter = {
     )
     .mutation(({ ctx, input }) =>
       logStopOp(ctx.db, {
+        stopId: input.stopId ?? randomUUID(),
         tripId: ctx.tripId,
         userId: ctx.session.user.id,
         name: input.name,
         lat: input.lat,
         lng: input.lng,
-        date: input.date,
+        arrivedAt: input.arrivedAt
+          ? new Date(input.arrivedAt)
+          : input.date
+            ? new Date(`${input.date}T12:00:00.000Z`)
+            : new Date(),
         kind: input.kind,
         note: input.note,
         tz: input.tz,
