@@ -119,6 +119,7 @@ P1 algorithm: pack must-visits left-to-right across the date range; mark `playDa
 | **P4** | Must-visit waypoints + route candidates | Partial (template stops; no dual-candidate UI) |
 | **P5** | Experience POIs + cut-if-behind automation | Partial (cut text + hero blocks seeded) |
 | **P6** | Side-trip detect + prompt | ✅ `assessSideTrip` + Drive banner (no paused-trip state yet) |
+| **W1+W2** | Today Command + Reality Replan | 📋 Design: `docs/plans/2026-07-12-today-command-and-replan-design.md` |
 
 ### End-to-end loop (shipped)
 

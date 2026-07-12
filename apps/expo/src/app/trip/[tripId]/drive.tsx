@@ -176,6 +176,12 @@ export default function DriveScreen() {
       params: { tripId: tripId ?? "", date: today },
     });
 
+  const goToday = () =>
+    router.push({
+      pathname: "/trip/[tripId]/today" as any,
+      params: { tripId: tripId ?? "" },
+    });
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
@@ -197,9 +203,22 @@ export default function DriveScreen() {
           onOpenMap={openMap}
         />
 
+        <Pressable onPress={goToday}>
+          <Text
+            style={{
+              color: C.info,
+              fontSize: 13,
+              fontWeight: "700",
+              marginBottom: 4,
+            }}
+          >
+            Open Today Command →
+          </Text>
+        </Pressable>
+
         {/* TODAY'S PLAN — from multi-day itinerary + briefing */}
         {briefing && (
-          <Pressable onPress={goDayPlan}>
+          <Pressable onPress={goToday}>
             <BlockShell
               label="Today's plan"
               icon="map-outline"

@@ -30,6 +30,15 @@ import {
   suggestOvernightsForDay,
   suggestOvernightsForTrip,
 } from "../route-planner/poi-suggest-ops";
+import {
+  buildReplanPreview,
+  type ReplanReason,
+} from "../route-planner/replan-reality";
+import {
+  getTodayCommand,
+  setDayStatusOp,
+  setRunStateOp,
+} from "../route-planner/today-command-ops";
 
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -87,6 +96,156 @@ export const plannerRouter = {
       }),
     )
     .query(({ ctx }) => listDays(ctx.db, ctx.tripId)),
+
+  /** Single round-trip for Today Command (hero, leave-by, amenities, replan hooks). */
+  todayCommand: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        date: DATE.optional(),
+        lat: z.number().min(-90).max(90).optional(),
+        lng: z.number().min(-180).max(180).optional(),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      getTodayCommand(ctx.db, {
+        tripId: ctx.tripId,
+        workspaceId: input.workspaceId,
+        date: input.date,
+        lat: input.lat,
+        lng: input.lng,
+      }),
+    ),
+
+  setDayStatus: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        date: DATE,
+        status: z.enum(["planned", "active", "done", "skipped", "partial"]),
+        actualNote: z.string().max(500).nullable().optional(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      setDayStatusOp(ctx.db, {
+        tripId: ctx.tripId,
+        date: input.date,
+        status: input.status,
+        actualNote: input.actualNote,
+      }),
+    ),
+
+  setRunState: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        runState: z.enum(["on_plan", "side_trip", "paused"]),
+        note: z.string().max(500).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await setRunStateOp(ctx.db, {
+        tripId: ctx.tripId,
+        runState: input.runState,
+        note: input.note,
+      });
+      return { ok: true };
+    }),
+
+  /**
+   * Preview a reality replan (no write). Accept via applyReplan / planItinerary.
+   */
+  replanPreview: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        reason: z.enum(["behind", "side_trip", "stayed", "manual"]),
+        fromDate: DATE.optional(),
+        mode: z.enum(["soft_days", "soft_route"]).default("soft_route"),
+        origin: z
+          .object({
+            lat: z.number().min(-90).max(90),
+            lng: z.number().min(-180).max(180),
+            name: z.string().max(200).optional(),
+          })
+          .optional(),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      buildReplanPreview(ctx.db, {
+        tripId: ctx.tripId,
+        reason: input.reason as ReplanReason,
+        fromDate: input.fromDate,
+        mode: input.mode,
+        origin: input.origin,
+      }),
+    ),
+
+  /**
+   * Apply soft replan: rewrites future plan via planItinerary fromDate path
+   * (template remaining + origin). Server recompute — does not trust client draft.
+   */
+  applyReplan: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        reason: z.enum(["behind", "side_trip", "stayed", "manual"]),
+        fromDate: DATE.optional(),
+        mode: z.enum(["soft_days", "soft_route"]).default("soft_route"),
+        origin: z
+          .object({
+            lat: z.number().min(-90).max(90),
+            lng: z.number().min(-180).max(180),
+            name: z.string().max(200).optional(),
+          })
+          .optional(),
+        autoAssignOvernights: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const preview = await buildReplanPreview(ctx.db, {
+        tripId: ctx.tripId,
+        reason: input.reason as ReplanReason,
+        fromDate: input.fromDate,
+        mode: input.mode,
+        origin: input.origin,
+      });
+
+      if (input.mode === "soft_days") {
+        const result = await applyDraft(ctx.db, {
+          tripId: ctx.tripId,
+          days: preview.draftDays,
+        });
+        await setRunStateOp(ctx.db, {
+          tripId: ctx.tripId,
+          runState: "on_plan",
+          note: `Replan applied (${input.reason})`,
+        });
+        return { ...result, mode: "soft_days" as const, summary: preview.summary };
+      }
+
+      // soft_route: route + days from live origin using template remainder
+      const result = await planItineraryOp(ctx.db, {
+        tripId: ctx.tripId,
+        workspaceId: input.workspaceId,
+        stops: resolveTemplate("open_sauce_full"),
+        replaceExisting: true,
+        fromDate: preview.fromDate,
+        origin: input.origin,
+        autoAssignOvernights: input.autoAssignOvernights,
+      });
+      await setRunStateOp(ctx.db, {
+        tripId: ctx.tripId,
+        runState: "on_plan",
+        note: `Replan applied (${input.reason})`,
+      });
+      return { ...result, mode: "soft_route" as const, summary: preview.summary };
+    }),
 
   upsertDay: tripProcedure()
     .input(

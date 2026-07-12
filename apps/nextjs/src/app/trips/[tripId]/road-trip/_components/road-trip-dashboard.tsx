@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DayChips } from "~/components/road-trip/day-chips";
 import { DayPlanPanel } from "~/components/road-trip/day-plan-panel";
+import { TodayCommandPanel } from "~/components/road-trip/today-command-panel";
 import { FuelLogPanel } from "~/components/road-trip/fuel-log-panel";
 import { PoiInfoCard } from "~/components/road-trip/poi-info-card";
 import { RouteGradientMap } from "~/components/road-trip/route-gradient-map";
@@ -506,14 +507,20 @@ export function RoadTripDashboard(props: {
               Segments
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {leftRail === "days" ? (
-              <DayPlanPanel
-                workspaceId={props.workspaceId}
-                tripId={trip.id}
-                selectedDate={selectedPlanDate}
-                onSelectedDateChange={setSelectedPlanDate}
-              />
+              <div className="flex flex-col gap-2 p-2">
+                <TodayCommandPanel
+                  workspaceId={props.workspaceId}
+                  tripId={trip.id}
+                />
+                <DayPlanPanel
+                  workspaceId={props.workspaceId}
+                  tripId={trip.id}
+                  selectedDate={selectedPlanDate}
+                  onSelectedDateChange={setSelectedPlanDate}
+                />
+              </div>
             ) : triptikSegments.length > 0 ? (
               <TripTikStrip
                 segments={triptikSegments}

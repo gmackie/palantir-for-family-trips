@@ -131,6 +131,12 @@ export function RoadTripDetail({
     path: string;
     params?: Record<string, string>;
   }> = [
+    {
+      key: "today",
+      label: "Today",
+      icon: "sunny-outline",
+      path: "today",
+    },
     { key: "drive", label: "Drive", icon: "car-sport-outline", path: "drive" },
     {
       key: "day-plan",
