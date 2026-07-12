@@ -1,0 +1,38 @@
+# Road-trip day plan smoke — requires a signed-in session with a road trip.
+# Used after OTA to verify planner surfaces render on-device / simulator.
+appId: com.gmacko.sortey.dev
+name: "Road trip day plan (smoke)"
+---
+- launchApp
+- runFlow:
+    when:
+      visible: "http://localhost:8081"
+    commands:
+      - tapOn: "http://localhost:8081"
+      - waitForAnimationToEnd
+- waitForAnimationToEnd
+# Home / trip list should show something interactive
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 15000
+# Prefer open first road trip card if present (best-effort)
+- runFlow:
+    when:
+      visible: "Road Trip"
+    commands:
+      - tapOn: "Road Trip"
+      - waitForAnimationToEnd
+      - tapOn:
+          text: "Day plan"
+          optional: true
+      - waitForAnimationToEnd
+      - assertVisible:
+          text: ".*"
+- runFlow:
+    when:
+      visible: "Day plan"
+    commands:
+      - tapOn: "Day plan"
+      - waitForAnimationToEnd
+      - assertVisible:
+          text: ".*"

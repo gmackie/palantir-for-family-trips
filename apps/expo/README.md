@@ -17,6 +17,21 @@ Use Preflight for the repeatable mobile smoke proof:
 ```bash
 /Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform ios --lane simulator --wait-for-runner
 /Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform android --lane simulator --wait-for-runner
+
+## OTA (EAS Update) + Preflight
+
+Planner / day-plan / amenity UI ships as **JS OTA** to existing binaries
+(`runtimeVersion` `0.1.0`). Full checklist: [`docs/ai/MOBILE_OTA_PREFLIGHT.md`](../../docs/ai/MOBILE_OTA_PREFLIGHT.md).
+
+```bash
+# From apps/expo
+pnpm update:preview "feat: day plan + amenities"
+pnpm update:production "feat: day plan + amenities"
+pnpm preflight:local   # readiness without runners
+pnpm preflight:ios     # prove-app on simulator farm
+```
+
+In-app: Settings → **App updates** → Check for update.
 ```
 
 Android local builds require Java 17 plus the Android SDK:

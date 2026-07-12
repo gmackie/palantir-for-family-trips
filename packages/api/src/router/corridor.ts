@@ -1,16 +1,30 @@
-import { and, eq, gte, isNull, lte, or } from "@sortey/db";
-import { importIoverlanderCsv } from "@sortey/db/ioverlander";
+import { and, eq, gte, inArray, isNull, lte, or } from "@sortey/db";
+import {
+  AMENITY_GROUPS,
+  importIoverlanderCsv,
+} from "@sortey/db/ioverlander";
 import { importedPois, poiCache } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { rankPoisNear } from "../route-planner/poi-suggest";
 
 const CORRIDOR_RADIUS_MILES = 30;
 const MILES_TO_DEGREES_LAT = 1 / 69;
 const MILES_TO_DEGREES_LNG_AT_45 = 1 / 49;
 
 export const corridorRouter = {
+  /** Amenity group → category lists (sleep, parking, service, fuel, food, road). */
+  amenityGroups: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+      }),
+    )
+    .query(() => AMENITY_GROUPS),
+
   searchImported: tripProcedure()
     .input(
       z.object({
@@ -20,10 +34,30 @@ export const corridorRouter = {
         centerLng: z.number(),
         radiusMiles: z.number().positive().default(CORRIDOR_RADIUS_MILES),
         category: z.string().optional(),
+        /** Multi-select categories (takes precedence over single category). */
+        categories: z.array(z.string()).max(20).optional(),
+        /** Amenity group shortcut: sleep | parking | service | fuel | food | road */
+        group: z
+          .enum(["sleep", "parking", "service", "fuel", "food", "road"])
+          .optional(),
         limit: z.number().int().min(1).max(200).default(100),
+        /** When true, sort by distance and attach milesAway. */
+        rankByDistance: z.boolean().default(false),
       }),
     )
     .query(async ({ ctx, input }) => {
+      const groupCats = input.group
+        ? [...AMENITY_GROUPS[input.group]]
+        : undefined;
+      const categories =
+        input.categories && input.categories.length > 0
+          ? input.categories
+          : groupCats
+            ? groupCats
+            : input.category
+              ? [input.category]
+              : undefined;
+
       const latDelta = input.radiusMiles * MILES_TO_DEGREES_LAT;
       const lngDelta = input.radiusMiles * MILES_TO_DEGREES_LNG_AT_45;
 
@@ -40,15 +74,61 @@ export const corridorRouter = {
         ),
       ];
 
-      if (input.category) {
-        conditions.push(eq(importedPois.category, input.category));
+      if (categories && categories.length === 1) {
+        conditions.push(eq(importedPois.category, categories[0]!));
+      } else if (categories && categories.length > 1) {
+        conditions.push(inArray(importedPois.category, categories));
       }
 
-      return ctx.db
+      const rows = (await ctx.db
         .select()
         .from(importedPois)
         .where(and(...conditions))
-        .limit(input.limit);
+        .limit(input.rankByDistance ? Math.min(500, input.limit * 4) : input.limit)) as Array<{
+        id: string;
+        source: string;
+        externalId: string;
+        name: string;
+        category: string;
+        lat: string;
+        lng: string;
+        data: unknown;
+        workspaceId: string | null;
+        importedAt: Date;
+      }>;
+
+      if (!input.rankByDistance) {
+        return rows;
+      }
+
+      const ranked = rankPoisNear(
+        { lat: input.centerLat, lng: input.centerLng },
+        rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          category: r.category,
+          lat: Number(r.lat),
+          lng: Number(r.lng),
+          source: r.source,
+        })),
+        {
+          maxMiles: input.radiusMiles,
+          limit: input.limit,
+          preferSleep: input.group === "sleep",
+          categories,
+        },
+      );
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      return ranked
+        .map((p) => {
+          const row = byId.get(p.id);
+          if (!row) return null;
+          return {
+            ...row,
+            milesAway: p.milesAway,
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r != null);
     }),
 
   searchCached: tripProcedure()

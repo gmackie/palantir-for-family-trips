@@ -1439,6 +1439,70 @@ export const tripAnchors = pgTable("trip_anchor", (t) => ({
     .notNull(),
 }));
 
+// Calendar-day plan for a road trip. Planning unit is the day (intent,
+// overnight, hero effort), not the polyline. Segments remain drive geometry.
+// See docs/plans/2026-07-09-itinerary-planner.md and route-planner/day-plan.ts.
+export const DAY_INTENTS = [
+  "play",
+  "drive",
+  "position",
+  "event",
+  "recovery",
+] as const;
+export type DayIntent = (typeof DAY_INTENTS)[number];
+
+export const OVERNIGHT_KINDS = [
+  "dispersed",
+  "campground",
+  "hotel",
+  "unknown",
+] as const;
+export type OvernightKind = (typeof OVERNIGHT_KINDS)[number];
+
+export const tripDays = pgTable(
+  "trip_day",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    date: t.date().notNull(), // YYYY-MM-DD
+    intent: t.text().$type<DayIntent>().notNull().default("drive"),
+    title: t.varchar({ length: 200 }),
+    overnightName: t.varchar({ length: 300 }),
+    overnightKind: t.text().$type<OvernightKind | null>(),
+    overnightLat: t.numeric(),
+    overnightLng: t.numeric(),
+    heroTitle: t.varchar({ length: 300 }),
+    heroDetail: t.varchar({ length: 1000 }),
+    cutIfBehind: t.varchar({ length: 500 }),
+    /** Time blocks: [{ part: morning|midday|afternoon|evening, title, detail }] */
+    blocksJson: t.jsonb().$type<
+      Array<{
+        part: "morning" | "midday" | "afternoon" | "evening";
+        title: string;
+        detail: string;
+      }>
+    >(),
+    segmentId: t.uuid().references(() => tripSegments.id, {
+      onDelete: "set null",
+    }),
+    sortOrder: t.integer().notNull().default(0),
+    note: t.varchar({ length: 1000 }),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    unique("trip_day_trip_date_unique").on(table.tripId, table.date),
+  ],
+);
+
 // Historical resource-level readings (grey/black/fresh/propane/fuel), from
 // manual entry or DriftPort telemetry. The latest reading per resource is the
 // current level; the series feeds consumption-rate learning so predictive

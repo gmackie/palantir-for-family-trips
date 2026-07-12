@@ -14,6 +14,7 @@ import { lodgingRouter } from "./router/lodging";
 import { notificationsRouter } from "./router/notifications";
 import { photosRouter } from "./router/photos";
 import { pinsRouter } from "./router/pins";
+import { plannerRouter } from "./router/planner";
 import { planningRouter } from "./router/planning";
 import { postRouter } from "./router/post";
 import { roomsRouter } from "./router/rooms";
@@ -43,6 +44,7 @@ export const appRouter = createTRPCRouter({
   notifications: notificationsRouter,
   photos: photosRouter,
   pins: pinsRouter,
+  planner: plannerRouter,
   planning: planningRouter,
   post: postRouter,
   rooms: roomsRouter,
