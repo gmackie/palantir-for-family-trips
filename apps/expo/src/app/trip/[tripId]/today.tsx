@@ -13,6 +13,7 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
@@ -47,6 +48,10 @@ export default function TodayScreen() {
   const [cutMode, setCutMode] = useState(false);
   const [replanOpen, setReplanOpen] = useState(false);
   const [replanReason, setReplanReason] = useState<ReplanReason>("behind");
+  const [fuelOpen, setFuelOpen] = useState(false);
+  const [odo, setOdo] = useState("");
+  const [gallons, setGallons] = useState("");
+  const [ppg, setPpg] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +143,23 @@ export default function TodayScreen() {
     }),
   );
 
+  const logFuel = useMutation(
+    trpc.fuelLogs.create.mutationOptions({
+      onSuccess: () => {
+        setFuelOpen(false);
+        setOdo("");
+        setGallons("");
+        setPpg("");
+        void queryClient.invalidateQueries(
+          trpc.planner.todayCommand.queryFilter(),
+        );
+        void queryClient.invalidateQueries(trpc.fuelLogs.list.queryFilter());
+        Alert.alert("Fuel logged", "Fill-up saved.");
+      },
+      onError: (e) => Alert.alert("Fuel log failed", e.message),
+    }),
+  );
+
   const markDone = useCallback(
     (status: "done" | "partial" | "skipped") => {
       if (!data?.date) return;
@@ -216,9 +238,61 @@ export default function TodayScreen() {
         <Pressable onPress={() => void refetch()}>
           <Text style={{ color: C.muted, fontSize: 11, fontWeight: "700" }}>
             {data.date} · {data.day?.intent ?? "—"} · {data.runState}
+            {data.dayStatus !== "planned" ? ` · ${data.dayStatus}` : ""}
             {isRefetching ? " · …" : ""}
           </Text>
         </Pressable>
+
+        {/* Plan vs actual strip */}
+        {showFull && (data.recentDays?.length ?? 0) > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {data.recentDays.map((d) => (
+                <View
+                  key={d.date}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: d.isToday ? C.info : C.border,
+                    backgroundColor: C.surface,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    minWidth: 88,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: d.isToday ? C.info : C.muted,
+                      fontFamily: mono,
+                      fontSize: 10,
+                    }}
+                  >
+                    {d.date.slice(5)}
+                  </Text>
+                  <Text
+                    style={{ color: C.fg, fontSize: 12, fontWeight: "700" }}
+                    numberOfLines={1}
+                  >
+                    {d.title ?? d.intent}
+                  </Text>
+                  <Text
+                    style={{
+                      color:
+                        d.status === "done"
+                          ? C.success
+                          : d.status === "partial"
+                            ? C.warning
+                            : C.muted,
+                      fontSize: 10,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {d.status}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        )}
 
         {late && (
           <View
@@ -466,6 +540,16 @@ export default function TodayScreen() {
             tone={C.warning}
           />
           <ActionBtn
+            label="Log fuel"
+            onPress={() => {
+              if (data.lastFuel?.odometerMiles != null) {
+                setOdo(String(Math.round(data.lastFuel.odometerMiles)));
+              }
+              setFuelOpen(true);
+            }}
+            tone={C.warning}
+          />
+          <ActionBtn
             label="Replan…"
             onPress={() => {
               setReplanReason(late ? "behind" : "manual");
@@ -474,6 +558,18 @@ export default function TodayScreen() {
             tone={C.info}
           />
         </View>
+
+        {showFull && data.lastFuel && (
+          <Text style={{ color: C.muted, fontSize: 11, fontFamily: mono }}>
+            Last fill
+            {data.lastFuel.odometerMiles != null
+              ? ` · odo ${Math.round(data.lastFuel.odometerMiles)}`
+              : ""}
+            {data.lastFuel.gallons != null
+              ? ` · ${data.lastFuel.gallons} gal`
+              : ""}
+          </Text>
+        )}
 
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <ActionBtn
@@ -532,6 +628,120 @@ export default function TodayScreen() {
           </View>
         )}
       </ScrollView>
+
+      <Modal visible={fuelOpen} animationType="slide" transparent>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "#000000aa",
+            justifyContent: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: C.bg,
+              borderTopWidth: 1,
+              borderColor: C.border,
+              padding: 16,
+              gap: 12,
+            }}
+          >
+            <Text style={{ color: C.fg, fontSize: 18, fontWeight: "800" }}>
+              Quick fuel log
+            </Text>
+            <Text style={{ color: C.muted, fontSize: 12 }}>
+              Odometer (optional) · gallons · $/gal. Total computed.
+            </Text>
+            <TextInput
+              value={odo}
+              onChangeText={setOdo}
+              placeholder="Odometer miles"
+              placeholderTextColor={C.muted}
+              keyboardType="decimal-pad"
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                color: C.fg,
+                fontFamily: mono,
+                padding: 12,
+              }}
+            />
+            <TextInput
+              value={gallons}
+              onChangeText={setGallons}
+              placeholder="Gallons"
+              placeholderTextColor={C.muted}
+              keyboardType="decimal-pad"
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                color: C.fg,
+                fontFamily: mono,
+                padding: 12,
+              }}
+            />
+            <TextInput
+              value={ppg}
+              onChangeText={setPpg}
+              placeholder="Price per gallon"
+              placeholderTextColor={C.muted}
+              keyboardType="decimal-pad"
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                color: C.fg,
+                fontFamily: mono,
+                padding: 12,
+              }}
+            />
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => setFuelOpen(false)}
+                style={{ flex: 1, padding: 14, alignItems: "center" }}
+              >
+                <Text style={{ color: C.muted }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                disabled={logFuel.isPending}
+                onPress={() => {
+                  const g = Number(gallons);
+                  const p = Number(ppg);
+                  if (!(g > 0) || !(p > 0)) {
+                    Alert.alert("Need gallons and price");
+                    return;
+                  }
+                  const totalCents = Math.round(g * p * 100);
+                  logFuel.mutate({
+                    workspaceId,
+                    tripId: tripId ?? "",
+                    gallons: g,
+                    pricePerGallon: p,
+                    totalCents,
+                    odometerMiles: odo ? Number(odo) : undefined,
+                    stationLat: coords?.lat,
+                    stationLng: coords?.lng,
+                    loggedAt: new Date().toISOString(),
+                    fuelType: "gas",
+                    splitWithGroup: false,
+                  });
+                }}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: C.warning,
+                  backgroundColor: C.warning + "22",
+                }}
+              >
+                <Text style={{ color: C.warning, fontWeight: "800" }}>
+                  {logFuel.isPending ? "Saving…" : "Save fill"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={replanOpen} animationType="slide" transparent>
         <View

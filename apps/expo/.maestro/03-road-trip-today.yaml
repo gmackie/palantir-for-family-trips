@@ -1,0 +1,19 @@
+# Best-effort: open Today Command from a road trip.
+# Requires a logged-in session (demo auth or prior login).
+appId: com.gmacko.sortey.dev
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+    timeout: 30000
+# Soft: try to reach Today if trip UI is present
+- runFlow:
+    when:
+      visible: "Today"
+    commands:
+      - tapOn: "Today"
+      - extendedWaitUntil:
+          visible:
+            text: "LEAVE-BY|Tonight|TONIGHT|Today|LEAVE"
+          timeout: 15000
