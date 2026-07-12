@@ -16,8 +16,7 @@ const GOOGLE_MAPS_API_KEY =
   process.env.GOOGLE_MAPS_API_KEY ??
   process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
   "";
-const ASSOCIATED_DOMAIN =
-  process.env.EXPO_PUBLIC_APP_DOMAIN ?? "sortey.app";
+const ASSOCIATED_DOMAIN = process.env.EXPO_PUBLIC_APP_DOMAIN ?? "sortey.app";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
 const POSTHOG_KEY = process.env.POSTHOG_KEY;
@@ -27,6 +26,7 @@ const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
 // three install side-by-side.
 const BASE_BUNDLE_ID = "com.gmacko.sortey";
 const BASE_SCHEME = "sortey";
+const EAS_PROJECT_ID = "5f21337f-9f48-4b0c-8d02-656e4a08dc86";
 
 const getVariantIcon = (): string => {
   if (APP_VARIANT === "development") return "./assets/icon-dev.png";
@@ -133,7 +133,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: "portrait",
     icon: getVariantIcon(),
     userInterfaceStyle: "automatic",
-    runtimeVersion: "0.1.0",
+    // OTA updates may only target binaries with an identical native runtime.
+    // Fingerprinting changes this value whenever native dependencies or native
+    // configuration change, while ordinary JS/assets changes remain OTA-safe.
+    runtimeVersion: { policy: "fingerprint" },
+    updates: {
+      url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      checkAutomatically: "ON_LOAD",
+      fallbackToCacheTimeout: 0,
+    },
     assetBundlePatterns: ["**/*"],
     ios: {
       bundleIdentifier: getBundleId(),
@@ -189,7 +197,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       POSTHOG_KEY,
       POSTHOG_HOST,
       eas: {
-        projectId: "5f21337f-9f48-4b0c-8d02-656e4a08dc86",
+        projectId: EAS_PROJECT_ID,
       },
     },
     owner: "gmacko",
