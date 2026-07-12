@@ -48,6 +48,7 @@
     "check": "pnpm check:fast && pnpm test && pnpm build",
     "commitlint": "commitlint --from HEAD~1 --to HEAD",
     "postinstall": "pnpm lint:ws",
+    "eas-build-post-install": "turbo run build --filter=@sortey/expo...",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && lefthook install || true",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
