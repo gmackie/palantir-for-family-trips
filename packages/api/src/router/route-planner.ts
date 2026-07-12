@@ -14,6 +14,7 @@ import SunCalc from "suncalc";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { assessSideTrip } from "../route-planner/side-trip";
 import {
   computeFuelZones,
   computeOvernightZones,
@@ -684,6 +685,71 @@ export const routePlannerRouter = {
         rangeMiles: Math.round(rangeMiles),
         hasVanModel: rangeMiles > 0,
       };
+    }),
+
+  /**
+   * Side-trip probe: is the live GPS position more than ~2 mi off the planned
+   * route polyline? Pure geometry; clients poll from Driving Mode.
+   */
+  assessSideTrip: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        thresholdMiles: z.number().positive().max(50).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const segments = await ctx.db
+        .select({
+          sortOrder: tripSegments.sortOrder,
+          originLat: tripSegments.originLat,
+          originLng: tripSegments.originLng,
+          destinationLat: tripSegments.destinationLat,
+          destinationLng: tripSegments.destinationLng,
+          routePolyline: tripSegments.routePolyline,
+        })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, ctx.tripId));
+
+      segments.sort((a, b) => a.sortOrder - b.sortOrder);
+
+      const points: ZoneLatLng[] = [];
+      const pushPoint = (lat: number, lng: number) => {
+        const last = points[points.length - 1];
+        if (last && last.lat === lat && last.lng === lng) return;
+        points.push({ lat, lng });
+      };
+      for (const seg of segments) {
+        if (seg.routePolyline) {
+          for (const [lat, lng] of decode(seg.routePolyline, 5)) {
+            pushPoint(lat, lng);
+          }
+          continue;
+        }
+        if (seg.originLat != null && seg.originLng != null) {
+          pushPoint(Number(seg.originLat), Number(seg.originLng));
+        }
+        if (seg.destinationLat != null && seg.destinationLng != null) {
+          pushPoint(Number(seg.destinationLat), Number(seg.destinationLng));
+        }
+      }
+
+      // Cap density so assessment stays cheap on long multi-day routes.
+      const sampled =
+        points.length <= 400
+          ? points
+          : points.filter(
+              (_, i) => i % Math.ceil(points.length / 400) === 0,
+            );
+
+      return assessSideTrip({
+        position: { lat: input.lat, lng: input.lng },
+        routePoints: sampled,
+        thresholdMiles: input.thresholdMiles,
+      });
     }),
 
   searchPlaces: protectedProcedure
