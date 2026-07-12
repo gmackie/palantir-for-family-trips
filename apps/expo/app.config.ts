@@ -18,9 +18,24 @@ const GOOGLE_MAPS_API_KEY =
   "";
 const ASSOCIATED_DOMAIN = process.env.EXPO_PUBLIC_APP_DOMAIN ?? "sortey.app";
 
-const SENTRY_DSN = process.env.SENTRY_DSN;
-const POSTHOG_KEY = process.env.POSTHOG_KEY;
-const POSTHOG_HOST = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
+const SENTRY_DSN =
+  process.env.SENTRY_DSN ??
+  (APP_VARIANT === "production"
+    ? process.env.EXPO_PUBLIC_SENTRY_DSN_PROD
+    : APP_VARIANT === "preview"
+      ? process.env.EXPO_PUBLIC_SENTRY_DSN_STAGING
+      : process.env.EXPO_PUBLIC_SENTRY_DSN_DEV);
+const POSTHOG_KEY =
+  process.env.POSTHOG_KEY ??
+  (APP_VARIANT === "production"
+    ? process.env.EXPO_PUBLIC_POSTHOG_KEY_PROD
+    : APP_VARIANT === "preview"
+      ? process.env.EXPO_PUBLIC_POSTHOG_KEY_STAGING
+      : process.env.EXPO_PUBLIC_POSTHOG_KEY_DEV);
+const POSTHOG_HOST =
+  process.env.POSTHOG_HOST ??
+  process.env.EXPO_PUBLIC_POSTHOG_HOST ??
+  "https://us.i.posthog.com";
 
 // Production bundle id. Each variant gets a distinct id/name/scheme so all
 // three install side-by-side.

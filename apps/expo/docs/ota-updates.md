@@ -53,3 +53,8 @@ Do not publish directly from an unreviewed or dirty working tree. EAS Update
 uses EAS environment variables selected by each script's `--environment` flag;
 the `env` values in `eas.json` build profiles are not automatically available
 to update exports.
+
+App config aliases (`SENTRY_DSN`, `POSTHOG_KEY`, and `POSTHOG_HOST`) must resolve
+identically from build-profile variables and their `EXPO_PUBLIC_*` EAS
+environment counterparts. A runtime mismatch between `eas build` and
+`eas update` means the update is not deliverable and must not be promoted.
