@@ -54,10 +54,26 @@ uses EAS environment variables selected by each script's `--environment` flag;
 the `env` values in `eas.json` build profiles are not automatically available
 to update exports.
 
-App config aliases (`SENTRY_DSN`, `POSTHOG_KEY`, and `POSTHOG_HOST`) must resolve
-identically from build-profile variables and their `EXPO_PUBLIC_*` EAS
-environment counterparts. A runtime mismatch between `eas build` and
-`eas update` means the update is not deliverable and must not be promoted.
+`fingerprint.config.js` excludes package scripts and normalizes runtime-only
+service configuration (the Expo `extra` object, Google Maps API key, and Sentry
+organization/project) before hashing. Those values can differ between the
+build and update environments without changing native compatibility. The
+fingerprint still includes native dependencies, config-plugin presence, bundle
+identifiers, schemes, entitlements, icons, and other native configuration.
+
+Run the regression test after changing the fingerprint contract:
+
+```bash
+node --test scripts/fingerprint-config.test.cjs
+```
+
+A runtime mismatch between `eas build` and `eas update` means the update is not
+deliverable and must not be promoted. Compare the sources before rebuilding:
+
+```bash
+npx eas-cli@20.5.1 fingerprint:compare \
+  --build-id BUILD_ID --update-id UPDATE_ID --environment development --json
+```
 
 Update scripts pin EAS CLI 20.5.1 because older CLI fingerprint implementations
 can produce runtime versions that do not match current EAS Build fingerprints.
