@@ -278,6 +278,70 @@ export const tripSegments = pgTable(
   ],
 );
 
+export const journeyStopKindEnum = [
+  "camp",
+  "overnight",
+  "rest",
+  "scenic",
+  "fuel",
+  "water",
+  "dump",
+  "town",
+  "custom",
+] as const;
+export type JourneyStopKind = (typeof journeyStopKindEnum)[number];
+
+export const journeyRouteStatusEnum = ["ready", "pending"] as const;
+export type JourneyRouteStatus = (typeof journeyRouteStatusEnum)[number];
+
+/**
+ * The traveler-facing record of a place they actually reached. Route segments
+ * remain the map/routing representation; this row distinguishes recorded
+ * progress from future itinerary legs and gives offline retries a stable id.
+ */
+export const journeyStops = pgTable(
+  "journey_stop",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    segmentId: t
+      .uuid()
+      .notNull()
+      .references(() => tripSegments.id, { onDelete: "cascade" }),
+    kind: t.text().$type<JourneyStopKind>().notNull().default("custom"),
+    sortOrder: t.integer().notNull(),
+    arrivedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+    note: t.text(),
+    routeStatus: t
+      .text()
+      .$type<JourneyRouteStatus>()
+      .notNull()
+      .default("ready"),
+    createdByUserId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    unique("journey_stop_segment_unique").on(table.segmentId),
+    unique("journey_stop_trip_sort_order_unique").on(
+      table.tripId,
+      table.sortOrder,
+    ),
+    index("journey_stop_trip_arrived_idx").on(table.tripId, table.arrivedAt),
+  ],
+);
+
 export const segmentMembers = pgTable(
   "segment_member",
   (t) => ({

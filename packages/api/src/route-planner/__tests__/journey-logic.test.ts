@@ -1,3 +1,9 @@
+import {
+  journeyRouteStatusEnum,
+  journeyStopKindEnum,
+  journeyStops,
+} from "@sortey/db/schema";
+import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -24,6 +30,24 @@ function seg(
     ...partial,
   };
 }
+
+describe("journey stop schema contract", () => {
+  it("exports the stop kinds and route states used by every client", () => {
+    expect(journeyStopKindEnum).toEqual([
+      "camp",
+      "overnight",
+      "rest",
+      "scenic",
+      "fuel",
+      "water",
+      "dump",
+      "town",
+      "custom",
+    ]);
+    expect(journeyRouteStatusEnum).toEqual(["ready", "pending"]);
+    expect(getTableColumns(journeyStops).sortOrder).toBeDefined();
+  });
+});
 
 describe("kindToPinType", () => {
   it("maps every kind to a valid pin type", () => {
