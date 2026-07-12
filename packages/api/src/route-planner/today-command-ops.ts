@@ -2,8 +2,8 @@
  * Assemble Today Command payload for mobile/web — one round-trip.
  */
 
-import { asc, eq } from "@sortey/db";
-import { tripSegments, trips } from "@sortey/db/schema";
+import { asc, desc, eq } from "@sortey/db";
+import { fuelLogs, tripSegments, trips } from "@sortey/db/schema";
 import SunCalc from "suncalc";
 
 import { haversineMiles } from "../trips/driving-summary";
@@ -61,6 +61,19 @@ export interface TodayCommandResult {
     navigateOvernight: { lat: number; lng: number; label: string } | null;
     navigateFuel: { lat: number; lng: number; label: string } | null;
   };
+  recentDays: Array<{
+    date: string;
+    title: string | null;
+    intent: string;
+    status: string;
+    isToday: boolean;
+  }>;
+  lastFuel: {
+    odometerMiles: number | null;
+    loggedAt: string | null;
+    gallons: number | null;
+  } | null;
+  leaveByMilesSource: "gps" | "segment" | "fallback" | null;
 }
 
 function dayDiff(from: string, to: string): number {
@@ -148,19 +161,6 @@ export async function getTodayCommand(
     .filter((s) => s.startDate === date)
     .reduce((sum, s) => sum + (s.distanceMiles != null ? Number(s.distanceMiles) : 0), 0);
 
-  let milesRemaining = todaySegMiles;
-  if (milesRemaining <= 0 && day?.overnightLat != null && p.lat != null && p.lng != null) {
-    milesRemaining =
-      Math.round(
-        haversineMiles(
-          { lat: p.lat, lng: p.lng },
-          { lat: Number(day.overnightLat), lng: Number(day.overnightLng) },
-        ) * 1.3 *
-          10,
-      ) / 10;
-  }
-
-  let leaveBy: TodayCommandResult["leaveBy"] = null;
   const targetLat =
     day?.overnightLat != null
       ? Number(day.overnightLat)
@@ -174,6 +174,28 @@ export async function getTodayCommand(
         ? Number(nextAnchorRow.lng)
         : null;
 
+  let milesRemaining = 0;
+  let leaveByMilesSource: TodayCommandResult["leaveByMilesSource"] = null;
+  if (p.lat != null && p.lng != null && targetLat != null && targetLng != null) {
+    milesRemaining =
+      Math.round(
+        haversineMiles(
+          { lat: p.lat, lng: p.lng },
+          { lat: targetLat, lng: targetLng },
+        ) *
+          1.3 *
+          10,
+      ) / 10;
+    leaveByMilesSource = "gps";
+  } else if (todaySegMiles > 0) {
+    milesRemaining = todaySegMiles;
+    leaveByMilesSource = "segment";
+  } else if (targetLat != null && targetLng != null) {
+    milesRemaining = 50;
+    leaveByMilesSource = "fallback";
+  }
+
+  let leaveBy: TodayCommandResult["leaveBy"] = null;
   if (milesRemaining > 0 || (targetLat != null && targetLng != null)) {
     let sunset: Date | null = null;
     if (targetLat != null && targetLng != null) {
@@ -192,10 +214,16 @@ export async function getTodayCommand(
       bufferHours: 0.5,
       avgMph: 45,
     });
+    const sourceNote =
+      leaveByMilesSource === "gps"
+        ? "from GPS"
+        : leaveByMilesSource === "segment"
+          ? "from today's leg"
+          : "estimate";
     leaveBy = {
       target: day?.overnightName ?? nextAnchorRow?.title ?? "tonight",
       leaveByLocal: formatLocalHm(computed.leaveBy, tz),
-      reason: `${computed.reason} · aim before dark at ${leaveByTargetLabel(day, nextAnchorRow)}`,
+      reason: `${computed.reason} (${sourceNote}) · aim before dark at ${leaveByTargetLabel(day, nextAnchorRow)}`,
       minutesSlack: computed.minutesSlack,
       late: computed.late,
       driveHours: computed.driveHours,
@@ -281,6 +309,44 @@ export async function getTodayCommand(
     warnings: amenities?.warnings ?? [],
   });
 
+  const dayIdx = days.findIndex((d) => d.date === date);
+  const windowStart = Math.max(0, (dayIdx >= 0 ? dayIdx : 0) - 2);
+  const recentDays = days.slice(windowStart, windowStart + 5).map((d) => ({
+    date: d.date,
+    title: d.title,
+    intent: d.intent,
+    status: d.status ?? "planned",
+    isToday: d.date === date,
+  }));
+
+  let lastFuel: TodayCommandResult["lastFuel"] = null;
+  try {
+    const [row] = (await db
+      .select({
+        odometerMiles: fuelLogs.odometerMiles,
+        loggedAt: fuelLogs.loggedAt,
+        gallons: fuelLogs.gallons,
+      })
+      .from(fuelLogs)
+      .where(eq(fuelLogs.tripId, p.tripId))
+      .orderBy(desc(fuelLogs.loggedAt))
+      .limit(1)) as Array<{
+      odometerMiles: string | null;
+      loggedAt: Date | null;
+      gallons: string | null;
+    }>;
+    if (row) {
+      lastFuel = {
+        odometerMiles:
+          row.odometerMiles != null ? Number(row.odometerMiles) : null,
+        loggedAt: row.loggedAt ? row.loggedAt.toISOString() : null,
+        gallons: row.gallons != null ? Number(row.gallons) : null,
+      };
+    }
+  } catch {
+    lastFuel = null;
+  }
+
   return {
     date,
     tz,
@@ -317,6 +383,9 @@ export async function getTodayCommand(
       navigateOvernight,
       navigateFuel,
     },
+    recentDays,
+    lastFuel,
+    leaveByMilesSource,
   };
 }
 

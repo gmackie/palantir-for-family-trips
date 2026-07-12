@@ -154,6 +154,35 @@ export function TodayCommandPanel(props: {
         </p>
       )}
 
+      {(data.recentDays?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {data.recentDays.map((d) => (
+            <span
+              key={d.date}
+              className={`border px-2 py-1 font-mono text-[10px] ${
+                d.isToday
+                  ? "border-[#58A6FF] text-[#58A6FF]"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
+              {d.date.slice(5)} · {d.status}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {data.lastFuel && (
+        <p className="text-muted-foreground font-mono text-[10px]">
+          Last fill
+          {data.lastFuel.odometerMiles != null
+            ? ` · odo ${Math.round(data.lastFuel.odometerMiles)}`
+            : ""}
+          {data.lastFuel.gallons != null
+            ? ` · ${data.lastFuel.gallons} gal`
+            : ""}
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
