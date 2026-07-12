@@ -44,6 +44,11 @@
         "simulator": false
       }
     },
+    "trip-device": {
+      "extends": "development-device",
+      "environment": "development",
+      "developmentClient": false
+    },
     "preview": {
       "extends": "base",
       "distribution": "internal",
