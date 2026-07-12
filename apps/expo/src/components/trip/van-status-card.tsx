@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { Text, View } from "react-native";
+import { Linking, Pressable, Text, View } from "react-native";
 
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
@@ -102,6 +102,11 @@ export function VanStatusCard({
       { refetchInterval: 10_000 },
     ),
   );
+  // Universal link into the driftport app (or its web dashboard) for the
+  // trip's van. Static per trip, so no polling.
+  const { data: rigLink } = useQuery(
+    trpc.vanTelemetry.getRigLink.queryOptions({ workspaceId, tripId }),
+  );
 
   // The procedure returns `null` when the flag is off, the van isn't rig-linked,
   // or the provider fails. Render nothing in any of those cases so Driving Mode
@@ -110,10 +115,12 @@ export function VanStatusCard({
 
   const battery = pickMetric(data, "battery_soc");
   const insideTemp = pickMetric(data, "inside_temp");
-  // driftport names fresh-water tank level `fresh_level`; fall back to a plain
-  // `water_level` metric if a different rig reports it that way.
+  // driftport's van contract standardized on `fresh_pct` for fresh-water tank
+  // level (water/fresh_pct/%); older rigs reported `fresh_level`/`water_level`.
   const water =
-    pickMetric(data, "fresh_level") ?? pickMetric(data, "water_level");
+    pickMetric(data, "fresh_pct") ??
+    pickMetric(data, "fresh_level") ??
+    pickMetric(data, "water_level");
 
   // If none of the headline metrics are present there is nothing worth a card.
   if (!battery && !insideTemp && !water) return null;
@@ -155,6 +162,37 @@ export function VanStatusCard({
         {insideTemp && <MetricRow label="Inside" reading={insideTemp} />}
         {water && <MetricRow label="Water" reading={water} />}
       </View>
+
+      {rigLink && (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => {
+            Linking.openURL(rigLink.url).catch(() => undefined);
+          }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            borderTopWidth: 1,
+            borderTopColor: C.border,
+            paddingTop: 12,
+          }}
+        >
+          <Text
+            style={{
+              color: C.info,
+              fontSize: 12,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            Open in Driftport
+          </Text>
+          <Ionicons name="open-outline" size={14} color={C.info} />
+        </Pressable>
+      )}
     </View>
   );
 }

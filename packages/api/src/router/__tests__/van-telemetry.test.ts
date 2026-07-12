@@ -7,6 +7,8 @@ import { clearAllOverrides, setOverride } from "@sortey/flags";
 import type { VanTelemetryProvider } from "../../van-telemetry/provider";
 import type { VanSystemReading } from "../../van-telemetry/types";
 import {
+  buildDriftportRigUrl,
+  getVanRigLink,
   getVanTelemetrySnapshot,
   type VanTelemetryStore,
 } from "../van-telemetry";
@@ -98,5 +100,63 @@ describe("getVanTelemetrySnapshot", () => {
     });
 
     expect(result).toBeNull();
+  });
+});
+
+describe("buildDriftportRigUrl", () => {
+  it("builds the canonical universal link", () => {
+    expect(buildDriftportRigUrl(RIG_ID, "https://driftport.io")).toBe(
+      `https://driftport.io/rigs/${RIG_ID}`,
+    );
+  });
+
+  it("trims a trailing slash on the base url", () => {
+    expect(buildDriftportRigUrl(RIG_ID, "https://driftport.io/")).toBe(
+      `https://driftport.io/rigs/${RIG_ID}`,
+    );
+  });
+});
+
+describe("getVanRigLink", () => {
+  it("returns null when the flag is off", async () => {
+    setOverride("driftportTelemetryPreview", false);
+
+    const result = await getVanRigLink({
+      store: createTelemetryStore(RIG_ID),
+      userId: "user_1",
+      tripId: "trip_1",
+      baseUrl: "https://driftport.io",
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the trip's van has no linked rig", async () => {
+    setOverride("driftportTelemetryPreview", true);
+
+    const result = await getVanRigLink({
+      store: createTelemetryStore(null),
+      userId: "user_1",
+      tripId: "trip_1",
+      baseUrl: "https://driftport.io",
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("returns the rig id and deep link when linked", async () => {
+    setOverride("driftportTelemetryPreview", true);
+
+    const result = await getVanRigLink({
+      store: createTelemetryStore(RIG_ID),
+      userId: "user_1",
+      tripId: "trip_1",
+      baseUrl: "https://driftport.io",
+    });
+
+    expect(result).toEqual({
+      rigId: RIG_ID,
+      url: `https://driftport.io/rigs/${RIG_ID}`,
+    });
   });
 });

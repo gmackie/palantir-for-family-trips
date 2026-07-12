@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -205,8 +206,11 @@ export default function TodayScreen() {
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 12 }}
         refreshControl={
-          // simple pull: refetch
-          undefined
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => void refetch()}
+            tintColor={C.info}
+          />
         }
       >
         <Pressable onPress={() => void refetch()}>
@@ -376,7 +380,7 @@ export default function TodayScreen() {
           )}
         </View>
 
-        {showFull && data.amenities && (
+        {showFull && (data.serviceQueue?.length ?? 0) > 0 && (
           <View
             style={{
               borderWidth: 1,
@@ -384,42 +388,45 @@ export default function TodayScreen() {
               backgroundColor: C.surface,
               borderRadius: R.md,
               padding: 16,
-              gap: 6,
+              gap: 8,
             }}
           >
             <Text style={{ color: C.muted, fontSize: 11, fontWeight: "700" }}>
-              SERVICES
+              SERVICE QUEUE
             </Text>
-            {data.amenities.fuel && (
+            {data.serviceQueue.map((s, i) => (
               <Pressable
-                onPress={() =>
-                  data.actions.navigateFuel &&
-                  openMaps(
-                    data.actions.navigateFuel.lat,
-                    data.actions.navigateFuel.lng,
-                    data.actions.navigateFuel.label,
-                  )
-                }
+                key={`${s.kind}-${s.name}`}
+                onPress={() => openMaps(s.lat, s.lng, s.name)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  paddingVertical: 4,
+                }}
               >
-                <Text style={{ color: C.fg, fontSize: 14 }}>
-                  Fuel: {data.amenities.fuel.name} (
-                  {data.amenities.fuel.milesAway} mi)
+                <Text
+                  style={{
+                    color: C.info,
+                    fontFamily: mono,
+                    fontSize: 13,
+                    width: 20,
+                  }}
+                >
+                  {i + 1}.
                 </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: C.fg, fontSize: 14, fontWeight: "600" }}>
+                    {s.kind.toUpperCase()} · {s.name}
+                  </Text>
+                  <Text style={{ color: C.muted, fontSize: 12 }}>
+                    {s.milesAway} mi · {s.reason}
+                  </Text>
+                </View>
+                <Ionicons name="navigate-outline" size={16} color={C.info} />
               </Pressable>
-            )}
-            {data.amenities.dump && (
-              <Text style={{ color: C.fg, fontSize: 14 }}>
-                Dump: {data.amenities.dump.name} (
-                {data.amenities.dump.milesAway} mi)
-              </Text>
-            )}
-            {data.amenities.water && (
-              <Text style={{ color: C.fg, fontSize: 14 }}>
-                Water: {data.amenities.water.name} (
-                {data.amenities.water.milesAway} mi)
-              </Text>
-            )}
-            {data.amenities.warnings.slice(0, 3).map((w) => (
+            ))}
+            {data.amenities?.warnings.slice(0, 3).map((w) => (
               <Text key={w} style={{ color: C.warning, fontSize: 12 }}>
                 ⚠ {w}
               </Text>

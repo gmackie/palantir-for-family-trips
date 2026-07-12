@@ -126,6 +126,25 @@ export function TodayCommandPanel(props: {
         </p>
       </div>
 
+      {(data.serviceQueue?.length ?? 0) > 0 && (
+        <div className="border-border space-y-1 border p-3">
+          <p className="text-muted-foreground text-[10px] font-bold uppercase">
+            Service queue
+          </p>
+          <ol className="text-foreground list-decimal space-y-1 pl-4 text-xs">
+            {data.serviceQueue.map((s) => (
+              <li key={`${s.kind}-${s.name}`}>
+                <span className="font-semibold uppercase">{s.kind}</span> ·{" "}
+                {s.name}{" "}
+                <span className="text-muted-foreground font-mono">
+                  ({s.milesAway} mi)
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {data.tomorrow && (
         <p className="text-muted-foreground text-xs">
           Tomorrow · {data.tomorrow.title ?? data.tomorrow.date}
