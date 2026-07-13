@@ -35,8 +35,10 @@ Done:
   now committed). `eas build` from a clean checkout matches EAS.
 
 Remaining:
-1. App Store screenshots (`assets/app-store/` is empty) — capture 6.9" and
-   iPad 13" sets; upload in ASC
+1. App Store screenshots — **drafts present** at
+   `apps/expo/assets/app-store/drafts/` (3× iPhone 6.9" 1320×2868: trips,
+   trip home, today). Still need: remaining 6.9" frames, iPad 13" set, and
+   upload in ASC (not only drafts in repo).
 2. App Privacy questionnaire in App Store Connect (location, analytics, email)
 3. TestFlight pass on real devices, then submit for review in ASC
 

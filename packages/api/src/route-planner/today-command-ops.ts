@@ -468,6 +468,30 @@ export async function setDayStatusOp(
   });
 }
 
+/**
+ * Pure helper: given current lifecycle status + new run state, decide whether
+ * to also flip `trips.status` so side-trip / pause is visible as formal pause.
+ * Returns null when status should stay put.
+ *
+ * - en_route + (side_trip|paused) → paused
+ * - paused + on_plan → en_route (resume)
+ */
+export function lifecycleStatusForRunState(
+  currentStatus: string,
+  runState: "on_plan" | "side_trip" | "paused",
+): "paused" | "en_route" | null {
+  if (
+    (runState === "side_trip" || runState === "paused") &&
+    currentStatus === "en_route"
+  ) {
+    return "paused";
+  }
+  if (runState === "on_plan" && currentStatus === "paused") {
+    return "en_route";
+  }
+  return null;
+}
+
 export async function setRunStateOp(
   // biome-ignore lint/suspicious/noExplicitAny: db
   db: any,
@@ -477,12 +501,23 @@ export async function setRunStateOp(
     note?: string | null;
   },
 ): Promise<void> {
+  const [row] = (await db
+    .select({ status: trips.status })
+    .from(trips)
+    .where(eq(trips.id, p.tripId))
+    .limit(1)) as Array<{ status: string }>;
+
+  const nextStatus = row
+    ? lifecycleStatusForRunState(row.status, p.runState)
+    : null;
+
   await db
     .update(trips)
     .set({
       runState: p.runState,
       runStateSince: new Date(),
       runStateNote: p.note ?? null,
+      ...(nextStatus ? { status: nextStatus } : {}),
     })
     .where(eq(trips.id, p.tripId));
 }

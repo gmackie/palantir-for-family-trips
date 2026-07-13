@@ -88,6 +88,22 @@ export const flagDefinitions = {
   },
 
   /**
+   * Multi-workspace switcher visibility.
+   * Solo / personal-workspace users never need the switcher. Off by default so
+   * dogfood stays single-tenant; enable when multi-workspace tenancy is real.
+   * Still hidden client-side when the user only has one workspace.
+   */
+  workspacesVisible: {
+    defaultValue: false,
+    description: "Show the workspace switcher when the user has multiple workspaces",
+    environments: {
+      development: true,
+      staging: true,
+      production: false,
+    },
+  },
+
+  /**
    * Example: Maintenance mode
    * Quick toggle for maintenance windows
    */

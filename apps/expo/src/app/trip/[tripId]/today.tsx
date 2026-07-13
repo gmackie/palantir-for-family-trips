@@ -21,6 +21,12 @@ import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import {
+  createFuelOutboxId,
+  type FuelLogCommand,
+} from "~/utils/fuel-outbox";
+import { fuelOutbox } from "~/utils/fuel-outbox-native";
+import { fetchIsOnline } from "~/utils/network-status";
+import {
   loadTodaySnapshot,
   saveTodaySnapshot,
 } from "~/utils/today-cache";
@@ -402,7 +408,7 @@ export default function TodayScreen() {
           </View>
         )}
 
-        {data.runState === "side_trip" && (
+        {(data.runState === "side_trip" || data.runState === "paused") && (
           <View
             style={{
               borderWidth: 1,
@@ -413,18 +419,45 @@ export default function TodayScreen() {
             }}
           >
             <Text style={{ color: C.info, fontWeight: "700" }}>
-              Exploring (side trip)
+              {data.runState === "paused"
+                ? "Guidance paused"
+                : "Exploring (side trip)"}
             </Text>
-            <Pressable
-              onPress={() => {
-                setReplanReason("side_trip");
-                setReplanOpen(true);
-              }}
-            >
-              <Text style={{ color: C.fg, textDecorationLine: "underline" }}>
-                Replan from here
+            {data.runStateNote ? (
+              <Text style={{ color: C.muted, fontSize: 13 }}>
+                {data.runStateNote}
               </Text>
-            </Pressable>
+            ) : null}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              <Pressable
+                onPress={() =>
+                  setRunState.mutate({
+                    workspaceId,
+                    tripId: tripId ?? "",
+                    runState: "on_plan",
+                    note: "Resumed on plan",
+                  })
+                }
+              >
+                <Text
+                  style={{ color: C.info, textDecorationLine: "underline" }}
+                >
+                  Resume on plan
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setReplanReason("side_trip");
+                  setReplanOpen(true);
+                }}
+              >
+                <Text
+                  style={{ color: C.fg, textDecorationLine: "underline" }}
+                >
+                  Replan from here
+                </Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -797,26 +830,67 @@ export default function TodayScreen() {
               <Pressable
                 disabled={logFuel.isPending}
                 onPress={() => {
-                  const g = Number(gallons);
-                  const p = Number(ppg);
-                  if (!(g > 0) || !(p > 0)) {
-                    Alert.alert("Need gallons and price");
-                    return;
-                  }
-                  const totalCents = Math.round(g * p * 100);
-                  logFuel.mutate({
-                    workspaceId,
-                    tripId: tripId ?? "",
-                    gallons: g,
-                    pricePerGallon: p,
-                    totalCents,
-                    odometerMiles: odo ? Number(odo) : undefined,
-                    stationLat: coords?.lat,
-                    stationLng: coords?.lng,
-                    loggedAt: new Date().toISOString(),
-                    fuelType: "gas",
-                    splitWithGroup: false,
-                  });
+                  void (async () => {
+                    const g = Number(gallons);
+                    const p = Number(ppg);
+                    if (!(g > 0) || !(p > 0)) {
+                      Alert.alert("Need gallons and price");
+                      return;
+                    }
+                    const totalCents = Math.round(g * p * 100);
+                    const payload: FuelLogCommand = {
+                      clientId: createFuelOutboxId(),
+                      workspaceId,
+                      tripId: tripId ?? "",
+                      gallons: g,
+                      pricePerGallon: p,
+                      totalCents,
+                      odometerMiles: odo ? Number(odo) : undefined,
+                      stationLat: coords?.lat,
+                      stationLng: coords?.lng,
+                      loggedAt: new Date().toISOString(),
+                      fuelType: "gas",
+                      splitWithGroup: false,
+                    };
+                    const online = await fetchIsOnline();
+                    if (!online) {
+                      await fuelOutbox.enqueue(payload);
+                      setFuelOpen(false);
+                      setOdo("");
+                      setGallons("");
+                      setPpg("");
+                      Alert.alert(
+                        "Queued offline",
+                        "Fill-up saved on this device. It will sync when you're back online.",
+                      );
+                      return;
+                    }
+                    try {
+                      await logFuel.mutateAsync({
+                        workspaceId: payload.workspaceId,
+                        tripId: payload.tripId,
+                        gallons: payload.gallons,
+                        pricePerGallon: payload.pricePerGallon,
+                        totalCents: payload.totalCents,
+                        odometerMiles: payload.odometerMiles,
+                        stationLat: payload.stationLat,
+                        stationLng: payload.stationLng,
+                        loggedAt: payload.loggedAt,
+                        fuelType: payload.fuelType,
+                        splitWithGroup: false,
+                      });
+                    } catch {
+                      await fuelOutbox.enqueue(payload);
+                      setFuelOpen(false);
+                      setOdo("");
+                      setGallons("");
+                      setPpg("");
+                      Alert.alert(
+                        "Queued for retry",
+                        "Network failed — fill-up is queued and will sync later.",
+                      );
+                    }
+                  })();
                 }}
                 style={{
                   flex: 1,

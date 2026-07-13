@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -247,6 +247,25 @@ export default function PlanRouteScreen() {
     }),
   );
 
+  const candidatesQuery = useQuery({
+    ...trpc.routePlanner.listCandidates.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+      origin: {
+        lat: origin?.lat ?? 0,
+        lng: origin?.lng ?? 0,
+        name: origin?.name,
+      },
+      destination: {
+        lat: destination?.lat ?? 0,
+        lng: destination?.lng ?? 0,
+        name: destination?.name,
+      },
+    }),
+    enabled: Boolean(origin && destination && workspaceId && tripId),
+    retry: false,
+  });
+
   const canSubmit =
     origin && destination && startDate.match(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -280,7 +299,8 @@ export default function PlanRouteScreen() {
           </Text>
           <Text style={{ color: C.muted, fontSize: 14, marginBottom: 24 }}>
             Search for your origin and destination. The route will be split into
-            driving days automatically.
+            driving days automatically. Compare dual candidates (coast / inland /
+            shorter) before you commit.
           </Text>
 
           <View style={{ gap: 20 }}>
@@ -299,6 +319,77 @@ export default function PlanRouteScreen() {
               onClear={() => setDestination(null)}
               placeholder="Des Moines, IA"
             />
+
+            {origin && destination && (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  borderRadius: R.md,
+                  backgroundColor: C.surface,
+                  padding: 12,
+                  gap: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: C.muted,
+                    fontSize: 10,
+                    fontWeight: "700",
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Route candidates
+                </Text>
+                {candidatesQuery.isFetching && (
+                  <ActivityIndicator size="small" color={C.info} />
+                )}
+                {candidatesQuery.isError && (
+                  <Text style={{ color: C.muted, fontSize: 12 }}>
+                    Couldn&apos;t load alternatives — you can still plan the
+                    primary route.
+                  </Text>
+                )}
+                {(candidatesQuery.data ?? []).map((c) => (
+                  <View
+                    key={c.id}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      borderRadius: R.sm,
+                      padding: 10,
+                      gap: 4,
+                    }}
+                  >
+                    <Text
+                      style={{ color: C.fg, fontSize: 14, fontWeight: "700" }}
+                    >
+                      {c.label}
+                    </Text>
+                    <Text
+                      style={{
+                        color: C.info,
+                        fontFamily: mono,
+                        fontSize: 13,
+                      }}
+                    >
+                      {c.distanceMiles} mi · {c.durationMinutes} min
+                    </Text>
+                    <Text style={{ color: C.muted, fontSize: 11 }}>
+                      {c.reason}
+                    </Text>
+                  </View>
+                ))}
+                {!candidatesQuery.isFetching &&
+                  (candidatesQuery.data?.length ?? 0) === 0 &&
+                  !candidatesQuery.isError && (
+                    <Text style={{ color: C.muted, fontSize: 12 }}>
+                      No alternate routes returned.
+                    </Text>
+                  )}
+              </View>
+            )}
 
             <View style={{ gap: 6 }}>
               <Text

@@ -13,9 +13,9 @@
 - Remaining: integrate concurrent itinerary/OTA work, deploy via ForgeGraph,
   and capture production browser plus physical-device proof.
 
-Updated 2026-06-27, working copy `wnmyulyn` / Git parent `1c3c087d` (branch `master`).
+Updated 2026-07-13. Ordered remaining work: `docs/ai/FEATURE_BACKLOG.md`.
 
-Known bugs and active implementation plans are tracked in `plans/README.md` at the repo root.
+Advisor plans 001–006 are all MERGED (see `plans/README.md`).
 
 ## What's Built
 
@@ -161,38 +161,22 @@ Known bugs and active implementation plans are tracked in `plans/README.md` at t
 
 ## What's NOT Built Yet
 
-### Phase 2 remaining gaps
-- **Workspace auto-creation on first sign-in** — `onLogin` hook to provision a personal workspace for solo users not yet implemented
-- **Workspace switcher not wired to nav** — `WorkspaceSwitcher` component exists but not rendered in the app shell
-- **Trip-table RLS policies not enabled** — RLS policy builders exist in `packages/db/src/tenant.ts`; no `ENABLE ROW LEVEL SECURITY` or `CREATE POLICY` statements exist in the drizzle migrations; tracked in `plans/README.md` security backlog
-- **`WORKSPACES_VISIBLE` flag-gating** — `@sortey/flags` infrastructure exists; workspace visibility flag not connected
+### Remaining product gaps (see `docs/ai/FEATURE_BACKLOG.md` for the ordered list)
 
-### Phase 2P remaining gaps
-- **AviationStack integration** — `memberTransits` schema present; AviationStack API not wired
-- **Room assignments UI** — `roomAssignments` schema present; no UI to create/edit them
+**Still open**
+- Offline map tiles; apply dual-candidate choice into planRoute write path
+- DriftPort full predictive service + work-window finder
+- Full mechanical split of `trips.ts` router file (domain helpers already modular)
+- App Store **manual ASC**: upload screenshots, privacy form, TestFlight, submit for review
+- SMS invites deferred (device share sheet is the near-term path)
 
-### Phase 3 gap
-- **OCR-to-expense wiring** — `packages/api/src/ocr/` has Claude + Gemini extractors, reconciler, fixtures, and tests, but no router mutation calls the pipeline; the receipt-photo upload capture flow is unconnected
-
-### Corridor POI data + UI
-- `corridor.ts` router and PostGIS ADR exist; `searchImported` queries `importedPois`/`poiCache` tables
-- **No data importer**: iOverlander / Recreation.gov importer mentioned in `docs/ai/ROAD_TRIP_PROPOSAL.md` not built
-- **No UI surface**: corridor search not exposed in either app
-
-### Road-trip vocabulary features (designed, unbuilt)
-From `CONTEXT.md:41-61` — fully specified vocabulary, not yet fully implemented:
-- **Predicted Stop** — an auto-placed pin along a road trip route based on constraints (fuel range, overnight before sunset, amenity needs); recalculates when segment boundaries change
-- **Side Trip** — a deviation from the planned route; when the user leaves the route polyline (>2 mi for a non-POI stop), Sortie prompts to pause the trip for free exploration; a deviation marker is placed on the timeline at the exit point
-- **Fuel Zone** — a predicted area along the route where the vehicle will need fuel, based on MPG × tank size × threshold; rendered as a custom SVG marker on the route gradient showing nearby stations (not a specific station)
-
-Note: **Route Gradient** — a color gradient applied to the route polyline encoding hours-from-now — has a partial web implementation (`route-gradient-map.tsx`; see Phase 5 above); not yet in mobile Driving Mode.
-
-### SMS invites
-- `docs/ai/A2P_10DLC_REGISTRATION.md` describes the full registration package; 10DLC registration not submitted; Twilio not integrated
-- Device-native share sheet (Expo `Share.share`) covers the near-term invite need
-
-### `/demo` cleanup
-- `apps/nextjs/src/app/demo/` — legacy static dashboard (~6,171-line `app-shell.tsx`); IMPLEMENTATION_PLAN Phase 6 calls for wiring live data then deleting it; live dashboard is now at `[tripId]/dashboard/`
+**Recently closed (2026-07-13 campaign)**
+- Mobile room board + flight refresh; `workspacesVisible`; `/demo` removed
+- Formal side-trip pause/resume; hour-aware replanDraft; predicted stops list
+- Offline: fuel + expense/pin outboxes, trip pack, query persist, NetInfo sync banner
+- Dual-candidate routes (`routePlanner.listCandidates` + Plan Route UI)
+- Trip/workspace RLS migration `0012_trip_workspace_rls.sql`
+- App Store checklist + draft inventory
 
 ## Build Status
 
