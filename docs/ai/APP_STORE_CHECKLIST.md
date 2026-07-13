@@ -2,7 +2,8 @@
 
 **Last updated:** 2026-07-13  
 **ASC app:** com.gmacko.sortey · ascAppId `6775057200`  
-**Build:** Production 6 (0.1.0) submitted 2026-07-13 (see `LAUNCH_READINESS.md`)
+**Latest production build:** EAS `ad91ed11` · iOS **0.1.0 (7)** · channel `production` · finished 2026-07-13  
+(see `LAUNCH_READINESS.md`)
 
 ## Assets
 
@@ -42,10 +43,22 @@ Use these as a starting point in ASC → App Privacy. Confirm against live code 
 
 Contact URL: https://sortey.app/privacy · Support: use the support URL already in ASC.
 
-## TestFlight
+## TestFlight smoke (build 7+)
 
-1. Install production or TestFlight build on a physical iPhone (native fingerprint changed 2026-07-13 — old binaries won't OTA cleanly).
-2. Smoke: magic-link sign-in → trips → road trip **Today** → log stop → fuel log (online + airplane mode queue) → Drive / Route Ahead.
+Install from TestFlight (fresh binary required after 2026-07-13 fingerprint change).
+
+| # | Step | Pass? |
+|---|------|-------|
+| 1 | Magic-link sign-in | |
+| 2 | Open trips list → open road trip | |
+| 3 | **Today** loads; leave-by / fuel / service queue visible | |
+| 4 | Airplane mode → log fuel → see offline queue banner | |
+| 5 | Re-enable network → Sync now / auto-flush | |
+| 6 | **Drive** → Route Ahead gradient + predicted stops | |
+| 7 | **Plan Route** → dual candidates → plan selected | |
+| 8 | Lodging → rooms assign + flight refresh (if flight row) | |
+| 9 | Settings / OTA channel shows production | |
+
 3. Internal testing group → external if needed → **Submit for Review**.
 
 ## Review notes (paste into ASC)

@@ -38,6 +38,17 @@ export const tripChildRlsTargets = [
   // Expenses live on trips (not segments directly for the join, but they
   // have trip_id set so the standard trip-join works).
   { tableName: "expense", tripColumn: "trip_id" },
+  // Later trip-domain tables (owned by trip_app in prod).
+  { tableName: "journey_stop", tripColumn: "trip_id" },
+  { tableName: "trip_message", tripColumn: "trip_id" },
+  { tableName: "ferry_crossing", tripColumn: "trip_id" },
+  { tableName: "fuel_log", tripColumn: "trip_id" },
+  { tableName: "gps_track_point", tripColumn: "trip_id" },
+  { tableName: "trip_share", tripColumn: "trip_id" },
+  { tableName: "trip_anchor", tripColumn: "trip_id" },
+  { tableName: "trip_day", tripColumn: "trip_id" },
+  { tableName: "van_state_reading", tripColumn: "trip_id" },
+  { tableName: "member_location", tripColumn: "trip_id" },
 ] as const;
 
 /**
@@ -409,19 +420,93 @@ export function buildWorkspaceRlsStatements() {
   ];
 }
 
-export async function applyWorkspaceRls(executor?: SqlExecutor) {
+export type ApplyWorkspaceRlsResult = {
+  applied: number;
+  skipped: number;
+  errors: Array<{ statement: string; message: string }>;
+};
+
+function extractErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const parts = [error.message];
+  let cur: unknown = error;
+  // Walk cause chain (Drizzle wraps PostgresError as cause).
+  for (let i = 0; i < 4; i++) {
+    if (
+      typeof cur === "object" &&
+      cur &&
+      "cause" in cur &&
+      (cur as { cause: unknown }).cause
+    ) {
+      cur = (cur as { cause: unknown }).cause;
+      if (cur instanceof Error) parts.push(cur.message);
+      else if (typeof cur === "object" && cur && "message" in cur) {
+        parts.push(String((cur as { message: unknown }).message));
+      }
+      continue;
+    }
+    break;
+  }
+  return parts.join(" | ");
+}
+
+/**
+ * Apply all workspace/trip RLS statements. Continues past ownership /
+ * insufficient-privilege errors (e.g. tables still owned by `postgres`) so a
+ * partial apply still lands policies on tables the app role owns.
+ */
+export async function applyWorkspaceRls(
+  executor?: SqlExecutor,
+): Promise<ApplyWorkspaceRlsResult> {
   const resolvedExecutor =
     executor ?? ((await import("./client")).db as unknown as SqlExecutor);
 
+  const result: ApplyWorkspaceRlsResult = {
+    applied: 0,
+    skipped: 0,
+    errors: [],
+  };
+
   for (const statement of buildWorkspaceRlsStatements()) {
-    await resolvedExecutor.execute(sql.raw(statement));
+    try {
+      await resolvedExecutor.execute(sql.raw(statement));
+      result.applied += 1;
+    } catch (error) {
+      const message = extractErrorMessage(error);
+      const isPrivilege =
+        /must be owner|permission denied|insufficient_privilege|42501/i.test(
+          message,
+        );
+      if (isPrivilege) {
+        result.skipped += 1;
+        result.errors.push({ statement: statement.slice(0, 120), message });
+        continue;
+      }
+      throw error;
+    }
   }
+
+  return result;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   applyWorkspaceRls(undefined)
-    .then(() => {
-      console.log("Applied workspace RLS policies.");
+    .then((result) => {
+      console.log(
+        `Applied workspace RLS policies. ok=${result.applied} skipped=${result.skipped}`,
+      );
+      if (result.errors.length > 0) {
+        console.warn("Skipped statements (ownership/privilege):");
+        for (const err of result.errors) {
+          console.warn(`- ${err.message}`);
+          console.warn(`  ${err.statement}…`);
+        }
+      }
+      // Non-zero only when nothing applied and everything failed hard — skipped
+      // ownership gaps are expected on mixed-owner DBs.
+      if (result.applied === 0 && result.skipped === 0) {
+        process.exit(1);
+      }
     })
     .catch((error) => {
       console.error("Failed to apply workspace RLS policies.", error);
