@@ -33,6 +33,16 @@ Done:
 - **Production build 7 (0.1.0)** finished on EAS 2026-07-13
   (`ad91ed11-b21b-4561-9e24-94fb67cc4c32`, channel production). Prefer this
   for TestFlight if build 6 is superseded.
+- **EAS Submit succeeded for build 7** — submission `dcc419a5-c37c-477b-b23a-acc90802168c`
+  status `FINISHED` (2026-07-13T19:43Z). Binary is in App Store Connect / TestFlight.
+  Re-running `eas submit` for the same build number will error; wait for Apple
+  processing then install from TestFlight.
+
+Automation (apps/expo):
+```bash
+pnpm submit:ios                         # latest production IPA → ASC
+pnpm build:ios:production:submit        # new build + auto-submit
+```
 - Fingerprint parity restored (three fixes: Sentry plugin filtered from the
   fingerprint, pristine frozen-lockfile node_modules, apps/expo/.gitignore
   now committed). `eas build` from a clean checkout matches EAS.
