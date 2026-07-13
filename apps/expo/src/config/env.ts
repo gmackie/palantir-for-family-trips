@@ -34,13 +34,10 @@ function getApiUrl(): string {
   switch (environment) {
     case "production":
       return (
-        process.env.EXPO_PUBLIC_PRODUCTION_API_URL ?? "https://api.yourapp.com"
+        process.env.EXPO_PUBLIC_PRODUCTION_API_URL ?? "https://sortey.app"
       );
     case "staging":
-      return (
-        process.env.EXPO_PUBLIC_STAGING_API_URL ??
-        "https://staging-api.yourapp.com"
-      );
+      return process.env.EXPO_PUBLIC_STAGING_API_URL ?? "https://sortey.app";
     case "development":
     default:
       return "https://sortey.app";

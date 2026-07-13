@@ -107,6 +107,23 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     "expo-router",
     "expo-secure-store",
     "expo-web-browser",
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "Sortey uses your location to show where you are on the trip map, surface what's next on today's route, and suggest logging a stop when you linger somewhere.",
+      },
+    ],
+    [
+      "expo-image-picker",
+      {
+        cameraPermission:
+          "Sortey uses the camera to scan receipts and capture trip photos.",
+        photosPermission:
+          "Sortey accesses your photo library so you can attach receipts and share photos with your trip group.",
+      },
+    ],
+    "expo-notifications",
     ["react-native-maps", { iosGoogleMapsApiKey: GOOGLE_MAPS_API_KEY }],
     [
       "expo-splash-screen",
@@ -173,6 +190,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       infoPlist: {
         CFBundleDisplayName: getAppName(),
         ITSAppUsesNonExemptEncryption: false,
+        // Explicit usage strings (the expo-location / expo-image-picker
+        // plugins inject these too; keeping them here guards against a
+        // plugin config change silently dropping a required string).
+        NSLocationWhenInUseUsageDescription:
+          "Sortey uses your location to show where you are on the trip map, surface what's next on today's route, and suggest logging a stop when you linger somewhere.",
+        NSCameraUsageDescription:
+          "Sortey uses the camera to scan receipts and capture trip photos.",
+        NSPhotoLibraryUsageDescription:
+          "Sortey accesses your photo library so you can attach receipts and share photos with your trip group.",
       },
     },
     android: {

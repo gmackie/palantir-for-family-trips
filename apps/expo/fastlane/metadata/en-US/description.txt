@@ -1,10 +1,21 @@
-Your full app description goes here.
+Sortey is the command center for group road trips. Plan the route together, know exactly what today looks like from the driver's seat, split every expense fairly, and settle up in one tap at the end.
 
-Describe what your app does, its key features, and why users should download it.
+TODAY, AT A GLANCE
+Open Today and see what actually matters right now: the next stop, when you need to leave, fuel and service stops queued along the way, and a one-tap replan when reality doesn't match the plan. Works even when cell service drops out.
 
-Key Features:
-- Feature 1
-- Feature 2
-- Feature 3
+PLAN THE ROUTE TOGETHER
+Build a multi-day itinerary with drive-time-aware day splitting, lodging, ferries, and points of interest along your corridor. Vote on plans with group polls, then lock it in.
 
-Download now and get started!
+SPLIT EXPENSES WITHOUT THE SPREADSHEET
+Log expenses as they happen — scan a receipt and Sortey reads it for you. Tap to claim your items, split gas automatically from fuel fill-ups, and let everyone see where the money went in real time.
+
+SETTLE UP IN SECONDS
+At the end of the trip, Sortey computes the minimal set of payments to square everyone up, with Venmo deep links to pay on the spot.
+
+STAY IN SYNC
+Group chat, live member locations on the trip map, shared photos, and push notifications keep the whole crew coordinated — whether you're in one van or a three-car caravan.
+
+LOG THE JOURNEY
+Capture stops as you go and look back at a timeline of everywhere you've been. Sortey even notices when you've lingered somewhere and offers to log the stop for you.
+
+Built for real trips: offline-tolerant on the road, fast on the phone, and detailed on the web dashboard when you're planning from home.

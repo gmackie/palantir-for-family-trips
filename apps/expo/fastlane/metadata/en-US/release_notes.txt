@@ -1,3 +1,1 @@
-What's New:
-- Bug fixes and performance improvements
-- New features coming soon!
+Initial release: plan group road trips, see today's route at a glance, split expenses with receipt scanning, settle up with Venmo, and keep the crew in sync with chat, live locations, and shared photos.

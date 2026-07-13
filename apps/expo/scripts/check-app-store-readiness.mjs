@@ -30,6 +30,34 @@ const checks = [
     placeholder: "https://yourapp.com/support",
     message: "Replace the placeholder support URL.",
   },
+  {
+    file: "fastlane/metadata/en-US/subtitle.txt",
+    placeholder: "Your app subtitle",
+    message: "Replace the placeholder App Store subtitle.",
+  },
+  {
+    file: "fastlane/metadata/en-US/description.txt",
+    placeholder: "Your full app description",
+    message: "Replace the placeholder App Store description.",
+  },
+  {
+    file: "fastlane/metadata/en-US/keywords.txt",
+    placeholder: "keyword1",
+    message: "Replace the placeholder App Store keywords.",
+  },
+  {
+    file: "fastlane/metadata/en-US/promotional_text.txt",
+    placeholder: "Download our app today!",
+    message: "Replace the placeholder promotional text.",
+  },
+];
+
+const limits = [
+  { file: "fastlane/metadata/en-US/subtitle.txt", max: 30 },
+  { file: "fastlane/metadata/en-US/keywords.txt", max: 100 },
+  { file: "fastlane/metadata/en-US/promotional_text.txt", max: 170 },
+  { file: "fastlane/metadata/en-US/description.txt", max: 4000 },
+  { file: "fastlane/metadata/en-US/release_notes.txt", max: 4000 },
 ];
 
 const failures = [];
@@ -40,6 +68,17 @@ for (const check of checks) {
 
   if (content.includes(check.placeholder)) {
     failures.push(`${check.file}: ${check.message}`);
+  }
+}
+
+for (const limit of limits) {
+  const filePath = path.join(appDir, limit.file);
+  const content = fs.readFileSync(filePath, "utf8").trim();
+
+  if (content.length > limit.max) {
+    failures.push(
+      `${limit.file}: ${content.length} characters exceeds the ${limit.max}-character App Store limit.`,
+    );
   }
 }
 

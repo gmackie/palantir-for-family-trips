@@ -1,6 +1,7 @@
 # Launch smoke flow — the Preflight build farm's default simulator-proof flow.
 appId: com.gmacko.sortey.dev
 name: "App Launches (smoke)"
+tags: [smoke]
 ---
 - launchApp
 - runFlow:
