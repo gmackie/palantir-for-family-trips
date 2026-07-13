@@ -334,84 +334,117 @@ export const routePlannerRouter = {
           .default([]),
         startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         autoSplit: z.boolean().default(true),
+        /**
+         * Optional dual-candidate selection from `listCandidates`. When set,
+         * we skip the Google primary fetch and plan from this polyline.
+         */
+        preferredRoute: z
+          .object({
+            encodedPolyline: z.string().min(8),
+            distanceMiles: z.number().positive(),
+            durationMinutes: z.number().int().positive(),
+            label: z.string().max(80).optional(),
+          })
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const apiKey =
-        process.env.GOOGLE_ROUTES_API_KEY ??
-        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      let totalMiles: number;
+      let totalMinutes: number;
+      let fullPolyline: string;
 
-      if (!apiKey) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Google Routes API key not configured",
-        });
-      }
+      if (input.preferredRoute) {
+        totalMiles = input.preferredRoute.distanceMiles;
+        totalMinutes = input.preferredRoute.durationMinutes;
+        fullPolyline = input.preferredRoute.encodedPolyline;
+        try {
+          const pts = decode(fullPolyline, 5);
+          if (pts.length < 2) {
+            throw new Error("too few points");
+          }
+        } catch {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "preferredRoute.encodedPolyline is not a valid polyline.",
+          });
+        }
+      } else {
+        const apiKey =
+          process.env.GOOGLE_ROUTES_API_KEY ??
+          process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-      const body: Record<string, unknown> = {
-        origin: {
-          location: {
-            latLng: {
-              latitude: input.origin.lat,
-              longitude: input.origin.lng,
+        if (!apiKey) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Google Routes API key not configured",
+          });
+        }
+
+        const body: Record<string, unknown> = {
+          origin: {
+            location: {
+              latLng: {
+                latitude: input.origin.lat,
+                longitude: input.origin.lng,
+              },
             },
           },
-        },
-        destination: {
-          location: {
-            latLng: {
-              latitude: input.destination.lat,
-              longitude: input.destination.lng,
+          destination: {
+            location: {
+              latLng: {
+                latitude: input.destination.lat,
+                longitude: input.destination.lng,
+              },
             },
           },
-        },
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_UNAWARE",
-        polylineEncoding: "ENCODED_POLYLINE",
-      };
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_UNAWARE",
+          polylineEncoding: "ENCODED_POLYLINE",
+        };
 
-      if (input.waypoints.length > 0) {
-        body.intermediates = input.waypoints.map((wp) => ({
-          location: {
-            latLng: { latitude: wp.lat, longitude: wp.lng },
+        if (input.waypoints.length > 0) {
+          body.intermediates = input.waypoints.map((wp) => ({
+            location: {
+              latLng: { latitude: wp.lat, longitude: wp.lng },
+            },
+          }));
+        }
+
+        const res = await fetch(
+          "https://routes.googleapis.com/directions/v2:computeRoutes",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": apiKey,
+              "X-Goog-FieldMask":
+                "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline.encodedPolyline",
+            },
+            body: JSON.stringify(body),
           },
-        }));
+        );
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Google Routes API error: ${res.status} ${errText}`,
+          });
+        }
+
+        const data = (await res.json()) as GoogleRouteResponse;
+        const route = data.routes?.[0];
+        if (!route) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "No route found",
+          });
+        }
+
+        totalMiles = metersToMiles(route.distanceMeters);
+        totalMinutes = durationToMinutes(route.duration);
+        fullPolyline = route.polyline.encodedPolyline;
       }
-
-      const res = await fetch(
-        "https://routes.googleapis.com/directions/v2:computeRoutes",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": apiKey,
-            "X-Goog-FieldMask":
-              "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline.encodedPolyline",
-          },
-          body: JSON.stringify(body),
-        },
-      );
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Google Routes API error: ${res.status} ${errText}`,
-        });
-      }
-
-      const data = (await res.json()) as GoogleRouteResponse;
-      const route = data.routes?.[0];
-      if (!route) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "No route found",
-        });
-      }
-
-      const totalMiles = metersToMiles(route.distanceMeters);
-      const totalMinutes = durationToMinutes(route.duration);
-      const fullPolyline = route.polyline.encodedPolyline;
 
       // Update trip with destination info
       await ctx.db

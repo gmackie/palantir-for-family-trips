@@ -215,6 +215,9 @@ export default function PlanRouteScreen() {
   const [destination, setDestination] = useState<Place | null>(null);
   const [startDate, setStartDate] = useState("");
   const [autoSplit, setAutoSplit] = useState(true);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
+    null,
+  );
 
   const planRoute = useMutation(
     trpc.routePlanner.planRoute.mutationOptions({
@@ -266,6 +269,13 @@ export default function PlanRouteScreen() {
     retry: false,
   });
 
+  // Default to primary candidate when the list loads / origin-dest changes.
+  const candidates = candidatesQuery.data ?? [];
+  const selectedCandidate =
+    candidates.find((c) => c.id === selectedCandidateId) ??
+    candidates[0] ??
+    null;
+
   const canSubmit =
     origin && destination && startDate.match(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -307,16 +317,28 @@ export default function PlanRouteScreen() {
             <PlaceInput
               label="Origin"
               value={origin}
-              onSelect={setOrigin}
-              onClear={() => setOrigin(null)}
+              onSelect={(p) => {
+                setOrigin(p);
+                setSelectedCandidateId(null);
+              }}
+              onClear={() => {
+                setOrigin(null);
+                setSelectedCandidateId(null);
+              }}
               placeholder="Seattle, WA"
             />
 
             <PlaceInput
               label="Destination"
               value={destination}
-              onSelect={setDestination}
-              onClear={() => setDestination(null)}
+              onSelect={(p) => {
+                setDestination(p);
+                setSelectedCandidateId(null);
+              }}
+              onClear={() => {
+                setDestination(null);
+                setSelectedCandidateId(null);
+              }}
               placeholder="Des Moines, IA"
             />
 
@@ -340,7 +362,7 @@ export default function PlanRouteScreen() {
                     textTransform: "uppercase",
                   }}
                 >
-                  Route candidates
+                  Route candidates · tap to select
                 </Text>
                 {candidatesQuery.isFetching && (
                   <ActivityIndicator size="small" color={C.info} />
@@ -351,38 +373,64 @@ export default function PlanRouteScreen() {
                     primary route.
                   </Text>
                 )}
-                {(candidatesQuery.data ?? []).map((c) => (
-                  <View
-                    key={c.id}
-                    style={{
-                      borderWidth: 1,
-                      borderColor: C.border,
-                      borderRadius: R.sm,
-                      padding: 10,
-                      gap: 4,
-                    }}
-                  >
-                    <Text
-                      style={{ color: C.fg, fontSize: 14, fontWeight: "700" }}
-                    >
-                      {c.label}
-                    </Text>
-                    <Text
+                {candidates.map((c) => {
+                  const selected =
+                    (selectedCandidate?.id ?? candidates[0]?.id) === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => setSelectedCandidateId(c.id)}
                       style={{
-                        color: C.info,
-                        fontFamily: mono,
-                        fontSize: 13,
+                        borderWidth: 1,
+                        borderColor: selected ? C.info : C.border,
+                        backgroundColor: selected ? C.infoBg : C.bg,
+                        borderRadius: R.sm,
+                        padding: 10,
+                        gap: 4,
+                        minHeight: 48,
                       }}
                     >
-                      {c.distanceMiles} mi · {c.durationMinutes} min
-                    </Text>
-                    <Text style={{ color: C.muted, fontSize: 11 }}>
-                      {c.reason}
-                    </Text>
-                  </View>
-                ))}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: C.fg,
+                            fontSize: 14,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {c.label}
+                        </Text>
+                        {selected ? (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={18}
+                            color={C.info}
+                          />
+                        ) : null}
+                      </View>
+                      <Text
+                        style={{
+                          color: C.info,
+                          fontFamily: mono,
+                          fontSize: 13,
+                        }}
+                      >
+                        {c.distanceMiles} mi · {c.durationMinutes} min
+                      </Text>
+                      <Text style={{ color: C.muted, fontSize: 11 }}>
+                        {c.reason}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
                 {!candidatesQuery.isFetching &&
-                  (candidatesQuery.data?.length ?? 0) === 0 &&
+                  candidates.length === 0 &&
                   !candidatesQuery.isError && (
                     <Text style={{ color: C.muted, fontSize: 12 }}>
                       No alternate routes returned.
@@ -553,6 +601,15 @@ export default function PlanRouteScreen() {
                 },
                 startDate,
                 autoSplit,
+                preferredRoute:
+                  selectedCandidate?.encodedPolyline != null
+                    ? {
+                        encodedPolyline: selectedCandidate.encodedPolyline,
+                        distanceMiles: selectedCandidate.distanceMiles,
+                        durationMinutes: selectedCandidate.durationMinutes,
+                        label: selectedCandidate.label,
+                      }
+                    : undefined,
               });
             }}
             disabled={!canSubmit || planRoute.isPending}
@@ -577,7 +634,9 @@ export default function PlanRouteScreen() {
               </View>
             ) : (
               <Text style={{ color: C.white, fontSize: 16, fontWeight: "600" }}>
-                Plan Route
+                {selectedCandidate
+                  ? `Plan · ${selectedCandidate.label}`
+                  : "Plan Route"}
               </Text>
             )}
           </Pressable>

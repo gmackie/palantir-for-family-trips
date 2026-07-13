@@ -82,7 +82,7 @@ Source: `docs/plans/2026-07-09-itinerary-planner.md`, DayMap/DriftPort specs, `C
 | R6 | Route gradient (web) | ✅ | `route-gradient-map.tsx` |
 | R7 | Route gradient (mobile Driving Mode) | ✅ | `RouteAheadCard` gradient bar + zone markers on Drive |
 | R8 | P2 hour-aware packer for plain A→B | ✅ | `estimateDriveDays` + `totalDriveMiles` / `leadInMiles` on replanDraft |
-| R9 | P4 dual-candidate routes (coast vs inland) | ✅ | `listCandidates` + labels; Plan Route UI shows alternatives |
+| R9 | P4 dual-candidate routes (coast vs inland) | ✅ | `listCandidates` + select; `planRoute.preferredRoute` writes chosen polyline |
 | R10 | P5 cut-if-behind automation | 🟡 | Cut text seeded; no auto-drop of blocks |
 | R11 | Predicted Stop as first-class list | ✅ | Predicted stops list on Route Ahead (fuel + overnight zones) |
 | R12 | DriftPort predictive service logistics | 🟡 | Telemetry spike + service queue; full consumption→POI matching open |
@@ -97,8 +97,8 @@ Source: `docs/plans/2026-07-09-itinerary-planner.md`, DayMap/DriftPort specs, `C
 
 **Track 3 later**
 
-- Apply chosen candidate polyline when planning (today plans primary only)
 - Full DriftPort predictive loop (R12–R13)
+- Web Plan Route dual-candidate picker (mobile done)
 
 ---
 
