@@ -34,6 +34,9 @@ const config = {
   ignorePaths: [
     "**/node_modules/@sentry/react-native/**",
     "../../node_modules/@sentry/react-native/**",
+    // Build/submit orchestration, not native runtime configuration —
+    // editing submit profiles must not orphan built binaries from OTA.
+    "eas.json",
   ],
   fileHookTransform: (source, chunk, isEndOfFile) => {
     if (source.type !== "contents" || source.id !== "expoConfig") return chunk;
