@@ -5,12 +5,19 @@ import { StatusBar } from "expo-status-bar";
 import { ErrorBoundary } from "~/components/error-boundary";
 import { queryClient } from "~/utils/api";
 import { C } from "~/utils/design";
+import { useMagicLinkCookie } from "~/utils/use-magic-link-cookie";
 import { useOtaUpdates } from "~/utils/use-ota-updates";
 import { usePushNotifications } from "~/utils/use-push-notifications";
 import { Providers } from "../providers";
 
 function PushNotificationRegistrar() {
   usePushNotifications();
+  return null;
+}
+
+/** Stores the session cookie from magic-link deep-link redirects. */
+function MagicLinkCookieCatcher() {
+  useMagicLinkCookie();
   return null;
 }
 
@@ -27,6 +34,7 @@ export default function RootLayout() {
         <Providers>
           <PushNotificationRegistrar />
           <OtaUpdateChecker />
+          <MagicLinkCookieCatcher />
           <Stack
             screenOptions={{
               headerStyle: {
