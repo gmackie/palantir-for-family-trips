@@ -25,13 +25,20 @@ Done:
 - ascAppId 6775057200 wired in eas.json submit profiles
 - privacy (https://sortey.app/privacy) and support URLs resolve
 
+- **Production build 6 (0.1.0) built and submitted to App Store Connect
+  on 2026-07-13** (EAS build 8c40086d, submission 2993aa79, ASC API key
+  RCRP9427V2 stored on EAS servers). Store provisioning profiles were
+  regenerated with the `group.com.gmacko.sortey` App Group; APNs push key
+  CUZMCMBZ86 assigned.
+- Fingerprint parity restored (three fixes: Sentry plugin filtered from the
+  fingerprint, pristine frozen-lockfile node_modules, apps/expo/.gitignore
+  now committed). `eas build` from a clean checkout matches EAS.
+
 Remaining:
-1. Production build → `eas submit --platform ios` (needs `APPLE_ID` /
-   `APPLE_TEAM_ID` env at submit time)
-2. App Store screenshots (`assets/app-store/` is empty) — capture 6.9" and
-   iPad 13" sets once a build is on TestFlight/simulator
-3. App Privacy questionnaire in App Store Connect (location, analytics, email)
-4. TestFlight pass on real devices before submitting for review
+1. App Store screenshots (`assets/app-store/` is empty) — capture 6.9" and
+   iPad 13" sets; upload in ASC
+2. App Privacy questionnaire in App Store Connect (location, analytics, email)
+3. TestFlight pass on real devices, then submit for review in ASC
 
 ## Device
 
