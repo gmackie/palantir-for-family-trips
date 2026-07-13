@@ -1,5 +1,13 @@
 const assert = require("node:assert");
 
+// The Sentry config plugin only adds source-map upload build phases; the
+// native module is always autolinked from package.json, so whether the
+// plugin is present (it is conditional on SENTRY_DSN, which EAS Build has
+// but a local `eas build` invocation may not) must not change the runtime
+// fingerprint.
+const isRuntimeConditionalPlugin = (plugin) =>
+  (Array.isArray(plugin) ? plugin[0] : plugin) === "@sentry/react-native/expo";
+
 const normalizePluginOptions = (plugin) => {
   if (!Array.isArray(plugin)) return plugin;
 
@@ -14,24 +22,19 @@ const normalizePluginOptions = (plugin) => {
     ];
   }
 
-  if (name === "@sentry/react-native/expo") {
-    return [
-      name,
-      {
-        ...options,
-        organization: "<runtime-value>",
-        project: "<runtime-value>",
-      },
-      ...rest,
-    ];
-  }
-
   return plugin;
 };
 
 /** @type {import('expo/fingerprint').Config} */
 const config = {
   sourceSkips: ["PackageJsonScriptsAll"],
+  // When the conditional Sentry plugin is active, @expo/fingerprint also
+  // hashes the plugin's implementation files — ignore them for the same
+  // reason the plugin entry itself is filtered out above.
+  ignorePaths: [
+    "**/node_modules/@sentry/react-native/**",
+    "../../node_modules/@sentry/react-native/**",
+  ],
   fileHookTransform: (source, chunk, isEndOfFile) => {
     if (source.type !== "contents" || source.id !== "expoConfig") return chunk;
 
@@ -41,7 +44,9 @@ const config = {
     );
     const expoConfig = JSON.parse(chunk.toString());
     delete expoConfig.extra;
-    expoConfig.plugins = expoConfig.plugins?.map(normalizePluginOptions);
+    expoConfig.plugins = expoConfig.plugins
+      ?.filter((plugin) => !isRuntimeConditionalPlugin(plugin))
+      .map(normalizePluginOptions);
     return JSON.stringify(expoConfig);
   },
 };

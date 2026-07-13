@@ -44,6 +44,31 @@ test("normalizes native-irrelevant service configuration", () => {
   );
 });
 
+test("ignores whether the conditional Sentry plugin is present", () => {
+  const withoutSentry = {
+    ios: { bundleIdentifier: "com.gmacko.sortey" },
+    plugins: [
+      "expo-router",
+      ["react-native-maps", { iosGoogleMapsApiKey: "" }],
+    ],
+  };
+  const withSentry = {
+    ...withoutSentry,
+    plugins: [
+      ...withoutSentry.plugins,
+      [
+        "@sentry/react-native/expo",
+        { organization: "sortie-app", project: "mobile" },
+      ],
+    ],
+  };
+
+  assert.equal(
+    transformExpoConfig(withoutSentry),
+    transformExpoConfig(withSentry),
+  );
+});
+
 test("preserves native compatibility inputs", () => {
   const baseline = {
     ios: { bundleIdentifier: "com.gmacko.sortey.dev" },
