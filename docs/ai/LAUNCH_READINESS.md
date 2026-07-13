@@ -40,8 +40,10 @@ Done:
 
 Automation (apps/expo):
 ```bash
-pnpm submit:ios                         # latest production IPA → ASC
+pnpm submit:ios                         # latest production IPA → ASC (preferred)
 pnpm build:ios:production:submit        # new build + auto-submit
+pnpm fastlane:pilot                     # alternate: EAS IPA → pilot
+pnpm fastlane:meta                      # metadata + screenshots only
 ```
 - Fingerprint parity restored (three fixes: Sentry plugin filtered from the
   fingerprint, pristine frozen-lockfile node_modules, apps/expo/.gitignore

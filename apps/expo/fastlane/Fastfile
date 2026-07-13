@@ -1,60 +1,190 @@
+# Sortey release lanes.
+#
+# Binary path (preferred for Expo):
+#   eas build --profile production
+#   eas submit --profile production   # or: pnpm submit:ios
+#
+# Fastlane here is for:
+#   - pilot: upload a local/EAS IPA to TestFlight
+#   - deliver_meta: push metadata (+ screenshots if present)
+#   - beta: pilot + optional changelog
+#
+# Auth (pick one):
+#   App Store Connect API key (recommended, same as EAS):
+#     APP_STORE_CONNECT_API_KEY_ID
+#     APP_STORE_CONNECT_API_ISSUER_ID
+#     APP_STORE_CONNECT_API_KEY_PATH  (path to AuthKey_XXX.p8)
+#   or Apple ID session (interactive):
+#     APPLE_ID + app-specific password / session
+
 default_platform(:ios)
 
+ASC_APP_ID = ENV["ASC_APP_ID"] || "6775057200"
+BUNDLE_ID = ENV["APP_IDENTIFIER"] || "com.gmacko.sortey"
+
+def api_key_available?
+  ENV["APP_STORE_CONNECT_API_KEY_ID"] &&
+    ENV["APP_STORE_CONNECT_API_ISSUER_ID"] &&
+    ENV["APP_STORE_CONNECT_API_KEY_PATH"] &&
+    File.exist?(ENV["APP_STORE_CONNECT_API_KEY_PATH"])
+end
+
+def load_api_key
+  return nil unless api_key_available?
+
+  app_store_connect_api_key(
+    key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+    issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+    key_filepath: ENV["APP_STORE_CONNECT_API_KEY_PATH"],
+    duration: 1200,
+    in_house: false
+  )
+end
+
+def screenshots_ready?
+  Dir.glob("fastlane/screenshots/**/*.{png,jpg,jpeg}").any?
+end
+
 platform :ios do
-  desc "Push a new beta build to TestFlight"
-  lane :beta do
-    build_app(
-      workspace: "ios/YourApp.xcworkspace",
-      scheme: "YourApp",
-      export_method: "app-store"
-    )
-    upload_to_testflight
+  before_all do
+    # Run from apps/expo so paths match package scripts.
   end
 
-  desc "Push a new release build to the App Store"
-  lane :release do
-    build_app(
-      workspace: "ios/YourApp.xcworkspace",
-      scheme: "YourApp",
-      export_method: "app-store"
+  desc "Upload an IPA to TestFlight (pilot). Pass ipa: path/to.ipa"
+  lane :pilot_ipa do |options|
+    ipa = options[:ipa] || ENV["IPA_PATH"]
+    UI.user_error!("Set ipa: or IPA_PATH to the .ipa file") unless ipa && File.exist?(ipa)
+
+    api_key = load_api_key
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa,
+      app_identifier: BUNDLE_ID,
+      apple_id: ASC_APP_ID,
+      skip_waiting_for_build_processing: true,
+      changelog: options[:changelog] || ENV["WHAT_TO_TEST"] || "Sortey TestFlight build"
     )
+  end
+
+  desc "Download latest production IPA from EAS and upload to TestFlight via pilot"
+  lane :pilot_eas_latest do |options|
+    require "open3"
+    require "json"
+    require "fileutils"
+
+    Dir.chdir("..") if File.basename(Dir.pwd) == "fastlane"
+    # Ensure we are in apps/expo (parent of fastlane/)
+    expo_root = File.expand_path("..", __dir__)
+    Dir.chdir(expo_root)
+
+    UI.message("Fetching latest production iOS build from EAS…")
+    json_out, status = Open3.capture2(
+      "eas", "build:list",
+      "--platform", "ios",
+      "--profile", "production",
+      "--limit", "1",
+      "--non-interactive",
+      "--json"
+    )
+    UI.user_error!("eas build:list failed") unless status.success?
+
+    builds = JSON.parse(json_out)
+    build = builds.is_a?(Array) ? builds.first : builds
+    UI.user_error!("No production iOS builds found") unless build
+
+    url = build.dig("artifacts", "applicationArchiveUrl") ||
+          build.dig("artifacts", "buildUrl")
+    UI.user_error!("Build has no IPA URL") unless url
+
+    version = "#{build['appVersion']} (#{build['appBuildVersion']})"
+    UI.success("Using EAS build #{build['id']} — #{version}")
+
+    tmp = File.join(Dir.tmpdir, "sortey-#{build['id']}.ipa")
+    UI.message("Downloading IPA → #{tmp}")
+    dl_status = system("curl", "-fL", "--retry", "3", "-o", tmp, url)
+    UI.user_error!("IPA download failed") unless dl_status
+
+    pilot_ipa(
+      ipa: tmp,
+      changelog: options[:changelog] || "Sortey #{version}"
+    )
+  end
+
+  desc "Push App Store metadata (and screenshots if present). Does not upload binary."
+  lane :deliver_meta do |options|
+    api_key = load_api_key
+
     upload_to_app_store(
+      api_key: api_key,
+      app_identifier: BUNDLE_ID,
+      apple_id: ASC_APP_ID,
+      skip_binary_upload: true,
+      skip_app_version_update: options[:skip_version] != false,
       skip_metadata: false,
-      skip_screenshots: false
+      skip_screenshots: !screenshots_ready?,
+      force: true, # skip HTML preview confirmation in CI
+      precheck_include_in_app_purchases: false,
+      submit_for_review: false,
+      automatic_release: false,
+      run_precheck_before_submit: false,
+      metadata_path: "fastlane/metadata",
+      screenshots_path: "fastlane/screenshots"
     )
   end
 
-  desc "Sync certificates and profiles"
+  desc "Sync App Store screenshots from assets/app-store/drafts into fastlane/screenshots"
+  lane :sync_screenshots do
+    require "fileutils"
+    expo_root = File.expand_path("..", __dir__)
+    src = File.join(expo_root, "assets/app-store/drafts")
+    # deliver expects: screenshots/<locale>/iPhone* or device folders
+    dest = File.join(expo_root, "fastlane/screenshots/en-US")
+    FileUtils.mkdir_p(dest)
+
+    files = Dir.glob(File.join(src, "*.{png,jpg,jpeg}"))
+    UI.user_error!("No drafts in #{src}") if files.empty?
+
+    files.each do |f|
+      name = File.basename(f)
+      # deliver uses filename prefixes for device type; 6.9" iPhone 16 Pro Max ≈ APP_IPHONE_67
+      # Keep original names; also copy with iPhone 6.5/6.7 friendly prefix if missing.
+      FileUtils.cp(f, File.join(dest, name))
+      UI.message("Copied #{name}")
+    end
+    UI.success("Synced #{files.length} screenshot(s) → fastlane/screenshots/en-US")
+  end
+
+  desc "Metadata + screenshots to ASC (sync drafts first if present)"
+  lane :store_listing do
+    begin
+      sync_screenshots
+    rescue StandardError => e
+      UI.important("Screenshot sync skipped: #{e.message}")
+    end
+    deliver_meta
+  end
+
+  desc "Preferred full TF path when not using eas submit: pilot_eas_latest"
+  lane :beta do
+    pilot_eas_latest
+  end
+
+  desc "Sync certs via match (optional; EAS usually owns signing)"
   lane :sync_certs do
-    match(type: "appstore")
-    match(type: "development")
+    UI.user_error!("Set MATCH_GIT_URL for match") unless ENV["MATCH_GIT_URL"]
+    match(type: "appstore", app_identifier: BUNDLE_ID, readonly: true)
   end
 end
 
 platform :android do
-  desc "Push a new beta build to Google Play internal track"
+  desc "Upload AAB to Play internal track"
   lane :beta do
-    gradle(
-      task: "bundle",
-      build_type: "Release",
-      project_dir: "android"
-    )
     upload_to_play_store(
       track: "internal",
-      aab: "android/app/build/outputs/bundle/release/app-release.aab"
-    )
-  end
-
-  desc "Push a new release build to Google Play production"
-  lane :release do
-    gradle(
-      task: "bundle",
-      build_type: "Release",
-      project_dir: "android"
-    )
-    upload_to_play_store(
-      track: "production",
-      aab: "android/app/build/outputs/bundle/release/app-release.aab"
+      aab: ENV["AAB_PATH"] || "android/app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
     )
   end
 end

@@ -1,5 +1,9 @@
-git_url(ENV["MATCH_GIT_URL"])
-storage_mode("git")
+# Optional local cert sync — EAS usually owns signing for Expo builds.
+# Set MATCH_GIT_URL + APPLE_ID if you use match locally.
+
+git_url(ENV["MATCH_GIT_URL"]) if ENV["MATCH_GIT_URL"]
+storage_mode(ENV["MATCH_STORAGE_MODE"] || "git")
 type("appstore")
-app_identifier(ENV["APP_IDENTIFIER"] || "com.example.app")
-username(ENV["APPLE_ID"])
+app_identifier(ENV["APP_IDENTIFIER"] || "com.gmacko.sortey")
+username(ENV["APPLE_ID"] || "mackieg@umich.edu")
+team_id(ENV["TEAM_ID"] || ENV["APPLE_TEAM_ID"] || "P4SWQXAB5H")
