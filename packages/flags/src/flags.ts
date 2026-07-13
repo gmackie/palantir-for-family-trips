@@ -74,14 +74,16 @@ export const flagDefinitions = {
   /**
    * Driftport van-telemetry preview
    * Gates the live van-system telemetry overlay (battery / solar / climate /
-   * water) sourced from driftport in mobile Driving Mode. Off in prod until the
-   * service-account key is provisioned; on in dev/staging for the spike.
+   * water) sourced from driftport in mobile Driving Mode. The service-account
+   * key + rig membership are now provisioned (see docs/driftport-integration.md)
+   * and DRIFTPORT_API_URL/DRIFTPORT_API_KEY are set on the trip app's prod
+   * secrets, so this is live in all environments.
    */
   driftportTelemetryPreview: {
     defaultValue: false,
     description: "Enable the driftport van-telemetry preview in Driving Mode",
     environments: {
-      production: false,
+      production: true,
       staging: true,
       development: true,
     },

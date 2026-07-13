@@ -133,12 +133,12 @@ Source: `docs/ai/LAUNCH_READINESS.md`.
 
 | ID | Item | Status |
 |----|------|--------|
-| A1 | Production iOS build + ASC submit | ✅ (2026-07-13) |
+| A1 | Production iOS build + ASC submit | ✅ build 7 + EAS submit FINISHED (`dcc419a5`) |
 | A2 | Permission strings + metadata | ✅ |
 | A3 | Screenshots 6.9" + iPad 13" | ❌ / 🟡 drafts may exist |
 | A4 | App Privacy questionnaire (ASC) | ❌ manual |
-| A5 | TestFlight device pass | ❌ |
-| A6 | Submit for App Review | ❌ |
+| A5 | TestFlight device pass | 🟡 binary in ASC — install & smoke on device |
+| A6 | Submit for App Review | ❌ after screenshots + privacy + TF smoke |
 
 **Track 5 acceptance**
 

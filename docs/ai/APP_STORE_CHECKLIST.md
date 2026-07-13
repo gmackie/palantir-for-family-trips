@@ -3,6 +3,19 @@
 **Last updated:** 2026-07-13  
 **ASC app:** com.gmacko.sortey · ascAppId `6775057200`  
 **Latest production build:** EAS `ad91ed11` · iOS **0.1.0 (7)** · channel `production` · finished 2026-07-13  
+
+**EAS Submit (automated):** build **7 already uploaded** to ASC/TestFlight  
+(`submission dcc419a5` status `FINISHED` at 2026-07-13T19:43Z). Later re-submits of the same build error (duplicate).  
+
+```bash
+# From apps/expo — uses eas.json submit.production (ascAppId 6775057200)
+pnpm submit:ios                    # latest production iOS build
+pnpm submit:ios:id <build-id>      # specific build
+pnpm build:ios:production:submit   # build + auto-submit in one shot
+```
+
+Do **not** pass `--what-to-test` unless on Expo Enterprise (changelog param is plan-gated).
+
 (see `LAUNCH_READINESS.md`)
 
 ## Assets
