@@ -1,9 +1,12 @@
-app_identifier(ENV["APP_IDENTIFIER"] || "com.example.app")
-apple_id(ENV["APPLE_ID"])
-itc_team_id(ENV["ITC_TEAM_ID"])
-team_id(ENV["TEAM_ID"])
+# Sortey iOS / Android identifiers for fastlane deliver/pilot.
+# Prefer env overrides for CI; defaults match eas.json submit.production.
+
+app_identifier(ENV["APP_IDENTIFIER"] || "com.gmacko.sortey")
+apple_id(ENV["APPLE_ID"] || "mackieg@umich.edu")
+itc_team_id(ENV["ITC_TEAM_ID"]) # optional App Store Connect team id
+team_id(ENV["TEAM_ID"] || ENV["APPLE_TEAM_ID"] || "P4SWQXAB5H")
 
 for_platform :android do
-  json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"])
-  package_name(ENV["APP_IDENTIFIER"] || "com.example.app")
+  json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"] || "./google-services.json")
+  package_name(ENV["APP_IDENTIFIER"] || "com.gmacko.sortey")
 end

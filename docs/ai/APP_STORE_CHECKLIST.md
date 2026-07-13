@@ -9,10 +9,22 @@
 
 ```bash
 # From apps/expo — uses eas.json submit.production (ascAppId 6775057200)
-pnpm submit:ios                    # latest production iOS build
+pnpm submit:ios                    # latest production iOS build  (primary)
 pnpm submit:ios:id <build-id>      # specific build
 pnpm build:ios:production:submit   # build + auto-submit in one shot
 ```
+
+### Fastlane (metadata / alternate pilot)
+
+```bash
+cd apps/expo
+pnpm fastlane:screenshots   # drafts → fastlane/screenshots/en-US
+pnpm fastlane:meta          # deliver metadata + screenshots (no binary)
+pnpm fastlane:pilot         # download latest EAS IPA → TestFlight via pilot
+```
+
+Needs ASC API key env (`APP_STORE_CONNECT_API_KEY_ID` / `ISSUER_ID` / `KEY_PATH`).  
+See `apps/expo/fastlane/README.md`. Prefer **EAS submit** for the binary.
 
 Do **not** pass `--what-to-test` unless on Expo Enterprise (changelog param is plan-gated).
 
