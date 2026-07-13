@@ -1,66 +1,93 @@
-# Fastlane — Sortey
+fastlane documentation
+----
 
-## Roles
+# Installation
 
-| Tool | Use for |
-|------|---------|
-| **EAS Submit** (`pnpm submit:ios`) | Primary path: production IPA → App Store Connect / TestFlight |
-| **fastlane pilot** | Alternate: download latest EAS IPA and upload with pilot |
-| **fastlane deliver** | Metadata + screenshots only (`skip_binary_upload`) |
+Make sure you have the latest version of the Xcode command line tools installed:
 
-Binary signing stays on EAS. Match is optional and unused by default.
-
-## Lanes
-
-```bash
-cd apps/expo
-
-# Preferred binary path
-pnpm submit:ios
-
-# Pilot latest EAS production IPA to TestFlight
-pnpm fastlane:pilot
-
-# Sync assets/app-store/drafts → fastlane/screenshots + upload listing
-pnpm fastlane:meta
-
-# Screenshots only into fastlane tree
-pnpm fastlane:screenshots
+```sh
+xcode-select --install
 ```
 
-## Auth for local fastlane
+For _fastlane_ installation instructions, see [Installing _fastlane_](https://docs.fastlane.tools/#installing-fastlane)
 
-Use an App Store Connect API key (same model as EAS):
+# Available Actions
 
-```bash
-export APP_STORE_CONNECT_API_KEY_ID=XXXXXXXXXX
-export APP_STORE_CONNECT_API_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-export APP_STORE_CONNECT_API_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_XXXXXXXXXX.p8"
+## iOS
+
+### ios pilot_ipa
+
+```sh
+[bundle exec] fastlane ios pilot_ipa
 ```
 
-Optional: `ASC_APP_ID=6775057200` (default), `APP_IDENTIFIER=com.gmacko.sortey`.
+Upload an IPA to TestFlight (pilot). Pass ipa: path/to.ipa
 
-If the key is missing, `deliver`/`pilot` fall back to Apple ID interactive login (`APPLE_ID`).
+### ios pilot_eas_latest
 
-## Metadata
-
-Real listing copy lives in `fastlane/metadata/en-US/`. Validated by:
-
-```bash
-pnpm check:app-store
+```sh
+[bundle exec] fastlane ios pilot_eas_latest
 ```
 
-## Screenshots
+Download latest production IPA from EAS and upload to TestFlight via pilot
 
-1. Capture → `assets/app-store/drafts/`
-2. `pnpm fastlane:screenshots` copies into `fastlane/screenshots/en-US/`
-3. `pnpm fastlane:meta` uploads with deliver when PNGs are present
+### ios deliver_meta
 
-## Gemfile
-
-If `bundle exec` is unavailable, install once from `apps/expo`:
-
-```bash
-# optional — system fastlane also works: `fastlane ios store_listing`
-gem install fastlane
+```sh
+[bundle exec] fastlane ios deliver_meta
 ```
+
+Push App Store metadata (and screenshots if present). Does not upload binary.
+
+### ios sync_screenshots
+
+```sh
+[bundle exec] fastlane ios sync_screenshots
+```
+
+Sync App Store screenshots from assets/app-store/drafts into fastlane/screenshots
+
+### ios store_listing
+
+```sh
+[bundle exec] fastlane ios store_listing
+```
+
+Metadata + screenshots to ASC (sync drafts first if present)
+
+### ios beta
+
+```sh
+[bundle exec] fastlane ios beta
+```
+
+Preferred full TF path when not using eas submit: pilot_eas_latest
+
+### ios sync_certs
+
+```sh
+[bundle exec] fastlane ios sync_certs
+```
+
+Sync certs via match (optional; EAS usually owns signing)
+
+----
+
+
+## Android
+
+### android beta
+
+```sh
+[bundle exec] fastlane android beta
+```
+
+Upload AAB to Play internal track
+
+----
+
+This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
+
+More information about _fastlane_ can be found on [fastlane.tools](https://fastlane.tools).
+
+The documentation of _fastlane_ can be found on [docs.fastlane.tools](https://docs.fastlane.tools).

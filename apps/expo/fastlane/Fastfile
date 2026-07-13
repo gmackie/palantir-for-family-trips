@@ -22,6 +22,55 @@ default_platform(:ios)
 ASC_APP_ID = ENV["ASC_APP_ID"] || "6775057200"
 BUNDLE_ID = ENV["APP_IDENTIFIER"] || "com.gmacko.sortey"
 
+def ensure_review_detail!(_api_key_hash)
+  require "spaceship"
+
+  unless api_key_available?
+    UI.important("No ASC API key env — skip review detail bootstrap")
+    return
+  end
+
+  token = Spaceship::ConnectAPI::Token.create(
+    key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+    issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+    filepath: ENV["APP_STORE_CONNECT_API_KEY_PATH"]
+  )
+  Spaceship::ConnectAPI.token = token
+
+  app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
+  UI.user_error!("App #{BUNDLE_ID} not found in ASC") unless app
+
+  version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+  unless version
+    UI.important("No editable App Store version yet — creating 1.0…")
+    version = app.create_version!(
+      platform: Spaceship::ConnectAPI::Platform::IOS,
+      version_string: "1.0"
+    )
+  end
+
+  begin
+    detail = version.fetch_app_store_review_detail
+    UI.message("App Store review detail already exists (#{detail&.id})") if detail
+  rescue StandardError => e
+    UI.important("Review detail missing or unreadable (#{e.message}); creating…")
+    Spaceship::ConnectAPI::AppStoreReviewDetail.create(
+      app_store_version_id: version.id,
+      attributes: {
+        contactFirstName: ENV["REVIEW_FIRST_NAME"] || "Graham",
+        contactLastName: ENV["REVIEW_LAST_NAME"] || "Mackie",
+        contactPhone: ENV["REVIEW_PHONE"] || "+17345550100",
+        contactEmail: ENV["REVIEW_EMAIL"] || "mackieg@umich.edu",
+        demoAccountRequired: false,
+        notes: "Magic-link sign-in. Open a trip → Today / Driving Mode."
+      }
+    )
+    UI.success("Created App Store review detail")
+  end
+rescue StandardError => e
+  UI.important("ensure_review_detail! skipped: #{e.class}: #{e.message}")
+end
+
 def api_key_available?
   ENV["APP_STORE_CONNECT_API_KEY_ID"] &&
     ENV["APP_STORE_CONNECT_API_ISSUER_ID"] &&
@@ -41,8 +90,12 @@ def load_api_key
   )
 end
 
+def expo_root
+  File.expand_path("..", __dir__)
+end
+
 def screenshots_ready?
-  Dir.glob("fastlane/screenshots/**/*.{png,jpg,jpeg}").any?
+  Dir.glob(File.join(expo_root, "fastlane/screenshots/**/*.{png,jpg,jpeg}")).any?
 end
 
 platform :ios do
@@ -60,7 +113,8 @@ platform :ios do
       api_key: api_key,
       ipa: ipa,
       app_identifier: BUNDLE_ID,
-      apple_id: ASC_APP_ID,
+      # ASC numeric id (not Apple ID email) — pilot option name is `apple_id`
+      # only when using username auth; with API key use app_identifier.
       skip_waiting_for_build_processing: true,
       changelog: options[:changelog] || ENV["WHAT_TO_TEST"] || "Sortey TestFlight build"
     )
@@ -113,31 +167,49 @@ platform :ios do
   desc "Push App Store metadata (and screenshots if present). Does not upload binary."
   lane :deliver_meta do |options|
     api_key = load_api_key
+    meta = File.join(expo_root, "fastlane/metadata")
+    shots = File.join(expo_root, "fastlane/screenshots")
+    has_shots = screenshots_ready?
+
+    # First-version apps often lack AppStoreReviewDetail; deliver crashes with
+    # "No data" when it tries to fetch attachments. Seed review contact first.
+    ensure_review_detail!(api_key)
 
     upload_to_app_store(
       api_key: api_key,
       app_identifier: BUNDLE_ID,
-      apple_id: ASC_APP_ID,
       skip_binary_upload: true,
       skip_app_version_update: options[:skip_version] != false,
       skip_metadata: false,
-      skip_screenshots: !screenshots_ready?,
-      force: true, # skip HTML preview confirmation in CI
+      skip_screenshots: !has_shots,
+      overwrite_screenshots: has_shots && options[:overwrite_screenshots] != false,
+      force: true,
       precheck_include_in_app_purchases: false,
       submit_for_review: false,
       automatic_release: false,
       run_precheck_before_submit: false,
-      metadata_path: "fastlane/metadata",
-      screenshots_path: "fastlane/screenshots"
+      metadata_path: meta,
+      screenshots_path: shots,
+      app_review_information: {
+        first_name: ENV["REVIEW_FIRST_NAME"] || "Graham",
+        last_name: ENV["REVIEW_LAST_NAME"] || "Mackie",
+        phone_number: ENV["REVIEW_PHONE"] || "+1 734 555 0100",
+        email_address: ENV["REVIEW_EMAIL"] || "mackieg@umich.edu",
+        demo_user: ENV["REVIEW_DEMO_USER"] || "",
+        demo_password: ENV["REVIEW_DEMO_PASSWORD"] || "",
+        notes: ENV["REVIEW_NOTES"] ||
+          "Sortey is a private group trip companion. Sign in with magic link (email). " \
+          "Open a trip, use Today and Driving Mode. Location is used for journey " \
+          "stops and Driving Mode only. No IAP."
+      }
     )
   end
 
   desc "Sync App Store screenshots from assets/app-store/drafts into fastlane/screenshots"
   lane :sync_screenshots do
     require "fileutils"
-    expo_root = File.expand_path("..", __dir__)
     src = File.join(expo_root, "assets/app-store/drafts")
-    # deliver expects: screenshots/<locale>/iPhone* or device folders
+    # deliver expects: screenshots/<locale>/…
     dest = File.join(expo_root, "fastlane/screenshots/en-US")
     FileUtils.mkdir_p(dest)
 
@@ -146,8 +218,6 @@ platform :ios do
 
     files.each do |f|
       name = File.basename(f)
-      # deliver uses filename prefixes for device type; 6.9" iPhone 16 Pro Max ≈ APP_IPHONE_67
-      # Keep original names; also copy with iPhone 6.5/6.7 friendly prefix if missing.
       FileUtils.cp(f, File.join(dest, name))
       UI.message("Copied #{name}")
     end
