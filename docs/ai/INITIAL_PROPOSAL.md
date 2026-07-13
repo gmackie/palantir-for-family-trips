@@ -1,5 +1,13 @@
 # Initial Proposal — Group Trip Command Center
 
+## Current-trip journey capture
+
+Sortey is the canonical record of the active van trip. Travelers explicitly log
+chronological stops with location, arrival time, type, note, and photos from
+mobile or web. Mobile is optimized for GPS capture and weak connectivity; web
+is optimized for review and correction. Recorded progress is never inferred
+from the future itinerary and never requires an agent or database script.
+
 ## Background
 
 The current repo is a Vite + React single-page app: a Palantir-styled "situation dashboard" for a single family trip. State is local (`usePersistedTripState`), and the UI is built from a handful of top-level components (`App`, `CommandMap`, `InspectorRail`) driven by a static `tripData` / `tripModel` pair. There is no backend, no auth, and no multi-user concept.

@@ -1,5 +1,18 @@
 # Implementation Plan — Group Trip Command Center
 
+## Current-trip journey logging
+
+The production architecture uses a first-class `journey_stop` row linked to the
+existing segment/pin/photo model. The `journey` router owns list, log, update,
+move, delete, reverse-geocode, and route-retry operations. Expo persists
+client-generated stop commands before transport and replays them idempotently.
+Both Expo and Next.js render recorded progress from `journey.list`, never from
+the generic planned-segment list.
+
+Release gates are migration application, API/Expo/Next tests and typechecks,
+production browser proof on the real trip, and physical-device offline/reconnect
+proof.
+
 Source of truth: `docs/ai/INITIAL_PROPOSAL.md`. This plan breaks the product into phased, verifiable tasks with concrete file paths so a fresh engineer (or Claude) can pick up any phase without context.
 
 ## Template Ground Truth

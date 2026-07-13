@@ -66,3 +66,29 @@ Channels `production`, `preview`, and `development` all received:
 | development | `82c0fc5d…` | `4f843e25…` |
 
 Full checklist and preflight: `docs/ai/MOBILE_OTA_PREFLIGHT.md`.
+
+## Fingerprint stability
+
+`fingerprint.config.js` excludes package scripts and normalizes runtime-only
+service configuration (the Expo `extra` object, Google Maps API key, and Sentry
+organization/project) before hashing. Those values can differ between the
+build and update environments without changing native compatibility. The
+fingerprint still includes native dependencies, config-plugin presence, bundle
+identifiers, schemes, entitlements, icons, and other native configuration.
+
+Run the regression test after changing the fingerprint contract:
+
+```bash
+node --test scripts/fingerprint-config.test.cjs
+```
+
+A runtime mismatch between `eas build` and `eas update` means the update is not
+deliverable and must not be promoted. Compare the sources before rebuilding:
+
+```bash
+npx eas-cli@20.5.1 fingerprint:compare \
+  --build-id BUILD_ID --update-id UPDATE_ID --environment development --json
+```
+
+Update scripts pin EAS CLI 20.5.1 because older CLI fingerprint implementations
+can produce runtime versions that do not match current EAS Build fingerprints.

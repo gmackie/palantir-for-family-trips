@@ -137,6 +137,18 @@ export function RoadTripDetail({
       icon: "sunny-outline",
       path: "today",
     },
+    {
+      key: "log-stop",
+      label: "Log Stop",
+      icon: "location-outline",
+      path: "log-stop",
+    },
+    {
+      key: "journey",
+      label: "Journey",
+      icon: "list-outline",
+      path: "journey-log",
+    },
     { key: "drive", label: "Drive", icon: "car-sport-outline", path: "drive" },
     {
       key: "day-plan",

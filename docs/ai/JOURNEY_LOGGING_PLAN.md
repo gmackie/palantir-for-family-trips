@@ -1,11 +1,31 @@
 # In-App Journey Logging — Implementation Plan
 
+## Production implementation (2026-07-12)
+
+Journey logging is now a first-class product workflow rather than a segment
+editing shortcut. `journey_stop` records what actually happened and links to a
+`trip_segment` for route/map rendering. Client-generated UUIDs make mobile
+retries idempotent; multi-row stop/segment/pin writes are transactional.
+
+The Expo app is the primary capture surface. It saves a compact command to a
+persisted outbox before attempting the network, retries on reconnect, and shows
+queued entries in the Journey timeline. Driving Mode includes `Log a stop` and
+`Camp here`. The production web app uses the same API for capture, correction,
+reordering, deletion, route retry, notes, and photos.
+
+Planned route segments and recorded stops are intentionally distinct. Only
+`journey.list` is allowed to drive Journey timelines or current-progress UI.
+
+The remaining release work is operational: integrate concurrent itinerary/OTA
+changes, apply migration `0011_journey_stops.sql`, deploy through ForgeGraph,
+and complete production browser plus physical-device proof.
+
 **Goal:** Let a traveler log their trip *from the mobile app as they go* — "I pulled
 into X", "camped here", "correct that date" — so nobody needs DB scripts or an
 assistant to capture the journey. This is the workflow we've been doing by hand
 in-session; it should live in the app.
 
-## Current state (verified)
+## Historical starting state
 
 - **Model is right.** `tripSegments` (driving legs w/ origin/dest coords,
   polyline, distance, duration, date) + `pins` (typed points: `campsite`,

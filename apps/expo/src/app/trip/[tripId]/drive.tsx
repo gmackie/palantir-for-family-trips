@@ -177,6 +177,12 @@ export default function DriveScreen() {
       params: { tripId: tripId ?? "" },
     });
 
+  const goCampHere = () =>
+    router.push({
+      pathname: "/trip/[tripId]/log-stop" as any,
+      params: { tripId: tripId ?? "", quick: "camp" },
+    });
+
   const goJourneyLog = () =>
     router.push({
       pathname: "/trip/[tripId]/journey-log" as any,
@@ -377,6 +383,26 @@ export default function DriveScreen() {
             <Ionicons name="location" size={18} color={C.success} />
             <Text style={{ color: C.success, fontSize: 15, fontWeight: "700" }}>
               Log a stop
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={goCampHere}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              borderWidth: 1,
+              borderColor: C.warning,
+              backgroundColor: C.warningBg,
+              borderRadius: R.md,
+              paddingHorizontal: 14,
+              minHeight: 48,
+            }}
+          >
+            <Ionicons name="bonfire-outline" size={18} color={C.warning} />
+            <Text style={{ color: C.warning, fontSize: 14, fontWeight: "700" }}>
+              Camp here
             </Text>
           </Pressable>
           <Pressable

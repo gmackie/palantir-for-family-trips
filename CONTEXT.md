@@ -1,5 +1,18 @@
 # Sortie — Trip Command Center
 
+## Recorded journey vocabulary
+
+- **Journey Stop** — an explicit record that the traveler reached a place. It
+  has a stable client-generated ID, arrival time, type, note, optional photos,
+  and a linked incoming route segment.
+- **Planned Stop** — future itinerary intent. It does not become recorded
+  progress merely because its planned date has passed.
+- **Route Pending** — the stop is safely recorded, but its incoming road route
+  could not yet be calculated. The route is retryable without duplicating the
+  stop.
+- **Waiting to Sync** — the stop command is persisted on the phone but has not
+  yet been confirmed by the server.
+
 Sortie is a trip coordination app with two modes: destination trips (group logistics at a location) and road trips (solo route planning and van life). Shares core infrastructure (expenses, OCR, auth, map) across both modes.
 
 ## Language

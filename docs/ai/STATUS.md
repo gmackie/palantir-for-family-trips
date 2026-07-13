@@ -1,5 +1,18 @@
 # Implementation Status
 
+## Journey logging — implementation complete, deployment proof pending
+
+- First-class `journey_stop` persistence separates recorded progress from
+  planned route segments.
+- Trip-scoped API supports list/log/update/move/delete/retry and reverse
+  geocoding; creation is transactional and idempotent.
+- Expo supports GPS/search capture, stop types, arrival date, notes, photos,
+  `Camp here`, persisted offline queueing, and a recorded-only timeline.
+- Next.js supports the same recorded-only capture and management lifecycle.
+- Migration: `packages/db/drizzle/0011_journey_stops.sql`.
+- Remaining: integrate concurrent itinerary/OTA work, deploy via ForgeGraph,
+  and capture production browser plus physical-device proof.
+
 Updated 2026-06-27, working copy `wnmyulyn` / Git parent `1c3c087d` (branch `master`).
 
 Known bugs and active implementation plans are tracked in `plans/README.md` at the repo root.

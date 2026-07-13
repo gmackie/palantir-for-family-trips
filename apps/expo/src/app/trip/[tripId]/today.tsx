@@ -241,7 +241,7 @@ export default function TodayScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, padding: 16 }}>
         <Stack.Screen options={{ title: "Today" }} />
-        <Text style={{ color: C.danger }}>Could not load today.</Text>
+        <Text style={{ color: C.critical }}>Could not load today.</Text>
         <Pressable onPress={() => void refetch()} style={{ marginTop: 12 }}>
           <Text style={{ color: C.info }}>Retry</Text>
         </Pressable>
