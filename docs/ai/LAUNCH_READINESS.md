@@ -30,6 +30,9 @@ Done:
   RCRP9427V2 stored on EAS servers). Store provisioning profiles were
   regenerated with the `group.com.gmacko.sortey` App Group; APNs push key
   CUZMCMBZ86 assigned.
+- **Production build 7 (0.1.0)** finished on EAS 2026-07-13
+  (`ad91ed11-b21b-4561-9e24-94fb67cc4c32`, channel production). Prefer this
+  for TestFlight if build 6 is superseded.
 - Fingerprint parity restored (three fixes: Sentry plugin filtered from the
   fingerprint, pristine frozen-lockfile node_modules, apps/expo/.gitignore
   now committed). `eas build` from a clean checkout matches EAS.

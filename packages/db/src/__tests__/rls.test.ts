@@ -30,6 +30,16 @@ describe("workspace RLS rollout", () => {
       { tableName: "trip_invite", tripColumn: "trip_id" },
       { tableName: "segment_member", parentTable: "trip_segment" },
       { tableName: "expense", tripColumn: "trip_id" },
+      { tableName: "journey_stop", tripColumn: "trip_id" },
+      { tableName: "trip_message", tripColumn: "trip_id" },
+      { tableName: "ferry_crossing", tripColumn: "trip_id" },
+      { tableName: "fuel_log", tripColumn: "trip_id" },
+      { tableName: "gps_track_point", tripColumn: "trip_id" },
+      { tableName: "trip_share", tripColumn: "trip_id" },
+      { tableName: "trip_anchor", tripColumn: "trip_id" },
+      { tableName: "trip_day", tripColumn: "trip_id" },
+      { tableName: "van_state_reading", tripColumn: "trip_id" },
+      { tableName: "member_location", tripColumn: "trip_id" },
     ]);
   });
 

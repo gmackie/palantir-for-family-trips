@@ -164,11 +164,14 @@ Advisor plans 001–006 are all MERGED (see `plans/README.md`).
 ### Remaining product gaps (see `docs/ai/FEATURE_BACKLOG.md` for the ordered list)
 
 **Still open**
-- Offline map tiles; apply dual-candidate choice into planRoute write path
+- Offline map tiles
 - DriftPort full predictive service + work-window finder
-- Full mechanical split of `trips.ts` router file (domain helpers already modular)
+- Full mechanical split of `trips.ts` router file
 - App Store **manual ASC**: upload screenshots, privacy form, TestFlight, submit for review
+- `line_item_claim` (and some legacy tables) still owned by `postgres` — reassign owner then re-run `pnpm --filter @sortey/db rls`
 - SMS invites deferred (device share sheet is the near-term path)
+
+**RLS (2026-07-13):** Core trip/workspace/expense + newer trip_app tables have RLS FORCE on prod `trip` DB (~60+ policies). See `docs/ai/RLS_APPLY_STATUS.md`.
 
 **Recently closed (2026-07-13 campaign)**
 - Mobile room board + flight refresh; `workspacesVisible`; `/demo` removed
