@@ -14,6 +14,7 @@ import SunCalc from "suncalc";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { labelRouteCandidates } from "../route-planner/route-candidates";
 import { assessSideTrip } from "../route-planner/side-trip";
 import {
   computeFuelZones,
@@ -333,84 +334,117 @@ export const routePlannerRouter = {
           .default([]),
         startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         autoSplit: z.boolean().default(true),
+        /**
+         * Optional dual-candidate selection from `listCandidates`. When set,
+         * we skip the Google primary fetch and plan from this polyline.
+         */
+        preferredRoute: z
+          .object({
+            encodedPolyline: z.string().min(8),
+            distanceMiles: z.number().positive(),
+            durationMinutes: z.number().int().positive(),
+            label: z.string().max(80).optional(),
+          })
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const apiKey =
-        process.env.GOOGLE_ROUTES_API_KEY ??
-        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      let totalMiles: number;
+      let totalMinutes: number;
+      let fullPolyline: string;
 
-      if (!apiKey) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Google Routes API key not configured",
-        });
-      }
+      if (input.preferredRoute) {
+        totalMiles = input.preferredRoute.distanceMiles;
+        totalMinutes = input.preferredRoute.durationMinutes;
+        fullPolyline = input.preferredRoute.encodedPolyline;
+        try {
+          const pts = decode(fullPolyline, 5);
+          if (pts.length < 2) {
+            throw new Error("too few points");
+          }
+        } catch {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "preferredRoute.encodedPolyline is not a valid polyline.",
+          });
+        }
+      } else {
+        const apiKey =
+          process.env.GOOGLE_ROUTES_API_KEY ??
+          process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-      const body: Record<string, unknown> = {
-        origin: {
-          location: {
-            latLng: {
-              latitude: input.origin.lat,
-              longitude: input.origin.lng,
+        if (!apiKey) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Google Routes API key not configured",
+          });
+        }
+
+        const body: Record<string, unknown> = {
+          origin: {
+            location: {
+              latLng: {
+                latitude: input.origin.lat,
+                longitude: input.origin.lng,
+              },
             },
           },
-        },
-        destination: {
-          location: {
-            latLng: {
-              latitude: input.destination.lat,
-              longitude: input.destination.lng,
+          destination: {
+            location: {
+              latLng: {
+                latitude: input.destination.lat,
+                longitude: input.destination.lng,
+              },
             },
           },
-        },
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_UNAWARE",
-        polylineEncoding: "ENCODED_POLYLINE",
-      };
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_UNAWARE",
+          polylineEncoding: "ENCODED_POLYLINE",
+        };
 
-      if (input.waypoints.length > 0) {
-        body.intermediates = input.waypoints.map((wp) => ({
-          location: {
-            latLng: { latitude: wp.lat, longitude: wp.lng },
+        if (input.waypoints.length > 0) {
+          body.intermediates = input.waypoints.map((wp) => ({
+            location: {
+              latLng: { latitude: wp.lat, longitude: wp.lng },
+            },
+          }));
+        }
+
+        const res = await fetch(
+          "https://routes.googleapis.com/directions/v2:computeRoutes",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": apiKey,
+              "X-Goog-FieldMask":
+                "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline.encodedPolyline",
+            },
+            body: JSON.stringify(body),
           },
-        }));
+        );
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Google Routes API error: ${res.status} ${errText}`,
+          });
+        }
+
+        const data = (await res.json()) as GoogleRouteResponse;
+        const route = data.routes?.[0];
+        if (!route) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "No route found",
+          });
+        }
+
+        totalMiles = metersToMiles(route.distanceMeters);
+        totalMinutes = durationToMinutes(route.duration);
+        fullPolyline = route.polyline.encodedPolyline;
       }
-
-      const res = await fetch(
-        "https://routes.googleapis.com/directions/v2:computeRoutes",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": apiKey,
-            "X-Goog-FieldMask":
-              "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.legs.distanceMeters,routes.legs.duration,routes.legs.polyline.encodedPolyline",
-          },
-          body: JSON.stringify(body),
-        },
-      );
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Google Routes API error: ${res.status} ${errText}`,
-        });
-      }
-
-      const data = (await res.json()) as GoogleRouteResponse;
-      const route = data.routes?.[0];
-      if (!route) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "No route found",
-        });
-      }
-
-      const totalMiles = metersToMiles(route.distanceMeters);
-      const totalMinutes = durationToMinutes(route.duration);
-      const fullPolyline = route.polyline.encodedPolyline;
 
       // Update trip with destination info
       await ctx.db
@@ -814,5 +848,131 @@ export const routePlannerRouter = {
           placeId: r.place_id,
         };
       });
+    }),
+
+  /**
+   * Dual-candidate routes (primary + Google alternatives). Labels coast/inland
+   * or shorter when geometry supports it. Does not write segments — preview only.
+   */
+  listCandidates: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        origin: z.object({
+          name: z.string().optional(),
+          lat: z.number(),
+          lng: z.number(),
+        }),
+        destination: z.object({
+          name: z.string().optional(),
+          lat: z.number(),
+          lng: z.number(),
+        }),
+        waypoints: z
+          .array(
+            z.object({
+              lat: z.number(),
+              lng: z.number(),
+            }),
+          )
+          .default([]),
+      }),
+    )
+    .query(async ({ input }) => {
+      const apiKey =
+        process.env.GOOGLE_ROUTES_API_KEY ??
+        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+      if (!apiKey) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Google Routes API key not configured",
+        });
+      }
+
+      const body: Record<string, unknown> = {
+        origin: {
+          location: {
+            latLng: {
+              latitude: input.origin.lat,
+              longitude: input.origin.lng,
+            },
+          },
+        },
+        destination: {
+          location: {
+            latLng: {
+              latitude: input.destination.lat,
+              longitude: input.destination.lng,
+            },
+          },
+        },
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_UNAWARE",
+        polylineEncoding: "ENCODED_POLYLINE",
+        computeAlternativeRoutes: true,
+      };
+
+      if (input.waypoints.length > 0) {
+        body.intermediates = input.waypoints.map((wp) => ({
+          location: {
+            latLng: { latitude: wp.lat, longitude: wp.lng },
+          },
+        }));
+      }
+
+      const res = await fetch(
+        "https://routes.googleapis.com/directions/v2:computeRoutes",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": apiKey,
+            "X-Goog-FieldMask":
+              "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
+          },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Google Routes API error: ${res.status} ${errText}`,
+        });
+      }
+
+      const data = (await res.json()) as GoogleRouteResponse;
+      const raw = data.routes ?? [];
+      if (raw.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No route candidates found",
+        });
+      }
+
+      const inputs = raw.map((route) => {
+        let samplePoints: LatLng[] | undefined;
+        try {
+          const decoded = decode(route.polyline.encodedPolyline, 5);
+          // Sample ~20 points for coastal/inland midpoint.
+          const step = Math.max(1, Math.floor(decoded.length / 20));
+          samplePoints = decoded
+            .filter((_, i) => i % step === 0)
+            .map(([lat, lng]) => ({ lat: lat!, lng: lng! }));
+        } catch {
+          samplePoints = undefined;
+        }
+        return {
+          distanceMiles: metersToMiles(route.distanceMeters),
+          durationMinutes: durationToMinutes(route.duration),
+          encodedPolyline: route.polyline.encodedPolyline,
+          samplePoints,
+        };
+      });
+
+      return labelRouteCandidates(inputs);
     }),
 } satisfies TRPCRouterRecord;

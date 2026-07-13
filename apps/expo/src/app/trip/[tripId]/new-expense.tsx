@@ -418,6 +418,33 @@ export default function NewExpense() {
         return;
       }
 
+      const { fetchIsOnline } = await import("~/utils/network-status");
+      const { createCaptureId } = await import("~/utils/capture-outbox");
+      const { captureOutbox } = await import("~/utils/capture-outbox-native");
+      const online = await fetchIsOnline();
+      if (!online) {
+        await captureOutbox.enqueue({
+          kind: "expense.create",
+          clientId: createCaptureId(),
+          workspaceId,
+          tripId: tripId ?? "",
+          segmentId: selectedSegmentId,
+          merchant: merchant.trim(),
+          occurredAt: new Date().toISOString(),
+          subtotalCents,
+          taxCents,
+          tipCents,
+          totalCents,
+          currency,
+        });
+        Alert.alert(
+          "Queued offline",
+          "Expense saved on this device. It will sync when you're back online. Receipts/line items need a connection.",
+        );
+        router.back();
+        return;
+      }
+
       const created = await createExpense.mutateAsync({
         workspaceId,
         tripId: tripId ?? "",

@@ -1,4 +1,5 @@
 import { Button } from "@sortey/ui/button";
+import { formatMoney } from "@sortey/validators/money";
 import { TRPCError } from "@trpc/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -41,12 +42,7 @@ function formatDate(date: Date | string) {
   }).format(new Date(date));
 }
 
-function formatCents(cents: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(cents / 100);
-}
+
 
 export default async function LodgingPage(props: {
   params: Promise<{ tripId: string }>;
@@ -146,7 +142,7 @@ export default async function LodgingPage(props: {
                           </div>
                           {l.totalCostCents != null && (
                             <span className="font-mono text-sm font-medium tabular-nums text-[#C9D1D9]">
-                              {formatCents(l.totalCostCents, l.currency)}
+                              {formatMoney(l.totalCostCents, l.currency)}
                             </span>
                           )}
                         </div>
@@ -295,7 +291,7 @@ export default async function LodgingPage(props: {
                           </div>
                           {g.costCents != null && (
                             <span className="font-mono text-sm font-medium tabular-nums text-[#C9D1D9]">
-                              {formatCents(g.costCents, g.currency)}
+                              {formatMoney(g.costCents, g.currency)}
                             </span>
                           )}
                         </div>

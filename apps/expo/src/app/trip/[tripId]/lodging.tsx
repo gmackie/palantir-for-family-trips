@@ -5,12 +5,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
 
+import { RoomBoard } from "~/components/trip/room-board";
 import { trpc } from "~/utils/api";
 import { C, mono, PALETTE, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
@@ -109,6 +111,9 @@ function SectionHeader({ title, count }: { title: string; count?: number }) {
 
 function LodgingCard({
   item,
+  workspaceId,
+  tripId,
+  members,
 }: {
   item: {
     id: string;
@@ -123,6 +128,13 @@ function LodgingCard({
     notes: string | null;
     guestCount: number;
   };
+  workspaceId: string;
+  tripId: string;
+  members: Array<{
+    userId: string;
+    displayName: string | null;
+    colorHex: string | null;
+  }>;
 }) {
   const icon = PROVIDER_ICONS[item.provider ?? "other"] ?? "bed-outline";
 
@@ -237,12 +249,24 @@ function LodgingCard({
           {item.notes}
         </Text>
       )}
+
+      {members.length > 0 && (
+        <RoomBoard
+          workspaceId={workspaceId}
+          tripId={tripId}
+          lodgingId={item.id}
+          members={members}
+        />
+      )}
     </View>
   );
 }
 
 function TransitRow({
   item,
+  workspaceId,
+  tripId,
+  onRefreshed,
 }: {
   item: {
     id: string;
@@ -257,6 +281,9 @@ function TransitRow({
     trackingStatus: string;
     notes: string | null;
   };
+  workspaceId: string;
+  tripId: string;
+  onRefreshed: () => void;
 }) {
   const icon = TRANSIT_ICONS[item.transitType ?? "other"] ?? "navigate-outline";
   const statusColor = TONE_HEX[trackingStatusTone(item.trackingStatus)];
@@ -266,6 +293,22 @@ function TransitRow({
       : item.direction === "departure"
         ? "DEP"
         : "";
+  const canRefresh =
+    item.transitType === "flight" && Boolean(item.transitNumber);
+
+  const refresh = useMutation(
+    trpc.lodging.refreshTransitStatus.mutationOptions({
+      onSuccess: (res) => {
+        if (res.refreshed) {
+          onRefreshed();
+          Alert.alert("Updated", "Flight status updated");
+        } else {
+          Alert.alert("No update", "No live status available yet");
+        }
+      },
+      onError: (err) => Alert.alert("Couldn't refresh flight status", err.message),
+    }),
+  );
 
   return (
     <View
@@ -316,6 +359,31 @@ function TransitRow({
             {item.departureStation && item.arrivalStation ? " → " : ""}
             {item.arrivalStation}
           </Text>
+        )}
+        {canRefresh && (
+          <Pressable
+            onPress={() =>
+              refresh.mutate({
+                workspaceId,
+                tripId,
+                transitId: item.id,
+              })
+            }
+            disabled={refresh.isPending}
+            hitSlop={8}
+            style={{ marginTop: 4, alignSelf: "flex-start", minHeight: 32, justifyContent: "center" }}
+          >
+            <Text
+              style={{
+                color: C.info,
+                fontSize: 12,
+                fontWeight: "600",
+                opacity: refresh.isPending ? 0.5 : 1,
+              }}
+            >
+              {refresh.isPending ? "Refreshing…" : "Refresh status"}
+            </Text>
+          </Pressable>
         )}
       </View>
       <Text style={{ color: C.info, fontSize: 13, fontFamily: mono }}>
@@ -474,6 +542,7 @@ function SegmentLodgingSection({
   tripId,
   index,
   currentUserId,
+  members,
 }: {
   segment: {
     id: string;
@@ -485,6 +554,11 @@ function SegmentLodgingSection({
   tripId: string;
   index: number;
   currentUserId: string;
+  members: Array<{
+    userId: string;
+    displayName: string | null;
+    colorHex: string | null;
+  }>;
 }) {
   const queryClient = useQueryClient();
   const color = PALETTE[index % PALETTE.length]!;
@@ -543,6 +617,16 @@ function SegmentLodgingSection({
       },
     }),
   );
+
+  const invalidateTransits = () => {
+    void queryClient.invalidateQueries({
+      queryKey: trpc.lodging.listTransitsForSegment.queryKey({
+        workspaceId,
+        tripId,
+        segmentId: segment.id,
+      }),
+    });
+  };
 
   const hasLodging = (lodgingList?.length ?? 0) > 0;
   const hasTransits = (transits?.length ?? 0) > 0;
@@ -610,7 +694,13 @@ function SegmentLodgingSection({
           <SectionHeader title="Lodging" count={lodgingList!.length} />
           <View style={{ gap: 8 }}>
             {lodgingList!.map((item) => (
-              <LodgingCard key={item.id} item={item} />
+              <LodgingCard
+                key={item.id}
+                item={item}
+                workspaceId={workspaceId}
+                tripId={tripId}
+                members={members}
+              />
             ))}
           </View>
         </>
@@ -624,7 +714,13 @@ function SegmentLodgingSection({
           />
           <View style={{ gap: 6 }}>
             {transits!.map((item) => (
-              <TransitRow key={item.id} item={item} />
+              <TransitRow
+                key={item.id}
+                item={item}
+                workspaceId={workspaceId}
+                tripId={tripId}
+                onRefreshed={invalidateTransits}
+              />
             ))}
           </View>
         </>
@@ -675,9 +771,19 @@ export default function LodgingScreen() {
     trpc.trips.listSegments.queryOptions({ workspaceId, tripId: tripId ?? "" }),
   );
 
+  const { data: members } = useQuery({
+    ...trpc.trips.listMembers.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+    }),
+    enabled: Boolean(workspaceId && tripId),
+    retry: false,
+  });
+
   const { data: session } = useQuery(trpc.auth.getSession.queryOptions());
 
   const currentUserId = session?.user?.id ?? "";
+  const memberRoster = members ?? [];
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -728,6 +834,7 @@ export default function LodgingScreen() {
               tripId={tripId ?? ""}
               index={i}
               currentUserId={currentUserId}
+              members={memberRoster}
             />
           ))}
         </ScrollView>

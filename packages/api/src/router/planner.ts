@@ -85,6 +85,8 @@ const mustVisitSchema = z.object({
   heroDetail: z.string().max(1000).optional(),
   overnightKind: z.enum(OVERNIGHT_KINDS).optional(),
   cutIfBehind: z.string().max(500).optional(),
+  /** Miles of driving before this visit → hour-packed lead-in days. */
+  leadInMiles: z.number().positive().optional(),
 });
 
 export const plannerRouter = {
@@ -307,6 +309,10 @@ export const plannerRouter = {
         playDates: z.array(DATE).optional(),
         eventDates: z.array(DATE).optional(),
         defaultOvernightKind: z.enum(OVERNIGHT_KINDS).optional(),
+        /** Pure A→B: pack drive days by total miles / max hours. */
+        totalDriveMiles: z.number().positive().optional(),
+        maxDriveHours: z.number().positive().max(16).optional(),
+        avgMph: z.number().positive().max(90).optional(),
         /** Dogfood: return the Open Sauce Jul 11–15 template. */
         template: z.enum(["open_sauce_approach"]).optional(),
       }),
@@ -322,6 +328,9 @@ export const plannerRouter = {
         playDates: input.playDates,
         eventDates: input.eventDates,
         defaultOvernightKind: input.defaultOvernightKind,
+        totalDriveMiles: input.totalDriveMiles,
+        maxDriveHours: input.maxDriveHours,
+        avgMph: input.avgMph,
       });
     }),
 

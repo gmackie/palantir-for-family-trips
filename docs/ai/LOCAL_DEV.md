@@ -35,7 +35,7 @@ pnpm db:seed
 pnpm dev:next
 ```
 
-**Success indicator:** `http://localhost:3000` shows the template landing page. `http://localhost:3000/demo` shows the Palantir dashboard.
+**Success indicator:** `http://localhost:3000` shows the template landing page. Sign in and open `/trips` for the live command center (the old unauthenticated `/demo` route was removed).
 
 ## DEV_MODE=local
 

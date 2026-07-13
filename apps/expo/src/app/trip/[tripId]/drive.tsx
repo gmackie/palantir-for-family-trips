@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +16,7 @@ import { VanStatusCard } from "~/components/trip/van-status-card";
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import { loadTripOfflineBundle } from "~/utils/trip-offline-cache";
 import { useBreadcrumbRecorder } from "~/utils/use-breadcrumb-recorder";
 import { useDwellSuggest } from "~/utils/use-dwell-suggest";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
@@ -137,7 +139,32 @@ export default function DriveScreen() {
     ),
   );
 
+  const [offlineSummary, setOfflineSummary] = useState<DrivingSummary | null>(
+    null,
+  );
+  const [fromOfflinePack, setFromOfflinePack] = useState(false);
+
+  useEffect(() => {
+    if (data || !tripId) return;
+    let cancelled = false;
+    void loadTripOfflineBundle(tripId).then((bundle) => {
+      if (cancelled || !bundle?.drivingSummary) return;
+      setOfflineSummary(bundle.drivingSummary as DrivingSummary);
+      setFromOfflinePack(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [data, tripId]);
+
   const today = new Date().toISOString().slice(0, 10);
+  const { data: todayCmd } = useQuery(
+    trpc.planner.todayCommand.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+      date: today,
+    }),
+  );
   const { data: briefing } = useQuery(
     trpc.daymap.briefing.queryOptions({
       workspaceId,
@@ -154,7 +181,7 @@ export default function DriveScreen() {
   );
   const todayAmenities = amenityScan?.find((r) => r.date === today);
 
-  const summary: DrivingSummary | undefined = data;
+  const summary: DrivingSummary | undefined = data ?? offlineSummary ?? undefined;
 
   const track = useBreadcrumbRecorder(workspaceId, tripId ?? "");
   const { suggestion: dwell, dismiss: dismissDwell } = useDwellSuggest(true);
@@ -230,6 +257,54 @@ export default function DriveScreen() {
           }
           onReplan={goToday}
         />
+
+        {(todayCmd?.runState === "side_trip" ||
+          todayCmd?.runState === "paused") && (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: C.info + "88",
+              backgroundColor: C.surface,
+              borderRadius: R.md,
+              padding: 14,
+              gap: 8,
+            }}
+          >
+            <Text style={{ color: C.info, fontWeight: "700", fontSize: 14 }}>
+              {todayCmd.runState === "paused"
+                ? "Guidance paused"
+                : "Side trip active"}
+            </Text>
+            <Text style={{ color: C.muted, fontSize: 13 }}>
+              Route guidance is soft-paused. GPS still tracks; resume when you
+              rejoin the corridor.
+            </Text>
+            <Pressable
+              onPress={() =>
+                setRunState.mutate({
+                  workspaceId,
+                  tripId: tripId ?? "",
+                  runState: "on_plan",
+                  note: "Resumed on plan",
+                })
+              }
+              style={{
+                alignSelf: "flex-start",
+                backgroundColor: C.infoBg,
+                borderWidth: 1,
+                borderColor: C.info,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                minHeight: 44,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: C.info, fontWeight: "700", fontSize: 13 }}>
+                Resume on plan
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         <Pressable onPress={goToday}>
           <Text
@@ -480,7 +555,7 @@ export default function DriveScreen() {
           </Pressable>
         </View>
 
-        {isError && (
+        {isError && !summary && (
           <View
             style={{
               borderWidth: 1,
@@ -495,7 +570,8 @@ export default function DriveScreen() {
           >
             <Ionicons name="warning-outline" size={18} color={C.critical} />
             <Text style={{ color: C.fg, fontSize: 14, flex: 1 }}>
-              Couldn't load driving data.
+              Couldn&apos;t load driving data. Download an offline pack from
+              trip home when online.
             </Text>
             <Pressable
               onPress={() => refetch()}
@@ -510,6 +586,22 @@ export default function DriveScreen() {
                 Retry
               </Text>
             </Pressable>
+          </View>
+        )}
+
+        {fromOfflinePack && summary && !data && (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: C.warning + "88",
+              backgroundColor: C.warningBg,
+              borderRadius: R.md,
+              padding: 12,
+            }}
+          >
+            <Text style={{ color: C.warning, fontSize: 13, fontWeight: "700" }}>
+              Offline pack · last cached driving summary
+            </Text>
           </View>
         )}
 

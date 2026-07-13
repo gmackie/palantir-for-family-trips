@@ -1,8 +1,27 @@
 # Offline-First Design — Sortey Mobile
 
-**Status:** Design (not implemented)
+**Status:** Design + **partial ship** (2026-07)
 **Author:** drafted 2026-06-29
 **Scope:** Expo mobile app (`apps/expo`). The Next.js web app is out of scope (see Non-goals).
+
+### Already shipped (subset of goals)
+
+| Piece | Where |
+|-------|--------|
+| Journey stop outbox (queue + flush + tests) | `apps/expo/src/utils/journey-outbox*.ts`, log-stop / journey-log screens |
+| Today Command file cache (read-only snapshot) | `apps/expo/src/utils/today-cache.ts`, Today screen offline badge |
+| Fuel fill-up outbox | `apps/expo/src/utils/fuel-outbox*.ts`, Today fuel modal |
+| Expense + pin capture outbox | `capture-outbox*.ts`, new-expense + map save |
+| Trip offline pack | `trip-offline-cache.ts` + Road trip home “Make available offline” |
+| Trip-scoped query persist | `query-persist.ts` FileSystem dehydrate/restore |
+| NetInfo banner + auto/manual sync | `OutboxSyncHost`, `use-outbox-sync` |
+| Driving Mode offline shell | Falls back to cached `drivingSummary` |
+
+### Still open (this design)
+
+- MMKV backend (optional performance upgrade over FileSystem)
+- Corridor POI bundle + map polyline-only offline canvas
+- Background GPS breadcrumb ring buffer
 
 ## Why
 

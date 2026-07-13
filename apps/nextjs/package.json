@@ -37,6 +37,7 @@
     "@sortey/config": "workspace:*",
     "@sortey/db": "workspace:*",
     "@sortey/email": "workspace:*",
+    "@sortey/flags": "workspace:*",
     "@sortey/i18n": "workspace:*",
     "@sortey/monitoring": "workspace:*",
     "@sortey/realtime": "workspace:*",

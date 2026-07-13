@@ -1,3 +1,5 @@
+import { isEnabled } from "@sortey/flags";
+import { tripStatusTone } from "@sortey/validators/status";
 import Link from "next/link";
 
 import { WorkspaceSwitcher } from "~/components/workspace/workspace-switcher";
@@ -15,16 +17,17 @@ function formatTripDates(startDate: string | null, endDate: string | null) {
   }).formatRange(new Date(startDate), new Date(endDate));
 }
 
+/** Tailwind pill classes keyed by shared status tone (see @sortey/validators/status). */
 function statusColor(status: string) {
-  switch (status) {
-    case "planning":
-      return "border-[#D29922]/40 bg-[#D29922]/10 text-[#D29922]";
-    case "confirmed":
-      return "border-[#58A6FF]/40 bg-[#58A6FF]/10 text-[#58A6FF]";
-    case "active":
+  switch (tripStatusTone(status)) {
+    case "success":
       return "border-[#3FB950]/40 bg-[#3FB950]/10 text-[#3FB950]";
-    case "completed":
-      return "border-[#484F58]/40 bg-[#484F58]/10 text-[#484F58]";
+    case "info":
+      return "border-[#58A6FF]/40 bg-[#58A6FF]/10 text-[#58A6FF]";
+    case "warning":
+      return "border-[#D29922]/40 bg-[#D29922]/10 text-[#D29922]";
+    case "critical":
+      return "border-[#F85149]/40 bg-[#F85149]/10 text-[#F85149]";
     default:
       return "border-[#484F58]/40 bg-[#484F58]/10 text-[#484F58]";
   }
@@ -35,6 +38,7 @@ export default async function TripsPage() {
   const trips = await caller.trips.list({
     workspaceId: workspace.id,
   });
+  const showWorkspaceSwitcher = isEnabled("workspacesVisible");
 
   return (
     <main className="min-h-screen px-4 py-10 sm:px-8">
@@ -50,7 +54,11 @@ export default async function TripsPage() {
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <WorkspaceSwitcher currentWorkspaceSlug={workspace.slug ?? null} />
+            {showWorkspaceSwitcher ? (
+              <WorkspaceSwitcher
+                currentWorkspaceSlug={workspace.slug ?? null}
+              />
+            ) : null}
             <Link
               href="/trips/new"
               className="inline-flex h-11 items-center rounded-[2px] border border-[#58A6FF] bg-[#58A6FF]/10 px-5 text-sm font-semibold text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/20"

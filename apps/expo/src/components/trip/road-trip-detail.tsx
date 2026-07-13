@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -11,8 +12,12 @@ import {
   View,
 } from "react-native";
 
-import { trpc } from "~/utils/api";
+import { trpc, trpcClient } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import {
+  saveTripOfflineBundle,
+  tripOfflineBundleMeta,
+} from "~/utils/trip-offline-cache";
 
 const STATUS_COLORS: Record<string, string> = {
   planning: C.warning,
@@ -233,6 +238,73 @@ export function RoadTripDetail({
     setStatus.mutate({ workspaceId, tripId, status: "en_route" });
   };
 
+  const [offlineMeta, setOfflineMeta] = useState<{
+    downloadedAt: string;
+  } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    void tripOfflineBundleMeta(tripId).then(setOfflineMeta);
+  }, [tripId]);
+
+  const downloadOffline = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const [
+        drivingSummary,
+        segs,
+        predictZones,
+        routePrev,
+        todayCommand,
+        dayPlan,
+      ] = await Promise.all([
+        trpcClient.trips.drivingSummary
+          .query({ workspaceId, tripId })
+          .catch(() => null),
+        trpcClient.trips.listSegments
+          .query({ workspaceId, tripId })
+          .catch(() => null),
+        trpcClient.routePlanner.predictZones
+          .query({ workspaceId, tripId })
+          .catch(() => null),
+        trpcClient.routePlanner.getRoutePreview
+          .query({ workspaceId, tripId })
+          .catch(() => null),
+        trpcClient.planner.todayCommand
+          .query({ workspaceId, tripId, date: today })
+          .catch(() => null),
+        trpcClient.planner.listDays
+          .query({ workspaceId, tripId })
+          .catch(() => null),
+      ]);
+      await saveTripOfflineBundle({
+        downloadedAt: new Date().toISOString(),
+        tripId,
+        workspaceId,
+        drivingSummary,
+        segments: segs,
+        predictZones,
+        routePreview: routePrev,
+        todayCommand,
+        dayPlan,
+      });
+      const meta = await tripOfflineBundleMeta(tripId);
+      setOfflineMeta(meta);
+      Alert.alert(
+        "Available offline",
+        "Driving summary, segments, fuel/overnight zones, Today, and day plan are cached on this device.",
+      );
+    } catch (error) {
+      Alert.alert(
+        "Download failed",
+        error instanceof Error ? error.message : "Could not cache trip",
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }, [tripId, workspaceId]);
+
   return (
     <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
       {/* Header badges */}
@@ -304,6 +376,55 @@ export function RoadTripDetail({
           </Text>
         </View>
       </View>
+
+      <Pressable
+        onPress={() => void downloadOffline()}
+        disabled={downloading}
+        style={{
+          marginBottom: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          borderWidth: 1,
+          borderColor: offlineMeta ? C.success + "66" : C.border,
+          backgroundColor: offlineMeta ? C.success + "14" : C.surface,
+          borderRadius: R.md,
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          minHeight: 48,
+          opacity: downloading ? 0.6 : 1,
+        }}
+      >
+        {downloading ? (
+          <ActivityIndicator size="small" color={C.info} />
+        ) : (
+          <Ionicons
+            name={offlineMeta ? "cloud-done-outline" : "cloud-download-outline"}
+            size={18}
+            color={offlineMeta ? C.success : C.info}
+          />
+        )}
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              color: offlineMeta ? C.success : C.fg,
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          >
+            {downloading
+              ? "Caching trip…"
+              : offlineMeta
+                ? "Offline pack ready"
+                : "Make available offline"}
+          </Text>
+          <Text style={{ color: C.muted, fontSize: 11, fontFamily: mono }}>
+            {offlineMeta
+              ? `Updated ${new Date(offlineMeta.downloadedAt).toLocaleString()}`
+              : "Cache Today, route, zones, segments for dead zones"}
+          </Text>
+        </View>
+      </Pressable>
 
       {/* Trip info -- editable or display */}
       {editing ? (

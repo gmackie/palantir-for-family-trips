@@ -315,16 +315,42 @@ export default function MapScreen() {
           { text: "Cancel", style: "cancel" },
           {
             text: "Save",
-            onPress: () =>
-              createPin.mutate({
-                workspaceId,
-                tripId: tripId ?? "",
-                segmentId,
-                title: poi.name,
-                type: poi.category as RouterInputs["pins"]["create"]["type"],
-                lat: String(poi.lat),
-                lng: String(poi.lng),
-              }),
+            onPress: () => {
+              void (async () => {
+                const payload = {
+                  workspaceId,
+                  tripId: tripId ?? "",
+                  segmentId,
+                  title: poi.name,
+                  type: poi.category as RouterInputs["pins"]["create"]["type"],
+                  lat: String(poi.lat),
+                  lng: String(poi.lng),
+                };
+                const { fetchIsOnline } = await import(
+                  "~/utils/network-status"
+                );
+                const online = await fetchIsOnline();
+                if (!online) {
+                  const { createCaptureId } = await import(
+                    "~/utils/capture-outbox"
+                  );
+                  const { captureOutbox } = await import(
+                    "~/utils/capture-outbox-native"
+                  );
+                  await captureOutbox.enqueue({
+                    kind: "pin.create",
+                    clientId: createCaptureId(),
+                    ...payload,
+                  });
+                  Alert.alert(
+                    "Queued offline",
+                    "Pin will sync when you're back online.",
+                  );
+                  return;
+                }
+                createPin.mutate(payload);
+              })();
+            },
           },
         ],
       );

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   eachDateInclusive,
+  estimateDriveDays,
   openSauceApproachDraft,
   replanDraft,
 } from "../day-plan";
@@ -72,6 +73,41 @@ describe("replanDraft", () => {
       mustVisits: [{ name: "San Mateo", nights: 3 }],
     });
     expect(days.every((d) => d.intent === "event")).toBe(true);
+  });
+
+  it("packs pure A→B windows by max drive hours", () => {
+    // 550 mi @ 55 mph = 10h → 1 day at max 10h; 1100 mi → 2 days
+    expect(estimateDriveDays({ totalMiles: 550 })).toBe(1);
+    expect(estimateDriveDays({ totalMiles: 1100 })).toBe(2);
+
+    const days = replanDraft({
+      fromDate: "2026-08-01",
+      untilDate: "2026-08-05",
+      totalDriveMiles: 1100,
+      maxDriveHours: 10,
+      avgMph: 55,
+    });
+    expect(days.filter((d) => d.intent === "drive")).toHaveLength(2);
+    expect(days.filter((d) => d.intent === "position").length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it("inserts lead-in drive days before a must-visit", () => {
+    const days = replanDraft({
+      fromDate: "2026-08-01",
+      untilDate: "2026-08-04",
+      mustVisits: [
+        { name: "Bend", nights: 1, leadInMiles: 550, intent: "play" },
+      ],
+      maxDriveHours: 10,
+      avgMph: 55,
+    });
+    // 1 lead-in drive + 1 overnight at Bend + trailing position
+    expect(days[0]?.intent).toBe("drive");
+    expect(days[0]?.title).toMatch(/Bend/);
+    expect(days[1]?.overnightName).toBe("Bend");
+    expect(days[1]?.intent).toBe("play");
   });
 });
 

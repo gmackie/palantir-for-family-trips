@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -215,6 +215,9 @@ export default function PlanRouteScreen() {
   const [destination, setDestination] = useState<Place | null>(null);
   const [startDate, setStartDate] = useState("");
   const [autoSplit, setAutoSplit] = useState(true);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
+    null,
+  );
 
   const planRoute = useMutation(
     trpc.routePlanner.planRoute.mutationOptions({
@@ -246,6 +249,32 @@ export default function PlanRouteScreen() {
       onError: (err) => Alert.alert("Error", err.message),
     }),
   );
+
+  const candidatesQuery = useQuery({
+    ...trpc.routePlanner.listCandidates.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+      origin: {
+        lat: origin?.lat ?? 0,
+        lng: origin?.lng ?? 0,
+        name: origin?.name,
+      },
+      destination: {
+        lat: destination?.lat ?? 0,
+        lng: destination?.lng ?? 0,
+        name: destination?.name,
+      },
+    }),
+    enabled: Boolean(origin && destination && workspaceId && tripId),
+    retry: false,
+  });
+
+  // Default to primary candidate when the list loads / origin-dest changes.
+  const candidates = candidatesQuery.data ?? [];
+  const selectedCandidate =
+    candidates.find((c) => c.id === selectedCandidateId) ??
+    candidates[0] ??
+    null;
 
   const canSubmit =
     origin && destination && startDate.match(/^\d{4}-\d{2}-\d{2}$/);
@@ -280,25 +309,135 @@ export default function PlanRouteScreen() {
           </Text>
           <Text style={{ color: C.muted, fontSize: 14, marginBottom: 24 }}>
             Search for your origin and destination. The route will be split into
-            driving days automatically.
+            driving days automatically. Compare dual candidates (coast / inland /
+            shorter) before you commit.
           </Text>
 
           <View style={{ gap: 20 }}>
             <PlaceInput
               label="Origin"
               value={origin}
-              onSelect={setOrigin}
-              onClear={() => setOrigin(null)}
+              onSelect={(p) => {
+                setOrigin(p);
+                setSelectedCandidateId(null);
+              }}
+              onClear={() => {
+                setOrigin(null);
+                setSelectedCandidateId(null);
+              }}
               placeholder="Seattle, WA"
             />
 
             <PlaceInput
               label="Destination"
               value={destination}
-              onSelect={setDestination}
-              onClear={() => setDestination(null)}
+              onSelect={(p) => {
+                setDestination(p);
+                setSelectedCandidateId(null);
+              }}
+              onClear={() => {
+                setDestination(null);
+                setSelectedCandidateId(null);
+              }}
               placeholder="Des Moines, IA"
             />
+
+            {origin && destination && (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  borderRadius: R.md,
+                  backgroundColor: C.surface,
+                  padding: 12,
+                  gap: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: C.muted,
+                    fontSize: 10,
+                    fontWeight: "700",
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Route candidates · tap to select
+                </Text>
+                {candidatesQuery.isFetching && (
+                  <ActivityIndicator size="small" color={C.info} />
+                )}
+                {candidatesQuery.isError && (
+                  <Text style={{ color: C.muted, fontSize: 12 }}>
+                    Couldn&apos;t load alternatives — you can still plan the
+                    primary route.
+                  </Text>
+                )}
+                {candidates.map((c) => {
+                  const selected =
+                    (selectedCandidate?.id ?? candidates[0]?.id) === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => setSelectedCandidateId(c.id)}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: selected ? C.info : C.border,
+                        backgroundColor: selected ? C.infoBg : C.bg,
+                        borderRadius: R.sm,
+                        padding: 10,
+                        gap: 4,
+                        minHeight: 48,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: C.fg,
+                            fontSize: 14,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {c.label}
+                        </Text>
+                        {selected ? (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={18}
+                            color={C.info}
+                          />
+                        ) : null}
+                      </View>
+                      <Text
+                        style={{
+                          color: C.info,
+                          fontFamily: mono,
+                          fontSize: 13,
+                        }}
+                      >
+                        {c.distanceMiles} mi · {c.durationMinutes} min
+                      </Text>
+                      <Text style={{ color: C.muted, fontSize: 11 }}>
+                        {c.reason}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                {!candidatesQuery.isFetching &&
+                  candidates.length === 0 &&
+                  !candidatesQuery.isError && (
+                    <Text style={{ color: C.muted, fontSize: 12 }}>
+                      No alternate routes returned.
+                    </Text>
+                  )}
+              </View>
+            )}
 
             <View style={{ gap: 6 }}>
               <Text
@@ -462,6 +601,15 @@ export default function PlanRouteScreen() {
                 },
                 startDate,
                 autoSplit,
+                preferredRoute:
+                  selectedCandidate?.encodedPolyline != null
+                    ? {
+                        encodedPolyline: selectedCandidate.encodedPolyline,
+                        distanceMiles: selectedCandidate.distanceMiles,
+                        durationMinutes: selectedCandidate.durationMinutes,
+                        label: selectedCandidate.label,
+                      }
+                    : undefined,
               });
             }}
             disabled={!canSubmit || planRoute.isPending}
@@ -486,7 +634,9 @@ export default function PlanRouteScreen() {
               </View>
             ) : (
               <Text style={{ color: C.white, fontSize: 16, fontWeight: "600" }}>
-                Plan Route
+                {selectedCandidate
+                  ? `Plan · ${selectedCandidate.label}`
+                  : "Plan Route"}
               </Text>
             )}
           </Pressable>

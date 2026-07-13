@@ -250,7 +250,7 @@ export function RouteAheadCard({
         </View>
       ) : zones?.hasVanModel === false ? (
         <Text style={{ color: C.muted, fontSize: 13 }}>
-          Add the van's MPG + tank size to predict fuel zones.
+          Add the van&apos;s MPG + tank size to predict fuel zones.
         </Text>
       ) : (
         <Text style={{ color: C.muted, fontSize: 13 }}>
@@ -258,6 +258,54 @@ export function RouteAheadCard({
             ? `${overnightZones.length} overnight ${overnightZones.length === 1 ? "stop" : "stops"} ahead.`
             : "No fuel stops needed for this route."}
         </Text>
+      )}
+
+      {/* Predicted stops list (fuel zones + overnight zones as first-class suggestions) */}
+      {markers.length > 0 && (
+        <View style={{ gap: 6, marginTop: 4 }}>
+          <Text
+            style={{
+              color: C.muted,
+              fontSize: 10,
+              fontWeight: "700",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            Predicted stops
+          </Text>
+          {markers.slice(0, 6).map((m) => (
+            <View
+              key={`list-${m.key}`}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                borderWidth: 1,
+                borderColor: C.border,
+                borderRadius: R.sm,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+              }}
+            >
+              <Text style={{ fontSize: 14 }}>{m.emoji}</Text>
+              <Text style={{ color: C.fg, fontSize: 13, fontWeight: "600", flex: 1 }}>
+                {m.emoji === "⛽" ? "Fuel zone" : "Overnight zone"}
+              </Text>
+              <Text
+                style={{
+                  color: m.color,
+                  fontSize: 13,
+                  fontFamily: mono,
+                  fontVariant: ["tabular-nums"],
+                  fontWeight: "700",
+                }}
+              >
+                mi {fmtMile(m.mileMarker)}
+              </Text>
+            </View>
+          ))}
+        </View>
       )}
     </View>
   );

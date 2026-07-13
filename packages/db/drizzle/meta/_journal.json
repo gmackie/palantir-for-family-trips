@@ -78,6 +78,13 @@
       "when": 1783869000000,
       "tag": "0011_journey_stops",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783972360070,
+      "tag": "0012_trip_workspace_rls",
+      "breakpoints": true
     }
   ]
 }
