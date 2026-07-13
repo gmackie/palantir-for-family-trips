@@ -23,7 +23,6 @@ storybook-static/
 # expo
 .expo/
 expo-env.d.ts
-apps/expo/.gitignore
 apps/expo/ios
 apps/expo/android
 
