@@ -44,6 +44,14 @@
         "simulator": false
       }
     },
+    "trip-device": {
+      "extends": "development-device",
+      "environment": "development",
+      "developmentClient": false,
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
+    },
     "preview": {
       "extends": "base",
       "distribution": "internal",
