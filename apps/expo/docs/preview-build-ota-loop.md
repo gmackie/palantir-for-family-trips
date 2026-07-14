@@ -1,34 +1,52 @@
 # Preview build + OTA loop
 
-Goal: one native binary per lane, then ship JS/UI as **EAS Update** in minutes.
+Goal: **one local native binary**, then ship JS/UI via **Preflight-hosted OTA**
+in minutes (no App Store / EAS cloud rebuild).
+
+Design: `preflight-app/docs/plans/2026-07-14-preflight-native-ota.md`.
+
+## Two OTA paths
+
+| Path | When | Runtime id | Publish |
+| --- | --- | --- | --- |
+| **Preflight OTA (preferred)** | Local / Fastlane / runner binaries | fixed `sortey-p0` | `pnpm ota:publish:preview` |
+| **EAS Update (legacy)** | Existing EAS cloud fingerprints | fingerprint hash | `pnpm update:preview` |
+
+Preview EAS profiles bake `PREFLIGHT_OTA_URL` + `PREFLIGHT_OTA_RUNTIME_VERSION=sortey-p0`
+so local binaries talk to the local OTA server on `:3099`.
 
 ## Profiles
 
-| Profile | Channel | Device | Dev client? | API | Use |
+| Profile | Channel | Device | Dev client? | OTA | Use |
 | --- | --- | --- | --- | --- | --- |
-| `preview-simulator` | `preview` | Simulator | no | `https://sortey.app` | Local preflight / sim QA |
-| `preview-device` | `preview` | Physical | no | `https://sortey.app` | Internal device dogfood |
-| `preview` | `preview` | Physical (EAS cloud) | no | `https://sortey.app` | Shared internal builds |
-| `trip-device` | `development` | Physical | no | `https://sortey.app` | Trip dogfood on dev channel |
-| `development` | `development` | Simulator | **yes** | prod | Metro-driven coding |
+| `preview-simulator` | `preview` | Simulator | no | Preflight `sortey-p0` | Local preflight / sim QA |
+| `preview-device` | `preview` | Physical | no | Preflight `sortey-p0` | Internal device dogfood |
+| `preview` | `preview` | Physical | no | Preflight `sortey-p0` | Shared internal builds |
+| `trip-device` | `development` | Physical | no | EAS fingerprint | Older trip dogfood |
+| `development` | `development` | Simulator | **yes** | Metro | Coding with Metro |
 
-OTA only applies to **non–dev-client** release-style binaries (`developmentClient: false`). Metro/dev clients load from Metro in `__DEV__` and skip OTA.
+OTA only applies to **non–dev-client** release-style binaries. Metro/`__DEV__` skips OTA.
 
-## First-time local preview binary (preflight-ready)
+## First-time local preview binary
 
 ```bash
-cd apps/expo
+# 0) OTA server (already often running on :3099)
+cd /Volumes/dev/preflight-app
+PREFLIGHT_OTA_STORE=/Volumes/PreflightBuild/ota-store \
+  PREFLIGHT_OTA_PORT=3099 \
+  node --experimental-strip-types packages/ota/scripts/ota-server.mjs
 
-# 1) Readiness (no runners)
+# 1) Readiness
+cd /Volumes/dev/sortey/apps/expo
 pnpm preflight:local
 
-# 2) Local simulator binary with preview channel baked in
+# 2) Local simulator binary (channel preview + Preflight OTA URL baked in)
 pnpm build:preview:sim:local
 
 # 3) Install the .app / tar from the EAS local output onto a booted sim
 #    (eas prints the path when finished)
 
-# 4) Optional: Preflight prove-app (smoke Maestro)
+# 4) Optional: Preflight prove-app smoke
 pnpm preflight:preview:sim
 ```
 
@@ -36,59 +54,50 @@ Physical device (local):
 
 ```bash
 pnpm build:preview:device:local
-# or cloud:
-pnpm build:preview:device
 ```
 
-## Everyday fast path (JS only)
-
-After the native binary is installed:
+## Everyday fast path (JS only — Preflight OTA)
 
 ```bash
 cd apps/expo
 
-# Preview lane (Sortey Preview app)
-pnpm update:preview -- --message "feat: active trip command center"
+# Export + publish into /Volumes/PreflightBuild/ota-store
+pnpm ota:publish:preview -- --message "feat: active trip command center"
 
-# Dev-channel trip-device binaries
-pnpm update:development -- --message "feat: active trip command center"
+# Or development channel:
+pnpm ota:publish:development -- --message "…"
 ```
 
-On device:
+On device / sim:
 
 1. Foreground the app (auto-check on load / resume), **or**
 2. Settings → **App updates** → **Check for update** → **Restart**
 
-## When you need a new binary
+Health: `curl -s http://127.0.0.1:3099/api/preflight/v1/ota/health | jq`
 
-Fingerprint `runtimeVersion` changes when native inputs change (new native module,
-config plugin, entitlements, bundle id, etc.). Then:
-
-1. Rebuild the lane (`build:preview:sim:local` / device / EAS cloud)
-2. Install
-3. Resume OTA-only publishes
-
-Compare mismatch:
+## Legacy EAS Update (existing cloud binaries only)
 
 ```bash
-npx eas-cli@20.5.1 fingerprint:compare \
-  --build-id BUILD_ID --update-id UPDATE_ID --environment preview --json
+pnpm update:preview -- --message "…"
+pnpm update:development -- --message "…"
 ```
+
+Only reaches binaries whose **fingerprint** matches the published runtime.
+If fingerprints diverge, rebuild once with the Preflight OTA path above.
 
 ## Preflight vs OTA
 
 | Tool | Job |
 | --- | --- |
-| **Preflight** | Prove the **binary** launches / Maestro smoke on sim or device |
-| **EAS Update** | Ship **JS/assets** to that binary without rebuilding |
+| **Preflight prove-app** | Prove the **binary** launches / Maestro smoke |
+| **Preflight OTA** | Ship **JS/assets** to that binary without rebuilding |
+| **EAS Update** | Fallback for older EAS cloud fingerprints |
 
-Use Preflight when native or install path changes; use OTA for product UI and API
-client work once the binary is good.
+## Checklist (active trip)
 
-## Checklist for this branch (active trip)
-
-- [ ] `pnpm preflight:local` green
-- [ ] Local `preview-simulator` or `preview-device` binary installed
-- [ ] `pnpm update:preview -- --message "…"` published
-- [ ] Settings shows channel `preview` + new update id
+- [x] `pnpm preflight:local` green
+- [ ] Local `preview-simulator` binary installed (`runtimeVersion` `sortey-p0`)
+- [ ] OTA server healthy on `:3099`
+- [ ] `pnpm ota:publish:preview -- --message "feat: active trip…"` published
+- [ ] Settings → update id advances after Check for update
 - [ ] Cold start → active trip / Today · Drive · fuel map
