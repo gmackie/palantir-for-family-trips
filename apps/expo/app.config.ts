@@ -166,11 +166,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: getVariantIcon(),
     userInterfaceStyle: "automatic",
     // OTA updates may only target binaries with an identical native runtime.
-    // Fingerprinting changes this value whenever native dependencies or native
-    // configuration change, while ordinary JS/assets changes remain OTA-safe.
-    runtimeVersion: { policy: "fingerprint" },
+    // Prefer Preflight-hosted OTA when PREFLIGHT_OTA_URL is set (see
+    // preflight-app/docs/plans/2026-07-14-preflight-native-ota.md). Otherwise
+    // keep EAS Update + fingerprint (legacy pilot path).
+    runtimeVersion: process.env.PREFLIGHT_OTA_URL
+      ? (process.env.PREFLIGHT_OTA_RUNTIME_VERSION ?? "sortey-p0")
+      : { policy: "fingerprint" },
     updates: {
-      url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      url: process.env.PREFLIGHT_OTA_URL
+        ? process.env.PREFLIGHT_OTA_URL
+        : `https://u.expo.dev/${EAS_PROJECT_ID}`,
       checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: 0,
     },
@@ -239,6 +244,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       POSTHOG_HOST,
       eas: {
         projectId: EAS_PROJECT_ID,
+      },
+      preflightOta: {
+        appSlug: "sortey",
+        enabled: Boolean(process.env.PREFLIGHT_OTA_URL),
       },
     },
     owner: "gmacko",

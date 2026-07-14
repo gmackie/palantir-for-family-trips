@@ -39,7 +39,9 @@
     "preflight:preview:device": "/Volumes/dev/preflight/preflight prove-app --app-dir . --platform ios --lane development --build-strategy local --wait-for-runner",
     "format": "biome check .",
     "lint": "oxlint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ota:publish:preview": "node --experimental-strip-types /Volumes/dev/preflight-app/packages/ota/scripts/publish-local.mjs --app sortey --channel preview --platform ios",
+    "ota:publish:development": "node --experimental-strip-types /Volumes/dev/preflight-app/packages/ota/scripts/publish-local.mjs --app sortey --channel development --platform ios"
   },
   "dependencies": {
     "@better-auth/expo": "catalog:",
