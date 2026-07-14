@@ -20,18 +20,21 @@ Use Preflight for the repeatable mobile smoke proof:
 
 ## OTA (EAS Update) + Preflight
 
-Planner / day-plan / amenity UI ships as **JS OTA** to existing binaries
-(`runtimeVersion` `0.1.0`). Full checklist: [`docs/ai/MOBILE_OTA_PREFLIGHT.md`](../../docs/ai/MOBILE_OTA_PREFLIGHT.md).
+JS/UI ships as **EAS Update** to release-style binaries that share the same
+fingerprint `runtimeVersion`. Native changes still need a new binary.
+
+Full loop: [`docs/preview-build-ota-loop.md`](./docs/preview-build-ota-loop.md) ·
+checklist: [`docs/ai/MOBILE_OTA_PREFLIGHT.md`](../../docs/ai/MOBILE_OTA_PREFLIGHT.md).
 
 ```bash
 # From apps/expo
-pnpm update:preview "feat: day plan + amenities"
-pnpm update:production "feat: day plan + amenities"
-pnpm preflight:local   # readiness without runners
-pnpm preflight:ios     # prove-app on simulator farm
+pnpm preflight:local              # readiness without runners
+pnpm build:preview:sim:local      # local simulator binary (channel: preview)
+pnpm update:preview -- --message "feat: active trip"
+pnpm preflight:preview:sim        # prove-app smoke (local build strategy)
 ```
 
-In-app: Settings → **App updates** → Check for update.
+In-app: Settings → **App updates** → Check for update → Restart.
 ```
 
 Android local builds require Java 17 plus the Android SDK:

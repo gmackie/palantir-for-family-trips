@@ -79,6 +79,16 @@ cd apps/expo
 pnpm preflight:local
 ```
 
+Local **preview** binary (OTA channel baked in) + sim smoke:
+
+```bash
+cd apps/expo
+pnpm build:preview:sim:local   # eas build --profile preview-simulator --local
+pnpm preflight:preview:sim     # prove-app local strategy + wait for runner
+```
+
+See `apps/expo/docs/preview-build-ota-loop.md` for the full binary-once / OTA-forever loop.
+
 Full iOS simulator proof (build farm + Maestro):
 
 ```bash
