@@ -19,6 +19,11 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { type RouterInputs, trpc, trpcClient } from "~/utils/api";
 import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, PALETTE, R } from "~/utils/design";
+import {
+  colorPolylineByFuelRange,
+  FUEL_BAND_COLORS,
+  isCostcoName,
+} from "~/utils/fuel-route-colors";
 import { useLocationSharing } from "~/utils/use-location-sharing";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -253,8 +258,10 @@ export default function MapScreen() {
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
     null,
   );
+  // Default fuel + overnight layers on so the active-trip map shows gas
+  // targets without requiring a manual chip tap.
   const [activePoiCategories, setActivePoiCategories] = useState<Set<string>>(
-    new Set(),
+    () => new Set(["fuel", "campsite", "parking_overnight", "wild_camping"]),
   );
   const [mapCenter, setMapCenter] = useState<{
     lat: number;
@@ -276,6 +283,13 @@ export default function MapScreen() {
 
   const { data: planMap } = useQuery(
     trpc.planner.getPlanMap.queryOptions({
+      workspaceId,
+      tripId: tripId ?? "",
+    }),
+  );
+
+  const { data: zones } = useQuery(
+    trpc.routePlanner.predictZones.queryOptions({
       workspaceId,
       tripId: tripId ?? "",
     }),
@@ -441,14 +455,29 @@ export default function MapScreen() {
       centerLat: mapCenter?.lat ?? 0,
       centerLng: mapCenter?.lng ?? 0,
       radiusMiles: Math.min(mapCenter?.radiusMiles ?? 30, 100),
+      categories: [...activePoiCategories],
+      rankByDistance: true,
       limit: 200,
     }),
     enabled: poiEnabled,
   });
 
-  const filteredPois = (pois ?? []).filter((p) =>
-    activePoiCategories.has(p.category),
-  );
+  const filteredPois = useMemo(() => {
+    const list = (pois ?? []).filter((p) =>
+      activePoiCategories.has(p.category),
+    );
+    // Costco stations float to the top of fuel results for targeting.
+    return [...list].sort((a, b) => {
+      const aC = isCostcoName(a.name) ? 0 : 1;
+      const bC = isCostcoName(b.name) ? 0 : 1;
+      if (aC !== bC) return aC - bC;
+      return a.name.localeCompare(b.name);
+    });
+  }, [pois, activePoiCategories]);
+
+  // Near each fuel zone, also surface Costco-named fuel POIs (even if the map
+  // center is elsewhere) via a second lightweight query per zone is too heavy —
+  // instead we rely on map-center fuel chips + zone markers as targets.
 
   // Actual driven path from GPS breadcrumbs (distinct from the planned route).
   const { data: trackPath } = useQuery(
@@ -527,6 +556,26 @@ export default function MapScreen() {
             latitudeDelta: 5,
             longitudeDelta: 5,
           };
+
+  // Prefer fuel-range coloring of the full planned route when we have a van
+  // model; fall back to per-segment palette colors.
+  const fuelColoredRoutes = useMemo(() => {
+    const rangeMiles = zones?.rangeMiles ?? 0;
+    if (!(rangeMiles > 0) || !zones?.hasVanModel) return null;
+
+    const allPoints: Array<{ lat: number; lng: number }> = [];
+    for (const s of segments ?? []) {
+      if (!s.routePolyline) continue;
+      for (const c of decodePolyline(s.routePolyline)) {
+        const last = allPoints[allPoints.length - 1];
+        if (last && last.lat === c.latitude && last.lng === c.longitude)
+          continue;
+        allPoints.push({ lat: c.latitude, lng: c.longitude });
+      }
+    }
+    if (allPoints.length < 2) return null;
+    return colorPolylineByFuelRange(allPoints, rangeMiles);
+  }, [segments, zones]);
 
   const segmentPolylines = (segments ?? [])
     .filter((s) => s.routePolyline)
@@ -670,15 +719,24 @@ export default function MapScreen() {
         customMapStyle={darkMapStyle}
         onRegionChangeComplete={handleRegionChange}
       >
-        {/* Route polylines (planned) */}
-        {segmentPolylines.map((poly) => (
-          <Polyline
-            key={`route-${poly.id}`}
-            coordinates={poly.coordinates}
-            strokeColor={poly.color}
-            strokeWidth={3}
-          />
-        ))}
+        {/* Planned route: fuel-colored when van model exists, else segment palette */}
+        {fuelColoredRoutes
+          ? fuelColoredRoutes.map((seg, i) => (
+              <Polyline
+                key={`fuel-route-${i}-${seg.band}`}
+                coordinates={seg.coordinates}
+                strokeColor={seg.color}
+                strokeWidth={4}
+              />
+            ))
+          : segmentPolylines.map((poly) => (
+              <Polyline
+                key={`route-${poly.id}`}
+                coordinates={poly.coordinates}
+                strokeColor={poly.color}
+                strokeWidth={3}
+              />
+            ))}
 
         {/* Actual driven path from GPS breadcrumbs — amber, drawn on top */}
         {trackCoordinates.length >= 2 && (
@@ -688,6 +746,28 @@ export default function MapScreen() {
             strokeWidth={4}
           />
         )}
+
+        {/* Fuel zones — projected empty / fill points */}
+        {(zones?.fuelZones ?? []).map((z, i) => (
+          <Marker
+            key={`fuel-zone-${i}-${z.mileMarker}`}
+            coordinate={{ latitude: z.lat, longitude: z.lng }}
+            title={`Fuel zone · mi ${z.mileMarker}`}
+            description="Projected low range — target Costco / corridor fuel"
+            pinColor={FUEL_BAND_COLORS.caution}
+          />
+        ))}
+
+        {/* Overnight zones */}
+        {(zones?.overnightZones ?? []).map((z, i) => (
+          <Marker
+            key={`overnight-zone-${i}-${z.mileMarker}`}
+            coordinate={{ latitude: z.lat, longitude: z.lng }}
+            title={`Overnight zone · mi ${z.mileMarker}`}
+            description={`~${z.radiusMiles} mi search for sleep options`}
+            pinColor="#A371F7"
+          />
+        ))}
 
         {/* Segment destination markers */}
         {(segments ?? [])
@@ -756,21 +836,32 @@ export default function MapScreen() {
             />
           ))}
 
-        {/* POI markers */}
-        {filteredPois.map((poi) => (
-          <Marker
-            key={`poi-${poi.id}`}
-            coordinate={{
-              latitude: Number(poi.lat),
-              longitude: Number(poi.lng),
-            }}
-            title={poi.name}
-            description={`${poi.category.replace(/_/g, " ")} · tap to save as pin`}
-            pinColor={POI_COLOR_MAP[poi.category] ?? C.muted}
-            opacity={0.85}
-            onCalloutPress={() => savePoiAsPin(poi)}
-          />
-        ))}
+        {/* POI markers — Costco fuel badged in title */}
+        {filteredPois.map((poi) => {
+          const costco = isCostcoName(poi.name);
+          return (
+            <Marker
+              key={`poi-${poi.id}`}
+              coordinate={{
+                latitude: Number(poi.lat),
+                longitude: Number(poi.lng),
+              }}
+              title={costco ? `★ Costco · ${poi.name}` : poi.name}
+              description={
+                costco
+                  ? "Priority fuel · tap to save as pin"
+                  : `${poi.category.replace(/_/g, " ")} · tap to save as pin`
+              }
+              pinColor={
+                costco
+                  ? FUEL_BAND_COLORS.safe
+                  : (POI_COLOR_MAP[poi.category] ?? C.muted)
+              }
+              opacity={costco ? 1 : 0.85}
+              onCalloutPress={() => savePoiAsPin(poi)}
+            />
+          );
+        })}
 
         {/* Member location markers */}
         {(memberLocations ?? [])
@@ -856,6 +947,17 @@ export default function MapScreen() {
               <Text style={{ color: C.muted, fontSize: 12 }}>
                 {segments?.length ?? 0} segments
               </Text>
+              {fuelColoredRoutes && (
+                <Text style={{ color: C.success, fontSize: 11, fontWeight: "700" }}>
+                  fuel route
+                </Text>
+              )}
+              {(zones?.fuelZones?.length ?? 0) > 0 && (
+                <Text style={{ color: C.warning, fontSize: 11 }}>
+                  {zones!.fuelZones.length} fuel zone
+                  {zones!.fuelZones.length === 1 ? "" : "s"}
+                </Text>
+              )}
               {filteredPois.length > 0 && (
                 <Text style={{ color: C.warning, fontSize: 12 }}>
                   {poisLoading ? "..." : filteredPois.length} POIs

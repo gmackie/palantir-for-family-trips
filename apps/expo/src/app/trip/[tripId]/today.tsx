@@ -299,6 +299,64 @@ export default function TodayScreen() {
           </Text>
         )}
 
+        {/* Stopped-mode primary actions */}
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: C.border,
+            backgroundColor: C.surface,
+            borderRadius: R.md,
+            padding: 12,
+            gap: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: C.muted,
+              fontSize: 11,
+              fontWeight: "800",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            Stopped actions
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <ActionBtn
+              label="Quick stop"
+              onPress={() =>
+                go("/trip/[tripId]/log-stop", {
+                  quick: "rest",
+                  ...(coords
+                    ? { lat: String(coords.lat), lng: String(coords.lng) }
+                    : {}),
+                })
+              }
+              tone={C.info}
+            />
+            <ActionBtn
+              label="Park for night"
+              onPress={() =>
+                go("/trip/[tripId]/log-stop", {
+                  quick: "overnight",
+                  ...(coords
+                    ? { lat: String(coords.lat), lng: String(coords.lng) }
+                    : {}),
+                })
+              }
+              tone={C.warning}
+            />
+            <ActionBtn
+              label="Map"
+              onPress={() => go("/trip/[tripId]/map")}
+            />
+            <ActionBtn
+              label="Drive"
+              onPress={() => go("/trip/[tripId]/drive")}
+            />
+          </View>
+        </View>
+
         {dwell && (
           <View
             style={{
@@ -313,14 +371,30 @@ export default function TodayScreen() {
             <Text style={{ color: C.info, fontWeight: "700" }}>
               Stopped ~{dwell.minutes} min — log this place?
             </Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
               <ActionBtn
-                label="Log stop"
+                label="Quick stop"
                 onPress={() => {
                   dismissDwell();
-                  go("/trip/[tripId]/log-stop");
+                  go("/trip/[tripId]/log-stop", {
+                    quick: "rest",
+                    lat: String(dwell.lat),
+                    lng: String(dwell.lng),
+                  });
                 }}
                 tone={C.info}
+              />
+              <ActionBtn
+                label="Park for night"
+                onPress={() => {
+                  dismissDwell();
+                  go("/trip/[tripId]/log-stop", {
+                    quick: "overnight",
+                    lat: String(dwell.lat),
+                    lng: String(dwell.lng),
+                  });
+                }}
+                tone={C.warning}
               />
               <ActionBtn label="Dismiss" onPress={dismissDwell} />
             </View>

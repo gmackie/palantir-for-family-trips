@@ -1752,19 +1752,31 @@ export const tripsRouter = {
           }
         : null;
 
-      // Van profile tied to that fuel log (for mpg/tank). Skip if unlinked.
+      // Van profile: prefer the one on the latest fuel log, else the workspace's
+      // sole van (same fallback as predictZones) so fuel range isn't blank.
       let vanProfile: {
         mpgEstimate: number | null;
         tankGallons: number | null;
       } | null = null;
-      if (fuelRow?.vanProfileId) {
+      let vanProfileId = fuelRow?.vanProfileId ?? null;
+      if (!vanProfileId) {
+        const workspaceVans = (await ctx.db
+          .select({ id: vanProfiles.id })
+          .from(vanProfiles)
+          .where(eq(vanProfiles.workspaceId, ctx.workspaceId))
+          .limit(2)) as Array<{ id: string }>;
+        if (workspaceVans.length === 1) {
+          vanProfileId = workspaceVans[0]!.id;
+        }
+      }
+      if (vanProfileId) {
         const [vanRow] = (await ctx.db
           .select({
             mpgEstimate: vanProfiles.mpgEstimate,
             tankGallons: vanProfiles.tankGallons,
           })
           .from(vanProfiles)
-          .where(eq(vanProfiles.id, fuelRow.vanProfileId))
+          .where(eq(vanProfiles.id, vanProfileId))
           .limit(1)) as Array<{
           mpgEstimate: string | null;
           tankGallons: string | null;
@@ -1786,6 +1798,7 @@ export const tripsRouter = {
         distanceToGoMiles: null,
         latestFuelLog,
         vanProfile,
+        // Without live odometer, treat last fill as full tank (see buildFuelRange).
         currentOdometerMiles: null,
         memberLocations: memberLocationsInput,
         selfUserId: userId,

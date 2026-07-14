@@ -100,6 +100,113 @@ export function computeFuelZones(
 }
 
 /**
+ * Remaining fuel band along the planned route for map polyline coloring.
+ *
+ * - **safe** (green): plenty of range left before the next projected empty
+ * - **caution** (amber): approaching empty — time to hunt Costco / fuel
+ * - **empty** (red): past projected empty if you didn't refuel at the zone
+ *
+ * The accumulator resets at each fuel-zone mile so the route "refills" at
+ * predicted stops (same cadence as `computeFuelZones`).
+ */
+export type FuelBand = "safe" | "caution" | "empty";
+
+export const FUEL_BAND_COLORS: Record<FuelBand, string> = {
+  safe: "#3FB950",
+  caution: "#D29922",
+  empty: "#F85149",
+};
+
+/** Fraction of tank range remaining at which we enter amber (default 25%). */
+export const DEFAULT_CAUTION_FRACTION = 0.25;
+
+export interface FuelColoredSegment {
+  band: FuelBand;
+  color: string;
+  /** Inclusive start / exclusive end indices into the source points array. */
+  fromIndex: number;
+  toIndex: number;
+  coordinates: LatLng[];
+}
+
+export function fuelBandAt(
+  milesSinceFill: number,
+  rangeMiles: number,
+  cautionFraction: number = DEFAULT_CAUTION_FRACTION,
+): FuelBand {
+  if (!(rangeMiles > 0)) return "safe";
+  const remaining = rangeMiles - milesSinceFill;
+  if (remaining <= 0) return "empty";
+  if (remaining <= rangeMiles * cautionFraction) return "caution";
+  return "safe";
+}
+
+/**
+ * Split a route polyline into colored segments by remaining fuel range.
+ * `milesSinceFill` offsets the start (miles already driven since last fill).
+ */
+export function colorPolylineByFuelRange(
+  points: LatLng[],
+  rangeMiles: number,
+  options?: {
+    milesSinceFill?: number;
+    cautionFraction?: number;
+  },
+): FuelColoredSegment[] {
+  if (points.length < 2 || !(rangeMiles > 0)) return [];
+
+  const cautionFraction = options?.cautionFraction ?? DEFAULT_CAUTION_FRACTION;
+  let sinceLastFill = Math.max(options?.milesSinceFill ?? 0, 0);
+  // Normalize into one tank cycle so coloring still works after long drives.
+  sinceLastFill = sinceLastFill % rangeMiles;
+
+  const segments: FuelColoredSegment[] = [];
+  let segStart = 0;
+  let currentBand = fuelBandAt(sinceLastFill, rangeMiles, cautionFraction);
+
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1]!;
+    const curr = points[i]!;
+    const d = haversineMiles(prev, curr);
+    sinceLastFill += d;
+
+    // Crossing a fuel zone: "refill" for subsequent coloring.
+    while (sinceLastFill >= rangeMiles) {
+      sinceLastFill -= rangeMiles;
+    }
+
+    const band = fuelBandAt(sinceLastFill, rangeMiles, cautionFraction);
+    if (band !== currentBand) {
+      segments.push({
+        band: currentBand,
+        color: FUEL_BAND_COLORS[currentBand],
+        fromIndex: segStart,
+        toIndex: i,
+        coordinates: points.slice(segStart, i + 1),
+      });
+      segStart = i;
+      currentBand = band;
+    }
+  }
+
+  segments.push({
+    band: currentBand,
+    color: FUEL_BAND_COLORS[currentBand],
+    fromIndex: segStart,
+    toIndex: points.length - 1,
+    coordinates: points.slice(segStart),
+  });
+
+  return segments.filter((s) => s.coordinates.length >= 2);
+}
+
+/** True when a POI name looks like a Costco (or Costco gas). */
+export function isCostcoName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return /costco/i.test(name);
+}
+
+/**
  * Place an Overnight Zone at every driving-day boundary — i.e. the destination
  * of each segment except the final one (whose destination is the trip's
  * arrival, not an overnight). Segments must be in travel order. Boundaries

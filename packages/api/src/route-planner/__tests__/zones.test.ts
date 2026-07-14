@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  colorPolylineByFuelRange,
   computeFuelZones,
   computeOvernightZones,
   DEFAULT_FUEL_THRESHOLD,
+  fuelBandAt,
   fuelRangeMiles,
+  isCostcoName,
   type LatLng,
   OVERNIGHT_ZONE_RADIUS_MILES,
   type ZoneSegment,
@@ -116,5 +119,44 @@ describe("computeOvernightZones", () => {
     expect(zones).toHaveLength(1);
     // 475 + 375 accumulated through the second boundary.
     expect(zones[0]!.mileMarker).toBe(850);
+  });
+});
+
+describe("fuelBandAt / colorPolylineByFuelRange", () => {
+  it("classifies safe → caution → empty by remaining range", () => {
+    expect(fuelBandAt(0, 200)).toBe("safe");
+    expect(fuelBandAt(100, 200)).toBe("safe");
+    expect(fuelBandAt(160, 200)).toBe("caution"); // 40 mi left = 20%
+    expect(fuelBandAt(200, 200)).toBe("empty");
+    expect(fuelBandAt(250, 200)).toBe("empty");
+  });
+
+  it("colors a long eastbound route with multiple bands", () => {
+    // ~690 miles, range 200 → should include safe + caution + empty cycles
+    const points = eastwardLine(-100, 11, 1);
+    const segs = colorPolylineByFuelRange(points, 200);
+    expect(segs.length).toBeGreaterThanOrEqual(2);
+    const bands = new Set(segs.map((s) => s.band));
+    expect(bands.has("safe")).toBe(true);
+    // At least one non-safe band appears once we burn through a tank
+    expect(bands.has("caution") || bands.has("empty")).toBe(true);
+    for (const s of segs) {
+      expect(s.coordinates.length).toBeGreaterThanOrEqual(2);
+      expect(s.color).toMatch(/^#/);
+    }
+  });
+
+  it("returns [] without a usable range or polyline", () => {
+    expect(colorPolylineByFuelRange(eastwardLine(-100, 5, 1), 0)).toEqual([]);
+    expect(colorPolylineByFuelRange([], 200)).toEqual([]);
+  });
+});
+
+describe("isCostcoName", () => {
+  it("detects Costco stations case-insensitively", () => {
+    expect(isCostcoName("Costco Gasoline")).toBe(true);
+    expect(isCostcoName("costco #123")).toBe(true);
+    expect(isCostcoName("Shell")).toBe(false);
+    expect(isCostcoName(null)).toBe(false);
   });
 });
