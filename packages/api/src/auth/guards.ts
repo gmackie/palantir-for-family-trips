@@ -6,6 +6,7 @@ import {
   type WorkspaceRole,
   workspaceMembership,
 } from "@sortey/db/schema";
+import { applyDatabaseSessionContext } from "@sortey/db/tenant";
 import { TRPCError } from "@trpc/server";
 
 import { protectedProcedure } from "../trpc";
@@ -176,9 +177,19 @@ export function workspaceProcedure(workspaceIdKey = "workspaceId") {
     // tRPC v11: middleware `input` is undefined before .input() parsing.
     // Use getRawInput() to access the caller-provided input.
     const rawInput = input ?? (await getRawInput());
+    const workspaceId = readScopedId(rawInput, workspaceIdKey);
     const access = await resolveWorkspaceAccess(createTripAccessStore(ctx.db), {
       userId: ctx.session.user.id,
-      workspaceId: readScopedId(rawInput, workspaceIdKey),
+      workspaceId,
+    });
+
+    // Scope remaining RLS checks to this workspace (same transaction as rlsSessionMiddleware).
+    await applyDatabaseSessionContext(ctx.db as never, {
+      tenancyMode: "multi-tenant",
+      userId: ctx.session.user.id,
+      userEmail: ctx.session.user.email,
+      workspaceId: access.workspaceId,
+      platformRole: null,
     });
 
     return next({

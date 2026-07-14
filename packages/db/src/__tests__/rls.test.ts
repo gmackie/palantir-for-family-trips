@@ -95,6 +95,37 @@ describe("workspace RLS rollout", () => {
     expect(segmentMemberSelect).toMatch(/trip/);
   });
 
+  it("builds non-recursive membership policies (own-row only, no same-table subquery)", () => {
+    const statements = buildWorkspaceRlsStatements();
+    const membershipSelect = statements.find((s) =>
+      s.includes('create policy "workspace_membership_workspace_select"'),
+    );
+    const membershipUpdate = statements.find((s) =>
+      s.includes('create policy "workspace_membership_workspace_update"'),
+    );
+    expect(membershipSelect).toBeDefined();
+    expect(membershipSelect).toMatch(
+      /user_id" = current_setting\('app\.user_id'/,
+    );
+    expect(membershipSelect).toMatch(
+      /platform_role', true\) = 'admin'/,
+    );
+    // Same-table subqueries recurse under FORCE RLS (42P17), including the
+    // "peer workspace_id IN (SELECT … FROM workspace_membership)" pattern.
+    expect(membershipSelect).not.toMatch(/from "workspace_membership"/i);
+    expect(membershipSelect).not.toMatch(
+      /exists \(\s*select 1\s*from "workspace_membership"/i,
+    );
+    expect(membershipUpdate).not.toMatch(/from "workspace_membership"/i);
+    expect(
+      statements.some((s) =>
+        s.includes(
+          'create policy "workspace_membership_default_join_insert"',
+        ),
+      ),
+    ).toBe(true);
+  });
+
   it("builds enable, force, and policy statements for each workspace table", () => {
     const statements = buildWorkspaceRlsStatements();
 

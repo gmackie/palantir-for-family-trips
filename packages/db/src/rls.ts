@@ -7,6 +7,7 @@ import {
   buildWorkspaceBootstrapInsertPolicyStatement,
   buildWorkspaceInviteAccessPolicyStatements,
   buildWorkspaceMembershipBootstrapInsertPolicyStatement,
+  buildWorkspaceMembershipDefaultJoinInsertPolicyStatement,
   buildWorkspaceMembershipInviteAcceptInsertPolicyStatement,
   buildWorkspaceMutationPolicyStatements,
   buildWorkspacePublicBootstrapSelectPolicyStatement,
@@ -280,8 +281,81 @@ function buildDropPolicyStatement(tableName: string, policyName: string) {
   return `drop policy if exists "${policyName}" on "${tableName}";`;
 }
 
+/**
+ * Non-recursive policies for workspace_membership.
+ *
+ * Under FORCE RLS, any policy predicate that re-queries `workspace_membership`
+ * re-enters policy evaluation and Postgres raises 42P17 ("infinite recursion
+ * detected in policy for relation workspace_membership"). That includes the
+ * tempting "peer workspace" pattern:
+ *
+ *   workspace_id IN (SELECT workspace_id FROM workspace_membership WHERE user_id = …)
+ *
+ * Own-row predicates are the only safe inline form: they never re-scan the
+ * table. App queries that need membership already filter by the session
+ * `user_id` (list my workspaces, resolve access). Peer-member listing and
+ * admin role changes must go through SECURITY DEFINER helpers (or BYPASSRLS)
+ * if/when needed — never through same-table policy subqueries.
+ *
+ * Other tables' policies may still JOIN `workspace_membership` for "is the
+ * current user a member of this workspace?" — those subqueries only need the
+ * caller's own rows, which this select policy allows.
+ */
+export function buildWorkspaceMembershipPolicyStatements(): string[] {
+  const tableName = "workspace_membership";
+  const selectName = `${tableName}_workspace_select`;
+  const insertName = `${tableName}_workspace_insert`;
+  const updateName = `${tableName}_workspace_update`;
+  const deleteName = `${tableName}_workspace_delete`;
+  const bootstrapName = `${tableName}_bootstrap_insert`;
+  const inviteAcceptName = `${tableName}_invite_accept_insert`;
+  const defaultJoinName = `${tableName}_default_join_insert`;
+
+  // Direct column compares only — no subquery against workspace_membership.
+  const ownRow = `"${tableName}"."user_id" = current_setting('app.user_id', true)`;
+  const platformAdmin = `current_setting('app.platform_role', true) = 'admin'`;
+  const ownOrAdmin = `(${ownRow}) or (${platformAdmin})`;
+
+  return [
+    buildEnableRlsStatement(tableName),
+    buildForceRlsStatement(tableName),
+    buildDropPolicyStatement(tableName, selectName),
+    buildDropPolicyStatement(tableName, insertName),
+    buildDropPolicyStatement(tableName, updateName),
+    buildDropPolicyStatement(tableName, deleteName),
+    buildDropPolicyStatement(tableName, bootstrapName),
+    buildDropPolicyStatement(tableName, inviteAcceptName),
+    buildDropPolicyStatement(tableName, defaultJoinName),
+    `create policy "${selectName}" on "${tableName}"
+for select
+using (${ownOrAdmin});`,
+    // Generic insert disabled — only bootstrap / invite-accept / default-join.
+    // Keep a drop for the old generic insert name so re-apply is clean.
+    `create policy "${updateName}" on "${tableName}"
+for update
+using (${ownOrAdmin})
+with check (${ownOrAdmin});`,
+    `create policy "${deleteName}" on "${tableName}"
+for delete
+using (${ownOrAdmin});`,
+    buildWorkspaceMembershipBootstrapInsertPolicyStatement({
+      policyName: bootstrapName,
+    }),
+    buildWorkspaceMembershipInviteAcceptInsertPolicyStatement({
+      policyName: inviteAcceptName,
+    }),
+    buildWorkspaceMembershipDefaultJoinInsertPolicyStatement({
+      policyName: defaultJoinName,
+    }),
+  ];
+}
+
 export function buildWorkspaceRlsStatements() {
   const workspaceStatements = workspaceRlsTargets.flatMap((target) => {
+    if (target.tableName === "workspace_membership") {
+      return buildWorkspaceMembershipPolicyStatements();
+    }
+
     const selectPolicyName = `${target.tableName}_workspace_select`;
     const mutationPolicyPrefix = `${target.tableName}_workspace`;
     const mutationPolicyNames = [
@@ -300,18 +374,6 @@ export function buildWorkspaceRlsStatements() {
         tableName: target.tableName,
         policyName: selectPolicyName,
         workspaceColumn: target.workspaceColumn,
-        additionalReadPredicate:
-          target.tableName === "workspace_membership"
-            ? `exists (
-  select 1
-  from "workspace_membership" current_membership
-  where current_membership.workspace_id = "workspace_membership"."workspace_id"
-    and current_membership.user_id = current_setting('app.user_id', true)
-    and current_membership.role in ('owner', 'admin')
-    and current_setting('app.workspace_id', true) <> ''
-    and current_membership.workspace_id::text = current_setting('app.workspace_id', true)
-)`
-            : undefined,
       }),
       ...buildWorkspaceMutationPolicyStatements({
         tableName: target.tableName,
@@ -337,23 +399,6 @@ export function buildWorkspaceRlsStatements() {
         }),
         buildWorkspacePublicBootstrapSelectPolicyStatement({
           policyName: publicBootstrapSelectPolicyName,
-        }),
-      ];
-    }
-
-    if (target.tableName === "workspace_membership") {
-      const bootstrapPolicyName = "workspace_membership_bootstrap_insert";
-      const inviteAcceptPolicyName =
-        "workspace_membership_invite_accept_insert";
-      return [
-        ...tableStatements,
-        buildDropPolicyStatement(target.tableName, bootstrapPolicyName),
-        buildDropPolicyStatement(target.tableName, inviteAcceptPolicyName),
-        buildWorkspaceMembershipBootstrapInsertPolicyStatement({
-          policyName: bootstrapPolicyName,
-        }),
-        buildWorkspaceMembershipInviteAcceptInsertPolicyStatement({
-          policyName: inviteAcceptPolicyName,
         }),
       ];
     }
