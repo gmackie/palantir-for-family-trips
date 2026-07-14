@@ -88,7 +88,7 @@
         "enterpriseProvisioning": "adhoc"
       },
       "env": {
-        "PREFLIGHT_OTA_URL": "http://127.0.0.1:3099/api/preflight/v1/ota/manifest",
+        "PREFLIGHT_OTA_URL": "http://10.2.10.153:3099/api/preflight/v1/ota/manifest",
         "PREFLIGHT_OTA_RUNTIME_VERSION": "sortey-p0"
       }
     },

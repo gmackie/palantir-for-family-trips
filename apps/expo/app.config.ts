@@ -178,6 +178,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         : `https://u.expo.dev/${EAS_PROJECT_ID}`,
       checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: 0,
+      requestHeaders: {
+        "expo-channel-name":
+          APP_VARIANT === "production"
+            ? "production"
+            : APP_VARIANT === "preview"
+              ? "preview"
+              : "development",
+      },
     },
     assetBundlePatterns: ["**/*"],
     ios: {
@@ -204,6 +212,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "Sortey uses the camera to scan receipts and capture trip photos.",
         NSPhotoLibraryUsageDescription:
           "Sortey accesses your photo library so you can attach receipts and share photos with your trip group.",
+        ...(process.env.PREFLIGHT_OTA_URL?.startsWith("http://")
+          ? {
+              NSAppTransportSecurity: {
+                NSAllowsLocalNetworking: true,
+                NSAllowsArbitraryLoads: true,
+              },
+            }
+          : {}),
       },
     },
     android: {
