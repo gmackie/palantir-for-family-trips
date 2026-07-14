@@ -167,6 +167,26 @@ with check (
 );`;
 }
 
+/**
+ * Mobile/web onboarding: settings.joinDefaultWorkspace inserts the caller as a
+ * member of application_settings.initial_workspace_id. No same-table subquery.
+ */
+export function buildWorkspaceMembershipDefaultJoinInsertPolicyStatement(input: {
+  policyName: string;
+}) {
+  return `create policy "${input.policyName}" on "workspace_membership"
+for insert
+with check (
+  "workspace_membership"."user_id" = current_setting('app.user_id', true)
+  and exists (
+    select 1
+    from "application_settings" settings
+    where settings.initial_workspace_id is not null
+      and settings.initial_workspace_id = "workspace_membership"."workspace_id"
+  )
+);`;
+}
+
 export function buildApplicationSettingsPublicReadPolicyStatement(input: {
   policyName: string;
 }) {

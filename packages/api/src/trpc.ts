@@ -1,12 +1,24 @@
 import { and, eq, isNull } from "@sortey/db";
 import { db } from "@sortey/db/client";
-import { apiKeys, session as sessionTable, user } from "@sortey/db/schema";
+import {
+  apiKeys,
+  session as sessionTable,
+  type TenancyMode,
+  user,
+} from "@sortey/db/schema";
+import {
+  applyDatabaseSessionContext,
+  withDatabaseSessionContext,
+} from "@sortey/db/tenant";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
 import superjson from "superjson";
 import { ZodError, z } from "zod/v4";
 
 import { getRealtimeRuntime } from "./realtime-runtime";
+
+/** Default until application_settings is read; multi-tenant is the safer RLS mode. */
+const DEFAULT_TENANCY_MODE: TenancyMode = "multi-tenant";
 
 export type ApiKeyPermission = "read" | "write" | "delete" | "admin";
 
@@ -308,6 +320,48 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  *
  * @see https://trpc.io/docs/procedures
  */
+/**
+ * Sets Postgres session GUCs (`app.user_id`, etc.) for FORCE RLS policies.
+ * Runs the procedure inside a transaction so `set_config(..., true)` stays
+ * local to the request and cannot leak across the connection pool.
+ */
+const rlsSessionMiddleware = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session?.user) {
+    return next();
+  }
+
+  // Platform role is stored on `user` (not FORCE RLS). Load it so membership
+  // and other policies can grant admin bypass via app.platform_role.
+  let platformRole: string | null = null;
+  try {
+    const [dbUser] = await ctx.db
+      .select({ role: user.role })
+      .from(user)
+      .where(eq(user.id, ctx.session.user.id))
+      .limit(1);
+    platformRole = dbUser?.role ?? null;
+  } catch {
+    platformRole = null;
+  }
+
+  const sessionCtx = {
+    tenancyMode: DEFAULT_TENANCY_MODE,
+    userId: ctx.session.user.id,
+    userEmail: ctx.session.user.email,
+    workspaceId: null as string | null,
+    platformRole: platformRole as "user" | "admin" | null,
+  };
+
+  return withDatabaseSessionContext(ctx.db as never, sessionCtx, async (tx) =>
+    next({
+      ctx: {
+        ...ctx,
+        db: tx as typeof ctx.db,
+      },
+    }),
+  );
+});
+
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
@@ -323,39 +377,43 @@ export const protectedProcedure = t.procedure
         session: { ...ctx.session, user: ctx.session.user },
       },
     });
-  });
+  })
+  .use(rlsSessionMiddleware);
 
 const createApiKeyProcedure = (requiredPermission: ApiKeyPermission) =>
-  t.procedure.use(timingMiddleware).use(({ ctx, next }) => {
-    if (!ctx.apiKeyAuth) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "API key required",
+  t.procedure
+    .use(timingMiddleware)
+    .use(({ ctx, next }) => {
+      if (!ctx.apiKeyAuth) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "API key required",
+        });
+      }
+
+      const hasPermission =
+        ctx.apiKeyAuth.permissions.includes("admin") ||
+        ctx.apiKeyAuth.permissions.includes(requiredPermission);
+
+      if (!hasPermission) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `API key lacks '${requiredPermission}' permission`,
+        });
+      }
+
+      if (!ctx.session?.user) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      return next({
+        ctx: {
+          session: { ...ctx.session, user: ctx.session.user },
+          apiKeyAuth: ctx.apiKeyAuth,
+        },
       });
-    }
-
-    const hasPermission =
-      ctx.apiKeyAuth.permissions.includes("admin") ||
-      ctx.apiKeyAuth.permissions.includes(requiredPermission);
-
-    if (!hasPermission) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: `API key lacks '${requiredPermission}' permission`,
-      });
-    }
-
-    if (!ctx.session?.user) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-
-    return next({
-      ctx: {
-        session: { ...ctx.session, user: ctx.session.user },
-        apiKeyAuth: ctx.apiKeyAuth,
-      },
-    });
-  });
+    })
+    .use(rlsSessionMiddleware);
 
 export const apiKeyReadProcedure = createApiKeyProcedure("read");
 export const apiKeyWriteProcedure = createApiKeyProcedure("write");
