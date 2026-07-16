@@ -7,6 +7,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@sortey/ui/field";
+import { GroupModeToggle } from "@sortey/ui/group-mode-toggle";
 import { Input } from "@sortey/ui/input";
 import { TRPCError } from "@trpc/server";
 import { headers } from "next/headers";
@@ -174,18 +175,12 @@ export default async function TripSettingsPage(props: {
             <Field>
               <FieldLabel htmlFor="groupMode">Group mode</FieldLabel>
               <FieldContent>
-                <label className="flex items-center gap-3 text-sm">
-                  <input
-                    id="groupMode"
-                    name="groupMode"
-                    type="checkbox"
-                    defaultChecked={trip.groupMode}
-                  />
-                  <span>
-                    Enable the shared claim-and-settlement workflow for this
-                    trip.
-                  </span>
-                </label>
+                <GroupModeToggle
+                  id="groupMode"
+                  name="groupMode"
+                  defaultValue={trip.groupMode}
+                  variant="switch"
+                />
               </FieldContent>
             </Field>
 

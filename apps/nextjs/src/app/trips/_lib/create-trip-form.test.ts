@@ -10,17 +10,21 @@ describe("parseCreateTripFormData", () => {
     formData.set("startDate", "2026-06-01");
     formData.set("endDate", "2026-06-08");
     formData.set("tz", "Europe/Rome");
+    formData.set("groupMode", "true");
+    formData.set("tripMode", "destination");
 
     expect(parseCreateTripFormData(formData)).toEqual({
       destinationName: "Milan, Italy",
       endDate: "2026-06-08",
+      groupMode: true,
       name: "Italy Summer",
       startDate: "2026-06-01",
+      tripMode: "destination",
       tz: "Europe/Rome",
     });
   });
 
-  it("omits empty optional dates while still requiring a destination", () => {
+  it("defaults group mode to family (false) and trip mode to destination", () => {
     const formData = new FormData();
     formData.set("name", "Weekend Reset");
     formData.set("destinationName", "Groveland, CA");
@@ -29,8 +33,41 @@ describe("parseCreateTripFormData", () => {
 
     expect(parseCreateTripFormData(formData)).toEqual({
       destinationName: "Groveland, CA",
+      groupMode: false,
       name: "Weekend Reset",
+      tripMode: "destination",
       tz: "UTC",
+    });
+  });
+
+  it("parses family mode radio value", () => {
+    const formData = new FormData();
+    formData.set("name", "Solo Escape");
+    formData.set("destinationName", "Yosemite");
+    formData.set("groupMode", "false");
+
+    expect(parseCreateTripFormData(formData).groupMode).toBe(false);
+  });
+
+  it("parses checkbox-style group mode on", () => {
+    const formData = new FormData();
+    formData.set("name", "Friends Weekend");
+    formData.set("destinationName", "Austin");
+    formData.set("groupMode", "on");
+
+    expect(parseCreateTripFormData(formData).groupMode).toBe(true);
+  });
+
+  it("parses roadtrip mode", () => {
+    const formData = new FormData();
+    formData.set("name", "Pacific Coast");
+    formData.set("destinationName", "San Diego");
+    formData.set("tripMode", "roadtrip");
+    formData.set("groupMode", "false");
+
+    expect(parseCreateTripFormData(formData)).toMatchObject({
+      tripMode: "roadtrip",
+      groupMode: false,
     });
   });
 

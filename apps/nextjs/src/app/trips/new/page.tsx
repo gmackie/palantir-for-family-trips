@@ -7,6 +7,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@sortey/ui/field";
+import { GroupModeToggle } from "@sortey/ui/group-mode-toggle";
 import { Input } from "@sortey/ui/input";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -44,8 +45,15 @@ export default async function NewTripPage() {
     const tripMode = input.tripMode;
     const created = await caller.trips.create({
       workspaceId: workspaceContext.workspace.id,
-      ...input,
+      name: input.name,
       tripMode,
+      destinationName: input.destinationName,
+      destinationLat: input.destinationLat,
+      destinationLng: input.destinationLng,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      tz: input.tz,
+      groupMode: input.groupMode,
     });
 
     if (tripMode === "roadtrip") {
@@ -62,8 +70,9 @@ export default async function NewTripPage() {
         </p>
         <h1 className="text-4xl font-black tracking-tight">Create a trip</h1>
         <p className="text-muted-foreground max-w-2xl text-sm sm:text-base">
-          This trip will be created inside {workspace.name}. Start with the
-          destination, dates, and trip-local time zone.
+          This trip will be created inside {workspace.name}. Choose destination
+          or road-trip mode, family or group splitting, then set dates and a
+          trip-local time zone.
         </p>
       </div>
 
@@ -75,8 +84,8 @@ export default async function NewTripPage() {
           <Field>
             <FieldLabel htmlFor="tripMode">Trip mode</FieldLabel>
             <FieldContent>
-              <div className="flex gap-3">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-4 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-border px-4 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                   <input
                     type="radio"
                     name="tripMode"
@@ -85,13 +94,13 @@ export default async function NewTripPage() {
                     className="accent-primary"
                   />
                   <div>
-                    <p className="text-sm font-medium">Group Trip</p>
+                    <p className="text-sm font-medium">Destination</p>
                     <p className="text-muted-foreground text-xs">
-                      Fixed destination, group expenses
+                      Fixed place — area map, lodging, arrivals
                     </p>
                   </div>
                 </label>
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-4 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-border px-4 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                   <input
                     type="radio"
                     name="tripMode"
@@ -99,13 +108,33 @@ export default async function NewTripPage() {
                     className="accent-primary"
                   />
                   <div>
-                    <p className="text-sm font-medium">Road Trip</p>
+                    <p className="text-sm font-medium">Road trip</p>
                     <p className="text-muted-foreground text-xs">
-                      Route-based with fuel tracking
+                      Route-based with fuel and overnight planning
                     </p>
                   </div>
                 </label>
               </div>
+              <FieldDescription>
+                Trip mode is the map and planning paradigm. Group mode is
+                separate — either kind of trip can be family or group.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="groupMode">Group or family</FieldLabel>
+            <FieldContent>
+              <GroupModeToggle
+                id="groupMode"
+                name="groupMode"
+                defaultValue={false}
+                variant="cards"
+              />
+              <FieldDescription>
+                Group mode unlocks members, receipt claims, and settlement. You
+                can change this later in trip settings.
+              </FieldDescription>
             </FieldContent>
           </Field>
 
