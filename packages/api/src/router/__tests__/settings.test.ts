@@ -374,9 +374,13 @@ function createCaller(options?: {
 
       throw new Error("Unexpected delete");
     }),
-    transaction: vi.fn(async () => {
-      throw new Error("Unexpected transaction");
-    }),
+    // rlsSessionMiddleware wraps every authed call in a transaction and sets
+    // session GUCs via execute; pass the same mock through as the tx.
+    execute: vi.fn(async () => undefined),
+    transaction: vi.fn(
+      async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> =>
+        fn(db),
+    ),
   };
 
   const caller = appRouter.createCaller({

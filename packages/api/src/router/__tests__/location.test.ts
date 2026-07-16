@@ -44,6 +44,8 @@ function createRecordingRealtime() {
 function createDbMock() {
   // Source-of-truth rows the auth store expects, keyed by the `.from()` table.
   const selectQueue: unknown[][] = [
+    // rlsSessionMiddleware → user (platform role)
+    [{ role: "user" }],
     // findWorkspaceAccess → workspaceMembership
     [{ workspaceId: WORKSPACE_ID, workspaceRole: "owner" }],
     // findTripAccess → workspaceMembership
@@ -73,6 +75,13 @@ function createDbMock() {
       };
       return chain;
     }),
+    // rlsSessionMiddleware wraps every authed call in a transaction and sets
+    // session GUCs via execute; pass the same mock through as the tx.
+    execute: vi.fn(async () => undefined),
+    transaction: vi.fn(
+      async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> =>
+        fn(db),
+    ),
   };
 
   return db;
