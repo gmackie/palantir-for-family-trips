@@ -17,6 +17,7 @@ const CreateTripFormSchema = z.object({
   destinationLat: coordinateStringSchema,
   destinationLng: coordinateStringSchema,
   endDate: tripDateSchema,
+  groupMode: z.boolean().default(false),
   name: z.string().trim().min(1, "Trip name is required"),
   tripMode: z.enum(["destination", "roadtrip"]).default("destination"),
   startDate: tripDateSchema,
@@ -30,9 +31,20 @@ function readText(formData: FormData, key: string) {
   return typeof value === "string" ? value : "";
 }
 
+/**
+ * Parse create-trip form fields.
+ * groupMode accepts either radio values ("true"/"false") or a checkbox ("on").
+ */
 export function parseCreateTripFormData(
   formData: FormData,
 ): CreateTripFormInput {
+  const groupModeRaw = readText(formData, "groupMode");
+  const groupMode =
+    groupModeRaw === "true" ||
+    groupModeRaw === "on" ||
+    groupModeRaw === "1" ||
+    formData.get("groupMode") === "on";
+
   const parsed = CreateTripFormSchema.safeParse({
     name: readText(formData, "name"),
     tripMode: readText(formData, "tripMode") || "destination",
@@ -42,6 +54,7 @@ export function parseCreateTripFormData(
     startDate: readText(formData, "startDate") || undefined,
     endDate: readText(formData, "endDate") || undefined,
     tz: readText(formData, "tz") || "UTC",
+    groupMode,
   });
 
   if (!parsed.success) {
