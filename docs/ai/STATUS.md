@@ -52,7 +52,7 @@ Advisor plans 001–006 are all MERGED (see `plans/README.md`).
   - Enums: `tripStatusEnum`, `tripClaimModeEnum`, `tripMemberRoleEnum`
   - Migrations: `packages/db/drizzle/0000_misty_wrecking_crew.sql` through `0006_tan_gorilla_man.sql`
 - **Auth guards**: `packages/api/src/auth/guards.ts` with `workspaceProcedure()` and `tripProcedure()` middleware factories
-- **Trip router**: `packages/api/src/router/trips.ts` — CRUD, member management, segment helpers, invite generation, share links, `acceptInvite`
+- **Trip router**: `packages/api/src/router/trips.ts` — CRUD, member management, segment helpers, emailed role-aware invite links, share links, `acceptInvite`
 - **Invite accept flow**: `/invite/[token]` and `/join/[token]` routes; `trips.acceptInvite` and `trips.joinByShareToken` mutations
 - **Trip routes in `apps/nextjs/src/app/trips/`**:
   - `page.tsx` — trip list

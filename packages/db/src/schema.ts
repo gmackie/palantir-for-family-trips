@@ -389,6 +389,7 @@ export const tripInvites = pgTable(
       .references(() => trips.id, { onDelete: "cascade" }),
     email: t.varchar({ length: 320 }).notNull(),
     token: t.varchar({ length: 255 }).notNull().unique(),
+    role: t.text().$type<TripMemberRole>().notNull().default("member"),
     invitedByUserId: t
       .text()
       .notNull()

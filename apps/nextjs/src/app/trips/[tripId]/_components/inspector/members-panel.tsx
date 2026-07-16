@@ -15,19 +15,33 @@ export function MembersPanel(props: {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"member" | "organizer">(
+    "member",
+  );
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
 
   const { data: summary, isLoading } = useQuery(
     trpc.settlements.summary.queryOptions({ workspaceId, tripId }),
   );
+  const invitesQuery = trpc.trips.listInvites.queryOptions({
+    workspaceId,
+    tripId,
+  });
+  const { data: invites } = useQuery(invitesQuery);
 
   const createInvite = useMutation(
     trpc.trips.createInvite.mutationOptions({
       onSuccess: (data) => {
-        const inviteUrl = `${window.location.origin}/invite/${data.token}`;
-        setInviteStatus(`Invite sent! Link: ${inviteUrl}`);
+        setInviteStatus(
+          data.emailSent
+            ? `Invite sent to ${data.email}.`
+            : `Invite link created: ${data.url}`,
+        );
         setInviteEmail("");
-        void queryClient.invalidateQueries();
+        setInviteRole("member");
+        void queryClient.invalidateQueries({
+          queryKey: invitesQuery.queryKey,
+        });
       },
       onError: (error) => {
         setInviteStatus(`Error: ${error.message}`);
@@ -103,6 +117,7 @@ export function MembersPanel(props: {
               workspaceId,
               tripId,
               email: inviteEmail.trim().toLowerCase(),
+              role: inviteRole,
             });
           }}
         >
@@ -113,6 +128,16 @@ export function MembersPanel(props: {
             onChange={(e) => setInviteEmail(e.target.value)}
             className="flex-1 rounded-[4px] border border-[#21262D] bg-[#161B22] px-3 py-2 text-xs text-[#C9D1D9] placeholder-[#484F58] outline-none focus:border-[#58A6FF]"
           />
+          <select
+            value={inviteRole}
+            onChange={(e) =>
+              setInviteRole(e.target.value as "member" | "organizer")
+            }
+            className="rounded-[4px] border border-[#21262D] bg-[#161B22] px-2 py-2 text-xs text-[#C9D1D9] outline-none focus:border-[#58A6FF]"
+          >
+            <option value="member">Member</option>
+            <option value="organizer">Organizer</option>
+          </select>
           <button
             type="submit"
             disabled={createInvite.isPending || !inviteEmail.trim()}
@@ -128,6 +153,24 @@ export function MembersPanel(props: {
             {inviteStatus}
           </p>
         )}
+        {invites && invites.length > 0 ? (
+          <div className="space-y-1 border-t border-[#21262D] pt-2">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#8B949E]">
+              Pending invites
+            </p>
+            {invites.slice(0, 5).map((invite) => (
+              <div
+                key={invite.id}
+                className="flex items-center justify-between gap-2 text-[10px] text-[#8B949E]"
+              >
+                <span className="min-w-0 truncate">{invite.email}</span>
+                <span className="shrink-0 uppercase">
+                  {invite.acceptedAt ? "accepted" : invite.role}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
