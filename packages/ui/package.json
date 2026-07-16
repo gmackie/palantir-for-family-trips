@@ -12,6 +12,7 @@
     "./group-mode-toggle": "./src/group-mode-toggle.tsx",
     "./input": "./src/input.tsx",
     "./label": "./src/label.tsx",
+    "./receipt-upload": "./src/receipt-upload.tsx",
     "./separator": "./src/separator.tsx",
     "./theme": "./src/theme.tsx",
     "./toast": "./src/toast.tsx"

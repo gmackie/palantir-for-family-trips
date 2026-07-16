@@ -1,7 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { assertRateLimit, resetRateLimitBuckets } from "./rate-limit";
+import {
+  assertRateLimit,
+  RECEIPT_OCR_RATE_LIMIT,
+  receiptOcrRateLimitKey,
+  resetRateLimitBuckets,
+} from "./rate-limit";
 
 afterEach(() => {
   resetRateLimitBuckets();
@@ -42,5 +47,26 @@ describe("assertRateLimit", () => {
     expect(() =>
       assertRateLimit({ key: "t:c2", limit: 2, windowMs: 60_000 }),
     ).not.toThrow();
+  });
+});
+
+describe("receipt OCR rate limit helpers", () => {
+  it("keys buckets per user", () => {
+    expect(receiptOcrRateLimitKey("user_a")).toBe("receipt:ocr:user_a");
+    expect(receiptOcrRateLimitKey("user_b")).not.toBe(
+      receiptOcrRateLimitKey("user_a"),
+    );
+  });
+
+  it("enforces the 5/minute receipt OCR budget", () => {
+    const key = receiptOcrRateLimitKey("user_receipt");
+    for (let i = 0; i < RECEIPT_OCR_RATE_LIMIT.limit; i++) {
+      expect(() =>
+        assertRateLimit({ key, ...RECEIPT_OCR_RATE_LIMIT }),
+      ).not.toThrow();
+    }
+    expect(() => assertRateLimit({ key, ...RECEIPT_OCR_RATE_LIMIT })).toThrow(
+      TRPCError,
+    );
   });
 });

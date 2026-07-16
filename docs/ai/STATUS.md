@@ -73,15 +73,17 @@ Advisor plans 001–006 are all MERGED (see `plans/README.md`).
 - Mobile: `apps/expo/src/app/trip/[tripId]/polls.tsx`
 - **"Lock it in" wizard** — planning → confirmed transition UI at `apps/nextjs/src/app/trips/[tripId]/plan/lock-in/page.tsx`; backed by `planning.confirmTrip` at `packages/api/src/router/planning.ts:517`
 
-### Phase 3 — Expenses + Receipts + OCR ✅ IMPLEMENTED (OCR not wired)
-- `packages/api/src/router/expenses.ts` (844 lines) — create/draft/finalize/delete, line items, claims, share calculation, group split
-- `packages/api/src/router/fuel-logs.ts` (142 lines) — fuel fill-up logging with gas-split expense creation
+### Phase 3 — Expenses + Receipts + OCR ✅ COMPLETE
+- `packages/api/src/router/expenses.ts` — create/draft/finalize/delete, line items, claims, share calculation, group split, `extractFromReceipt`, `attachReceiptImage`
+- `packages/api/src/router/fuel-logs.ts` — fuel fill-up logging with gas-split expense creation
 - `packages/api/src/expenses/` — `settle.ts`, `shares.ts` + tests; store interfaces; `FuelLogStore`
 - Realtime tap-to-claim via Pusher (`@sortey/realtime`)
 - Line-item schema: `expenses`, `lineItems`, `lineItemClaims`, `expenseShares` in `packages/db/src/schema.ts`
-- Web: `apps/nextjs/src/app/trips/[tripId]/expenses/`
-- Mobile: `apps/expo/src/app/trip/[tripId]/expenses.tsx`, `new-expense.tsx`, `expense/[expenseId]/`
-- **OCR pipeline ✅ WIRED**: extractors + reconciler + fixtures in `packages/api/src/ocr/` (Claude + Gemini, `reconcile.ts`, tests). Receipt extraction is now wired via **`expenses.extractFromReceipt`** (fail-safe, bounded; returns reconciled fields + ocr provenance for form pre-fill) with a "Scan receipt" affordance on the new-expense form. The vision extractor was generalized (`extract-structured.ts`) during the ferry feature; `ferries.extractFromImage` was the first consumer, receipts the second.
+- Web: `apps/nextjs/src/app/trips/[tripId]/expenses/` — scan-to-prefill via `@sortey/ui` `ReceiptUpload` (drag-drop / camera / gallery), attaches image without double OCR
+- Mobile: `apps/expo/src/app/trip/[tripId]/expenses.tsx`, `new-expense.tsx` (camera + library → `/api/receipts/scan`), `expense/[expenseId]/` — OCR pre-fills merchant, line items, tax, tip, currency
+- Storage: `POST /api/receipts/scan` (pre-expense) + `POST /api/receipts/upload` (attach to draft; `skipOcr` when already scanned)
+- Rate limit: 5 receipt OCR calls / user / minute across extract + scan + upload (`RECEIPT_OCR_RATE_LIMIT`)
+- **OCR pipeline ✅ WIRED**: extractors + reconciler + fixtures in `packages/api/src/ocr/` (Claude + Gemini, `reconcile.ts`, tests). `expenses.extractFromReceipt` is fail-safe and bounded; returns reconciled fields + ocr provenance for form pre-fill.
 
 ### Phase 4 — Settlement ✅ IMPLEMENTED (known bug being fixed)
 - `packages/api/src/router/settlements.ts` (295 lines) — `summary`, `record`, `undo`
