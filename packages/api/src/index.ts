@@ -5,6 +5,12 @@ import type { AppRouter } from "./root";
 type RouterInputs = inferRouterInputs<AppRouter>;
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 
+export {
+  assertRateLimit,
+  RECEIPT_OCR_RATE_LIMIT,
+  receiptOcrRateLimitKey,
+  resetRateLimitBuckets,
+} from "./rate-limit";
 export type { RealtimeBroadcast, RealtimeRuntime } from "./realtime-runtime";
 export { getRealtimeRuntime, runWithRealtimeRuntime } from "./realtime-runtime";
 export { type AppRouter, appRouter } from "./root";
