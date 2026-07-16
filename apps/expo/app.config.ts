@@ -43,9 +43,16 @@ const BASE_BUNDLE_ID = "com.gmacko.sortey";
 const BASE_SCHEME = "sortey";
 const EAS_PROJECT_ID = "5f21337f-9f48-4b0c-8d02-656e4a08dc86";
 
+// Variant identity (fleet standard — see preflight-app docs/ai/VARIANT_IDENTITY.md):
+//   development → *.expo + Metro/dev-client (icon-expo / icon-dev legacy)
+//   preview     → *.dev  developer-preview launch-ready
+//   production  → bare store id
 const getVariantIcon = (): string => {
-  if (APP_VARIANT === "development") return "./assets/icon-dev.png";
-  if (APP_VARIANT === "preview") return "./assets/icon-preview.png";
+  if (APP_VARIANT === "development") {
+    // Prefer icon-expo when present; fall back to existing icon-dev asset.
+    return "./assets/icon-expo.png";
+  }
+  if (APP_VARIANT === "preview") return "./assets/icon-dev.png";
   return "./assets/icon-light.png";
 };
 
@@ -54,9 +61,9 @@ const getAppName = (): string => {
     case "production":
       return "Sortey";
     case "preview":
-      return "Sortey (Preview)";
-    default:
       return "Sortey (Dev)";
+    default:
+      return "Sortey (Expo)";
   }
 };
 
@@ -65,9 +72,9 @@ const getBundleId = (): string => {
     case "production":
       return BASE_BUNDLE_ID;
     case "preview":
-      return `${BASE_BUNDLE_ID}.preview`;
-    default:
       return `${BASE_BUNDLE_ID}.dev`;
+    default:
+      return `${BASE_BUNDLE_ID}.expo`;
   }
 };
 
@@ -76,9 +83,9 @@ const getScheme = (): string => {
     case "production":
       return BASE_SCHEME;
     case "preview":
-      return `${BASE_SCHEME}-preview`;
-    default:
       return `${BASE_SCHEME}-dev`;
+    default:
+      return `${BASE_SCHEME}-expo`;
   }
 };
 
