@@ -15,8 +15,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { queryClient, trpc } from "~/utils/api";
-import { authClient } from "~/utils/auth";
 import {
   defaultRouteForTrip,
   getLastTripId,
@@ -24,6 +22,8 @@ import {
   pickDefaultTrip,
   setLastTripId,
 } from "~/utils/active-trip";
+import { queryClient, trpc } from "~/utils/api";
+import { authClient } from "~/utils/auth";
 import { C, mono, R } from "~/utils/design";
 import {
   getActiveWorkspaceId,
@@ -428,6 +428,21 @@ function UserHeader({
   );
 }
 
+// Matches STATUS_COLORS in the trip detail screens so the list card border
+// agrees with the status pill shown after tapping through.
+const TRIP_STATUS_COLORS: Record<string, string> = {
+  planning: C.warning,
+  confirmed: C.info,
+  en_route: C.warning,
+  active: C.success,
+  paused: C.warning,
+  completed: C.muted,
+};
+
+// Module-level so the active-trip redirect fires once per app launch, not once
+// per TripList mount — otherwise every return to '/' re-hijacks to the trip.
+let hasAutoRedirected = false;
+
 function TripList({
   user,
 }: {
@@ -436,7 +451,6 @@ function TripList({
   "use no memo";
   const workspaceId = getActiveWorkspaceId();
   const router = useRouter();
-  const redirectedRef = useRef(false);
   const { data: trips, isLoading } = useQuery(
     trpc.trips.list.queryOptions({
       workspaceId: workspaceId ?? "",
@@ -445,7 +459,7 @@ function TripList({
 
   // Cold-start: if a trip is actively running, land there instead of the list.
   useEffect(() => {
-    if (redirectedRef.current || !trips || trips.length === 0) return;
+    if (hasAutoRedirected || !trips || trips.length === 0) return;
     const active = pickDefaultTrip(
       trips.map((t) => ({
         id: t.id,
@@ -458,7 +472,7 @@ function TripList({
       getLastTripId(),
     );
     if (!active || !isActiveTripStatus(active.status)) return;
-    redirectedRef.current = true;
+    hasAutoRedirected = true;
     void setLastTripId(active.id);
     const dest = defaultRouteForTrip(active, "unknown");
     router.replace({
@@ -678,7 +692,9 @@ function TripList({
                 padding: 16,
                 marginBottom: 12,
                 borderWidth: 1,
-                borderColor: active ? C.warning : C.border,
+                borderColor: active
+                  ? (TRIP_STATUS_COLORS[item.status] ?? C.warning)
+                  : C.border,
               }}
             >
               <View
