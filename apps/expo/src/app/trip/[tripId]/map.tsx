@@ -475,9 +475,8 @@ export default function MapScreen() {
     });
   }, [pois, activePoiCategories]);
 
-  // Near each fuel zone, also surface Costco-named fuel POIs (even if the map
-  // center is elsewhere) via a second lightweight query per zone is too heavy —
-  // instead we rely on map-center fuel chips + zone markers as targets.
+  // Per-zone Costco POI queries were considered and rejected as too heavy;
+  // map-center fuel chips + zone markers serve as the refuel targets instead.
 
   // Actual driven path from GPS breadcrumbs (distinct from the planned route).
   const { data: trackPath } = useQuery(
@@ -577,18 +576,28 @@ export default function MapScreen() {
     return colorPolylineByFuelRange(allPoints, rangeMiles);
   }, [segments, zones]);
 
-  const segmentPolylines = (segments ?? [])
-    .filter((s) => s.routePolyline)
-    .map((s, i) => ({
-      id: s.id,
-      coordinates: decodePolyline(s.routePolyline!),
-      color: PALETTE[i % PALETTE.length]!,
-    }));
+  // Memoized: this screen re-renders every 5s (member-location polling) plus
+  // on every live WS frame, and decodePolyline over full routes is not cheap.
+  const segmentPolylines = useMemo(
+    () =>
+      (segments ?? [])
+        .filter((s) => s.routePolyline)
+        .map((s, i) => ({
+          id: s.id,
+          coordinates: decodePolyline(s.routePolyline!),
+          color: PALETTE[i % PALETTE.length]!,
+        })),
+    [segments],
+  );
 
-  const trackCoordinates = (trackPath ?? []).map((p) => ({
-    latitude: p.lat,
-    longitude: p.lng,
-  }));
+  const trackCoordinates = useMemo(
+    () =>
+      (trackPath ?? []).map((p) => ({
+        latitude: p.lat,
+        longitude: p.lng,
+      })),
+    [trackPath],
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -765,7 +774,7 @@ export default function MapScreen() {
             coordinate={{ latitude: z.lat, longitude: z.lng }}
             title={`Overnight zone · mi ${z.mileMarker}`}
             description={`~${z.radiusMiles} mi search for sleep options`}
-            pinColor="#A371F7"
+            pinColor={C.accentPurple}
           />
         ))}
 
@@ -801,11 +810,11 @@ export default function MapScreen() {
               }
               pinColor={
                 m.kind === "anchor"
-                  ? "#A371F7"
+                  ? C.accentPurple
                   : m.intent === "play"
                     ? C.success
                     : m.intent === "event"
-                      ? "#A371F7"
+                      ? C.accentPurple
                       : m.intent === "position"
                         ? C.warning
                         : C.info
@@ -948,12 +957,14 @@ export default function MapScreen() {
                 {segments?.length ?? 0} segments
               </Text>
               {fuelColoredRoutes && (
-                <Text style={{ color: C.success, fontSize: 11, fontWeight: "700" }}>
+                <Text
+                  style={{ color: C.success, fontSize: 12, fontWeight: "700" }}
+                >
                   fuel route
                 </Text>
               )}
               {(zones?.fuelZones?.length ?? 0) > 0 && (
-                <Text style={{ color: C.warning, fontSize: 11 }}>
+                <Text style={{ color: C.warning, fontSize: 12 }}>
                   {zones!.fuelZones.length} fuel zone
                   {zones!.fuelZones.length === 1 ? "" : "s"}
                 </Text>

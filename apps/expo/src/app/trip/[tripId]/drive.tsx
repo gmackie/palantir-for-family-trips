@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -112,6 +112,16 @@ function BlockEmpty({ text }: { text: string }) {
 
 // ---- screen -------------------------------------------------------------
 
+const MPS_TO_MPH = 2.237;
+
+/** Dwell-card actions are used while driving — keep the 44px minimum target. */
+const dwellActionStyle = {
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  minHeight: 44,
+  justifyContent: "center",
+} as const;
+
 type DrivingSummary = RouterOutputs["trips"]["drivingSummary"];
 
 export default function DriveScreen() {
@@ -182,15 +192,23 @@ export default function DriveScreen() {
   );
   const todayAmenities = amenityScan?.find((r) => r.date === today);
 
-  const summary: DrivingSummary | undefined = data ?? offlineSummary ?? undefined;
+  const summary: DrivingSummary | undefined =
+    data ?? offlineSummary ?? undefined;
 
   const track = useBreadcrumbRecorder(workspaceId, tripId ?? "");
   const { suggestion: dwell, dismiss: dismissDwell } = useDwellSuggest(true);
   const motion = useMotionMode(true);
 
-  // Auto-start breadcrumb recording while moving.
+  // Auto-start breadcrumb recording while moving. A manual stop latches until
+  // the next stop→moving transition (or a manual start) — otherwise this
+  // effect would instantly restart recording the user just turned off.
+  const manualStopRef = useRef(false);
   useEffect(() => {
-    if (motion.mode === "moving" && !track.recording) {
+    if (motion.mode !== "moving") {
+      manualStopRef.current = false;
+      return;
+    }
+    if (!track.recording && !manualStopRef.current) {
       void track.start();
     }
     // Intentionally depend on mode + recording flag only.
@@ -209,11 +227,7 @@ export default function DriveScreen() {
       params: { tripId: tripId ?? "" },
     });
 
-  const goLogStop = (opts?: {
-    quick?: string;
-    lat?: number;
-    lng?: number;
-  }) =>
+  const goLogStop = (opts?: { quick?: string; lat?: number; lng?: number }) =>
     router.push({
       pathname: "/trip/[tripId]/log-stop" as any,
       params: {
@@ -382,9 +396,13 @@ export default function DriveScreen() {
               : motion.mode === "stopped"
                 ? "Stopped · log or rest"
                 : "Locating…"}
-            {motion.speedMps != null
-              ? ` · ${Math.round(motion.speedMps * 2.237)} mph`
-              : ""}
+            {motion.speedMps != null ? (
+              <Text style={{ fontFamily: mono, fontVariant: ["tabular-nums"] }}>
+                {` · ${Math.round(motion.speedMps * MPS_TO_MPH)} mph`}
+              </Text>
+            ) : (
+              ""
+            )}
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <Pressable
@@ -462,6 +480,7 @@ export default function DriveScreen() {
                     lng: dwell.lng,
                   });
                 }}
+                style={dwellActionStyle}
               >
                 <Text style={{ color: C.info, fontWeight: "700" }}>
                   Quick stop
@@ -476,12 +495,13 @@ export default function DriveScreen() {
                     lng: dwell.lng,
                   });
                 }}
+                style={dwellActionStyle}
               >
                 <Text style={{ color: C.info, fontWeight: "700" }}>
                   Park for night
                 </Text>
               </Pressable>
-              <Pressable onPress={dismissDwell}>
+              <Pressable onPress={dismissDwell} style={dwellActionStyle}>
                 <Text style={{ color: C.muted }}>Dismiss</Text>
               </Pressable>
             </View>
@@ -502,7 +522,9 @@ export default function DriveScreen() {
                   {briefing.plannedDay.title ??
                     briefing.plannedDay.overnightName ??
                     "Today"}
-                  <Text style={{ color: C.muted, fontSize: 13, fontWeight: "600" }}>
+                  <Text
+                    style={{ color: C.muted, fontSize: 13, fontWeight: "600" }}
+                  >
                     {"  "}
                     {briefing.plannedDay.intent}
                   </Text>
@@ -517,7 +539,9 @@ export default function DriveScreen() {
                 </Text>
               )}
               {briefing.plannedDay?.heroTitle && (
-                <Text style={{ color: C.success, fontSize: 14, fontWeight: "600" }}>
+                <Text
+                  style={{ color: C.success, fontSize: 14, fontWeight: "600" }}
+                >
                   ★ {briefing.plannedDay.heroTitle}
                 </Text>
               )}
@@ -648,7 +672,15 @@ export default function DriveScreen() {
         {/* RECORD TRACK + VAN STATE */}
         <View style={{ flexDirection: "row", gap: 10 }}>
           <Pressable
-            onPress={() => (track.recording ? track.stop() : track.start())}
+            onPress={() => {
+              if (track.recording) {
+                manualStopRef.current = true;
+                track.stop();
+              } else {
+                manualStopRef.current = false;
+                void track.start();
+              }
+            }}
             style={{
               flex: 1,
               flexDirection: "row",
