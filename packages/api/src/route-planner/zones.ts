@@ -104,7 +104,9 @@ export function computeFuelZones(
  *
  * - **safe** (green): plenty of range left before the next projected empty
  * - **caution** (amber): approaching empty — time to hunt Costco / fuel
- * - **empty** (red): past projected empty if you didn't refuel at the zone
+ * - **empty** (red): at/past projected empty (reachable via `fuelBandAt`
+ *   directly; polyline coloring auto-refills at each range boundary, so its
+ *   segments cycle safe → caution and back)
  *
  * The accumulator resets at each fuel-zone mile so the route "refills" at
  * predicted stops (same cadence as `computeFuelZones`).
@@ -123,7 +125,7 @@ export const DEFAULT_CAUTION_FRACTION = 0.25;
 export interface FuelColoredSegment {
   band: FuelBand;
   color: string;
-  /** Inclusive start / exclusive end indices into the source points array. */
+  /** Inclusive start / inclusive end indices into the source points array. */
   fromIndex: number;
   toIndex: number;
   coordinates: LatLng[];

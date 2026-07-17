@@ -1120,7 +1120,8 @@ export const tripsRouter = {
         key: `share:join:token:${input.token.slice(0, 64)}`,
         limit: 30,
         windowMs: 60_000,
-        message: "This invite link is being used too quickly. Try again shortly.",
+        message:
+          "This invite link is being used too quickly. Try again shortly.",
       });
       const result = await joinTripByShareToken(createTripStore(ctx.db), {
         token: input.token,
@@ -1754,41 +1755,44 @@ export const tripsRouter = {
 
       // Van profile: prefer the one on the latest fuel log, else the workspace's
       // sole van (same fallback as predictZones) so fuel range isn't blank.
+      // Single query either way — this endpoint is polled every 10s in Drive.
       let vanProfile: {
         mpgEstimate: number | null;
         tankGallons: number | null;
       } | null = null;
-      let vanProfileId = fuelRow?.vanProfileId ?? null;
-      if (!vanProfileId) {
-        const workspaceVans = (await ctx.db
-          .select({ id: vanProfiles.id })
-          .from(vanProfiles)
-          .where(eq(vanProfiles.workspaceId, ctx.workspaceId))
-          .limit(2)) as Array<{ id: string }>;
-        if (workspaceVans.length === 1) {
-          vanProfileId = workspaceVans[0]!.id;
-        }
-      }
-      if (vanProfileId) {
-        const [vanRow] = (await ctx.db
-          .select({
-            mpgEstimate: vanProfiles.mpgEstimate,
-            tankGallons: vanProfiles.tankGallons,
-          })
-          .from(vanProfiles)
-          .where(eq(vanProfiles.id, vanProfileId))
-          .limit(1)) as Array<{
-          mpgEstimate: string | null;
-          tankGallons: string | null;
-        }>;
-        if (vanRow) {
-          vanProfile = {
-            mpgEstimate:
-              vanRow.mpgEstimate != null ? Number(vanRow.mpgEstimate) : null,
-            tankGallons:
-              vanRow.tankGallons != null ? Number(vanRow.tankGallons) : null,
-          };
-        }
+      const vanProfileId = fuelRow?.vanProfileId ?? null;
+      const vanRows = (await ctx.db
+        .select({
+          id: vanProfiles.id,
+          mpgEstimate: vanProfiles.mpgEstimate,
+          tankGallons: vanProfiles.tankGallons,
+        })
+        .from(vanProfiles)
+        .where(
+          vanProfileId
+            ? eq(vanProfiles.id, vanProfileId)
+            : eq(vanProfiles.workspaceId, ctx.workspaceId),
+        )
+        .limit(2)) as Array<{
+        id: string;
+        mpgEstimate: string | null;
+        tankGallons: string | null;
+      }>;
+      // Linked van → exactly the row we asked for; unlinked → adopt only a
+      // sole workspace van (2+ vans stay ambiguous, vanProfile stays null).
+      const vanRow =
+        vanProfileId != null
+          ? vanRows[0]
+          : vanRows.length === 1
+            ? vanRows[0]
+            : undefined;
+      if (vanRow) {
+        vanProfile = {
+          mpgEstimate:
+            vanRow.mpgEstimate != null ? Number(vanRow.mpgEstimate) : null,
+          tankGallons:
+            vanRow.tankGallons != null ? Number(vanRow.tankGallons) : null,
+        };
       }
 
       return buildDrivingSummary({
