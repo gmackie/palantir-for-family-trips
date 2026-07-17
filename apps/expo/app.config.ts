@@ -49,7 +49,6 @@ const EAS_PROJECT_ID = "5f21337f-9f48-4b0c-8d02-656e4a08dc86";
 //   production  → bare store id
 const getVariantIcon = (): string => {
   if (APP_VARIANT === "development") {
-    // Prefer icon-expo when present; fall back to existing icon-dev asset.
     return "./assets/icon-expo.png";
   }
   if (APP_VARIANT === "preview") return "./assets/icon-dev.png";
@@ -222,8 +221,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ...(process.env.PREFLIGHT_OTA_URL?.startsWith("http://")
           ? {
               NSAppTransportSecurity: {
+                // Covers the LAN Preflight OTA host (IP-literal http) without
+                // disabling ATS for every other connection the app makes.
                 NSAllowsLocalNetworking: true,
-                NSAllowsArbitraryLoads: true,
               },
             }
           : {}),

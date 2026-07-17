@@ -164,7 +164,6 @@ export function initAuth<
       "sortey://",
       "sortey-dev://",
       "sortey-expo://",
-      "sortey-preview://",
       "exp://",
       "https://appleid.apple.com",
     ],
