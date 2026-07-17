@@ -1,0 +1,6 @@
+
+> @sortey/flags@ lint /Users/mackieg/.config/superpowers/worktrees/sortey/landing-20260717/packages/flags
+> oxlint .
+
+Found 0 warnings and 0 errors.
+Finished in 15ms on 6 files with 95 rules using 12 threads.

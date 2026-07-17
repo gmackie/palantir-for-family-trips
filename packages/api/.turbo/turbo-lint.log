@@ -1,0 +1,65 @@
+
+> @sortey/api@ lint /Users/mackieg/.config/superpowers/worktrees/sortey/landing-20260717/packages/api
+> oxlint .
+
+
+  ! eslint(no-unused-vars): Type 'ResourceModel' is imported but never used.
+   ,-[src/daymap/__tests__/service.test.ts:8:8]
+ 7 |   predictServiceNeeds,
+ 8 |   type ResourceModel,
+   :        ^^^^^^|^^^^^^
+   :              `-- 'ResourceModel' is imported here
+ 9 |   type ServicePoi,
+   `----
+  help: Consider removing this import.
+
+  ! unicorn(no-useless-fallback-in-spread): Empty fallbacks in spreads are unnecessary
+     ,-[src/trips/dashboard-state.ts:227:13]
+ 226 |             ...current.ui.timeline,
+ 227 |             ...(patch.ui.timeline ?? {}),
+     :             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 228 |           },
+     `----
+  help: Spreading falsy values in object literals won't add any unexpected properties, so it's unnecessary to add an empty object as fallback.
+
+  ! unicorn(no-useless-fallback-in-spread): Empty fallbacks in spreads are unnecessary
+     ,-[src/trips/dashboard-state.ts:231:13]
+ 230 |             ...current.ui.map,
+ 231 |             ...(patch.ui.map ?? {}),
+     :             ^^^^^^^^^^^^^^^^^^^^^^^
+ 232 |           },
+     `----
+  help: Spreading falsy values in object literals won't add any unexpected properties, so it's unnecessary to add an empty object as fallback.
+
+  ! eslint(no-unused-vars): Parameter 'i' is declared but never used. Unused parameters should start with a '_'.
+     ,-[src/route-planner/itinerary-template.ts:358:30]
+ 357 | 
+ 358 |   const rest = stops.map((s, i) => ({
+     :                              |
+     :                              `-- 'i' is declared here
+ 359 |     ...s,
+     `----
+  help: Consider removing this parameter.
+
+  ! eslint(no-unused-vars): Identifier 'applyDatabaseSessionContext' is imported but never used.
+    ,-[src/trpc.ts:10:3]
+  9 | import {
+ 10 |   applyDatabaseSessionContext,
+    :   ^^^^^^^^^^^^^|^^^^^^^^^^^^^
+    :                `-- 'applyDatabaseSessionContext' is imported here
+ 11 |   withDatabaseSessionContext,
+    `----
+  help: Consider removing this import.
+
+  ! eslint(no-unused-vars): Identifier 'and' is imported but never used.
+    ,-[src/route-planner/share-ops.ts:10:10]
+  9 | 
+ 10 | import { and, asc, eq } from "@sortey/db";
+    :          ^|^
+    :           `-- 'and' is imported here
+ 11 | import { pins, tripSegments, tripShares, trips } from "@sortey/db/schema";
+    `----
+  help: Consider removing this import.
+
+Found 6 warnings and 0 errors.
+Finished in 13ms on 159 files with 95 rules using 12 threads.

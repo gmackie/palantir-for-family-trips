@@ -26,6 +26,7 @@ import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 interface OcrResult {
   merchant?: string;
+  currency?: string;
   subtotalCents?: number;
   taxCents?: number;
   tipCents?: number;
@@ -292,6 +293,19 @@ export default function NewExpense() {
 
       if (ocr.taxCents != null)
         setTaxDollars(centsToDisplay(Math.round(ocr.taxCents)));
+      // Tip is extracted by the OCR pipeline (gratuity line / total gap) and
+      // must pre-fill just like tax — otherwise settlement misses tip shares.
+      if (ocr.tipCents != null && ocr.tipCents > 0) {
+        setTipDollars(centsToDisplay(Math.round(ocr.tipCents)));
+        setSelectedPreset(null);
+      } else if (ocr.tipCents === 0) {
+        setTipDollars("");
+        setSelectedPreset(0); // "None"
+      }
+      // Currency detection (A8): surface non-USD so settlement stays single-currency.
+      if (ocr.currency && typeof ocr.currency === "string") {
+        setCurrency(ocr.currency.toUpperCase());
+      }
       if (ocr.lineItems && ocr.lineItems.length > 0) {
         setLineItemDrafts(
           ocr.lineItems.map((item) => ({
@@ -312,6 +326,10 @@ export default function NewExpense() {
         }
       } else if (ocr.subtotalCents != null) {
         setSubtotalDollars(centsToDisplay(Math.round(ocr.subtotalCents)));
+      }
+
+      if (ocr.warnings && ocr.warnings.length > 0) {
+        Alert.alert("Review amounts", ocr.warnings.slice(0, 3).join("\n"));
       }
 
       if (itemCount > 0 || ocr.merchant) {
@@ -728,6 +746,24 @@ export default function NewExpense() {
                   );
                 })}
               </ScrollView>
+            </View>
+          )}
+
+          {currency.toUpperCase() !== "USD" && (
+            <View
+              style={{
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: C.warning,
+                backgroundColor: C.warningBg,
+                borderRadius: R.md,
+                padding: 12,
+              }}
+            >
+              <Text style={{ color: C.warning, fontSize: 13 }}>
+                This receipt appears to be in {currency.toUpperCase()}.
+                Settlement only works within a single currency.
+              </Text>
             </View>
           )}
 

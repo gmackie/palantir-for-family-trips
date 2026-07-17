@@ -709,6 +709,9 @@ importers:
       '@sortey/db':
         specifier: workspace:*
         version: link:../db
+      '@sortey/email':
+        specifier: workspace:*
+        version: link:../email
       '@sortey/flags':
         specifier: workspace:*
         version: link:../flags

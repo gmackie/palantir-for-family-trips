@@ -25,6 +25,7 @@ const TEMPLATES = [
     icon: "add-circle-outline" as const,
     color: C.muted,
     mode: "destination" as TripMode,
+    groupMode: false,
     name: "",
     destination: "",
   },
@@ -34,6 +35,8 @@ const TEMPLATES = [
     icon: "people-outline" as const,
     color: "#F472B6",
     mode: "destination" as TripMode,
+    // Reunion still uses group mode so expenses can split across households.
+    groupMode: true,
     name: "Family Reunion",
     destination: "",
   },
@@ -43,6 +46,7 @@ const TEMPLATES = [
     icon: "sunny-outline" as const,
     color: "#FBBF24",
     mode: "destination" as TripMode,
+    groupMode: true,
     name: "Beach Trip",
     destination: "",
   },
@@ -52,6 +56,7 @@ const TEMPLATES = [
     icon: "car-outline" as const,
     color: "#A78BFA",
     mode: "roadtrip" as TripMode,
+    groupMode: false,
     name: "Road Trip",
     destination: "",
   },
@@ -61,6 +66,7 @@ const TEMPLATES = [
     icon: "snow-outline" as const,
     color: "#6CB6FF",
     mode: "destination" as TripMode,
+    groupMode: true,
     name: "Ski Trip",
     destination: "",
   },
@@ -70,6 +76,7 @@ const TEMPLATES = [
     icon: "sparkles-outline" as const,
     color: "#D2A8FF",
     mode: "destination" as TripMode,
+    groupMode: true,
     name: "",
     destination: "",
   },
@@ -105,11 +112,15 @@ function StepIndicator({ current }: { current: Step }) {
 }
 
 function ModeStep({
-  value,
-  onChange,
+  tripMode,
+  onTripModeChange,
+  groupMode,
+  onGroupModeChange,
 }: {
-  value: TripMode;
-  onChange: (m: TripMode) => void;
+  tripMode: TripMode;
+  onTripModeChange: (m: TripMode) => void;
+  groupMode: boolean;
+  onGroupModeChange: (v: boolean) => void;
 }) {
   return (
     <View style={{ gap: 16 }}>
@@ -123,32 +134,37 @@ function ModeStep({
       >
         What kind of trip?
       </Text>
+      <Text style={{ color: C.muted, fontSize: 15, marginBottom: 4 }}>
+        Trip mode is the map and planning paradigm. Group mode controls expense
+        splitting — they are independent.
+      </Text>
 
       <Pressable
-        onPress={() => onChange("destination")}
+        onPress={() => onTripModeChange("destination")}
         style={{
-          backgroundColor: value === "destination" ? C.surface : "transparent",
+          backgroundColor:
+            tripMode === "destination" ? C.surface : "transparent",
           borderWidth: 2,
-          borderColor: value === "destination" ? C.info : C.border,
+          borderColor: tripMode === "destination" ? C.info : C.border,
           borderRadius: R.md,
           padding: 20,
           gap: 6,
         }}
       >
         <Text style={{ color: C.fg, fontSize: 18, fontWeight: "600" }}>
-          Group Trip
+          Destination
         </Text>
         <Text style={{ color: C.muted, fontSize: 15 }}>
-          Fixed destination, shared expenses, group coordination
+          Fixed place — area map, lodging, arrivals
         </Text>
       </Pressable>
 
       <Pressable
-        onPress={() => onChange("roadtrip")}
+        onPress={() => onTripModeChange("roadtrip")}
         style={{
-          backgroundColor: value === "roadtrip" ? C.surface : "transparent",
+          backgroundColor: tripMode === "roadtrip" ? C.surface : "transparent",
           borderWidth: 2,
-          borderColor: value === "roadtrip" ? C.warning : C.border,
+          borderColor: tripMode === "roadtrip" ? C.warning : C.border,
           borderRadius: R.md,
           padding: 20,
           gap: 6,
@@ -180,6 +196,57 @@ function ModeStep({
         </View>
         <Text style={{ color: C.muted, fontSize: 15 }}>
           Route-based with fuel tracking and waypoints
+        </Text>
+      </Pressable>
+
+      <Text
+        style={{
+          color: C.fg,
+          fontSize: 18,
+          fontWeight: "600",
+          marginTop: 8,
+        }}
+      >
+        Family or group?
+      </Text>
+
+      <Pressable
+        onPress={() => onGroupModeChange(false)}
+        style={{
+          backgroundColor: !groupMode ? C.surface : "transparent",
+          borderWidth: 2,
+          borderColor: !groupMode ? C.info : C.border,
+          borderRadius: R.md,
+          padding: 20,
+          gap: 6,
+          minHeight: 56,
+        }}
+      >
+        <Text style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}>
+          Family
+        </Text>
+        <Text style={{ color: C.muted, fontSize: 14 }}>
+          Solo or household — no expense splitting
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => onGroupModeChange(true)}
+        style={{
+          backgroundColor: groupMode ? C.surface : "transparent",
+          borderWidth: 2,
+          borderColor: groupMode ? C.info : C.border,
+          borderRadius: R.md,
+          padding: 20,
+          gap: 6,
+          minHeight: 56,
+        }}
+      >
+        <Text style={{ color: C.fg, fontSize: 16, fontWeight: "600" }}>
+          Group
+        </Text>
+        <Text style={{ color: C.muted, fontSize: 14 }}>
+          Shared members, receipt claims, and settlement
         </Text>
       </Pressable>
     </View>
@@ -415,6 +482,7 @@ export default function NewTripScreen() {
 
   const [step, setStep] = useState<Step>("template");
   const [tripMode, setTripMode] = useState<TripMode>("destination");
+  const [groupMode, setGroupMode] = useState(false);
   const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -459,6 +527,7 @@ export default function NewTripScreen() {
         workspaceId,
         name: name.trim(),
         tripMode,
+        groupMode,
         destinationName: destination.trim() || undefined,
         startDate: startDate.trim() || undefined,
         endDate: endDate.trim() || undefined,
@@ -521,11 +590,9 @@ export default function NewTripScreen() {
                     if (t.name) setName(t.name);
                     if (t.destination) setDestination(t.destination);
                     setTripMode(t.mode);
-                    if (t.key === "blank") {
-                      setStep("mode");
-                    } else {
-                      setStep("details");
-                    }
+                    setGroupMode(t.groupMode);
+                    // Always visit mode so trip mode + group/family stay explicit.
+                    setStep("mode");
                   }}
                   style={{
                     flexDirection: "row",
@@ -567,7 +634,12 @@ export default function NewTripScreen() {
             </View>
           )}
           {step === "mode" && (
-            <ModeStep value={tripMode} onChange={setTripMode} />
+            <ModeStep
+              tripMode={tripMode}
+              onTripModeChange={setTripMode}
+              groupMode={groupMode}
+              onGroupModeChange={setGroupMode}
+            />
           )}
           {step === "details" && (
             <DetailsStep

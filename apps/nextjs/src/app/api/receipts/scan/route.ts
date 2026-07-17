@@ -1,8 +1,14 @@
+import {
+  assertRateLimit,
+  RECEIPT_OCR_RATE_LIMIT,
+  receiptOcrRateLimitKey,
+} from "@sortey/api";
 import { extractAndReconcileReceipt } from "@sortey/api/ocr";
 import { eq } from "@sortey/db";
 import { db } from "@sortey/db/client";
 import { getR2Bucket } from "@sortey/db/runtime";
 import { session as sessionTable, user as userTable } from "@sortey/db/schema";
+import { TRPCError } from "@trpc/server";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getSession } from "~/auth/server";
@@ -81,6 +87,18 @@ export async function POST(request: NextRequest) {
   const session = await getSessionWithFallback(request);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    assertRateLimit({
+      key: receiptOcrRateLimitKey(session.user.id),
+      ...RECEIPT_OCR_RATE_LIMIT,
+    });
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "TOO_MANY_REQUESTS") {
+      return NextResponse.json({ error: error.message }, { status: 429 });
+    }
+    throw error;
   }
 
   // Cast around the @types/node web-globals vs `dom` lib FormData conflict

@@ -73,8 +73,8 @@ export default async function TripsPage() {
           <section className="mt-10 rounded-[4px] border border-[#21262D] bg-[#161B22] p-8">
             <h2 className="text-xl font-bold text-[#C9D1D9]">No trips yet</h2>
             <p className="mt-2 max-w-xl text-sm text-[#8B949E]">
-              Start with the destination and dates. You can refine members,
-              segments, and claim mode after the trip exists.
+              Start with destination, dates, and family or group mode. You can
+              refine members, segments, and claim mode after the trip exists.
             </p>
             <div className="mt-6">
               <Link
@@ -129,12 +129,22 @@ export default async function TripsPage() {
                         {trip.destinationName ?? "Destination pending"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {(trip as any).tripMode === "roadtrip" && (
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {(trip as { tripMode?: string }).tripMode ===
+                        "roadtrip" && (
                         <span className="inline-flex items-center rounded-[2px] border border-[#D29922]/40 bg-[#D29922]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#D29922]">
                           Road Trip
                         </span>
                       )}
+                      <span
+                        className={`inline-flex items-center rounded-[2px] border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                          trip.groupMode
+                            ? "border-[#58A6FF]/40 bg-[#58A6FF]/10 text-[#58A6FF]"
+                            : "border-[#484F58]/40 bg-[#484F58]/10 text-[#8B949E]"
+                        }`}
+                      >
+                        {trip.groupMode ? "Group" : "Family"}
+                      </span>
                       <span
                         className={`inline-flex items-center rounded-[2px] border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusColor(trip.status)}`}
                       >

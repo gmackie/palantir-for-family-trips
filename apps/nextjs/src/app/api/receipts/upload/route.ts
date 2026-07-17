@@ -1,6 +1,13 @@
-import { appRouter, createTRPCContext } from "@sortey/api";
+import {
+  appRouter,
+  assertRateLimit,
+  createTRPCContext,
+  RECEIPT_OCR_RATE_LIMIT,
+  receiptOcrRateLimitKey,
+} from "@sortey/api";
 import { extractAndReconcileReceipt } from "@sortey/api/ocr";
 import { getR2Bucket } from "@sortey/db/runtime";
+import { TRPCError } from "@trpc/server";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { auth, getSession } from "~/auth/server";
@@ -47,6 +54,9 @@ export async function POST(request: NextRequest) {
   const workspaceId = formData.get("workspaceId");
   const tripId = formData.get("tripId");
   const expenseId = formData.get("expenseId");
+  // When the client already ran extractFromReceipt (web scan-to-prefill), skip
+  // a second paid OCR call and attach the image with client-supplied provenance.
+  const skipOcr = formData.get("skipOcr") === "true";
 
   if (
     !(file instanceof File) ||
@@ -66,6 +76,20 @@ export async function POST(request: NextRequest) {
       { error: `Unsupported mime type ${mimeType}` },
       { status: 400 },
     );
+  }
+
+  if (!skipOcr) {
+    try {
+      assertRateLimit({
+        key: receiptOcrRateLimitKey(session.user.id),
+        ...RECEIPT_OCR_RATE_LIMIT,
+      });
+    } catch (error) {
+      if (error instanceof TRPCError && error.code === "TOO_MANY_REQUESTS") {
+        return NextResponse.json({ error: error.message }, { status: 429 });
+      }
+      throw error;
+    }
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -88,6 +112,7 @@ export async function POST(request: NextRequest) {
   // Run OCR and reconciliation first so we can persist its provenance on the
   // expense in the same attach call. If OCR fails, we still attach the image
   // (with a "failed" status) so the user can edit the draft manually.
+  // When `skipOcr` is set, reuse client-supplied provenance from a prior scan.
   let ocr = null;
   let ocrError: string | undefined;
   let ocrMeta:
@@ -97,31 +122,75 @@ export async function POST(request: NextRequest) {
         ocrProvider: "claude" | "gemini" | "fixture";
         ocrStatus: "success";
       }
-    | { ocrStatus: "failed" };
-  try {
-    const result = await extractAndReconcileReceipt({
-      imageBytes: bytes,
-      mimeType: mimeType as
-        | "image/jpeg"
-        | "image/png"
-        | "image/webp"
-        | "image/gif",
-    });
-    ocr = {
-      ...result.sanitized,
-      confidence: result.confidence,
-      warnings: result.warnings,
-      provider: result.provider,
-    };
+    | {
+        ocrConfidence?: number;
+        ocrWarnings?: string[];
+        ocrProvider?: "claude" | "gemini" | "fixture";
+        ocrStatus: "success" | "failed";
+      };
+
+  if (skipOcr) {
+    const confRaw = formData.get("ocrConfidence");
+    const conf =
+      typeof confRaw === "string" && confRaw.length > 0
+        ? Number.parseFloat(confRaw)
+        : undefined;
+    const warningsRaw = formData.get("ocrWarnings");
+    let warnings: string[] | undefined;
+    if (typeof warningsRaw === "string" && warningsRaw.length > 0) {
+      try {
+        const parsed: unknown = JSON.parse(warningsRaw);
+        if (Array.isArray(parsed)) {
+          warnings = parsed.filter((w): w is string => typeof w === "string");
+        }
+      } catch {
+        warnings = undefined;
+      }
+    }
+    const providerRaw = formData.get("ocrProvider");
+    const provider =
+      providerRaw === "claude" ||
+      providerRaw === "gemini" ||
+      providerRaw === "fixture"
+        ? providerRaw
+        : undefined;
+    const statusRaw = formData.get("ocrStatus");
+    const ocrStatus = statusRaw === "failed" ? "failed" : "success";
     ocrMeta = {
-      ocrConfidence: result.confidence,
-      ocrWarnings: result.warnings,
-      ocrProvider: result.provider,
-      ocrStatus: "success",
+      ...(typeof conf === "number" && Number.isFinite(conf)
+        ? { ocrConfidence: conf }
+        : {}),
+      ...(warnings ? { ocrWarnings: warnings } : {}),
+      ...(provider ? { ocrProvider: provider } : {}),
+      ocrStatus,
     };
-  } catch (error) {
-    ocrError = error instanceof Error ? error.message : "OCR extraction failed";
-    ocrMeta = { ocrStatus: "failed" };
+  } else {
+    try {
+      const result = await extractAndReconcileReceipt({
+        imageBytes: bytes,
+        mimeType: mimeType as
+          | "image/jpeg"
+          | "image/png"
+          | "image/webp"
+          | "image/gif",
+      });
+      ocr = {
+        ...result.sanitized,
+        confidence: result.confidence,
+        warnings: result.warnings,
+        provider: result.provider,
+      };
+      ocrMeta = {
+        ocrConfidence: result.confidence,
+        ocrWarnings: result.warnings,
+        ocrProvider: result.provider,
+        ocrStatus: "success",
+      };
+    } catch (error) {
+      ocrError =
+        error instanceof Error ? error.message : "OCR extraction failed";
+      ocrMeta = { ocrStatus: "failed" };
+    }
   }
 
   // Attach the storage key + OCR provenance via the tRPC mutation (enforces

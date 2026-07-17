@@ -30,6 +30,11 @@ import {
   type OcrProvider,
   type OcrStatus,
 } from "../ocr/review";
+import {
+  assertRateLimit,
+  RECEIPT_OCR_RATE_LIMIT,
+  receiptOcrRateLimitKey,
+} from "../rate-limit";
 
 const expenseCategoryEnum = z.enum([
   "meal",
@@ -1072,14 +1077,18 @@ export const expensesRouter = {
   /**
    * Receipt OCR pre-fill: parse a receipt image into reconciled, form-ready
    * fields for the create form to review before submit. Persists nothing; never
-   * throws to the client. Mirrors `ferries.extractFromImage`.
+   * throws to the client (except rate-limit). Mirrors `ferries.extractFromImage`.
    */
   extractFromReceipt: tripProcedure()
     .input(receiptExtractInputSchema)
-    .mutation(({ input }) =>
-      extractReceiptFromImage({
+    .mutation(({ ctx, input }) => {
+      assertRateLimit({
+        key: receiptOcrRateLimitKey(ctx.session.user.id),
+        ...RECEIPT_OCR_RATE_LIMIT,
+      });
+      return extractReceiptFromImage({
         imageBase64: input.imageBase64,
         mimeType: input.mimeType,
-      }),
-    ),
+      });
+    }),
 } satisfies TRPCRouterRecord;

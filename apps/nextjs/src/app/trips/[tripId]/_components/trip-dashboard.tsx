@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+
+import { usePersistedTripState } from "../_lib/use-persisted-trip-state";
 import { CenterView } from "./center-view";
 import { ExpensesPanel } from "./inspector/expenses-panel";
 import { MembersPanel } from "./inspector/members-panel";
@@ -63,8 +64,20 @@ export function TripDashboard(props: {
 }) {
   const { trip, segments, workspaceId, currentUserId, googleMapsApiKey } =
     props;
-  const [activeNav, setActiveNav] = useState<NavItem>("overview");
-  const [timelineOpen, setTimelineOpen] = useState(true);
+  const [dashboardState, setDashboardState] = usePersistedTripState({
+    workspaceId,
+    tripId: trip.id,
+    initialValue: {
+      activeNav: trip.status === "planning" ? "polls" : "overview",
+    },
+  });
+  const activeNav = (() => {
+    const persisted = dashboardState.activeNav;
+    const planningOnly = persisted === "polls" || persisted === "proposals";
+    if (planningOnly && trip.status !== "planning") return "overview";
+    return persisted;
+  })();
+  const timelineOpen = dashboardState.timelineOpen;
   const router = useRouter();
 
   function handleNavClick(item: NavItem) {
@@ -73,7 +86,7 @@ export function TripDashboard(props: {
       router.push(`/trips/${trip.id}/chat`);
       return;
     }
-    setActiveNav(item);
+    setDashboardState((current) => ({ ...current, activeNav: item }));
   }
 
   function renderInspector() {
@@ -238,7 +251,12 @@ export function TripDashboard(props: {
         startDate={trip.startDate}
         endDate={trip.endDate}
         isOpen={timelineOpen}
-        onToggle={() => setTimelineOpen(!timelineOpen)}
+        onToggle={() =>
+          setDashboardState((current) => ({
+            ...current,
+            timelineOpen: !current.timelineOpen,
+          }))
+        }
       />
     </div>
   );

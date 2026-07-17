@@ -582,6 +582,7 @@ describe("trip creation", () => {
 
     expect(created.trip.status).toBe("planning");
     expect(created.trip.claimMode).toBe("organizer");
+    expect(created.trip.groupMode).toBe(false);
     expect(created.trip.tz).toBe("Europe/Rome");
     expect(created.member.role).toBe("organizer");
     expect(created.segment.name).toBe("Milan");
@@ -590,6 +591,25 @@ describe("trip creation", () => {
     expect(state.tripMembers).toHaveLength(1);
     expect(state.tripSegments).toHaveLength(1);
     expect(state.segmentMembers).toHaveLength(1);
+  });
+
+  it("creates a trip with group mode enabled at creation time", async () => {
+    const { store } = createTripStore();
+
+    const created = await createTripRecord(store, {
+      workspaceId: "workspace_1",
+      createdByUserId: "user_1",
+      name: "Friends in Austin",
+      destinationName: "Austin, TX",
+      startDate: "2026-09-01",
+      endDate: "2026-09-05",
+      tz: "America/Chicago",
+      groupMode: true,
+    });
+
+    expect(created.trip.groupMode).toBe(true);
+    expect(created.trip.status).toBe("planning");
+    expect(created.member.role).toBe("organizer");
   });
 
   it("lists only trips the user belongs to inside the requested workspace", async () => {

@@ -1,0 +1,6 @@
+
+> @sortey/billing@ lint /Users/mackieg/.config/superpowers/worktrees/sortey/landing-20260717/packages/billing
+> oxlint .
+
+Found 0 warnings and 0 errors.
+Finished in 4ms on 2 files with 95 rules using 12 threads.
