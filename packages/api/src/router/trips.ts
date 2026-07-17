@@ -21,6 +21,15 @@ import { z } from "zod/v4";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
 import { sendPushToTripMembers } from "../notifications/send";
 import { assertRateLimit } from "../rate-limit";
+import {
+  parseLegacyLocalStorageState,
+  tripDashboardStatePatchSchema,
+} from "../trips/dashboard-state";
+import {
+  createTripMemberStateStore,
+  getTripDashboardState,
+  updateTripDashboardState,
+} from "../trips/dashboard-state-store";
 import { buildDrivingSummary } from "../trips/driving-summary";
 import { assertValidTripStatusTransition } from "../trips/status-transitions";
 import { protectedProcedure, publicProcedure } from "../trpc";
@@ -1898,4 +1907,45 @@ export const tripsRouter = {
         now,
       });
     }),
+
+  getDashboardState: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        legacyTripDocument: z.string().nullable().optional(),
+        legacyViewerProfile: z.string().nullable().optional(),
+      }),
+    )
+    .query(({ ctx, input }) => {
+      const legacyPatch =
+        input.legacyTripDocument || input.legacyViewerProfile
+          ? parseLegacyLocalStorageState({
+              tripDocumentRaw: input.legacyTripDocument ?? null,
+              viewerProfileRaw: input.legacyViewerProfile ?? null,
+            })
+          : null;
+
+      return getTripDashboardState(createTripMemberStateStore(ctx.db), {
+        tripId: ctx.tripId,
+        userId: ctx.session.user.id,
+        legacyPatch,
+      });
+    }),
+
+  updateDashboardState: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        patch: tripDashboardStatePatchSchema,
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      updateTripDashboardState(createTripMemberStateStore(ctx.db), {
+        tripId: ctx.tripId,
+        userId: ctx.session.user.id,
+        patch: input.patch,
+      }),
+    ),
 } satisfies TRPCRouterRecord;

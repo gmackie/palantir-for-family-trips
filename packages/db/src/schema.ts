@@ -258,6 +258,30 @@ export const tripMembers = pgTable(
   ],
 );
 
+/** Per-user dashboard UI preferences for a trip (replaces localStorage). */
+export const tripMemberState = pgTable(
+  "trip_member_state",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    userId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    state: t.jsonb().$type<Record<string, unknown>>().notNull(),
+    createdAt: t.timestamp().defaultNow().notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    unique("trip_member_state_trip_user_unique").on(table.tripId, table.userId),
+  ],
+);
+
 export const tripSegments = pgTable(
   "trip_segment",
   (t) => ({
@@ -1583,9 +1607,7 @@ export const tripDays = pgTable(
       .timestamp({ mode: "date", withTimezone: true })
       .$onUpdateFn(() => sql`now()`),
   }),
-  (table) => [
-    unique("trip_day_trip_date_unique").on(table.tripId, table.date),
-  ],
+  (table) => [unique("trip_day_trip_date_unique").on(table.tripId, table.date)],
 );
 
 // Historical resource-level readings (grey/black/fresh/propane/fuel), from

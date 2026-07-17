@@ -33,6 +33,7 @@ export const workspaceRlsTargets = [
 export const tripChildRlsTargets = [
   { tableName: "trip_segment", tripColumn: "trip_id" },
   { tableName: "trip_member", tripColumn: "trip_id" },
+  { tableName: "trip_member_state", tripColumn: "trip_id" },
   { tableName: "trip_invite", tripColumn: "trip_id" },
   { tableName: "segment_member", parentTable: "trip_segment" },
   // Expenses live on trips (not segments directly for the join, but they
