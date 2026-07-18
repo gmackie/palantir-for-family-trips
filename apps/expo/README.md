@@ -17,6 +17,7 @@ Use Preflight for the repeatable mobile smoke proof:
 ```bash
 /Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform ios --lane simulator --wait-for-runner
 /Volumes/dev/preflight/preflight prove-app --app-dir apps/expo --platform android --lane simulator --wait-for-runner
+```
 
 ## OTA (EAS Update) + Preflight
 
@@ -35,7 +36,6 @@ pnpm preflight:preview:sim        # prove-app smoke (local build strategy)
 ```
 
 In-app: Settings → **App updates** → Check for update → Restart.
-```
 
 Android local builds require Java 17 plus the Android SDK:
 
@@ -54,6 +54,17 @@ xcrun xctrace list devices
 ```
 
 If an iPhone or iPad appears offline, unlock it, trust the Mac, and rerun the target discovery before starting a development-lane proof.
+
+## Tests
+
+Unit tests run on vitest and are part of turbo CI (`pnpm test` at the repo root includes this app):
+
+```bash
+pnpm --filter @sortey/expo test        # single run
+pnpm --filter @sortey/expo test:watch  # watch mode
+```
+
+Coverage lives next to the source in `src/utils/*.test.ts` — motion-mode state machine, fuel-band parity with the API, and active-trip redirect logic.
 
 ## Release Readiness
 
