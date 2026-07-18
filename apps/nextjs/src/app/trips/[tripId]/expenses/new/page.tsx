@@ -1,13 +1,17 @@
 "use client";
 
-import { OCR_REVIEW_CONFIDENCE_THRESHOLD } from "@sortey/api/ocr/review";
 import { Button } from "@sortey/ui/button";
 import { Field, FieldContent, FieldGroup, FieldLabel } from "@sortey/ui/field";
 import { Input } from "@sortey/ui/input";
+import {
+  ReceiptUpload,
+  type ReceiptUploadExtracted,
+  type ReceiptUploadStatus,
+} from "@sortey/ui/receipt-upload";
 import { toast } from "@sortey/ui/toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 
@@ -43,6 +47,13 @@ type ScannedLineItem = {
   quantity: number;
   unitPriceCents: number;
   lineTotalCents: number;
+};
+
+type OcrProvenance = {
+  ocrConfidence: number;
+  ocrWarnings: string[];
+  ocrProvider: "claude" | "gemini" | "fixture";
+  ocrStatus: "success" | "failed";
 };
 
 function dollarsToCents(value: string): number {
@@ -98,14 +109,19 @@ export default function NewExpensePage() {
   const [total, setTotal] = useState("");
   const [currency, setCurrency] = useState("USD");
 
-  // Scan state. Line items from the scan are stashed here and attached after the
-  // draft is created (the create form has no inline line-item editor).
+  // Scan state. Line items + OCR provenance are stashed here and applied after
+  // the draft is created (create form has no inline line-item editor).
   const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [scannedLineItems, setScannedLineItems] = useState<ScannedLineItem[]>(
     [],
   );
   const [scanNote, setScanNote] = useState<string | null>(null);
-  const scanInputRef = useRef<HTMLInputElement>(null);
+  const [ocrProvenance, setOcrProvenance] = useState<OcrProvenance | null>(
+    null,
+  );
+  const [extractedPreview, setExtractedPreview] =
+    useState<ReceiptUploadExtracted | null>(null);
 
   // Fetch workspace context to get workspaceId
   const workspaceQuery = useQuery(
@@ -125,22 +141,33 @@ export default function NewExpensePage() {
   const addLineItems = useMutation(
     trpc.expenses.addLineItems.mutationOptions(),
   );
-  const updateExpense = useMutation(
-    trpc.expenses.updateDraft.mutationOptions(),
-  );
   const extractReceipt = useMutation(
     trpc.expenses.extractFromReceipt.mutationOptions(),
   );
 
+  function clearScan() {
+    setReceiptFile(null);
+    setScannedLineItems([]);
+    setScanNote(null);
+    setScanError(null);
+    setOcrProvenance(null);
+    setExtractedPreview(null);
+  }
+
   async function handleScan(file: File) {
     if (!workspaceId) return;
     if (!isReceiptImageMime(file.type)) {
+      setScanError("Couldn't read the receipt — enter manually");
       toast.error("Couldn't read the receipt — enter manually");
       return;
     }
     const mimeType = file.type;
+    setReceiptFile(file);
     setScanning(true);
     setScanNote(null);
+    setScanError(null);
+    setExtractedPreview(null);
+    setOcrProvenance(null);
     try {
       const imageBase64 = await fileToBase64(file);
       const result = await extractReceipt.mutateAsync({
@@ -150,6 +177,7 @@ export default function NewExpensePage() {
         mimeType,
       });
       if (!result.ok) {
+        setScanError("Couldn't read the receipt — enter manually");
         toast.error("Couldn't read the receipt — enter manually");
         return;
       }
@@ -164,6 +192,27 @@ export default function NewExpensePage() {
       setTip(centsToDollars(receipt.tipCents));
       setTotal(centsToDollars(receipt.totalCents));
       setScannedLineItems(receipt.lineItems);
+      setOcrProvenance({
+        ocrConfidence: receipt.ocrConfidence,
+        ocrWarnings: receipt.ocrWarnings,
+        ocrProvider: receipt.ocrProvider,
+        ocrStatus: receipt.ocrStatus,
+      });
+      setExtractedPreview({
+        merchant: receipt.merchant,
+        currency: receipt.currency,
+        subtotalCents: receipt.subtotalCents,
+        taxCents: receipt.taxCents,
+        tipCents: receipt.tipCents,
+        totalCents: receipt.totalCents,
+        needsReview: receipt.needsReview,
+        warnings: receipt.ocrWarnings,
+        lineItems: receipt.lineItems.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          lineTotalCents: item.lineTotalCents,
+        })),
+      });
       setScanNote(
         receipt.needsReview
           ? "Scanned — low confidence, please double-check the amounts."
@@ -172,12 +221,15 @@ export default function NewExpensePage() {
             } — review and submit.`,
       );
       toast.success("Receipt scanned");
-    } catch {
-      toast.error("Couldn't read the receipt — enter manually");
+    } catch (err) {
+      const message =
+        err instanceof Error && /too many/i.test(err.message)
+          ? err.message
+          : "Couldn't read the receipt — enter manually";
+      setScanError(message);
+      toast.error(message);
     } finally {
       setScanning(false);
-      // Allow re-selecting the same file to re-scan.
-      if (scanInputRef.current) scanInputRef.current.value = "";
     }
   }
 
@@ -232,6 +284,8 @@ export default function NewExpensePage() {
         }
       }
 
+      // Store the receipt image. If we already OCR'd on scan, skip a second
+      // OCR pass and just attach storage + provenance.
       if (receiptFile && expense.id) {
         try {
           const uploadForm = new FormData();
@@ -240,35 +294,48 @@ export default function NewExpensePage() {
           uploadForm.append("tripId", tripId);
           uploadForm.append("expenseId", expense.id);
 
+          const alreadyScanned = ocrProvenance != null;
+          if (alreadyScanned) {
+            uploadForm.append("skipOcr", "true");
+            uploadForm.append(
+              "ocrConfidence",
+              String(ocrProvenance.ocrConfidence),
+            );
+            uploadForm.append(
+              "ocrWarnings",
+              JSON.stringify(ocrProvenance.ocrWarnings),
+            );
+            uploadForm.append("ocrProvider", ocrProvenance.ocrProvider);
+            uploadForm.append("ocrStatus", ocrProvenance.ocrStatus);
+          }
+
           const uploadRes = await fetch("/api/receipts/upload", {
             method: "POST",
             body: uploadForm,
           });
 
-          if (uploadRes.ok) {
+          // Only apply OCR-derived line items/totals when we did NOT already
+          // scan — otherwise we'd double-insert line items and overwrite edits.
+          if (uploadRes.ok && !alreadyScanned) {
             const uploadData = (await uploadRes.json()) as {
               ocr?: {
-                sanitized: {
-                  merchant: string;
-                  subtotalCents: number;
-                  taxCents: number;
-                  tipCents: number;
-                  totalCents: number;
-                  lineItems: Array<{
-                    name: string;
-                    quantity: number;
-                    unitPriceCents: number;
-                    lineTotalCents: number;
-                  }>;
-                };
+                merchant: string;
+                subtotalCents: number;
+                taxCents: number;
+                tipCents: number;
+                totalCents: number;
+                lineItems: Array<{
+                  name: string;
+                  quantity: number;
+                  unitPriceCents: number;
+                  lineTotalCents: number;
+                }>;
                 confidence: number;
-                warnings: string[];
               } | null;
-              ocrError?: string;
             };
 
-            if (uploadData.ocr?.sanitized.lineItems.length) {
-              const ocr = uploadData.ocr.sanitized;
+            if (uploadData.ocr?.lineItems.length) {
+              const ocr = uploadData.ocr;
               await addLineItems.mutateAsync({
                 workspaceId,
                 tripId,
@@ -281,20 +348,6 @@ export default function NewExpensePage() {
                   sortOrder: i,
                 })),
               });
-
-              if (
-                uploadData.ocr.confidence >= OCR_REVIEW_CONFIDENCE_THRESHOLD
-              ) {
-                await updateExpense.mutateAsync({
-                  workspaceId,
-                  tripId,
-                  expenseId: expense.id,
-                  subtotalCents: ocr.subtotalCents,
-                  taxCents: ocr.taxCents,
-                  tipCents: ocr.tipCents,
-                  totalCents: ocr.totalCents,
-                });
-              }
             }
           }
         } catch {
@@ -312,6 +365,16 @@ export default function NewExpensePage() {
   const segments = segmentsQuery.data ?? [];
   const isLoading = workspaceQuery.isLoading || segmentsQuery.isLoading;
 
+  const uploadStatus: ReceiptUploadStatus = scanning
+    ? "loading"
+    : scanError
+      ? "error"
+      : extractedPreview
+        ? "success"
+        : receiptFile
+          ? "idle"
+          : "empty";
+
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
       <div className="space-y-3">
@@ -320,8 +383,9 @@ export default function NewExpensePage() {
         </p>
         <h1 className="text-4xl font-black tracking-tight">Add an expense</h1>
         <p className="text-muted-foreground max-w-2xl text-sm sm:text-base">
-          Record what was spent. Scan a receipt to pre-fill the fields, or enter
-          them manually. You can add line items and finalize after creating.
+          Record what was spent. Scan a receipt to pre-fill merchant, line
+          items, tax, and tip — or enter them manually. You can edit anything
+          before creating.
         </p>
       </div>
 
@@ -331,39 +395,20 @@ export default function NewExpensePage() {
         </div>
       )}
 
-      {/* Scan-to-prefill: reads a receipt image and populates the form below for
-          review before submit. Independent of the manual-entry path. */}
-      <div className="mt-8 rounded-[4px] border border-[#58A6FF]/30 bg-[#58A6FF]/5 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#58A6FF]">
-              Scan receipt
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {scanNote ??
-                "Snap or upload a receipt to auto-fill merchant, amounts, and items."}
-            </p>
-          </div>
-          <input
-            ref={scanInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleScan(file);
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={scanning || isLoading}
-            onClick={() => scanInputRef.current?.click()}
-          >
-            {scanning ? "Scanning..." : "Scan receipt"}
-          </Button>
-        </div>
+      <div className="mt-8">
+        <ReceiptUpload
+          file={receiptFile}
+          status={uploadStatus}
+          scanning={scanning}
+          error={scanError}
+          statusNote={scanNote}
+          extracted={extractedPreview}
+          disabled={isLoading || submitting}
+          onFileSelect={(file) => {
+            void handleScan(file);
+          }}
+          onClear={clearScan}
+        />
       </div>
 
       <form
@@ -517,45 +562,26 @@ export default function NewExpensePage() {
             </Field>
           </div>
 
-          {scannedLineItems.length > 0 && (
-            <div className="rounded-[4px] border border-[#21262D] bg-[#0D1117] p-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8B949E]">
-                Scanned items ({scannedLineItems.length})
-              </p>
-              <ul className="mt-2 space-y-1">
-                {scannedLineItems.map((item, i) => (
-                  <li
-                    key={`${item.name}-${i}`}
-                    className="flex justify-between text-xs text-[#C9D1D9]"
-                  >
-                    <span className="truncate pr-2">
-                      {item.quantity > 1 ? `${item.quantity}× ` : ""}
-                      {item.name}
-                    </span>
-                    <span className="tabular-nums text-[#8B949E]">
-                      ${centsToDollars(item.lineTotalCents)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-muted-foreground mt-2 text-[11px]">
-                Items are attached to the expense after you create it.
-              </p>
-            </div>
-          )}
-
           <Field>
-            <FieldLabel htmlFor="receipt">Receipt image (optional)</FieldLabel>
+            <FieldLabel htmlFor="currency">Currency</FieldLabel>
             <FieldContent>
               <Input
-                id="receipt"
-                name="receipt"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                id="currency"
+                name="currency"
+                maxLength={3}
+                className="uppercase tabular-nums"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
               />
             </FieldContent>
           </Field>
+
+          {currency.toUpperCase() !== "USD" && (
+            <div className="rounded-[4px] border border-[#D29922]/40 bg-[#D29922]/10 p-3 text-sm text-[#D29922]">
+              This expense is in {currency.toUpperCase()}. Settlement only works
+              within a single currency.
+            </div>
+          )}
         </FieldGroup>
 
         <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

@@ -27,6 +27,7 @@ describe("workspace RLS rollout", () => {
     expect(tripChildRlsTargets).toEqual([
       { tableName: "trip_segment", tripColumn: "trip_id" },
       { tableName: "trip_member", tripColumn: "trip_id" },
+      { tableName: "trip_member_state", tripColumn: "trip_id" },
       { tableName: "trip_invite", tripColumn: "trip_id" },
       { tableName: "segment_member", parentTable: "trip_segment" },
       { tableName: "expense", tripColumn: "trip_id" },

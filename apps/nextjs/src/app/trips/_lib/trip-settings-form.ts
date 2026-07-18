@@ -31,7 +31,10 @@ export function parseTripSettingsFormData(
     startDate: readText(formData, "startDate") || undefined,
     endDate: readText(formData, "endDate") || undefined,
     tz: readText(formData, "tz") || "UTC",
-    groupMode: formData.get("groupMode") === "on",
+    groupMode:
+      formData.get("groupMode") === "on" ||
+      formData.get("groupMode") === "true" ||
+      formData.get("groupMode") === "1",
     claimMode: readText(formData, "claimMode") || "organizer",
   });
 

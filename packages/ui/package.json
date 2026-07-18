@@ -9,8 +9,10 @@
     "./ferry-input-form": "./src/ferry-input-form.tsx",
     "./ferry-leg-card": "./src/ferry-leg-card.tsx",
     "./field": "./src/field.tsx",
+    "./group-mode-toggle": "./src/group-mode-toggle.tsx",
     "./input": "./src/input.tsx",
     "./label": "./src/label.tsx",
+    "./receipt-upload": "./src/receipt-upload.tsx",
     "./separator": "./src/separator.tsx",
     "./theme": "./src/theme.tsx",
     "./toast": "./src/toast.tsx"

@@ -543,7 +543,7 @@ memberTransits: id (uuid, pk, default random),
 tripMembers: id, tripId (fk), userId (fk), role ('organizer' | 'member'), displayName, colorHex, venmoHandle (text nullable), joinedAt
   unique (tripId, userId)
 
-tripInvites: id, tripId (fk), email (citext), token (text unique, ≥128 bits via crypto.randomBytes(16).toString('base64url')), invitedByUserId, expiresAt, acceptedAt (nullable)
+tripInvites: id, tripId (fk), email (citext), token (text unique, ≥128 bits via crypto.randomBytes(16).toString('base64url')), role ('organizer' | 'member', default member), invitedByUserId, expiresAt, acceptedAt (nullable)
 ```
 
 2.2 **Destination picker (A24, phase-ordering fix)**

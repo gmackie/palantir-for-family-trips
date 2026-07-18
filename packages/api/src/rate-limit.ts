@@ -6,9 +6,8 @@
  * CF rate-limit bindings for harder multi-tenant abuse controls later.
  */
 
-import { TRPCError } from "@trpc/server";
-
 import { platformPrimitives } from "@sortey/config";
+import { TRPCError } from "@trpc/server";
 
 export interface RateLimitOptions {
   /** Unique bucket key, e.g. `chat:send:userId:tripId`. */
@@ -19,6 +18,21 @@ export interface RateLimitOptions {
   windowMs: number;
   /** Optional human message for TOO_MANY_REQUESTS. */
   message?: string;
+}
+
+/**
+ * Per-user receipt OCR budget (plan A17): 5 scans / minute across the
+ * `extractFromReceipt` mutation and `/api/receipts/{scan,upload}` routes.
+ */
+export const RECEIPT_OCR_RATE_LIMIT = {
+  limit: 5,
+  windowMs: 60_000,
+  message: "Too many receipt scans. Wait a moment and try again.",
+} as const;
+
+/** Build the shared bucket key for a user's receipt OCR calls. */
+export function receiptOcrRateLimitKey(userId: string): string {
+  return `receipt:ocr:${userId}`;
 }
 
 interface Bucket {

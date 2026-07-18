@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { and, asc, desc, eq, gt, isNull, sql } from "@sortey/db";
-import type { TripStatus } from "@sortey/db/schema";
+import type { TripMemberRole, TripStatus } from "@sortey/db/schema";
 import {
   fuelLogs,
   memberLocations,
@@ -14,20 +14,87 @@ import {
   vanProfiles,
   workspaceMembership,
 } from "@sortey/db/schema";
+import { sendEmail } from "@sortey/email";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure, workspaceProcedure } from "../auth/guards";
 import { sendPushToTripMembers } from "../notifications/send";
 import { assertRateLimit } from "../rate-limit";
+import {
+  parseLegacyLocalStorageState,
+  tripDashboardStatePatchSchema,
+} from "../trips/dashboard-state";
+import {
+  createTripMemberStateStore,
+  getTripDashboardState,
+  updateTripDashboardState,
+} from "../trips/dashboard-state-store";
 import { buildDrivingSummary } from "../trips/driving-summary";
 import { assertValidTripStatusTransition } from "../trips/status-transitions";
 import { protectedProcedure, publicProcedure } from "../trpc";
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+const APP_BASE_URL =
+  process.env.APP_URL ??
+  process.env.NEXT_PUBLIC_APP_URL ??
+  "http://localhost:3000";
 
 function generateInviteToken(): string {
   return randomBytes(24).toString("base64url");
+}
+
+function appUrl(path: string): string {
+  return `${APP_BASE_URL.replace(/\/$/, "")}${path}`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return char;
+    }
+  });
+}
+
+async function sendTripInviteEmail(input: {
+  to: string;
+  tripName: string;
+  inviterName: string;
+  url: string;
+  role: TripMemberRole;
+}): Promise<boolean> {
+  const roleLabel = input.role === "organizer" ? "an organizer" : "a member";
+  const safeTripName = escapeHtml(input.tripName);
+  const safeInviterName = escapeHtml(input.inviterName);
+  const safeUrl = escapeHtml(input.url);
+
+  try {
+    const result = await sendEmail(
+      {
+        to: input.to,
+        subject: `${input.inviterName} invited you to ${input.tripName} on Sortey`,
+        html: `<p>${safeInviterName} invited you to join <strong>${safeTripName}</strong> as ${roleLabel}.</p><p><a href="${safeUrl}">Accept invite</a></p><p>This invite expires in 14 days.</p>`,
+        text: `${input.inviterName} invited you to join ${input.tripName} as ${roleLabel}. Accept invite: ${input.url}\n\nThis invite expires in 14 days.`,
+      },
+      "Sortey <noreply@gmac.io>",
+    );
+
+    return result !== null;
+  } catch (error) {
+    console.warn("Failed to send trip invite email", error);
+    return false;
+  }
 }
 
 const tripDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -973,10 +1040,24 @@ export const tripsRouter = {
         workspaceId: z.string().min(1),
         tripId: z.string().min(1),
         email: z.string().email().toLowerCase(),
+        role: z.enum(["organizer", "member"]).default("member"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       requireOrganizerTripRole(ctx.tripRole);
+
+      const [trip] = (await ctx.db
+        .select({ name: trips.name })
+        .from(trips)
+        .where(eq(trips.id, ctx.tripId))
+        .limit(1)) as Array<{ name: string }>;
+
+      if (!trip) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Trip not found.",
+        });
+      }
 
       const token = generateInviteToken();
       const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
@@ -987,6 +1068,7 @@ export const tripsRouter = {
           tripId: ctx.tripId,
           email: input.email,
           token,
+          role: input.role,
           invitedByUserId: ctx.session.user.id,
           expiresAt,
         })
@@ -994,6 +1076,7 @@ export const tripsRouter = {
           target: [tripInvites.tripId, tripInvites.email],
           set: {
             token,
+            role: input.role,
             expiresAt,
             invitedByUserId: ctx.session.user.id,
             acceptedAt: null,
@@ -1004,12 +1087,14 @@ export const tripsRouter = {
           tripId: tripInvites.tripId,
           email: tripInvites.email,
           token: tripInvites.token,
+          role: tripInvites.role,
           expiresAt: tripInvites.expiresAt,
         })) as Array<{
         id: string;
         tripId: string;
         email: string;
         token: string;
+        role: TripMemberRole;
         expiresAt: Date;
       }>;
 
@@ -1020,7 +1105,17 @@ export const tripsRouter = {
         });
       }
 
-      return created;
+      const inviteUrl = appUrl(`/invite/${created.token}`);
+      const emailSent = await sendTripInviteEmail({
+        to: created.email,
+        tripName: trip.name,
+        inviterName:
+          ctx.session.user.name ?? ctx.session.user.email ?? "A trip organizer",
+        url: inviteUrl,
+        role: created.role,
+      });
+
+      return { ...created, url: inviteUrl, emailSent };
     }),
 
   listInvites: tripProcedure()
@@ -1037,6 +1132,7 @@ export const tripsRouter = {
         .select({
           id: tripInvites.id,
           email: tripInvites.email,
+          role: tripInvites.role,
           expiresAt: tripInvites.expiresAt,
           acceptedAt: tripInvites.acceptedAt,
           createdAt: tripInvites.createdAt,
@@ -1046,6 +1142,7 @@ export const tripsRouter = {
         .orderBy(desc(tripInvites.createdAt))) as Array<{
         id: string;
         email: string;
+        role: TripMemberRole;
         expiresAt: Date;
         acceptedAt: Date | null;
         createdAt: Date;
@@ -1175,6 +1272,7 @@ export const tripsRouter = {
           id: tripInvites.id,
           tripId: tripInvites.tripId,
           email: tripInvites.email,
+          role: tripInvites.role,
           expiresAt: tripInvites.expiresAt,
           acceptedAt: tripInvites.acceptedAt,
           tripName: trips.name,
@@ -1187,6 +1285,7 @@ export const tripsRouter = {
         id: string;
         tripId: string;
         email: string;
+        role: TripMemberRole;
         expiresAt: Date;
         acceptedAt: Date | null;
         tripName: string;
@@ -1204,6 +1303,7 @@ export const tripsRouter = {
         return {
           status: "already_accepted" as const,
           email: invite.email,
+          role: invite.role,
           tripId: invite.tripId,
           tripName: invite.tripName,
         };
@@ -1213,6 +1313,7 @@ export const tripsRouter = {
         return {
           status: "expired" as const,
           email: invite.email,
+          role: invite.role,
           tripId: invite.tripId,
           tripName: invite.tripName,
         };
@@ -1221,6 +1322,7 @@ export const tripsRouter = {
       return {
         status: "valid" as const,
         email: invite.email,
+        role: invite.role,
         tripId: invite.tripId,
         tripName: invite.tripName,
       };
@@ -1289,6 +1391,7 @@ export const tripsRouter = {
           id: tripInvites.id,
           tripId: tripInvites.tripId,
           email: tripInvites.email,
+          role: tripInvites.role,
           expiresAt: tripInvites.expiresAt,
           acceptedAt: tripInvites.acceptedAt,
           workspaceId: trips.workspaceId,
@@ -1300,6 +1403,7 @@ export const tripsRouter = {
         id: string;
         tripId: string;
         email: string;
+        role: TripMemberRole;
         expiresAt: Date;
         acceptedAt: Date | null;
         workspaceId: string;
@@ -1362,11 +1466,21 @@ export const tripsRouter = {
           ),
         });
 
-        if (!existingTripMember) {
+        if (existingTripMember) {
+          await tx
+            .update(tripMembers)
+            .set({ role: invite.role })
+            .where(
+              and(
+                eq(tripMembers.userId, ctx.session.user.id),
+                eq(tripMembers.tripId, invite.tripId),
+              ),
+            );
+        } else {
           await tx.insert(tripMembers).values({
             tripId: invite.tripId,
             userId: ctx.session.user.id,
-            role: "member",
+            role: invite.role,
           });
         }
 
@@ -1809,4 +1923,45 @@ export const tripsRouter = {
         now,
       });
     }),
+
+  getDashboardState: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        legacyTripDocument: z.string().nullable().optional(),
+        legacyViewerProfile: z.string().nullable().optional(),
+      }),
+    )
+    .query(({ ctx, input }) => {
+      const legacyPatch =
+        input.legacyTripDocument || input.legacyViewerProfile
+          ? parseLegacyLocalStorageState({
+              tripDocumentRaw: input.legacyTripDocument ?? null,
+              viewerProfileRaw: input.legacyViewerProfile ?? null,
+            })
+          : null;
+
+      return getTripDashboardState(createTripMemberStateStore(ctx.db), {
+        tripId: ctx.tripId,
+        userId: ctx.session.user.id,
+        legacyPatch,
+      });
+    }),
+
+  updateDashboardState: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        patch: tripDashboardStatePatchSchema,
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      updateTripDashboardState(createTripMemberStateStore(ctx.db), {
+        tripId: ctx.tripId,
+        userId: ctx.session.user.id,
+        patch: input.patch,
+      }),
+    ),
 } satisfies TRPCRouterRecord;
