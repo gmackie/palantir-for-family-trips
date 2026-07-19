@@ -466,7 +466,12 @@ async function deleteTransportDraft(input: {
   expenseId: string;
 }): Promise<void> {
   const { expenses } = await import("@sortey/db/schema");
-  await input.db.delete(expenses).where(eq(expenses.id, input.expenseId));
+  // Only delete the linked draft. If the fare expense has been finalized (and
+  // possibly claimed/settled), deleting a ferry crossing must not hard-delete
+  // it out from under members — the non-draft row is left untouched.
+  await input.db
+    .delete(expenses)
+    .where(and(eq(expenses.id, input.expenseId), eq(expenses.status, "draft")));
 }
 
 // ── Input schema (Zod) ───────────────────────────────────────────────────────

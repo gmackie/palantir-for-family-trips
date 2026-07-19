@@ -30,7 +30,7 @@ higher-priority first.
 | 007 | Harden + unify the three outbox implementations (lost/dup writes, retry cap, corruption) | P2 | M | MED | 006 | TODO |
 | **T3 — Correctness** |
 | 008 | Replace UTC "today" with trip-tz across the planner (7 sites) | P1 | M | LOW | — | TODO |
-| 009 | Guard ferry fare edit/delete against finalized expenses | P2 | S–M | LOW | — | TODO |
+| 009 | Guard ferry fare edit/delete against finalized expenses | P2 | S–M | LOW | — | DONE (draft-scoped writes; transport-draft + ferries) |
 | 010 | Money-input validation + concurrency guards (negative cents, room membership, acceptInvite race, finalize race) | P2 | S | LOW–MED | — | TODO |
 | 011 | Planner math fixes (expandStopDays index, candidate rank dup, leave-by UTC, fuel currency) | P2–P3 | S–M | LOW | — | TODO |
 | **T4 — Perf / debt / tests** |

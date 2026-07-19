@@ -79,3 +79,20 @@ describe("hardening 002 — settlement idempotency read-back is trip-scoped", ()
     expect(body).toContain('code: "CONFLICT"');
   });
 });
+
+describe("hardening 009 — ferry fare writes can't touch a finalized expense", () => {
+  // `eq(expenses.status, "draft")` appears in each file ONLY because of these
+  // guards, so a whole-file assertion is unambiguous (the sliced-body approach
+  // is fooled by the input-type close brace in these fn signatures).
+  it("updateTransportDraftAmount scopes the expense update to draft status", () => {
+    const src = read("expenses/transport-draft.ts");
+    expect(src).toContain("updateTransportDraftAmount");
+    expect(src).toContain('eq(expenses.status, "draft")');
+  });
+
+  it("deleteTransportDraft scopes the expense delete to draft status", () => {
+    const src = read("router/ferries.ts");
+    expect(src).toContain("deleteTransportDraft");
+    expect(src).toContain('eq(expenses.status, "draft")');
+  });
+});

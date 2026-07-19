@@ -1,4 +1,4 @@
-import { eq } from "@sortey/db";
+import { and, eq } from "@sortey/db";
 import { type ExpenseCategory, expenses } from "@sortey/db/schema";
 import { TRPCError } from "@trpc/server";
 
@@ -73,6 +73,9 @@ export async function updateTransportDraftAmount(input: {
   amountCents: number;
   currency: string;
 }): Promise<void> {
+  // Scope to draft status: once a transport-fare expense is finalized (and
+  // possibly claimed/settled), the transport row's lifecycle must not silently
+  // rewrite its amount. A non-draft row simply isn't matched — no corruption.
   await input.db
     .update(expenses)
     .set({
@@ -80,5 +83,5 @@ export async function updateTransportDraftAmount(input: {
       totalCents: input.amountCents,
       currency: input.currency,
     })
-    .where(eq(expenses.id, input.expenseId));
+    .where(and(eq(expenses.id, input.expenseId), eq(expenses.status, "draft")));
 }
