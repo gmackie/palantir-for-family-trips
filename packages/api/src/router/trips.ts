@@ -703,33 +703,31 @@ function createTripStore(db: any): TripStore {
       return createdSegmentMember;
     },
     listWorkspaceTrips: async ({ userId, workspaceId }) => {
-      const memberships = (await db
-        .select({
-          tripId: tripMembers.tripId,
-        })
-        .from(tripMembers)
-        .where(eq(tripMembers.userId, userId))
-        .limit(Number.MAX_SAFE_INTEGER)) as Array<{ tripId: string }>;
-
-      const visibleTripIds = new Set(
-        memberships.map((membership) => membership.tripId),
-      );
+      // Single joined query instead of fetching every workspace trip + every
+      // membership and intersecting in JS.
       const rows = (await db
         .select(tripSummaryShape)
         .from(trips)
+        .innerJoin(
+          tripMembers,
+          and(eq(tripMembers.tripId, trips.id), eq(tripMembers.userId, userId)),
+        )
         .where(eq(trips.workspaceId, workspaceId))
         .orderBy(desc(trips.createdAt), asc(trips.id))) as TripSummary[];
 
-      return rows.filter((trip) => visibleTripIds.has(trip.id));
+      return rows;
     },
     getTrip: async ({ workspaceId, tripId }) => {
-      const tripsInWorkspace = (await db
+      // Indexed point lookup instead of fetching every workspace trip and
+      // filtering in JS. Returns null both when absent and when it belongs to
+      // a different workspace (matches the previous .find() semantics).
+      const [row] = (await db
         .select(tripSummaryShape)
         .from(trips)
-        .where(eq(trips.workspaceId, workspaceId))
-        .limit(Number.MAX_SAFE_INTEGER)) as TripSummary[];
+        .where(and(eq(trips.workspaceId, workspaceId), eq(trips.id, tripId)))
+        .limit(1)) as TripSummary[];
 
-      return tripsInWorkspace.find((trip) => trip.id === tripId) ?? null;
+      return row ?? null;
     },
     updateTrip: async ({ workspaceId, tripId, ...changes }) => {
       const [updatedTrip] = (await db

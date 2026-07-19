@@ -34,7 +34,7 @@ higher-priority first.
 | 010 | Money-input validation + concurrency guards (negative cents, room membership, acceptInvite race, finalize race) | P2 | S | LOW–MED | — | TODO |
 | 011 | Planner math fixes (expandStopDays index, candidate rank dup, leave-by UTC, fuel currency) | P2–P3 | S–M | LOW | — | TODO |
 | **T4 — Perf / debt / tests** |
-| 012 | Batch the N+1 queries (`trips.get`/list, pins, planning polls/proposals) | P2 | S–M | LOW | — | TODO |
+| 012 | Batch the N+1 queries (`trips.get`/list, pins, planning polls/proposals) | P2 | S–M | LOW | — | DONE (7 sites batched; output-preserving, existing tests green) |
 | 013 | Consolidate the 5 duplicated organizer checks + dual `assertLodgingInTrip` | P3 | M | LOW–MED | 014 (soft) | TODO |
 | 014 | Test the untested critical paths (guards, settlement record/undo, assignLineItem) — replaces decoy tests | P2 | M | LOW | — | TODO |
 | 015 | Bump `@better-auth/cli` catalog skew; scoped notes for deferred perf/debt items | P3 | S | LOW | — | REJECTED (a) / NOTED (b) — see below |

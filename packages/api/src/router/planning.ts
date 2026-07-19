@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "@sortey/db";
+import { and, asc, desc, eq, inArray, sql } from "@sortey/db";
 import {
   pollOptions,
   polls,
@@ -222,39 +222,48 @@ export const planningRouter = {
         .where(eq(polls.tripId, ctx.tripId))
         .orderBy(desc(polls.createdAt))) as Array<typeof polls.$inferSelect>;
 
-      const result = [];
+      // Batch-load options (with vote counts) for all polls in one query.
+      const pollIds = pollRows.map((p) => p.id);
+      const allOptions =
+        pollIds.length > 0
+          ? ((await ctx.db
+              .select({
+                id: pollOptions.id,
+                pollId: pollOptions.pollId,
+                label: pollOptions.label,
+                description: pollOptions.description,
+                url: pollOptions.url,
+                sortOrder: pollOptions.sortOrder,
+                createdAt: pollOptions.createdAt,
+                voteCount: sql<number>`count(${pollVotes.id})::int`,
+              })
+              .from(pollOptions)
+              .leftJoin(pollVotes, eq(pollVotes.pollOptionId, pollOptions.id))
+              .where(inArray(pollOptions.pollId, pollIds))
+              .groupBy(pollOptions.id)
+              .orderBy(asc(pollOptions.sortOrder))) as Array<{
+              id: string;
+              pollId: string;
+              label: string;
+              description: string | null;
+              url: string | null;
+              sortOrder: number;
+              createdAt: Date;
+              voteCount: number;
+            }>)
+          : [];
 
-      for (const poll of pollRows) {
-        const options = (await ctx.db
-          .select({
-            id: pollOptions.id,
-            pollId: pollOptions.pollId,
-            label: pollOptions.label,
-            description: pollOptions.description,
-            url: pollOptions.url,
-            sortOrder: pollOptions.sortOrder,
-            createdAt: pollOptions.createdAt,
-            voteCount: sql<number>`count(${pollVotes.id})::int`,
-          })
-          .from(pollOptions)
-          .leftJoin(pollVotes, eq(pollVotes.pollOptionId, pollOptions.id))
-          .where(eq(pollOptions.pollId, poll.id))
-          .groupBy(pollOptions.id)
-          .orderBy(asc(pollOptions.sortOrder))) as Array<{
-          id: string;
-          pollId: string;
-          label: string;
-          description: string | null;
-          url: string | null;
-          sortOrder: number;
-          createdAt: Date;
-          voteCount: number;
-        }>;
-
-        result.push({ ...poll, options });
+      const optionsByPoll = new Map<string, typeof allOptions>();
+      for (const option of allOptions) {
+        const existing = optionsByPoll.get(option.pollId) ?? [];
+        existing.push(option);
+        optionsByPoll.set(option.pollId, existing);
       }
 
-      return result;
+      return pollRows.map((poll) => ({
+        ...poll,
+        options: optionsByPoll.get(poll.id) ?? [],
+      }));
     }),
 
   getPollResults: tripProcedure()
@@ -287,19 +296,32 @@ export const planningRouter = {
         typeof pollOptions.$inferSelect
       >;
 
-      const optionsWithVotes = [];
-
-      for (const option of options) {
-        const votes = (await ctx.db
+      // Batch-load votes for all options in one query, preserving per-option
+      // createdAt ordering via the global orderBy + stable grouping.
+      const optionIds = options.map((o) => o.id);
+      const votesByOption = new Map<
+        string,
+        Array<typeof pollVotes.$inferSelect>
+      >();
+      if (optionIds.length > 0) {
+        const allVotes = (await ctx.db
           .select()
           .from(pollVotes)
-          .where(eq(pollVotes.pollOptionId, option.id))
+          .where(inArray(pollVotes.pollOptionId, optionIds))
           .orderBy(asc(pollVotes.createdAt))) as Array<
           typeof pollVotes.$inferSelect
         >;
-
-        optionsWithVotes.push({ ...option, votes });
+        for (const vote of allVotes) {
+          const existing = votesByOption.get(vote.pollOptionId) ?? [];
+          existing.push(vote);
+          votesByOption.set(vote.pollOptionId, existing);
+        }
       }
+
+      const optionsWithVotes = options.map((option) => ({
+        ...option,
+        votes: votesByOption.get(option.id) ?? [],
+      }));
 
       return { ...poll, options: optionsWithVotes };
     }),
@@ -486,30 +508,37 @@ export const planningRouter = {
         typeof proposals.$inferSelect
       >;
 
-      const result = [];
-
-      for (const proposal of proposalRows) {
-        const reactions = (await ctx.db
+      // Batch-load reaction counts for all proposals in one grouped query.
+      const proposalIds = proposalRows.map((p) => p.id);
+      const countsByProposal = new Map<string, Record<string, number>>();
+      if (proposalIds.length > 0) {
+        const reactionRows = (await ctx.db
           .select({
+            proposalId: proposalReactions.proposalId,
             reaction: proposalReactions.reaction,
             count: sql<number>`count(*)::int`,
           })
           .from(proposalReactions)
-          .where(eq(proposalReactions.proposalId, proposal.id))
-          .groupBy(proposalReactions.reaction)) as Array<{
+          .where(inArray(proposalReactions.proposalId, proposalIds))
+          .groupBy(
+            proposalReactions.proposalId,
+            proposalReactions.reaction,
+          )) as Array<{
+          proposalId: string;
           reaction: string;
           count: number;
         }>;
-
-        const reactionCounts: Record<string, number> = {};
-        for (const r of reactions) {
-          reactionCounts[r.reaction] = r.count;
+        for (const r of reactionRows) {
+          const existing = countsByProposal.get(r.proposalId) ?? {};
+          existing[r.reaction] = r.count;
+          countsByProposal.set(r.proposalId, existing);
         }
-
-        result.push({ ...proposal, reactionCounts });
       }
 
-      return result;
+      return proposalRows.map((proposal) => ({
+        ...proposal,
+        reactionCounts: countsByProposal.get(proposal.id) ?? {},
+      }));
     }),
 
   // ── Trip lifecycle ─────────────────────────────────────
