@@ -27,7 +27,7 @@ re-audited from scratch.
 | 012  | Move suncalc + polyline-codec to @sortey/api | P3 | S | — | DONE (cherry-picked @ `fc0dee1`, reviewed+approved 2026-06-12) |
 | 013  | E2E test for trip → expense → claim → settle | P2 | M | — | DONE (spec @ `471c4c6`, reviewed+approved; collectable via `playwright --list` but **requires CI to run** — no browser binaries in the exec sandbox) |
 | 014  | Activate the dormant RLS tenant-isolation layer | P2 | L | 007 | **NEEDS DECISION** — corrects the earlier RLS rejection; RLS is implemented but never applied AND its GUCs are never set, so DB-level tenancy is inactive. Architecturally significant + app-breaking-if-wrong; awaiting user go-ahead before any execution. |
-| 015  | Store seam + tests for settlements.record idempotency path | P2 | S | — | IN PROGRESS (closes the test gap deferred by plan 008) |
+| 015  | Store seam + tests for settlements.record idempotency path | P2 | S | — | DONE (implemented directly @ session branch; 7 tests; closes the plan-008 gap) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).

@@ -4,6 +4,7 @@ import type {
   ExpenseRow,
   LineItemRow,
   MemberRow,
+  SettlementRecordStore,
   SettlementRow,
   SettlementSummaryStore,
 } from "../settlements";
@@ -11,7 +12,9 @@ import type {
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@localhost:5432/gmacko_test";
 
-const { buildSettlementSummary } = await import("../settlements");
+const { buildSettlementSummary, recordSettlement } = await import(
+  "../settlements"
+);
 
 // ---------------------------------------------------------------------------
 // In-memory SettlementSummaryStore — no real DB.
@@ -326,5 +329,137 @@ describe("buildSettlementSummary — batching (no N+1)", () => {
 
     expect(listLineItemsCallCount).toBe(1);
     expect(listClaimsCallCount).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// recordSettlement — the money-write path (plan 015)
+// ---------------------------------------------------------------------------
+
+type StoredSettlement = {
+  id: string;
+  tripId: string;
+  fromUserId: string;
+  toUserId: string;
+  amountCents: number;
+  idempotencyKey: string;
+  note: string | null;
+};
+
+function createMemoryRecordStore(input: {
+  memberIds: string[];
+  settlements?: StoredSettlement[];
+}): {
+  store: SettlementRecordStore;
+  state: { settlements: StoredSettlement[] };
+} {
+  const state = { settlements: [...(input.settlements ?? [])] };
+  let seq = state.settlements.length;
+  const store: SettlementRecordStore = {
+    findTripMemberIds: async () => [...input.memberIds],
+    insertIfAbsent: async (values) => {
+      // Mirrors onConflictDoNothing: null when the key already exists.
+      if (
+        state.settlements.some(
+          (s) => s.idempotencyKey === values.idempotencyKey,
+        )
+      ) {
+        return null;
+      }
+      seq += 1;
+      const row: StoredSettlement = { id: `stl_${seq}`, ...values };
+      state.settlements.push(row);
+      return row as unknown as Awaited<
+        ReturnType<SettlementRecordStore["insertIfAbsent"]>
+      >;
+    },
+    findByIdempotencyKey: async (key) => {
+      const row = state.settlements.find((s) => s.idempotencyKey === key);
+      return (row ?? null) as Awaited<
+        ReturnType<SettlementRecordStore["findByIdempotencyKey"]>
+      >;
+    },
+  };
+  return { store, state };
+}
+
+describe("recordSettlement", () => {
+  const base = {
+    tripId: "trip_1",
+    fromUserId: "user_A",
+    toUserId: "user_B",
+    amountCents: 1500,
+    idempotencyKey: "key-1",
+    note: null as string | null,
+  };
+
+  it("happy path: both members, distinct → inserts and returns the row", async () => {
+    const { store, state } = createMemoryRecordStore({
+      memberIds: ["user_A", "user_B"],
+    });
+    const result = await recordSettlement(store, base);
+    expect(result.amountCents).toBe(1500);
+    expect(result.fromUserId).toBe("user_A");
+    expect(result.toUserId).toBe("user_B");
+    expect(state.settlements).toHaveLength(1);
+  });
+
+  it("fromUserId not a member → BAD_REQUEST", async () => {
+    const { store } = createMemoryRecordStore({ memberIds: ["user_B"] });
+    await expect(recordSettlement(store, base)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "From-user is not a member of this trip.",
+    });
+  });
+
+  it("toUserId not a member → BAD_REQUEST", async () => {
+    const { store } = createMemoryRecordStore({ memberIds: ["user_A"] });
+    await expect(recordSettlement(store, base)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "To-user is not a member of this trip.",
+    });
+  });
+
+  it("cannot settle with yourself → BAD_REQUEST", async () => {
+    const { store } = createMemoryRecordStore({ memberIds: ["user_A"] });
+    await expect(
+      recordSettlement(store, { ...base, toUserId: "user_A" }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Cannot settle with yourself.",
+    });
+  });
+
+  it("idempotent retry, identical payload → returns existing, no duplicate", async () => {
+    const { store, state } = createMemoryRecordStore({
+      memberIds: ["user_A", "user_B"],
+    });
+    const first = await recordSettlement(store, base);
+    const second = await recordSettlement(store, base);
+    expect(second.id).toBe(first.id);
+    expect(state.settlements).toHaveLength(1);
+  });
+
+  it("same key, different amountCents → CONFLICT", async () => {
+    const { store } = createMemoryRecordStore({
+      memberIds: ["user_A", "user_B"],
+    });
+    await recordSettlement(store, base);
+    await expect(
+      recordSettlement(store, { ...base, amountCents: 999 }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Idempotency key reused with a different settlement payload.",
+    });
+  });
+
+  it("same key, different parties → CONFLICT", async () => {
+    const { store } = createMemoryRecordStore({
+      memberIds: ["user_A", "user_B", "user_C"],
+    });
+    await recordSettlement(store, base);
+    await expect(
+      recordSettlement(store, { ...base, toUserId: "user_C" }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 });

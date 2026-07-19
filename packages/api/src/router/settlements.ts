@@ -235,6 +235,125 @@ export async function buildSettlementSummary(
 }
 
 // ---------------------------------------------------------------------------
+// settlements.record seam — extracted for unit-testability (mirrors the
+// summary seam above and the chat.ts / expenses.ts store pattern).
+// ---------------------------------------------------------------------------
+
+export interface SettlementRecordStore {
+  findTripMemberIds(tripId: string): Promise<string[]>;
+  /** Insert, or return null if the idempotencyKey already exists. */
+  insertIfAbsent(values: {
+    tripId: string;
+    fromUserId: string;
+    toUserId: string;
+    amountCents: number;
+    idempotencyKey: string;
+    note: string | null;
+  }): Promise<typeof settlements.$inferSelect | null>;
+  findByIdempotencyKey(
+    key: string,
+  ): Promise<typeof settlements.$inferSelect | null>;
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle db type is complex
+export function createSettlementRecordStore(db: any): SettlementRecordStore {
+  return {
+    async findTripMemberIds(tripId) {
+      const rows = (await db
+        .select({ userId: tripMembers.userId })
+        .from(tripMembers)
+        .where(eq(tripMembers.tripId, tripId))) as Array<{ userId: string }>;
+      return rows.map((r) => r.userId);
+    },
+    async insertIfAbsent(values) {
+      const [created] = (await db
+        .insert(settlements)
+        .values(values)
+        .onConflictDoNothing({ target: settlements.idempotencyKey })
+        .returning()) as Array<typeof settlements.$inferSelect>;
+      return created ?? null;
+    },
+    async findByIdempotencyKey(key) {
+      const [existing] = (await db
+        .select()
+        .from(settlements)
+        .where(eq(settlements.idempotencyKey, key))
+        .limit(1)) as Array<typeof settlements.$inferSelect>;
+      return existing ?? null;
+    },
+  };
+}
+
+/**
+ * Record a settlement between two trip members, deduplicating on
+ * idempotencyKey. Behavior mirrors the prior inline procedure verbatim: member
+ * validation (BAD_REQUEST), idempotent retry returns the existing row, and a
+ * reused key with a different payload throws CONFLICT.
+ */
+export async function recordSettlement(
+  store: SettlementRecordStore,
+  input: {
+    tripId: string;
+    fromUserId: string;
+    toUserId: string;
+    amountCents: number;
+    idempotencyKey: string;
+    note: string | null;
+  },
+): Promise<typeof settlements.$inferSelect> {
+  // Validate both users are trip members
+  const memberIds = new Set(await store.findTripMemberIds(input.tripId));
+
+  if (!memberIds.has(input.fromUserId)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "From-user is not a member of this trip.",
+    });
+  }
+  if (!memberIds.has(input.toUserId)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "To-user is not a member of this trip.",
+    });
+  }
+  if (input.fromUserId === input.toUserId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Cannot settle with yourself.",
+    });
+  }
+
+  const created = await store.insertIfAbsent({
+    tripId: input.tripId,
+    fromUserId: input.fromUserId,
+    toUserId: input.toUserId,
+    amountCents: input.amountCents,
+    idempotencyKey: input.idempotencyKey,
+    note: input.note,
+  });
+
+  // If conflict (duplicate key), return the existing one — unless the payload
+  // differs, which signals a client bug / possible double-spend.
+  if (!created) {
+    const existing = await store.findByIdempotencyKey(input.idempotencyKey);
+    if (
+      !existing ||
+      existing.amountCents !== input.amountCents ||
+      existing.fromUserId !== input.fromUserId ||
+      existing.toUserId !== input.toUserId
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Idempotency key reused with a different settlement payload.",
+      });
+    }
+    return existing;
+  }
+
+  return created;
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -274,70 +393,14 @@ export const settlementsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Validate both users are trip members
-      const members = (await ctx.db
-        .select({ userId: tripMembers.userId })
-        .from(tripMembers)
-        .where(eq(tripMembers.tripId, ctx.tripId))) as Array<{
-        userId: string;
-      }>;
-      const memberIds = new Set(members.map((m) => m.userId));
-
-      if (!memberIds.has(input.fromUserId)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "From-user is not a member of this trip.",
-        });
-      }
-      if (!memberIds.has(input.toUserId)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "To-user is not a member of this trip.",
-        });
-      }
-      if (input.fromUserId === input.toUserId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Cannot settle with yourself.",
-        });
-      }
-
-      const [created] = (await ctx.db
-        .insert(settlements)
-        .values({
-          tripId: ctx.tripId,
-          fromUserId: input.fromUserId,
-          toUserId: input.toUserId,
-          amountCents: input.amountCents,
-          idempotencyKey: input.idempotencyKey,
-          note: input.note ?? null,
-        })
-        .onConflictDoNothing({ target: settlements.idempotencyKey })
-        .returning()) as Array<typeof settlements.$inferSelect>;
-
-      // If conflict (duplicate key), return the existing one
-      if (!created) {
-        const [existing] = (await ctx.db
-          .select()
-          .from(settlements)
-          .where(eq(settlements.idempotencyKey, input.idempotencyKey))
-          .limit(1)) as Array<typeof settlements.$inferSelect>;
-        // Guard: same key but different payload = client bug / possible double-spend
-        if (
-          existing!.amountCents !== input.amountCents ||
-          existing!.fromUserId !== input.fromUserId ||
-          existing!.toUserId !== input.toUserId
-        ) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "Idempotency key reused with a different settlement payload.",
-          });
-        }
-        return existing!;
-      }
-
-      return created;
+      return recordSettlement(createSettlementRecordStore(ctx.db), {
+        tripId: ctx.tripId,
+        fromUserId: input.fromUserId,
+        toUserId: input.toUserId,
+        amountCents: input.amountCents,
+        idempotencyKey: input.idempotencyKey,
+        note: input.note ?? null,
+      });
     }),
 
   /**
