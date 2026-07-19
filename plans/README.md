@@ -33,8 +33,9 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
 
 > Plans 006–013 generated 2026-06-12 against commit `bbc54f6`, after
-> re-verifying each finding at HEAD. The RLS finding was **rejected** on
-> verification (see below). better-auth (011) is HIGH risk: green CI is
+> re-verifying each finding at HEAD. The RLS finding was first rejected, then
+> **re-opened as plan 014** on deeper verification (it is implemented but
+> dormant — NEEDS DECISION). better-auth (011) is HIGH risk: green CI is
 > necessary but NOT sufficient — a human must verify sign-in on web + Expo.
 
 ## Dependency notes
