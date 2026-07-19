@@ -21,7 +21,7 @@ higher-priority first.
 | **T0 — Deploy-critical** |
 | 001 | Fix the drizzle migration journal (missing entries, dup `0011`, orphaned snapshots) | P1 | M | MED-HIGH | — | TODO |
 | **T1 — Security / tenant-isolation** |
-| 002 | Re-anchor trip-child writes to `ctx.tripId` (anchor IDOR, unclaimLineItem, settlement idempotency leak) | P1 | S | LOW | — | TODO |
+| 002 | Re-anchor trip-child writes to `ctx.tripId` (anchor IDOR, unclaimLineItem, settlement idempotency leak) | P1 | S | LOW | — | CODE DONE (steps 1–4 + tests; step 5 schema/migration deferred behind 001) |
 | 003 | Extend RLS coverage to the uncovered trip-child tables + a real cross-tenant denial test | P1 | L | HIGH | — | TODO |
 | 004 | Move receipt-upload authz before storage/OCR + durable rate limiter | P1 | S–M | LOW–MED | — | TODO |
 | 005 | Wipe all local caches on sign-out (shared-device leak) + fix admin `platform_role` GUC | P1 | M | LOW–MED | — | TODO |

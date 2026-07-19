@@ -4,13 +4,13 @@
  * position and paces the soonest commitment for the day-map briefing.
  */
 
-import { asc, eq } from "@sortey/db";
+import { and, asc, eq } from "@sortey/db";
 import { tripAnchors } from "@sortey/db/schema";
 
 import {
-  anchorPacing,
   type AnchorLike,
   type AnchorPacing,
+  anchorPacing,
   nextAnchor,
 } from "./anchors";
 
@@ -120,15 +120,23 @@ export async function updateAnchor(
   if (p.url !== undefined) set.url = p.url;
   if (p.note !== undefined) set.note = p.note;
   if (Object.keys(set).length === 0) return;
-  await db.update(tripAnchors).set(set).where(eq(tripAnchors.id, p.anchorId));
+  await db
+    .update(tripAnchors)
+    .set(set)
+    .where(
+      and(eq(tripAnchors.id, p.anchorId), eq(tripAnchors.tripId, p.tripId)),
+    );
 }
 
 export async function deleteAnchor(
   // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
   db: any,
+  tripId: string,
   anchorId: string,
 ): Promise<void> {
-  await db.delete(tripAnchors).where(eq(tripAnchors.id, anchorId));
+  await db
+    .delete(tripAnchors)
+    .where(and(eq(tripAnchors.id, anchorId), eq(tripAnchors.tripId, tripId)));
 }
 
 /**

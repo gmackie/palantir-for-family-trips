@@ -914,6 +914,32 @@ export const expensesRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Verify the claim's line item belongs to an expense on THIS trip before
+      // deleting. tripProcedure only proves membership in the input trip, not
+      // that the line item is part of it — without this a member of trip A
+      // could unclaim their own claim on a line item in trip B (and fire a
+      // realtime event on an unverified expenseId). Mirrors claimLineItem.
+      const [claim] = (await ctx.db
+        .select({ lineItemId: lineItemClaims.lineItemId })
+        .from(lineItemClaims)
+        .innerJoin(lineItems, eq(lineItems.id, lineItemClaims.lineItemId))
+        .innerJoin(expenses, eq(expenses.id, lineItems.expenseId))
+        .where(
+          and(
+            eq(lineItemClaims.lineItemId, input.lineItemId),
+            eq(lineItemClaims.userId, ctx.session.user.id),
+            eq(lineItems.expenseId, input.expenseId),
+            eq(expenses.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<{ lineItemId: string }>;
+
+      if (!claim) {
+        // Already unclaimed, or a cross-trip / mismatched id: no-op, matching
+        // the delete's existing idempotent semantics.
+        return { unclaimed: true };
+      }
+
       await ctx.db
         .delete(lineItemClaims)
         .where(

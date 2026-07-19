@@ -330,12 +330,28 @@ export const settlementsRouter = {
 
       // If conflict (duplicate key), return the existing one
       if (!created) {
+        // Re-read scoped to THIS trip. idempotencyKey is a table-wide unique
+        // column, so an un-scoped read-back would return (and leak) another
+        // trip's settlement — amount, payer/payee — on a cross-trip key
+        // collision (client bug, replay, or a deliberately reused key).
         const [existing] = (await ctx.db
           .select()
           .from(settlements)
-          .where(eq(settlements.idempotencyKey, input.idempotencyKey))
+          .where(
+            and(
+              eq(settlements.idempotencyKey, input.idempotencyKey),
+              eq(settlements.tripId, ctx.tripId),
+            ),
+          )
           .limit(1)) as Array<typeof settlements.$inferSelect>;
-        return existing!;
+        if (!existing) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "This idempotency key was already used on a different trip.",
+          });
+        }
+        return existing;
       }
 
       return created;

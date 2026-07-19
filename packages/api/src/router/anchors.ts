@@ -1,6 +1,7 @@
+import { eq } from "@sortey/db";
+import { tripSegments } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
-
 import { tripProcedure } from "../auth/guards";
 import {
   computeNextAnchor,
@@ -10,8 +11,6 @@ import {
   updateAnchor,
 } from "../route-planner/anchor-ops";
 import { resolveCurrentPoint } from "../route-planner/journey-logic";
-import { eq } from "@sortey/db";
-import { tripSegments } from "@sortey/db/schema";
 
 const KINDS = ["event", "reservation", "lodging", "must_see"] as const;
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -53,12 +52,16 @@ async function currentPoint(
 
 export const anchorsRouter = {
   list: tripProcedure()
-    .input(z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }))
+    .input(
+      z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }),
+    )
     .query(({ ctx }) => listAnchors(ctx.db, ctx.tripId)),
 
   /** The next upcoming anchor, paced from the trip's current position. */
   next: tripProcedure()
-    .input(z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }))
+    .input(
+      z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }),
+    )
     .query(async ({ ctx }) => {
       const today = new Date().toISOString().slice(0, 10);
       const from = await currentPoint(ctx.db, ctx.tripId, today);
@@ -123,7 +126,7 @@ export const anchorsRouter = {
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await deleteAnchor(ctx.db, input.anchorId);
+      await deleteAnchor(ctx.db, ctx.tripId, input.anchorId);
       return { ok: true };
     }),
 } satisfies TRPCRouterRecord;
