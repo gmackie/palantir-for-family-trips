@@ -37,7 +37,7 @@ higher-priority first.
 | 012 | Batch the N+1 queries (`trips.get`/list, pins, planning polls/proposals) | P2 | S–M | LOW | — | TODO |
 | 013 | Consolidate the 5 duplicated organizer checks + dual `assertLodgingInTrip` | P3 | M | LOW–MED | 014 (soft) | TODO |
 | 014 | Test the untested critical paths (guards, settlement record/undo, assignLineItem) — replaces decoy tests | P2 | M | LOW | — | TODO |
-| 015 | Bump `@better-auth/cli` catalog skew; scoped notes for deferred perf/debt items | P3 | S | LOW | — | TODO |
+| 015 | Bump `@better-auth/cli` catalog skew; scoped notes for deferred perf/debt items | P3 | S | LOW | — | REJECTED (a) / NOTED (b) — see below |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED (rationale).
 
@@ -80,6 +80,25 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   pinning test instead of a fabricated one).
 - **UTC "today" (008)**: an additional site beyond the audit list —
   `packages/api/src/router/share.ts:45` (public share-recap) — was folded in.
+
+## Deferred / investigate (from plan 015, part b)
+
+Not full plans — scoped notes to keep discoverable:
+
+- **Plan 015(a) rejected**: `@better-auth/cli` is already at its newest stable
+  (`1.4.22` on the release-1.4 line; npm `latest` tag is `1.4.21`). No 1.6.x
+  stable exists — only betas/canary. The advisories it pulls (bundled older
+  `better-auth`/`drizzle-orm`) are **dev-tool-only** (path
+  `packages/auth>@better-auth/cli>…`, not runtime-reachable) and unfixable
+  without an upstream CLI release. Nothing to bump.
+- **Missing `tripId` indexes** on hot tables — `packages/db/src/schema.ts` has
+  only ~2 explicit `index()` calls; verify with `EXPLAIN` before a migration.
+- **`assessSideTrip` re-decodes the full polyline every 30s poll**
+  (`route-planner.ts` ~739-772) — cache decoded points by route-version.
+- **`moveStop` issues 2N single-row updates** (`journey.ts` ~230-241) —
+  collapse to one batched `UPDATE ... CASE`.
+- **1,400+-line god-components** (`apps/expo/.../new-expense.tsx` + siblings) —
+  characterization-test-first split; larger effort.
 
 ## Provenance
 
