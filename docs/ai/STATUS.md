@@ -105,13 +105,34 @@ settlement, map/pins, chat, lodging, planning, road-trip routers).
 
 ## Known Gaps
 
-### Trip RLS policies (not yet implemented)
-- `grep -rn "CREATE POLICY\|ROW LEVEL SECURITY" packages/db/drizzle/*.sql` → zero matches
-- trips/tripMembers/tripSegments and related tables need RLS enabled using the workspace-scoped predicates in `packages/db/src/tenant.ts`
+### Trip RLS policies (implemented in code, but DORMANT — not enforcing)
+> **SECURITY NOTE (verified 2026-06-12):** DB-level tenant isolation is **not
+> active**. The app-layer tRPC guard chain (`protectedProcedure →
+> workspaceProcedure → tripProcedure`, tested in
+> `packages/api/src/auth/__tests__/guards.test.ts`) is the **sole** tenancy
+> enforcement today. Do not assume the database is protecting you.
+- The policy set is fully implemented (`packages/db/src/rls.ts`,
+  `buildWorkspaceRlsStatements` / `applyWorkspaceRls`, runnable via `pnpm rls`),
+  but it is **dormant on two counts**:
+  1. **Never applied.** No CI/migration/deploy workflow runs `pnpm rls`
+     (`grep -rin rls .github/workflows` → none), and the committed Drizzle
+     migrations contain zero `CREATE POLICY`.
+  2. **GUCs never set.** The policies read
+     `current_setting('app.user_id'|'app.workspace_id')`, but
+     `getDatabaseSessionSettings` (`packages/db/src/tenant.ts`) is unused in
+     production and `ctx.db` is the plain pooled client — nothing runs
+     `set_config`/`SET LOCAL` per request. Naively enabling the policies would
+     `FORCE ROW LEVEL SECURITY` with empty GUCs and deny every row.
+- Activation is captured as `plans/014-activate-dormant-rls.md` (NEEDS DECISION;
+  large, high-risk, app-breaking-if-wrong — not auto-executed).
 
-### Rate limiting TODOs
-- `packages/api/src/router/chat.ts:229` — `TODO(ratelimit)`: chat send is a high-frequency authenticated write
-- `packages/api/src/router/trips.ts:1087` — `TODO(ratelimit)`: unauthenticated-token entry point needs wrapping
+### Rate limiting ✅ SHIPPED (chat.send + share-link join)
+- A Durable Object rate limiter (`apps/nextjs/worker/rate-limiter.ts`, fixed
+  window, fail-open) is exposed to procedures as `ctx.rateLimit` via the
+  `ratelimit-runtime.ts` seam. Applied to `chat.send` (30/60s per user+trip)
+  and the share-link join (10/60s per user). The `TODO(ratelimit)` markers are
+  gone. Remaining un-limited surface (e.g. the WS upgrade) can reuse the same
+  seam.
 
 ### Phase 2 UX gaps (backend done, frontend incomplete)
 - **Workspace auto-creation on first sign-in** — `onLogin` hook that provisions a personal workspace for solo users
