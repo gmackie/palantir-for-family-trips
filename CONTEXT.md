@@ -109,13 +109,17 @@ _Avoid_: AI itinerary generator, chatbot (too vague)
 A bounded conversation (solo with co-pilot, or party of trip members + co-pilot) that produces structured Plan Options, stances, and an optional Decision/Commit into Trip Days. Distinct from free-form trip chat.
 _Avoid_: Group brainstorm, thread (overloaded with chat)
 
-**Command Surface**:
-The primary mobile real estate for an active road trip: tonight, next nights, legs, services, and open plan options. Steered by voice (offline STT) or type. Trip Chat is an aside that may archive decisions, not the home screen.
-_Avoid_: Chat UI, dashboard (overloaded)
+**Command Surface / plan chrome**:
+The always-visible plan truth on an active road trip (tonight, next nights, legs, open options). Not a separate product from chat — it is the structured header/artifact that chat and agents update.
+_Avoid_: Replacing chat as the interaction model
 
 **Trip Chat**:
-Free-form member messaging for coordination. Secondary to the Command Surface; may receive decision summaries after Apply.
-_Avoid_: Primary planning UI
+Primary human interaction for coordination and planning (voice or text). Co-pilot and external agents post into the same timeline with structured option cards. Free-form banter and planning moves share one thread; planning moves are typed so they render as plan artifacts.
+_Avoid_: Demoting chat to an aside; chat-only with no structured Apply path
+
+**Agent interfaces (MCP / CLI / API)**:
+How non-human agents read plan state, propose options, post to trip chat, and (with grant) apply options — same domain ops as the in-app co-pilot, without using the mobile UI.
+_Avoid_: Scraping the app; a second incompatible planning model
 
 **Amenity Scan**:
 Long-term van-planning view of corridor POIs (iOverlander etc.) near each Trip Day overnight: sleep, dump, water, fuel, parking, tolls — plus warnings when gaps exist.
