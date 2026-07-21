@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -19,6 +19,7 @@ import { C, mono, R } from "~/utils/design";
 import { loadTripOfflineBundle } from "~/utils/trip-offline-cache";
 import { useBreadcrumbRecorder } from "~/utils/use-breadcrumb-recorder";
 import { useDwellSuggest } from "~/utils/use-dwell-suggest";
+import { useMotionMode } from "~/utils/use-motion-mode";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 // ---- formatting helpers -------------------------------------------------
@@ -111,6 +112,16 @@ function BlockEmpty({ text }: { text: string }) {
 
 // ---- screen -------------------------------------------------------------
 
+const MPS_TO_MPH = 2.237;
+
+/** Dwell-card actions are used while driving — keep the 44px minimum target. */
+const dwellActionStyle = {
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  minHeight: 44,
+  justifyContent: "center",
+} as const;
+
 type DrivingSummary = RouterOutputs["trips"]["drivingSummary"];
 
 export default function DriveScreen() {
@@ -181,10 +192,28 @@ export default function DriveScreen() {
   );
   const todayAmenities = amenityScan?.find((r) => r.date === today);
 
-  const summary: DrivingSummary | undefined = data ?? offlineSummary ?? undefined;
+  const summary: DrivingSummary | undefined =
+    data ?? offlineSummary ?? undefined;
 
   const track = useBreadcrumbRecorder(workspaceId, tripId ?? "");
   const { suggestion: dwell, dismiss: dismissDwell } = useDwellSuggest(true);
+  const motion = useMotionMode(true);
+
+  // Auto-start breadcrumb recording while moving. A manual stop latches until
+  // the next stop→moving transition (or a manual start) — otherwise this
+  // effect would instantly restart recording the user just turned off.
+  const manualStopRef = useRef(false);
+  useEffect(() => {
+    if (motion.mode !== "moving") {
+      manualStopRef.current = false;
+      return;
+    }
+    if (!track.recording && !manualStopRef.current) {
+      void track.start();
+    }
+    // Intentionally depend on mode + recording flag only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- track methods are stable enough for this screen
+  }, [motion.mode, track.recording]);
 
   const goVanState = () =>
     router.push({
@@ -198,16 +227,29 @@ export default function DriveScreen() {
       params: { tripId: tripId ?? "" },
     });
 
-  const goLogStop = () =>
+  const goLogStop = (opts?: { quick?: string; lat?: number; lng?: number }) =>
     router.push({
       pathname: "/trip/[tripId]/log-stop" as any,
-      params: { tripId: tripId ?? "" },
+      params: {
+        tripId: tripId ?? "",
+        ...(opts?.quick ? { quick: opts.quick } : {}),
+        ...(opts?.lat != null ? { lat: String(opts.lat) } : {}),
+        ...(opts?.lng != null ? { lng: String(opts.lng) } : {}),
+      },
     });
 
   const goCampHere = () =>
-    router.push({
-      pathname: "/trip/[tripId]/log-stop" as any,
-      params: { tripId: tripId ?? "", quick: "camp" },
+    goLogStop({
+      quick: "overnight",
+      lat: motion.lat ?? undefined,
+      lng: motion.lng ?? undefined,
+    });
+
+  const goQuickStop = () =>
+    goLogStop({
+      quick: "rest",
+      lat: motion.lat ?? undefined,
+      lng: motion.lng ?? undefined,
     });
 
   const goJourneyLog = () =>
@@ -245,7 +287,7 @@ export default function DriveScreen() {
         <SideTripCard
           tripId={tripId ?? ""}
           workspaceId={workspaceId}
-          onLogStop={goLogStop}
+          onLogStop={() => goLogStop()}
           onOpenMap={openMap}
           onExplore={() =>
             setRunState.mutate({
@@ -319,6 +361,101 @@ export default function DriveScreen() {
           </Text>
         </Pressable>
 
+        {/* Motion mode chrome */}
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor:
+              motion.mode === "moving"
+                ? C.success
+                : motion.mode === "stopped"
+                  ? C.warning
+                  : C.border,
+            backgroundColor: C.surface,
+            borderRadius: R.md,
+            padding: 14,
+            gap: 10,
+          }}
+        >
+          <Text
+            style={{
+              color:
+                motion.mode === "moving"
+                  ? C.success
+                  : motion.mode === "stopped"
+                    ? C.warning
+                    : C.muted,
+              fontSize: 12,
+              fontWeight: "800",
+              letterSpacing: 1.1,
+              textTransform: "uppercase",
+            }}
+          >
+            {motion.mode === "moving"
+              ? "In motion · Driving Mode"
+              : motion.mode === "stopped"
+                ? "Stopped · log or rest"
+                : "Locating…"}
+            {motion.speedMps != null ? (
+              <Text style={{ fontFamily: mono, fontVariant: ["tabular-nums"] }}>
+                {` · ${Math.round(motion.speedMps * MPS_TO_MPH)} mph`}
+              </Text>
+            ) : (
+              ""
+            )}
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <Pressable
+              onPress={goQuickStop}
+              style={{
+                backgroundColor: C.infoBg,
+                borderWidth: 1,
+                borderColor: C.info,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                minHeight: 44,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: C.info, fontWeight: "700", fontSize: 13 }}>
+                Quick stop
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={goCampHere}
+              style={{
+                backgroundColor: C.surface,
+                borderWidth: 1,
+                borderColor: C.border,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                minHeight: 44,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: C.fg, fontWeight: "700", fontSize: 13 }}>
+                Parked for night
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={openMap}
+              style={{
+                backgroundColor: C.surface,
+                borderWidth: 1,
+                borderColor: C.border,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                minHeight: 44,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: C.fg, fontWeight: "700", fontSize: 13 }}>
+                Map · fuel route
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
         {dwell && (
           <View
             style={{
@@ -333,11 +470,38 @@ export default function DriveScreen() {
             <Text style={{ color: C.info, fontWeight: "700", fontSize: 14 }}>
               Parked ~{dwell.minutes} min — log a stop?
             </Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <Pressable onPress={() => { dismissDwell(); goLogStop(); }}>
-                <Text style={{ color: C.info, fontWeight: "700" }}>Log stop</Text>
+            <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+              <Pressable
+                onPress={() => {
+                  dismissDwell();
+                  goLogStop({
+                    quick: "rest",
+                    lat: dwell.lat,
+                    lng: dwell.lng,
+                  });
+                }}
+                style={dwellActionStyle}
+              >
+                <Text style={{ color: C.info, fontWeight: "700" }}>
+                  Quick stop
+                </Text>
               </Pressable>
-              <Pressable onPress={dismissDwell}>
+              <Pressable
+                onPress={() => {
+                  dismissDwell();
+                  goLogStop({
+                    quick: "overnight",
+                    lat: dwell.lat,
+                    lng: dwell.lng,
+                  });
+                }}
+                style={dwellActionStyle}
+              >
+                <Text style={{ color: C.info, fontWeight: "700" }}>
+                  Park for night
+                </Text>
+              </Pressable>
+              <Pressable onPress={dismissDwell} style={dwellActionStyle}>
                 <Text style={{ color: C.muted }}>Dismiss</Text>
               </Pressable>
             </View>
@@ -358,7 +522,9 @@ export default function DriveScreen() {
                   {briefing.plannedDay.title ??
                     briefing.plannedDay.overnightName ??
                     "Today"}
-                  <Text style={{ color: C.muted, fontSize: 13, fontWeight: "600" }}>
+                  <Text
+                    style={{ color: C.muted, fontSize: 13, fontWeight: "600" }}
+                  >
                     {"  "}
                     {briefing.plannedDay.intent}
                   </Text>
@@ -373,7 +539,9 @@ export default function DriveScreen() {
                 </Text>
               )}
               {briefing.plannedDay?.heroTitle && (
-                <Text style={{ color: C.success, fontSize: 14, fontWeight: "600" }}>
+                <Text
+                  style={{ color: C.success, fontSize: 14, fontWeight: "600" }}
+                >
                   ★ {briefing.plannedDay.heroTitle}
                 </Text>
               )}
@@ -440,7 +608,7 @@ export default function DriveScreen() {
         {/* LOG A STOP — capture where you are right now */}
         <View style={{ flexDirection: "row", gap: 10 }}>
           <Pressable
-            onPress={goLogStop}
+            onPress={() => goLogStop()}
             style={{
               flex: 1,
               flexDirection: "row",
@@ -504,7 +672,15 @@ export default function DriveScreen() {
         {/* RECORD TRACK + VAN STATE */}
         <View style={{ flexDirection: "row", gap: 10 }}>
           <Pressable
-            onPress={() => (track.recording ? track.stop() : track.start())}
+            onPress={() => {
+              if (track.recording) {
+                manualStopRef.current = true;
+                track.stop();
+              } else {
+                manualStopRef.current = false;
+                void track.start();
+              }
+            }}
             style={{
               flex: 1,
               flexDirection: "row",

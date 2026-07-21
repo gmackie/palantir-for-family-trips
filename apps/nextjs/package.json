@@ -54,8 +54,8 @@
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "next-intl": "^4.12.0",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
+    "react": "catalog:react19",
+    "react-dom": "catalog:react19",
     "superjson": "catalog:",
     "tailwind-merge": "^3.6.0",
     "zod": "catalog:"

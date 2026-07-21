@@ -99,5 +99,6 @@
       "@react-native/virtualized-lists": "0.85.3",
       "@react-native/gradle-plugin": "0.85.3"
     }
-  }
+  },
+  "version": "0.1.0.0"
 }

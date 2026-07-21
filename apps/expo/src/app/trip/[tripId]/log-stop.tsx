@@ -39,23 +39,59 @@ function todayLocal(): string {
   return new Intl.DateTimeFormat("en-CA").format(new Date());
 }
 
+const QUICK_KIND: Record<string, (typeof KINDS)[number]["k"]> = {
+  camp: "camp",
+  overnight: "overnight",
+  rest: "rest",
+  fuel: "fuel",
+  park: "overnight",
+  night: "overnight",
+};
+
 export default function LogStopScreen() {
   "use no memo";
-  const { tripId, quick } = useLocalSearchParams<{
+  const {
+    tripId,
+    quick,
+    kind: kindParam,
+    lat: latParam,
+    lng: lngParam,
+    name: nameParam,
+  } = useLocalSearchParams<{
     tripId: string;
     quick?: string;
+    kind?: string;
+    lat?: string;
+    lng?: string;
+    name?: string;
   }>();
   const workspaceId = getActiveWorkspaceId() ?? "";
   const router = useRouter();
   const qc = useQueryClient();
 
-  const [name, setName] = useState("");
+  const initialKind =
+    (kindParam && QUICK_KIND[kindParam]) ||
+    (quick && QUICK_KIND[quick]) ||
+    "camp";
+
+  const [name, setName] = useState(nameParam ?? "");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    null,
+    () => {
+      const lat = latParam != null ? Number(latParam) : NaN;
+      const lng = lngParam != null ? Number(lngParam) : NaN;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+      return null;
+    },
   );
-  const [kind, setKind] = useState<(typeof KINDS)[number]["k"]>("camp");
+  const [kind, setKind] = useState<(typeof KINDS)[number]["k"]>(initialKind);
   const [date, setDate] = useState(todayLocal());
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(
+    quick === "overnight" || quick === "night" || quick === "park"
+      ? "Parked for the night"
+      : quick === "rest"
+        ? "Quick stop"
+        : "",
+  );
   const [query, setQuery] = useState("");
   const [gpsLoading, setGpsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -178,10 +214,12 @@ export default function LogStopScreen() {
   }
 
   useEffect(() => {
-    if (quick === "camp") void useMyLocation();
-    // Run once for the explicit Camp here entry point.
+    // Quick-entry points always grab GPS when coords were not deep-linked.
+    if (coords) return;
+    if (quick || kindParam) void useMyLocation();
+    // Run once for quick entry / preselected kind.
     // biome-ignore lint/correctness/useExhaustiveDependencies: intentional route-entry behavior
-  }, [quick]);
+  }, [quick, kindParam]);
 
   const canSave =
     !!coords && name.trim().length > 0 && !logStop.isPending && !saving;

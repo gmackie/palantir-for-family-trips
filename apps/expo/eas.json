@@ -55,12 +55,16 @@
     "preview": {
       "extends": "base",
       "distribution": "internal",
+      "developmentClient": false,
       "env": {
         "APP_VARIANT": "preview",
-        "API_URL": "${STAGING_API_URL}",
+        "API_URL": "https://sortey.app",
         "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_STAGING}",
         "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_STAGING}",
-        "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
+        "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "PREFLIGHT_OTA_URL": "http://127.0.0.1:3099/api/preflight/v1/ota/manifest",
+        "PREFLIGHT_OTA_RUNTIME_VERSION": "sortey-p0"
       },
       "ios": {
         "enterpriseProvisioning": "adhoc"
@@ -69,6 +73,24 @@
         "buildType": "apk"
       },
       "channel": "preview"
+    },
+    "preview-simulator": {
+      "extends": "preview",
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview-device": {
+      "extends": "preview",
+      "ios": {
+        "simulator": false,
+        "enterpriseProvisioning": "adhoc"
+      },
+      "env": {
+        "PREFLIGHT_OTA_URL": "http://10.2.10.153:3099/api/preflight/v1/ota/manifest",
+        "PREFLIGHT_OTA_RUNTIME_VERSION": "sortey-p0"
+      }
     },
     "production": {
       "extends": "base",

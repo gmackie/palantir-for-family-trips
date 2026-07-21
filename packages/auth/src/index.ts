@@ -163,7 +163,7 @@ export function initAuth<
     trustedOrigins: [
       "sortey://",
       "sortey-dev://",
-      "sortey-preview://",
+      "sortey-expo://",
       "exp://",
       "https://appleid.apple.com",
     ],

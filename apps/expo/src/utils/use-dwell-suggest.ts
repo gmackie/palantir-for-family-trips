@@ -54,7 +54,7 @@ export function useDwellSuggest(enabled: boolean) {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== "granted" || cancelled) return;
 
-      sub = await Location.watchPositionAsync(
+      const watcher = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
           timeInterval: 20_000,
@@ -98,6 +98,14 @@ export function useDwellSuggest(enabled: boolean) {
           }
         },
       );
+
+      if (cancelled) {
+        // Effect cleaned up while the watch promise was pending — remove the
+        // subscription here or it leaks GPS forever.
+        watcher.remove();
+        return;
+      }
+      sub = watcher;
     })();
 
     return () => {
