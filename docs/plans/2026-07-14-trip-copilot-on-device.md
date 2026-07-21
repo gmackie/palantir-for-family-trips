@@ -5,7 +5,8 @@
 **Dogfood:** Van road trip planning conversations (Bay → Yosemite → Zion → Bryce day-stop → Grand Junction → Denver → Omaha → Lake Forest → home)  
 **Depends on:** Today Command + Reality Replan (`docs/plans/2026-07-12-today-command-and-replan-design.md`), Offline-First (`docs/ai/OFFLINE_FIRST_DESIGN.md`), corridor POIs (`imported_poi` / iOverlander), active-trip mobile shell  
 **Principle:** Sortie is the **passenger-seat co-pilot**. It argues options, respects anchors, and rewrites nights — **with no cell service**. Cloud is optional assist, not the brain.  
-**Conversation + multi-party (depth):** [`2026-07-20-conversational-collaborative-planning.md`](./2026-07-20-conversational-collaborative-planning.md) — sessions, moves, stances, facilitation, party vs private.
+**Primary UI + offline voice:** [`2026-07-20-command-surface-voice-pipeline.md`](./2026-07-20-command-surface-voice-pipeline.md) — Command Surface is home; Whisper STT offline; chat is aside.  
+**Conversation + multi-party (depth):** [`2026-07-20-conversational-collaborative-planning.md`](./2026-07-20-conversational-collaborative-planning.md) — sessions, moves, stances, facilitation (renders onto command surface).
 
 ---
 

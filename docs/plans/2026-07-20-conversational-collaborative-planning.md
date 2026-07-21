@@ -2,9 +2,10 @@
 
 **Date:** 2026-07-20  
 **Status:** Draft — product + interaction architecture  
+**UI reframe (read first):** [`2026-07-20-command-surface-voice-pipeline.md`](./2026-07-20-command-surface-voice-pipeline.md) — **Command Surface is primary real estate**; Trip Chat is an aside; offline Whisper → co-pilot → plan.  
 **Parent:** On-device co-pilot ([`2026-07-14-trip-copilot-on-device.md`](./2026-07-14-trip-copilot-on-device.md)), SQLite world model ([`2026-07-14-trip-copilot-sqlite-schema.md`](./2026-07-14-trip-copilot-sqlite-schema.md)), Today/Replan ([`2026-07-12-today-command-and-replan-design.md`](./2026-07-12-today-command-and-replan-design.md))  
-**Dogfood scene:** Van party planning nights out loud — today often **one human + co-pilot agent**; product goal is **N humans + co-pilot** in the same thread of reasoning.  
-**Principle:** Planning is a **conversation that produces structured plan objects**. The co-pilot is a **party member with tools**, not a form wizard and not a group chat dump.
+**Dogfood scene:** Van party planning nights out loud — today often **one human + co-pilot agent**; product goal is **N humans + co-pilot** sharing **options on the command canvas**.  
+**Principle:** Planning is a **conversation that produces structured plan objects rendered on the command surface**. The co-pilot is a **party member with tools**. Trip Chat is not the home screen.
 
 ---
 
