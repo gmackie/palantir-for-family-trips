@@ -1,10 +1,11 @@
 # Design: Trip Co-Pilot (on-device, offline-first)
 
-**Date:** 2026-07-14  
+**Date:** 2026-07-14 (collab depth: 2026-07-20)  
 **Status:** Draft — product + data architecture  
 **Dogfood:** Van road trip planning conversations (Bay → Yosemite → Zion → Bryce day-stop → Grand Junction → Denver → Omaha → Lake Forest → home)  
 **Depends on:** Today Command + Reality Replan (`docs/plans/2026-07-12-today-command-and-replan-design.md`), Offline-First (`docs/ai/OFFLINE_FIRST_DESIGN.md`), corridor POIs (`imported_poi` / iOverlander), active-trip mobile shell  
-**Principle:** Sortie is the **passenger-seat co-pilot**. It argues options, respects anchors, and rewrites nights — **with no cell service**. Cloud is optional assist, not the brain.
+**Principle:** Sortie is the **passenger-seat co-pilot**. It argues options, respects anchors, and rewrites nights — **with no cell service**. Cloud is optional assist, not the brain.  
+**Conversation + multi-party (depth):** [`2026-07-20-conversational-collaborative-planning.md`](./2026-07-20-conversational-collaborative-planning.md) — sessions, moves, stances, facilitation, party vs private.
 
 ---
 
@@ -41,13 +42,15 @@ That conversation is **the product**. Today it lives in chat with a human/agent 
 | G4 | **SQLite** on device as the POI / service / leg / brief store (scale + spatial queries). |
 | G5 | Explicit **“Prepare co-pilot offline”** download before leaving signal (bounded packs, no silent 100k-row surprise). |
 | G6 | Anchors stay sacred; co-pilot only rewrites **between** anchors unless user unlocks. |
+| G7 | **Multi-party planning sessions** — N humans + co-pilot share options/stances; commit is role-gated (see collaborative design). |
+| G8 | **Conversational depth** — multi-turn constraint stacks and preference conflict, not one-shot prompts. |
 
 ### Non-goals (this design)
 
 - Turn-by-turn navigation  
 - Replacing Google/Apple Maps  
 - Full continental OSM on device  
-- Real-time multi-user CRDT merge offline  
+- Real-time multi-user CRDT merge offline (conflict UI instead; see collab doc)  
 - Cloud LLM as the only path (online assist OK later)  
 - Perfect hotel booking / campground reservation API in v1  
 
@@ -57,9 +60,11 @@ That conversation is **the product**. Today it lives in chat with a human/agent 
 
 | Term | Definition |
 |------|------------|
-| **Trip co-pilot** | Conversational planner that proposes `PlanOption`s and optional day drafts from local state. |
+| **Trip co-pilot** | Conversational planner that proposes `PlanOption`s and optional day drafts from local state. Participant id `copilot` in multi-party sessions. |
 | **Trip brief** | Durable prefs + hard anchors + soft constraints the co-pilot always reads. |
 | **Plan option** | Structured alternative: nights layout, drive hours, hike/heat score, risk to next anchor, cut-if-behind. |
+| **Planning session** | Bounded multi-move conversation (solo or party) that may commit a plan change. |
+| **Move / stance / decision** | Typed conversational acts — see collaborative design. |
 | **Local world** | SQLite tables: POIs, services, legs, brief, packs metadata. |
 | **Corridor pack** | Downloaded POI/service slice for a trip’s polyline ± buffer (or bbox chain of days). |
 | **Service class** | Fuel, Costco, laundry, dump, water, shower, grocery, overnight (camp/wild/truck stop). |

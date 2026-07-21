@@ -101,6 +101,14 @@ _Avoid_: Activity, attraction (too generic)
 Regenerate Trip Days from the current position (or a from-date) until the next Anchor, packing must-visits and play days. Draft first, then apply. Does not replace turn-by-turn navigation.
 _Avoid_: Reroute (navigator), reschedule (calendar-only)
 
+**Trip Co-Pilot**:
+A tool-using planning participant (on-device and/or server) that argues options with costs (hours, nights, anchor risk) and never invents miles or POIs. In multi-party mode it facilitates; it does not self-commit plan changes.
+_Avoid_: AI itinerary generator, chatbot (too vague)
+
+**Planning Session**:
+A bounded conversation (solo with co-pilot, or party of trip members + co-pilot) that produces structured Plan Options, stances, and an optional Decision/Commit into Trip Days. Distinct from free-form trip chat.
+_Avoid_: Group brainstorm, thread (overloaded with chat)
+
 **Amenity Scan**:
 Long-term van-planning view of corridor POIs (iOverlander etc.) near each Trip Day overnight: sleep, dump, water, fuel, parking, tolls — plus warnings when gaps exist.
 _Avoid_: POI dump, place search (too generic)
