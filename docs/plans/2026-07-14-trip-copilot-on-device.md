@@ -180,166 +180,28 @@ Conversation-level planning needs:
 
 ### 6.2 Database layout
 
-**File:** `sortey-local.db` under app documents (one DB per install; trip-scoped rows via `trip_id` / pack_id).
+**File:** `sortey-local.db` (one DB per install). **Driver:** `expo-sqlite` default.
 
-Recommended: **`expo-sqlite`** (Expo-supported) or **`op-sqlite`** if we need performance/FTS sooner. Ship behind a thin `LocalDb` repo interface.
+**Full column-level DDL, indexes, tool SQL, pack lifecycle, FTS, seeds, migrations:**
 
-#### Meta
+→ **[`2026-07-14-trip-copilot-sqlite-schema.md`](./2026-07-14-trip-copilot-sqlite-schema.md)**
 
-```sql
-CREATE TABLE pack_meta (
-  pack_id TEXT PRIMARY KEY,
-  trip_id TEXT NOT NULL,
-  workspace_id TEXT NOT NULL,
-  kind TEXT NOT NULL,          -- 'corridor' | 'national_services' | 'legs' | 'brief'
-  downloaded_at TEXT NOT NULL,
-  expires_at TEXT,
-  source_version TEXT,         -- server pack hash / export id
-  byte_size INTEGER,
-  notes TEXT
-);
+| Table | Role |
+|-------|------|
+| `schema_meta` | Migration version |
+| `pack_meta` | Download registry (corridor / national / legs / plan) |
+| `trip_brief` | Prefs + soft goals (`dirty` for merge) |
+| `local_anchor` | Immovable dates/places |
+| `local_trip_day` | Plan mirror for tools |
+| `local_node` | Named graph nodes (`node:zion`) |
+| `local_leg` | Drive hours |
+| `local_poi` | World model (amenity flags, geohash, tiles) |
+| `local_poi_fts` | Name search (FTS5) |
+| `local_poi_route` | Mile-marker along polyline (Costco order) |
+| `copilot_message` | Short chat history |
+| `copilot_apply_queue` | Local-first plan apply outbox |
 
-CREATE TABLE schema_version (
-  version INTEGER NOT NULL
-);
-```
-
-#### Trip brief (co-pilot memory)
-
-```sql
-CREATE TABLE trip_brief (
-  trip_id TEXT PRIMARY KEY,
-  json TEXT NOT NULL,          -- TripBrief blob (see §7)
-  updated_at TEXT NOT NULL
-);
-```
-
-#### Anchors / days cache (optional denormalize for tools)
-
-Mirror enough of plan state for tools without opening huge JSON:
-
-```sql
-CREATE TABLE local_anchor (
-  id TEXT PRIMARY KEY,
-  trip_id TEXT NOT NULL,
-  title TEXT NOT NULL,
-  kind TEXT,
-  start_date TEXT NOT NULL,
-  end_date TEXT,
-  lat REAL,
-  lng REAL,
-  place_name TEXT
-);
-
-CREATE TABLE local_trip_day (
-  trip_id TEXT NOT NULL,
-  date TEXT NOT NULL,
-  intent TEXT,
-  title TEXT,
-  overnight_name TEXT,
-  overnight_lat REAL,
-  overnight_lng REAL,
-  hero_title TEXT,
-  cut_if_behind TEXT,
-  day_status TEXT,
-  PRIMARY KEY (trip_id, date)
-);
-```
-
-#### POIs (the big table)
-
-Normalized for query; rich payload in JSON.
-
-```sql
-CREATE TABLE local_poi (
-  id TEXT PRIMARY KEY,           -- stable: source:external_id or server uuid
-  pack_id TEXT NOT NULL,
-  trip_id TEXT,                  -- NULL = global/national pack
-  source TEXT NOT NULL,         -- ioverlander | osm | costco | manual | nrel | ...
-  external_id TEXT,
-  name TEXT NOT NULL,
-  category TEXT NOT NULL,       -- aligns with AMENITY_GROUPS / imported_poi
-  lat REAL NOT NULL,
-  lng REAL NOT NULL,
-  -- denormalized flags for fast filters
-  is_costco INTEGER NOT NULL DEFAULT 0,
-  is_overnight INTEGER NOT NULL DEFAULT 0,
-  has_laundry INTEGER NOT NULL DEFAULT 0,
-  has_dump INTEGER NOT NULL DEFAULT 0,
-  has_water INTEGER NOT NULL DEFAULT 0,
-  has_fuel INTEGER NOT NULL DEFAULT 0,
-  has_shower INTEGER NOT NULL DEFAULT 0,
-  rating REAL,                   -- optional quality score from source
-  data_json TEXT,                -- full source payload (hours, fee, phone, notes)
-  updated_at TEXT
-);
-
--- Spatial: geohash prefix OR tile key for cheap bbox; refine with haversine in SQL/JS
-CREATE INDEX local_poi_geo ON local_poi (trip_id, category, lat, lng);
-CREATE INDEX local_poi_pack ON local_poi (pack_id);
-CREATE INDEX local_poi_costco ON local_poi (is_costco) WHERE is_costco = 1;
-CREATE INDEX local_poi_overnight ON local_poi (is_overnight) WHERE is_overnight = 1;
-
--- Optional FTS for name search offline
-CREATE VIRTUAL TABLE local_poi_fts USING fts5(
-  name, category, content='local_poi', content_rowid='rowid'
-);
-```
-
-**Category set** (start from `AMENITY_GROUPS` in `@sortey/db/ioverlander`):
-
-- Sleep: `wild_camping`, `campsite`, `parking_overnight`, `rest_area`, `truck_stop`  
-- Service: `water`, `dump_station`, `propane`, `shower`, `laundry`, `mechanic`  
-- Fuel: `fuel` (+ `is_costco`)  
-- Food: `grocery`, `restaurant`  
-- Road: `toll`, `parking`  
-
-**New categories we need for co-pilot conversations** (not all in iOverlander today):
-
-| Category / flag | Source ideas | Used for |
-|-----------------|--------------|----------|
-| `truck_stop` | manual list, OSM, iOverlander parking | laundry + overnight staging (Tracy) |
-| `laundry` | OSM / manual | “need laundry tonight” |
-| Costco (`is_costco` on fuel/grocery) | static Costco store list + gas flags | fuel/stock along corridor |
-| `hotel` | optional later | recovery nights |
-
-#### Precomputed legs (drive truth)
-
-```sql
-CREATE TABLE local_leg (
-  id TEXT PRIMARY KEY,
-  trip_id TEXT,                  -- NULL = global graph
-  from_key TEXT NOT NULL,        -- 'node:yosemite_valley' | 'poi:<id>' | 'll:37.7,-119.5'
-  to_key TEXT NOT NULL,
-  from_lat REAL NOT NULL,
-  from_lng REAL NOT NULL,
-  to_lat REAL NOT NULL,
-  to_lng REAL NOT NULL,
-  miles REAL,
-  hours REAL NOT NULL,           -- van-adjusted
-  source TEXT NOT NULL,          -- 'table' | 'haversine' | 'osrm_cached'
-  notes TEXT
-);
-
-CREATE UNIQUE INDEX local_leg_od ON local_leg (from_key, to_key);
-```
-
-Seed a **national van graph** for common nodes (Bay, Tracy, Yosemite, Zion, Bryce, GJ, Denver, Omaha, Chicago/Lake Forest, etc.) plus trip-specific legs from segment distances.
-
-#### Co-pilot session (optional)
-
-```sql
-CREATE TABLE copilot_message (
-  id TEXT PRIMARY KEY,
-  trip_id TEXT NOT NULL,
-  role TEXT NOT NULL,            -- user | assistant | system
-  content TEXT NOT NULL,
-  options_json TEXT,             -- PlanOption[] if any
-  created_at TEXT NOT NULL
-);
-```
-
-Keep history short (last N turns) for SLM context + battery.
+Global rows use `trip_id = ''` so queries are `trip_id IN ('', :tripId)`.
 
 ---
 
