@@ -291,12 +291,14 @@ Stances and Apply policies: collaborative planning doc — still valid; render s
 
 ## 8. Phased delivery
 
-### P0 — Chat-primary + structured artifacts
+### P0 — Chat-primary + structured artifacts ✅ (shipped scaffold)
 
-- Active trip home = **chat + plan chrome**  
-- Co-pilot replies with **option cards** in-thread  
-- Apply updates days + chrome  
-- Typed input only  
+- Active trip **Chat** = plan chrome + co-pilot in thread  
+- Pure rules engine: `@sortey/api/copilot` (`steerCopilot`) + seed legs/POIs  
+- tRPC `copilot.steer` / `copilot.estimateDrive`  
+- Mobile: planning messages → steer (online tRPC, offline local) → **PlanOption** cards → **Apply to plan chrome**  
+- SQLite DDL scaffold: `apps/expo/src/local-db/schema.sql` (ingest next)  
+- Road trip tab label: **Chat · Co-pilot**
 
 ### P1 — Offline Whisper into composer
 

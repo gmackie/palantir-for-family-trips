@@ -1,7 +1,9 @@
+import type { PlanOption } from "@sortey/api/copilot";
+import { steerCopilot } from "@sortey/api/copilot";
 import type { ChatMessage } from "@sortey/realtime";
 import { useTripChat } from "@sortey/realtime";
 import { useQuery } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,17 +15,25 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+import { PlanChrome } from "~/components/trip/plan-chrome";
+import { PlanOptionCards } from "~/components/trip/plan-option-cards";
 import { trpc, trpcClient } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, PALETTE, R } from "~/utils/design";
+import { fetchIsOnline } from "~/utils/network-status";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
-/**
- * `useTripChat` appends `/api/chat/${tripId}/ws`, so it wants just the
- * `wss://host` (or `ws://host` on plain-http dev) origin. We derive it from the
- * same base URL the tRPC client uses, swapping the HTTP scheme for the WS one.
- */
+type LocalCopilotTurn = {
+  id: string;
+  role: "user" | "copilot";
+  body: string;
+  options?: PlanOption[];
+  recommendedOptionId?: string;
+  createdAt: Date;
+};
+
 function deriveWsBaseUrl(): string {
   const base = getBaseUrl();
   if (base.startsWith("https://"))
@@ -32,7 +42,7 @@ function deriveWsBaseUrl(): string {
   return base;
 }
 
-function formatTime(value: ChatMessage["createdAt"]): string {
+function formatTime(value: Date | string | number): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "--:--";
   const hh = String(date.getHours()).padStart(2, "0");
@@ -45,7 +55,6 @@ function isDeleted(message: ChatMessage): boolean {
 }
 
 function colorForUser(userId: string): string {
-  // Deterministic palette pick so a sender keeps the same color across renders.
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
     hash = (hash * 31 + userId.charCodeAt(i)) | 0;
@@ -53,18 +62,32 @@ function colorForUser(userId: string): string {
   return PALETTE[Math.abs(hash) % PALETTE.length]!;
 }
 
+function looksLikePlanning(text: string): boolean {
+  return /camp|tonight|zion|bryce|utah|costco|laundry|truck|denver|yosemite|drive|hours|hike|heat|stage|gj|grand junction|omaha|tahoe|fuel|how long/i.test(
+    text,
+  );
+}
+
 export default function ChatScreen() {
   "use no memo";
   const { tripId: tripIdParam } = useLocalSearchParams<{ tripId: string }>();
   const tripId = tripIdParam ?? "";
   const workspaceId = getActiveWorkspaceId() ?? "";
+  const router = useRouter();
 
   const session = authClient.useSession();
   const currentUserId = session.data?.user?.id ?? "";
 
-  // Roster -> sender display names / colors. Cheap, cached query.
   const { data: members } = useQuery({
     ...trpc.trips.listMembers.queryOptions({ workspaceId, tripId }),
+    retry: false,
+  });
+
+  const { data: todayCmd } = useQuery({
+    ...trpc.planner.todayCommand.queryOptions({
+      workspaceId,
+      tripId,
+    }),
     retry: false,
   });
 
@@ -79,13 +102,6 @@ export default function ChatScreen() {
     return map;
   }, [members]);
 
-  // Bridge the vanilla tRPC client into the plain callbacks `useTripChat` wants
-  // (it keeps these in refs, so identity changes never tear down a healthy
-  // socket). This mirrors the web panel's `trpcClient.chat.*` wiring — the expo
-  // options-proxy only exposes `queryOptions`/`mutationOptions`, so the vanilla
-  // client (exported alongside it from `~/utils/api`) is the clean imperative
-  // path: `chat.history.query(...)` for backfill, `chat.send.mutate(...)` for
-  // optimistic send.
   const history = useCallback(
     (opts: { tripId: string; limit?: number }) =>
       trpcClient.chat.history.query({
@@ -107,16 +123,117 @@ export default function ChatScreen() {
   const { messages, presence, typing, connected, loading, send, sendTyping } =
     useTripChat({ tripId, wsBaseUrl, history, sendMessage });
 
-  // Reconnecting = initial load done but socket down (connected is legitimately
-  // false during the first load, so gate on !loading).
   const reconnecting = !loading && !connected;
-
-  // Inverted list renders newest-at-bottom, so feed it newest-first.
   const ordered = useMemo(() => [...messages].reverse(), [messages]);
 
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
+  const [copilotBusy, setCopilotBusy] = useState(false);
+  const [localTurns, setLocalTurns] = useState<LocalCopilotTurn[]>([]);
+  const [chrome, setChrome] = useState<{
+    tonightPlace?: string;
+    tonightKind?: string;
+    nextNights?: Array<{ date: string; place: string }>;
+    nextAnchorTitle?: string;
+    nextAnchorDate?: string;
+    facts?: string[];
+  }>({});
+  const [appliedOptionId, setAppliedOptionId] = useState<string | null>(null);
+
+  // Merge server messages with local co-pilot turns for display (local on top when inverted = appear newest)
+  type Row =
+    | { kind: "server"; msg: ChatMessage }
+    | { kind: "local"; turn: LocalCopilotTurn };
+
+  const listData: Row[] = useMemo(() => {
+    const serverRows: Row[] = ordered.map((msg) => ({ kind: "server", msg }));
+    const localRows: Row[] = [...localTurns]
+      .reverse()
+      .map((turn) => ({ kind: "local", turn }));
+    // inverted list: index 0 is bottom (newest). Put newest locals first.
+    return [...localRows, ...serverRows];
+  }, [ordered, localTurns]);
+
+  const runCopilot = useCallback(
+    async (message: string) => {
+      setCopilotBusy(true);
+      const userTurn: LocalCopilotTurn = {
+        id: `local-user-${Date.now()}`,
+        role: "user",
+        body: message,
+        createdAt: new Date(),
+      };
+      setLocalTurns((prev) => [...prev, userTurn]);
+
+      try {
+        const online = await fetchIsOnline();
+        let result: ReturnType<typeof steerCopilot>;
+        if (online && workspaceId && tripId) {
+          try {
+            result = await trpcClient.copilot.steer.mutate({
+              workspaceId,
+              tripId,
+              message,
+              today: new Date().toISOString().slice(0, 10),
+            });
+          } catch {
+            result = steerCopilot({
+              message,
+              today: new Date().toISOString().slice(0, 10),
+            });
+          }
+        } else {
+          result = steerCopilot({
+            message,
+            today: new Date().toISOString().slice(0, 10),
+          });
+        }
+
+        const copilotTurn: LocalCopilotTurn = {
+          id: `local-copilot-${Date.now()}`,
+          role: "copilot",
+          body: result.reply,
+          options: result.options,
+          recommendedOptionId: result.recommendedOptionId,
+          createdAt: new Date(),
+        };
+        setLocalTurns((prev) => [...prev, copilotTurn]);
+
+        if (result.chrome) {
+          setChrome((prev) => ({
+            ...prev,
+            tonightPlace: result.chrome?.tonightPlace ?? prev.tonightPlace,
+            tonightKind: result.chrome?.tonightKind ?? prev.tonightKind,
+            nextAnchorTitle:
+              result.chrome?.nextAnchorTitle ?? prev.nextAnchorTitle,
+            nextAnchorDate: result.chrome?.nextAnchorDate ?? prev.nextAnchorDate,
+            facts: result.chrome?.facts ?? prev.facts,
+          }));
+        }
+
+        // Mirror co-pilot prose into trip chat when online (so party sees it)
+        if (online && workspaceId && tripId) {
+          const cardNote =
+            result.options.length > 0
+              ? `\n\n[Plan options: ${result.options.map((o) => o.title).join(" | ")}]`
+              : "";
+          try {
+            await trpcClient.chat.send.mutate({
+              workspaceId,
+              tripId,
+              body: `🧭 Sortie: ${result.reply}${cardNote}`.slice(0, 3900),
+            });
+          } catch {
+            // local UI already has the turn
+          }
+        }
+      } finally {
+        setCopilotBusy(false);
+      }
+    },
+    [workspaceId, tripId],
+  );
 
   const handleSend = useCallback(async () => {
     const body = draft.trim();
@@ -124,18 +241,68 @@ export default function ChatScreen() {
     setSending(true);
     setSendFailed(false);
     setDraft("");
+
+    const planning = looksLikePlanning(body);
+
     try {
-      await send(body);
-    } catch {
-      // Restore the draft AND surface the failure (no silent drop).
-      setDraft(body);
-      setSendFailed(true);
+      // Always try party chat when possible
+      try {
+        await send(body);
+      } catch {
+        if (!planning) {
+          setDraft(body);
+          setSendFailed(true);
+          return;
+        }
+        // Planning can continue offline without server chat
+      }
+
+      if (planning) {
+        await runCopilot(body);
+      }
     } finally {
       setSending(false);
     }
-  }, [draft, sending, send]);
+  }, [draft, sending, send, runCopilot]);
+
+  const handleApply = useCallback((opt: PlanOption) => {
+    setAppliedOptionId(opt.id);
+    const tonight = opt.nights[0];
+    setChrome((prev) => ({
+      ...prev,
+      tonightPlace: tonight?.place ?? prev.tonightPlace,
+      tonightKind: tonight?.kind ?? prev.tonightKind,
+      nextNights: opt.nights.slice(0, 5).map((n) => ({
+        date: n.date,
+        place: n.place,
+      })),
+      facts: [
+        `Applied: ${opt.title}`,
+        `${opt.costs.totalDriveHours.toFixed(1)}h total in option`,
+        ...(prev.facts ?? []).slice(0, 2),
+      ],
+    }));
+  }, []);
 
   const othersTyping = typing.filter((u) => u !== currentUserId);
+
+  // Seed chrome from today command when available
+  const chromeMerged = {
+    tonightPlace:
+      chrome.tonightPlace ??
+      todayCmd?.day?.overnightName ??
+      todayCmd?.day?.title ??
+      null,
+    tonightKind: chrome.tonightKind ?? null,
+    nextNights: chrome.nextNights,
+    nextAnchorTitle:
+      chrome.nextAnchorTitle ?? todayCmd?.nextAnchor?.title ?? null,
+    nextAnchorDate:
+      chrome.nextAnchorDate ??
+      todayCmd?.nextAnchor?.startDate ??
+      null,
+    facts: chrome.facts,
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -147,14 +314,30 @@ export default function ChatScreen() {
         }}
       />
 
-      {/* Presence line */}
+      <PlanChrome
+        tonightPlace={chromeMerged.tonightPlace}
+        tonightKind={chromeMerged.tonightKind}
+        nextNights={chromeMerged.nextNights}
+        nextAnchorTitle={chromeMerged.nextAnchorTitle}
+        nextAnchorDate={chromeMerged.nextAnchorDate}
+        facts={chromeMerged.facts}
+        offline={!connected}
+        onOpenMap={() =>
+          router.push({
+            pathname: "/trip/[tripId]/map" as never,
+            params: { tripId },
+          })
+        }
+      />
+
+      {/* Presence */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
           paddingHorizontal: 16,
-          paddingVertical: 10,
+          paddingVertical: 8,
           borderBottomWidth: 1,
           borderBottomColor: C.border,
           backgroundColor: C.surface,
@@ -182,7 +365,9 @@ export default function ChatScreen() {
             fontFamily: mono,
           }}
         >
-          {reconnecting ? "reconnecting…" : `${presence.length} online`}
+          {reconnecting
+            ? "reconnecting…"
+            : `${presence.length} online · co-pilot ${copilotBusy ? "thinking" : "ready"}`}
         </Text>
       </View>
 
@@ -192,19 +377,70 @@ export default function ChatScreen() {
         style={{ flex: 1 }}
       >
         <FlatList
-          data={ordered}
+          data={listData}
           inverted
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) =>
+            item.kind === "server" ? item.msg.id : item.turn.id
+          }
           contentContainerStyle={{ padding: 16, gap: 12 }}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
-            const meta = memberMap.get(item.userId);
-            const mine = item.userId === currentUserId;
+            if (item.kind === "local") {
+              const turn = item.turn;
+              const copilot = turn.role === "copilot";
+              return (
+                <View style={{ gap: 4 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "baseline",
+                      gap: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: copilot ? C.warning : C.info,
+                        fontSize: 13,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {copilot ? "Sortie" : "You"}
+                    </Text>
+                    <Text
+                      style={{
+                        color: C.placeholder,
+                        fontSize: 11,
+                        fontFamily: mono,
+                      }}
+                    >
+                      {formatTime(turn.createdAt)}
+                      {copilot ? " · co-pilot" : ""}
+                    </Text>
+                  </View>
+                  <Text style={{ color: C.fg, fontSize: 15, lineHeight: 20 }}>
+                    {turn.body}
+                  </Text>
+                  {copilot && turn.options && turn.options.length > 0 ? (
+                    <PlanOptionCards
+                      options={turn.options}
+                      recommendedId={turn.recommendedOptionId}
+                      appliedId={appliedOptionId}
+                      onApply={handleApply}
+                    />
+                  ) : null}
+                </View>
+              );
+            }
+
+            const msg = item.msg;
+            const meta = memberMap.get(msg.userId);
+            const mine = msg.userId === currentUserId;
             const name = mine ? "You" : (meta?.name ?? "Member");
             const color = mine
               ? C.info
-              : (meta?.color ?? colorForUser(item.userId));
-            const deleted = isDeleted(item);
+              : (meta?.color ?? colorForUser(msg.userId));
+            const deleted = isDeleted(msg);
+            const isCopilotMirror = msg.body.startsWith("🧭 Sortie:");
 
             return (
               <View style={{ gap: 2 }}>
@@ -215,8 +451,14 @@ export default function ChatScreen() {
                     gap: 8,
                   }}
                 >
-                  <Text style={{ color, fontSize: 13, fontWeight: "700" }}>
-                    {name}
+                  <Text
+                    style={{
+                      color: isCopilotMirror ? C.warning : color,
+                      fontSize: 13,
+                      fontWeight: "700",
+                    }}
+                  >
+                    {isCopilotMirror ? "Sortie" : name}
                   </Text>
                   <Text
                     style={{
@@ -226,7 +468,7 @@ export default function ChatScreen() {
                       fontVariant: ["tabular-nums"],
                     }}
                   >
-                    {formatTime(item.createdAt)}
+                    {formatTime(msg.createdAt)}
                   </Text>
                 </View>
                 {deleted ? (
@@ -241,7 +483,9 @@ export default function ChatScreen() {
                   </Text>
                 ) : (
                   <Text style={{ color: C.fg, fontSize: 15, lineHeight: 20 }}>
-                    {item.body}
+                    {isCopilotMirror
+                      ? msg.body.replace(/^🧭 Sortie:\s*/, "")
+                      : msg.body}
                   </Text>
                 )}
               </View>
@@ -252,26 +496,46 @@ export default function ChatScreen() {
               style={{
                 alignItems: "center",
                 justifyContent: "center",
-                paddingVertical: 60,
-                // Counteract `inverted` so the empty/loading state reads upright.
+                paddingVertical: 40,
                 transform: [{ scaleY: -1 }],
+                paddingHorizontal: 12,
+                gap: 8,
               }}
             >
               {loading ? (
                 <ActivityIndicator color={C.muted} size="small" />
               ) : (
-                <Text style={{ color: C.muted, fontSize: 15 }}>
-                  No messages yet. Say hello.
-                </Text>
+                <>
+                  <Text
+                    style={{
+                      color: C.fg,
+                      fontSize: 15,
+                      fontWeight: "700",
+                      textAlign: "center",
+                    }}
+                  >
+                    Trip chat + co-pilot
+                  </Text>
+                  <Text
+                    style={{
+                      color: C.muted,
+                      fontSize: 13,
+                      textAlign: "center",
+                      lineHeight: 18,
+                    }}
+                  >
+                    Try: “laundry near Tracy”, “2 Zion or 2 Bryce”, “how long
+                    Bryce to Denver”
+                  </Text>
+                </>
               )}
             </View>
           }
         />
 
-        {/* Typing indicator */}
         <View
           style={{
-            height: 18,
+            minHeight: 18,
             justifyContent: "center",
             paddingHorizontal: 16,
           }}
@@ -290,6 +554,10 @@ export default function ChatScreen() {
                 failed to send — retry
               </Text>
             </Pressable>
+          ) : copilotBusy ? (
+            <Text style={{ color: C.warning, fontSize: 11, fontFamily: mono }}>
+              co-pilot…
+            </Text>
           ) : othersTyping.length > 0 ? (
             <Text style={{ color: C.muted, fontSize: 11, fontFamily: mono }}>
               {othersTyping.length === 1
@@ -299,7 +567,6 @@ export default function ChatScreen() {
           ) : null}
         </View>
 
-        {/* Composer */}
         <View
           style={{
             flexDirection: "row",
@@ -317,57 +584,40 @@ export default function ChatScreen() {
             value={draft}
             onChangeText={(text) => {
               setDraft(text);
-              if (sendFailed) setSendFailed(false);
               sendTyping();
             }}
-            placeholder="Message the trip…"
+            placeholder="Message party or co-pilot…"
             placeholderTextColor={C.placeholder}
             multiline
             style={{
               flex: 1,
               maxHeight: 120,
-              minHeight: 44,
-              backgroundColor: C.bg,
+              color: C.fg,
+              fontSize: 15,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
               borderWidth: 1,
               borderColor: C.border,
               borderRadius: R.md,
-              paddingHorizontal: 12,
-              paddingTop: 12,
-              paddingBottom: 12,
-              color: C.fg,
-              fontSize: 15,
+              backgroundColor: C.bg,
             }}
           />
           <Pressable
-            onPress={() => {
-              void handleSend();
-            }}
-            disabled={sending || draft.trim().length === 0}
+            onPress={() => void handleSend()}
+            disabled={!draft.trim() || sending || copilotBusy}
             style={{
-              backgroundColor: C.info,
+              backgroundColor:
+                !draft.trim() || sending || copilotBusy ? C.border : C.info,
               borderRadius: R.md,
-              paddingHorizontal: 18,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
               minHeight: 44,
-              alignItems: "center",
               justifyContent: "center",
-              opacity: sending || draft.trim().length === 0 ? 0.5 : 1,
             }}
           >
-            {sending ? (
-              <ActivityIndicator color={C.white} size="small" />
-            ) : (
-              <Text
-                style={{
-                  color: C.white,
-                  fontWeight: "700",
-                  fontSize: 13,
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
-                }}
-              >
-                Send
-              </Text>
-            )}
+            <Text style={{ color: C.white, fontWeight: "800", fontSize: 14 }}>
+              {sending || copilotBusy ? "…" : "Send"}
+            </Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

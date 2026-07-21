@@ -200,7 +200,7 @@ export function RoadTripDetail({
     },
     {
       key: "chat",
-      label: "Chat",
+      label: "Chat · Co-pilot",
       icon: "chatbubbles-outline",
       path: "chat",
     },
