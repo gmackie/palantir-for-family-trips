@@ -1,0 +1,62 @@
+# TrueFlight standard workflow: permissions
+# Every iOS permission Sortey raises, each with the purpose string from
+# app.config.ts infoPlist. Sortey requests:
+#   - Notifications  (NSUserNotifications) — auto-requested on app launch
+#                     (_layout.tsx usePushNotifications → Notifications.requestPermissionsAsync)
+#   - Location       (NSLocationWhenInUseUsageDescription) — trip map / Today /
+#                     Log stop (Location.requestForegroundPermissionsAsync)
+#   - Camera         (NSCameraUsageDescription) — Scan Receipt on a new expense
+#                     (ImagePicker.requestCameraPermissionsAsync)
+#   - Photo Library  (NSPhotoLibraryUsageDescription) — "Library" on a new
+#                     expense / trip photos (launchImageLibraryAsync; iOS may not
+#                     re-prompt on modern versions, so it is asserted optional)
+#
+# tf:workflow id=permissions title="Permission prompts" account=traveler
+# tf:account role=traveler email="reviewer+traveler@sortey.app" secretRef=sortey/review/traveler_pw permissions=standard notes="Standard trip participant. Grant every prompt to see the purpose strings and that each feature works."
+# tf:verify "Notifications, Location, and Camera are each requested with a clear purpose string and work when granted."
+appId: com.gmacko.sortey
+---
+# tf:step "Launch and sign in. On first launch Sortey requests push-notification permission — grant it." capture=video
+- launchApp
+- assertVisible: "Sign in"
+- tapOn: "you@example.com"
+- inputText: "${TF_ACCOUNT_EMAIL}"
+- tapOn: "Send magic link"
+- tapOn:
+    text: "Allow"
+    optional: true
+- assertVisible: "Settings"
+# tf:step "Create a trip so location- and receipt-backed features are reachable: tap New, pick the Road Trip template." capture=screenshot
+# TODO: on a fresh account tap "Create Your First Trip"; on a seeded account tap "+ New".
+- tapOn:
+    text: "Create Your First Trip"
+    optional: true
+- tapOn:
+    text: "+ New"
+    optional: true
+- tapOn: "Road Trip"
+# tf:step "Step through the wizard (mode → details → dates) and create the trip." capture=screenshot
+- tapOn: "Next"
+- tapOn: "Seattle to Des Moines"
+- inputText: "Review Road Trip"
+- tapOn: "Next"
+- tapOn: "Create Trip"
+# tf:step "On the trip, open the map / Log stop — Sortey requests Location (when in use). Grant it." capture=video
+# TODO: confirm the on-trip action label; today.tsx exposes an ActionBtn labelled "Log stop" (and "Map").
+- tapOn:
+    text: "Log stop"
+    optional: true
+- tapOn:
+    text: "Map"
+    optional: true
+- tapOn:
+    text: "Allow While Using App"
+    optional: true
+# tf:step "Add an expense and tap Scan Receipt — Sortey requests Camera. Grant it." capture=video
+# TODO: map the exact nav to the new-expense screen (expenses tab → add expense); "Scan Receipt" is the camera trigger in new-expense.tsx.
+- tapOn:
+    text: "Scan Receipt"
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true

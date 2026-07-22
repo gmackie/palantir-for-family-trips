@@ -1,0 +1,33 @@
+# TrueFlight standard workflow: account-deletion
+# Apple requires an in-app way to delete the account (App Store Review 5.1.1(v)).
+# Sortey exposes this in Settings → Account → Delete Account
+# (settings.tsx AccountSection.handleDeleteAccount → trpc settings.deleteAccount).
+# Confirming green proves the R1 compliance gate. Uses a throwaway account that
+# gets destroyed by this run.
+#
+# tf:workflow id=account-deletion title="Delete your Sortey account" account=deletable
+# tf:account role=deletable email="reviewer+delete@sortey.app" secretRef=sortey/review/delete_pw permissions=full notes="Throwaway account safe to delete during review. Passwordless magic-link sign-in (reviewer bypass). Re-provision before each run since deletion is permanent."
+# tf:verify "The account, its sessions, API keys, and preferences are permanently deleted."
+# tf:verify "You are signed out and returned to the Sortey sign-in screen."
+appId: com.gmacko.sortey
+---
+# tf:step "Launch the app and sign in with the throwaway demo account." capture=screenshot
+- launchApp
+- assertVisible: "Sign in"
+- tapOn: "you@example.com"
+- inputText: "${TF_ACCOUNT_EMAIL}"
+- tapOn: "Send magic link"
+- assertVisible: "Settings"
+# tf:step "Open Settings from the account header." capture=screenshot
+- tapOn: "Settings"
+# tf:step "Scroll to the Account section at the bottom of Settings." capture=screenshot
+- scrollUntilVisible:
+    element:
+      text: "Delete Account"
+# tf:step "Tap Delete Account, then confirm the irreversible deletion in the alert." capture=video
+- tapOn: "Delete Account"
+- tapOn:
+    text: "Delete Account"
+    index: 1
+# tf:step "The account is deleted, you are signed out, and land back on the sign-in screen." capture=screenshot
+- assertVisible: "Sign in"
