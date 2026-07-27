@@ -25,6 +25,7 @@ Secrets to configure per stage via `forge secret set <key> <value>`.
 | `PUSHER_CLUSTER` | Realtime claiming | e.g. `us2` |
 | `NEXT_PUBLIC_PUSHER_KEY` | Client-side realtime | Same as PUSHER_KEY |
 | `NEXT_PUBLIC_PUSHER_CLUSTER` | Client-side realtime | Same as PUSHER_CLUSTER |
+| `ELEVENLABS_API_KEY` | Corridor Cast TTS | From elevenlabs.io. Voices Tonight's Episode; synthesis only starts after the script read gate. |
 
 ## Optional
 
@@ -34,6 +35,9 @@ Secrets to configure per stage via `forge secret set <key> <value>`.
 | `SENTRY_ORG` | Error monitoring |
 | `NEXT_PUBLIC_SENTRY_DSN` | Client error reporting |
 | `UPLOADTHING_TOKEN` | Production receipt storage (replaces local disk) |
+| `ELEVENLABS_VOICE_ID_DEFAULT` | Corridor Cast narrator voice (falls back to a built-in voice id) |
+| `ELEVENLABS_TTS_MODEL` | Corridor Cast TTS model override (default `eleven_turbo_v2_5`) |
+| `CAST_SCRIPT_MODEL` | Corridor Cast script model override (default `claude-sonnet-4-6`) |
 
 ## Secret rotation
 
