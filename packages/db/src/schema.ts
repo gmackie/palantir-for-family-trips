@@ -1796,6 +1796,9 @@ export const castEpisodes = pgTable(
   }),
   (table) => [
     index("cast_episode_trip_date_idx").on(table.tripId, table.targetDate),
+    // One episode per job — makes crash-replayed finalization idempotent
+    // (insert ON CONFLICT DO NOTHING). NULL jobIds (job deleted) don't collide.
+    uniqueIndex("cast_episode_job_unique").on(table.jobId),
   ],
 );
 

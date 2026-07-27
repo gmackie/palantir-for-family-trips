@@ -186,6 +186,31 @@ describe("synthesizeScriptSegments", () => {
     expect(outcome.finished).toBe(true);
   });
 
+  it("a corrupt synthesized stream fails BEFORE parking or billing continues", async () => {
+    const r2 = fakeR2();
+    const persisted: CastCheckpoint[] = [];
+    // Wrong bitrate — the validate-before-park gate must reject it.
+    const { mp3Frame64kbps } = await import("./mp3-fixtures");
+    const synthesize = vi.fn(async () => mp3Frame64kbps());
+
+    await expect(
+      synthesizeScriptSegments({
+        r2,
+        tripId: "trip-1",
+        script: script(["only chapter"]),
+        voiceId: VOICE,
+        ttsModel: MODEL,
+        existingCheckpoints: [],
+        onCheckpoint: async (c) => {
+          persisted.push(c);
+        },
+        synthesize,
+      }),
+    ).rejects.toThrow(/64kbps/);
+    expect(persisted).toHaveLength(0);
+    expect(r2.objects.size).toBe(0);
+  });
+
   it("stops before spending when the deadline has already passed", async () => {
     const r2 = fakeR2();
     const synthesize = vi.fn(async () => validMp3(2));

@@ -84,13 +84,40 @@ export function resolveCastTargetDate(tz: string, now: Date): string {
     month: "2-digit",
     day: "2-digit",
   });
-  // en-CA formats as YYYY-MM-DD. Add 24h twice-resiliently: format today in
-  // tz, then advance that calendar date by one day in UTC space (calendar
-  // arithmetic — DST shifts can't skew a date+24h by a whole day).
-  const today = formatter.format(now); // YYYY-MM-DD
-  const [y, m, d] = today.split("-").map(Number) as [number, number, number];
-  const next = new Date(Date.UTC(y, m - 1, d + 1));
-  return next.toISOString().slice(0, 10);
+  // en-CA formats as YYYY-MM-DD. Format today in tz, then advance that
+  // calendar date by one day in UTC space (calendar arithmetic — DST shifts
+  // can't skew a date+24h by a whole day).
+  return addDays(formatter.format(now), 1);
+}
+
+/**
+ * Drive-leg resolution precedence (eng-review Issue 9.12) — the ONE copy both
+ * the cheap probe and the full context pack use:
+ * 1. A trip_day row that links a segment IS the drive leg.
+ * 2. A trip_day row with a non-driving intent and no segment link means no
+ *    drive leg — a multi-day segment spanning a play day must not claim it.
+ * 3. No trip_day row: fall back to a segment whose date range covers the day.
+ */
+async function resolveDriveLegSegment(
+  // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
+  db: any,
+  input: {
+    tripId: string;
+    targetDate: string;
+    day: { intent: string; segmentId: string | null } | null;
+  },
+): Promise<SegmentRow | null> {
+  if (input.day?.segmentId) {
+    return findSegmentById(db, input.day.segmentId);
+  }
+  if (
+    !input.day ||
+    input.day.intent === "drive" ||
+    input.day.intent === "position"
+  ) {
+    return findSegmentByDate(db, input.tripId, input.targetDate);
+  }
+  return null;
 }
 
 /**
@@ -117,12 +144,11 @@ export async function probeCastDriveLeg(
     )
     .limit(1)) as Array<{ intent: string; segmentId: string | null }>;
 
-  let segmentRow: SegmentRow | null = null;
-  if (day?.segmentId) {
-    segmentRow = await findSegmentById(db, day.segmentId);
-  } else if (!day || day.intent === "drive" || day.intent === "position") {
-    segmentRow = await findSegmentByDate(db, input.tripId, input.targetDate);
-  }
+  const segmentRow = await resolveDriveLegSegment(db, {
+    tripId: input.tripId,
+    targetDate: input.targetDate,
+    day: day ?? null,
+  });
 
   return {
     hasDriveLeg: segmentRow != null,
@@ -171,17 +197,11 @@ export async function buildCastDayContext(
     segmentId: string | null;
   }>;
 
-  // Drive-leg resolution precedence (eng-review Issue 9.12):
-  // 1. A trip_day row that links a segment IS the drive leg.
-  // 2. A trip_day row with a non-driving intent and no segment link means no
-  //    drive leg — a multi-day segment spanning a play day must not claim it.
-  // 3. No trip_day row: fall back to a segment whose date range covers the day.
-  let segmentRow: SegmentRow | null = null;
-  if (day?.segmentId) {
-    segmentRow = await findSegmentById(db, day.segmentId);
-  } else if (!day || day.intent === "drive" || day.intent === "position") {
-    segmentRow = await findSegmentByDate(db, input.tripId, input.targetDate);
-  }
+  const segmentRow = await resolveDriveLegSegment(db, {
+    tripId: input.tripId,
+    targetDate: input.targetDate,
+    day: day ?? null,
+  });
 
   const hasGeometry = !!segmentRow?.routePolyline;
   const hasDriveLeg = segmentRow != null;
@@ -338,47 +358,54 @@ async function collectCorridorPois(
     return { fraction: f, lat, lng };
   });
 
+  // One concurrent wave of bounding-box queries instead of 5 serial
+  // Hyperdrive round-trips; ranking/dedupe stays ordered by route position.
+  const sampleRows = await Promise.all(
+    samples.map((sample) => {
+      const latDelta = POI_SAMPLE_RADIUS_MILES * MILES_TO_DEGREES_LAT;
+      const lngDelta = POI_SAMPLE_RADIUS_MILES * MILES_TO_DEGREES_LNG_AT_45;
+      return db
+        .select({
+          id: importedPois.id,
+          name: importedPois.name,
+          category: importedPois.category,
+          lat: importedPois.lat,
+          lng: importedPois.lng,
+          source: importedPois.source,
+        })
+        .from(importedPois)
+        .where(
+          and(
+            gte(importedPois.lat, (sample.lat - latDelta).toString()),
+            lte(importedPois.lat, (sample.lat + latDelta).toString()),
+            gte(importedPois.lng, (sample.lng - lngDelta).toString()),
+            lte(importedPois.lng, (sample.lng + lngDelta).toString()),
+            // Shared (OSM) POIs OR this workspace's private uploads — never
+            // another workspace's non-redistributable data.
+            or(
+              isNull(importedPois.workspaceId),
+              eq(importedPois.workspaceId, workspaceId),
+            ),
+          ),
+        )
+        .limit(200) as Promise<
+        Array<{
+          id: string;
+          name: string;
+          category: string;
+          lat: string;
+          lng: string;
+          source: string;
+        }>
+      >;
+    }),
+  );
+
   const seen = new Set<string>();
   const out: CastContextPoi[] = [];
 
-  for (const sample of samples) {
-    const latDelta = POI_SAMPLE_RADIUS_MILES * MILES_TO_DEGREES_LAT;
-    const lngDelta = POI_SAMPLE_RADIUS_MILES * MILES_TO_DEGREES_LNG_AT_45;
-
-    const rows = (await db
-      .select({
-        id: importedPois.id,
-        name: importedPois.name,
-        category: importedPois.category,
-        lat: importedPois.lat,
-        lng: importedPois.lng,
-        source: importedPois.source,
-      })
-      .from(importedPois)
-      .where(
-        and(
-          gte(importedPois.lat, (sample.lat - latDelta).toString()),
-          lte(importedPois.lat, (sample.lat + latDelta).toString()),
-          gte(importedPois.lng, (sample.lng - lngDelta).toString()),
-          lte(importedPois.lng, (sample.lng + lngDelta).toString()),
-          // Shared (OSM) POIs OR this workspace's private uploads — never
-          // another workspace's non-redistributable data.
-          or(
-            isNull(importedPois.workspaceId),
-            eq(importedPois.workspaceId, workspaceId),
-          ),
-        ),
-      )
-      .limit(200)) as Array<{
-      id: string;
-      name: string;
-      category: string;
-      lat: string;
-      lng: string;
-      source: string;
-    }>;
-
-    const suggestable: SuggestablePoi[] = rows.map((r) => ({
+  for (const [i, sample] of samples.entries()) {
+    const suggestable: SuggestablePoi[] = (sampleRows[i] ?? []).map((r) => ({
       id: r.id,
       name: r.name,
       category: r.category,

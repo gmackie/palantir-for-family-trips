@@ -51,6 +51,18 @@
   **Priority:** P2
   Two-part trust upgrade deferred from P0 (eng-review Issues 7/8): (1) `cast/__evals__` structural eval — fixture day contexts asserting schema validity, per-segment word budgets ±20%, disclaimers, must-mention anchors, ≥1 grounded POI reference — as the regression floor once prompts iterate; (2) a real grounding source for documentary content (Wikipedia/corridor-town lookups in the context pack), since trip data can only ground operational facts (roads/towns/distances/stops/anchors) — P0 handles this with two-tier prompt honesty (grounded ops facts; hedged, non-specific model-knowledge color). Together these raise the D4 "source-backed claims" premise from ritual to machinery. Depends on: P0 prompt stabilized.
 
+- [ ] Evict the Corridor Cast IndexedDB audio cache on sign-out
+  **Priority:** P2
+  Episode MP3s cache in origin-scoped IndexedDB keyed by episodeId with no user scoping — on a shared browser, a later account (or revoked member) retains playable audio of the trip. Clear the `corridor-cast` DB from the auth sign-out hook, or namespace keys by user id. (Ship review, security specialist.)
+
+- [ ] Composite index on imported_poi (lat, lng)
+  **Priority:** P3
+  Every corridor bounding-box query (cast context pack, poi-suggest, briefing, corridor router) range-scans imported_poi without a lat/lng index. One migration helps all of them. (Ship review, performance specialist.)
+
+- [ ] Copilot router tests + retire or wire copilot.estimateDrive
+  **Priority:** P3
+  copilotRouter has no router-level tests (auth chain, estimateDrive missing-leg fallback) and estimateDrive has no callers. Also: defaultSeedWorld hardcodes July-2026 dogfood anchors served to every trip — gate by trip id or derive from real anchors before the co-pilot feature ships beyond the dogfood. (Ship review, testing + maintainability specialists.)
+
 ## Completed
 
 - [x] v0.1.0.0 — Active-trip command center: cold-start redirect (one-shot), motion modes, fuel-colored map, quick stops, breadcrumb recording with re-queue on failed upload, GPS watcher leak fixes, ATS scoped to local networking, expo vitest wired into CI.

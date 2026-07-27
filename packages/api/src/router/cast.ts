@@ -3,6 +3,7 @@ import { getR2Bucket } from "@sortey/db/runtime";
 import {
   CAST_JOB_ACTIVE_STATUSES,
   type CastJobStatus,
+  type CastScript,
   castEpisodeJobs,
   castEpisodes,
   trips,
@@ -80,6 +81,17 @@ export const castRouter = {
         targetDate: z
           .string()
           .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .refine((date) => {
+            // Regex-shaped but calendar-invalid dates (2026-02-31) must fail
+            // here, not as an opaque Postgres datestyle 500.
+            const [y, m, d] = date.split("-").map(Number) as [
+              number,
+              number,
+              number,
+            ];
+            const parsed = new Date(Date.UTC(y, m - 1, d));
+            return parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d;
+          }, "Not a real calendar date")
           .optional(),
       }),
     )
@@ -107,26 +119,31 @@ export const castRouter = {
         });
       }
 
-      // A replaced FAILED job's parked segment audio is orphaned once a new
-      // job (possibly a new script) takes the slot — clean it up now.
-      await cleanupFailedJobCheckpoints(ctx.db, ctx.tripId, targetDate);
+      // Replacing a FAILED job supersedes it: its parked segment audio is
+      // orphaned (a new job may write a new script) and its Retry must stop
+      // resuming. Mark it superseded and clean the temp objects now.
+      await supersedeFailedJobs(ctx.db, ctx.tripId, targetDate);
+
+      const tryInsertJob = async (): Promise<string | null> => {
+        const rows = (await ctx.db
+          .insert(castEpisodeJobs)
+          .values({
+            tripId: ctx.tripId,
+            createdByUserId: ctx.session.user.id,
+            targetDate,
+            durationMinutes: input.durationMinutes,
+          })
+          .onConflictDoNothing()
+          .returning({ id: castEpisodeJobs.id })) as Array<{ id: string }>;
+        return rows[0]?.id ?? null;
+      };
 
       // Server-side dedup (eng-review Issue 9.7): the partial unique index on
       // (trip_id, target_date) WHERE status is active makes the double-tap a
       // no-op; ON CONFLICT DO NOTHING + re-select returns the winner.
-      const inserted = (await ctx.db
-        .insert(castEpisodeJobs)
-        .values({
-          tripId: ctx.tripId,
-          createdByUserId: ctx.session.user.id,
-          targetDate,
-          durationMinutes: input.durationMinutes,
-        })
-        .onConflictDoNothing()
-        .returning({ id: castEpisodeJobs.id })) as Array<{ id: string }>;
-
-      if (inserted.length > 0) {
-        return { jobId: inserted[0]!.id, deduplicated: false, targetDate };
+      const insertedId = await tryInsertJob();
+      if (insertedId) {
+        return { jobId: insertedId, deduplicated: false, targetDate };
       }
 
       const [existing] = (await ctx.db
@@ -143,18 +160,9 @@ export const castRouter = {
 
       if (!existing) {
         // Conflict raced with the active job completing — retry the insert once.
-        const retried = (await ctx.db
-          .insert(castEpisodeJobs)
-          .values({
-            tripId: ctx.tripId,
-            createdByUserId: ctx.session.user.id,
-            targetDate,
-            durationMinutes: input.durationMinutes,
-          })
-          .onConflictDoNothing()
-          .returning({ id: castEpisodeJobs.id })) as Array<{ id: string }>;
-        if (retried.length > 0) {
-          return { jobId: retried[0]!.id, deduplicated: false, targetDate };
+        const retriedId = await tryInsertJob();
+        if (retriedId) {
+          return { jobId: retriedId, deduplicated: false, targetDate };
         }
         throw new TRPCError({
           code: "CONFLICT",
@@ -229,7 +237,7 @@ export const castRouter = {
         .limit(1)) as Array<{
         id: string;
         status: CastJobStatus;
-        scriptJson: unknown;
+        scriptJson: CastScript | null;
         targetDate: string;
         durationMinutes: number;
       }>;
@@ -286,6 +294,8 @@ export const castRouter = {
           id: castEpisodeJobs.id,
           status: castEpisodeJobs.status,
           scriptJson: castEpisodeJobs.scriptJson,
+          targetDate: castEpisodeJobs.targetDate,
+          error: castEpisodeJobs.error,
         })
         .from(castEpisodeJobs)
         .where(
@@ -298,6 +308,8 @@ export const castRouter = {
         id: string;
         status: CastJobStatus;
         scriptJson: unknown;
+        targetDate: string;
+        error: string | null;
       }>;
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
       if (job.status !== "failed") {
@@ -306,11 +318,42 @@ export const castRouter = {
           message: "Only a failed generation can be retried.",
         });
       }
+      if (job.error === SUPERSEDED_ERROR) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "This generation was replaced by a newer one for the same day — use Generate instead.",
+        });
+      }
+
+      // Reviving this job must not collide with the one-active-job-per-day
+      // index: a concurrent active job means the slot is taken (a raw retry
+      // would surface as an opaque unique-violation 500).
+      const [active] = (await ctx.db
+        .select({ id: castEpisodeJobs.id })
+        .from(castEpisodeJobs)
+        .where(
+          and(
+            eq(castEpisodeJobs.tripId, ctx.tripId),
+            eq(castEpisodeJobs.targetDate, job.targetDate),
+            inArray(castEpisodeJobs.status, activeStatuses),
+          ),
+        )
+        .limit(1)) as Array<{ id: string }>;
+      if (active) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Another generation for this day is already in flight.",
+        });
+      }
 
       const nextStatus: CastJobStatus = job.scriptJson
         ? "synthesizing"
         : "pending";
-      await ctx.db
+      // Status-guarded revive: if a concurrent generate superseded (or
+      // anything else moved) this job between our select and now, the update
+      // matches nothing and we refuse instead of corrupting live state.
+      const revived = (await ctx.db
         .update(castEpisodeJobs)
         .set({
           status: nextStatus,
@@ -318,12 +361,32 @@ export const castRouter = {
           attemptCount: 0,
           claimedAt: null,
         })
-        .where(eq(castEpisodeJobs.id, input.jobId));
+        .where(
+          and(
+            eq(castEpisodeJobs.id, input.jobId),
+            eq(castEpisodeJobs.status, "failed" as CastJobStatus),
+          ),
+        )
+        .returning({ id: castEpisodeJobs.id })) as Array<{ id: string }>;
+      if (revived.length === 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This generation changed state — refresh and try again.",
+        });
+      }
       return { jobId: input.jobId, status: nextStatus };
     }),
 } satisfies TRPCRouterRecord;
 
-async function cleanupFailedJobCheckpoints(
+const SUPERSEDED_ERROR = "Superseded by a newer generation for this day.";
+
+/**
+ * A failed job being replaced loses its resume rights: its paid temp audio is
+ * deleted, so a later Retry would silently re-bill every segment while the UI
+ * promises "paid segments are kept". Marking it superseded makes Retry refuse
+ * instead.
+ */
+async function supersedeFailedJobs(
   // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
   db: any,
   tripId: string,
@@ -354,11 +417,22 @@ async function cleanupFailedJobCheckpoints(
 
   const r2 = getR2Bucket() as CastR2Bucket | null;
   for (const job of failed) {
-    if (!job.checkpointsJson?.length) continue;
-    if (r2) await deleteCheckpoints(r2, job.checkpointsJson);
-    await db
+    // Mark BEFORE deleting, status-guarded: if a concurrent retry revived
+    // this job between our select and now, the update matches nothing and we
+    // must not touch its parked audio.
+    const marked = (await db
       .update(castEpisodeJobs)
-      .set({ checkpointsJson: [] })
-      .where(eq(castEpisodeJobs.id, job.id));
+      .set({ checkpointsJson: [], error: SUPERSEDED_ERROR })
+      .where(
+        and(
+          eq(castEpisodeJobs.id, job.id),
+          eq(castEpisodeJobs.status, "failed" as CastJobStatus),
+        ),
+      )
+      .returning({ id: castEpisodeJobs.id })) as Array<{ id: string }>;
+    if (marked.length === 0) continue;
+    if (job.checkpointsJson?.length && r2) {
+      await deleteCheckpoints(r2, job.checkpointsJson);
+    }
   }
 }

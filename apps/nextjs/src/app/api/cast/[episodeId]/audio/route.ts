@@ -9,6 +9,7 @@ import { getSession } from "~/auth/server";
 export const runtime = "nodejs";
 
 interface R2ObjectBody {
+  body: ReadableStream | null;
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 interface R2Bucket {
@@ -76,7 +77,10 @@ export async function GET(
     )
     .limit(1)) as Array<{ userId: string }>;
   if (!membership) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // "Exists but not yours" reads as not-found — a 403 here would let any
+    // authenticated user probe which episode UUIDs exist (matches the tRPC
+    // routers' scoping behavior).
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const r2 = getR2Bucket() as R2Bucket | null;
@@ -92,14 +96,23 @@ export async function GET(
     return NextResponse.json({ error: "Audio missing" }, { status: 404 });
   }
 
-  const bytes = await object.arrayBuffer();
   const filename = `corridor-cast-${episode.targetDate}.mp3`;
-  return new Response(bytes, {
-    headers: {
-      "content-type": "audio/mpeg",
-      "content-length": String(bytes.byteLength),
-      "content-disposition": `inline; filename="${filename}"`,
-      "cache-control": "private, max-age=31536000, immutable",
-    },
-  });
+  const headers = {
+    "content-type": "audio/mpeg",
+    "content-length": String(episode.sizeBytes),
+    "content-disposition": `inline; filename="${filename}"`,
+    // no-store: the browser HTTP cache must not replay authed audio after
+    // logout or membership revocation. Offline persistence is the IndexedDB
+    // cache and the Download flow, both under app control.
+    "cache-control": "private, no-store",
+  };
+
+  // Stream the R2 body — a 30-min episode is ~29MB and buffering full copies
+  // per concurrent listener would pressure the 128MB isolate. In-app playback
+  // seeks against an IndexedDB blob URL, so no Range handling is needed here.
+  if (object.body) {
+    return new Response(object.body, { headers });
+  }
+  const bytes = await object.arrayBuffer();
+  return new Response(bytes, { headers });
 }

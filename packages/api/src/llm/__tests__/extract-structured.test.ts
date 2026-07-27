@@ -37,7 +37,7 @@ describe("generateStructured", () => {
     expect(result).toEqual({ answer: "42" });
     expect(usage).toEqual({ inputTokens: 10, outputTokens: 5 });
 
-    const call = parse.mock.calls[0]?.[0] as {
+    const call = (parse.mock.calls as unknown as [unknown][])[0]?.[0] as {
       max_tokens: number;
       messages: Array<{ content: Array<{ type: string }> }>;
       system: Array<{ cache_control?: unknown }>;
@@ -61,7 +61,7 @@ describe("generateStructured", () => {
       maxTokens: 8192,
     });
 
-    const call = parse.mock.calls[0]?.[0] as {
+    const call = (parse.mock.calls as unknown as [unknown][])[0]?.[0] as {
       max_tokens: number;
       messages: Array<{ content: Array<{ type: string }> }>;
     };

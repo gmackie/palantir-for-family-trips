@@ -26,12 +26,16 @@ export type SynthesizeSpeech = (params: {
   modelId: string;
 }) => Promise<Uint8Array>;
 
+/** One hung socket must not pin the cron run into the stale-lease window. */
+const TTS_REQUEST_TIMEOUT_MS = 90_000;
+
 export async function synthesizeSpeech(params: {
   text: string;
   voiceId: string;
   modelId: string;
   apiKey?: string;
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
 }): Promise<Uint8Array> {
   const apiKey = params.apiKey ?? process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
@@ -51,6 +55,7 @@ export async function synthesizeSpeech(params: {
         text: params.text,
         model_id: params.modelId,
       }),
+      signal: AbortSignal.timeout(params.timeoutMs ?? TTS_REQUEST_TIMEOUT_MS),
     },
   );
 

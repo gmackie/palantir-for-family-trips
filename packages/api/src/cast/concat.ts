@@ -121,11 +121,9 @@ function isMetadataFrame(
   return false;
 }
 
-/**
- * Parse one MP3 segment: strip metadata, validate the pinned CBR format,
- * return raw audio frames + exact duration.
- */
-export function parseMp3Segment(bytes: Uint8Array): Mp3Audio {
+function walkMp3Frames(bytes: Uint8Array): {
+  frames: Array<{ offset: number; length: number }>;
+} {
   let offset = id3v2Size(bytes);
   const frames: Array<{ offset: number; length: number }> = [];
   let junkBytes = 0;
@@ -166,6 +164,16 @@ export function parseMp3Segment(bytes: Uint8Array): Mp3Audio {
     );
   }
 
+  return { frames };
+}
+
+/**
+ * Parse one MP3 segment: strip metadata, validate the pinned CBR format,
+ * return raw audio frames + exact duration.
+ */
+export function parseMp3Segment(bytes: Uint8Array): Mp3Audio {
+  const { frames } = walkMp3Frames(bytes);
+
   const totalLength = frames.reduce((sum, f) => sum + f.length, 0);
   const out = new Uint8Array(totalLength);
   let cursor = 0;
@@ -176,6 +184,23 @@ export function parseMp3Segment(bytes: Uint8Array): Mp3Audio {
 
   return {
     bytes: out,
+    frameCount: frames.length,
+    durationSeconds: (frames.length * SAMPLES_PER_FRAME) / PINNED_SAMPLE_RATE,
+  };
+}
+
+/**
+ * Validation-grade walk that never allocates an output buffer — an episode is
+ * ~29MB and the cron worker holds the concat result plus segment audio at the
+ * same time, so a full re-parse copy just to compute duration risks the 128MB
+ * isolate ceiling.
+ */
+export function scanMp3Duration(bytes: Uint8Array): {
+  frameCount: number;
+  durationSeconds: number;
+} {
+  const { frames } = walkMp3Frames(bytes);
+  return {
     frameCount: frames.length,
     durationSeconds: (frames.length * SAMPLES_PER_FRAME) / PINNED_SAMPLE_RATE,
   };
@@ -222,9 +247,10 @@ export function concatMp3Segments(segments: Uint8Array[]): ConcatResult {
  * Final artifact sanity gate before upload: duration must be positive and
  * within tolerance of the sum of its parts (they are computed from the same
  * frames, so drift means a splice bug), and the stream must re-parse clean.
+ * Uses the scan-only walker — no second episode-sized allocation.
  */
 export function validateEpisodeAudio(result: ConcatResult): void {
-  const reparsed = parseMp3Segment(result.bytes);
+  const reparsed = scanMp3Duration(result.bytes);
   const drift = Math.abs(reparsed.durationSeconds - result.durationSeconds);
   if (result.durationSeconds <= 0 || drift > 0.5) {
     throw new Mp3ValidationError(

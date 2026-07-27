@@ -4,6 +4,7 @@ import {
   concatMp3Segments,
   Mp3ValidationError,
   parseMp3Segment,
+  scanMp3Duration,
   validateEpisodeAudio,
 } from "../concat";
 import {
@@ -72,6 +73,24 @@ describe("concatMp3Segments", () => {
   it("re-parses clean through validateEpisodeAudio", () => {
     const result = concatMp3Segments([validMp3(12), validMp3(12)]);
     expect(() => validateEpisodeAudio(result)).not.toThrow();
+  });
+
+  it("validateEpisodeAudio rejects a duration that disagrees with the frames", () => {
+    const result = concatMp3Segments([validMp3(12)]);
+    expect(() =>
+      validateEpisodeAudio({ ...result, durationSeconds: 999 }),
+    ).toThrow(Mp3ValidationError);
+    expect(() =>
+      validateEpisodeAudio({ ...result, durationSeconds: 0 }),
+    ).toThrow(Mp3ValidationError);
+  });
+
+  it("scanMp3Duration matches the full parse without allocating output", () => {
+    const bytes = validMp3(25, { id3v2: true, xing: true });
+    const scanned = scanMp3Duration(bytes);
+    const parsed = parseMp3Segment(bytes);
+    expect(scanned.frameCount).toBe(parsed.frameCount);
+    expect(scanned.durationSeconds).toBeCloseTo(parsed.durationSeconds, 9);
   });
 
   it("refuses an empty segment list", () => {

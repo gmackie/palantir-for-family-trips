@@ -77,7 +77,7 @@ describe("generateCastScript", () => {
     expect(usages).toHaveLength(4);
 
     // The second chapter's prompt carries the tail of the first chapter.
-    const canyonCall = parse.mock.calls[2]?.[0] as {
+    const canyonCall = (parse.mock.calls as unknown as [unknown][])[2]?.[0] as {
       messages: Array<{ content: Array<{ type: string; text?: string }> }>;
     };
     const canyonText = canyonCall.messages[0]?.content.find(

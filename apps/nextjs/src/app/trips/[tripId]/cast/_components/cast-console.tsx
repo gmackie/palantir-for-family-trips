@@ -79,12 +79,13 @@ export function CastConsole({
   const statusQuery = useQuery(
     trpc.cast.status.queryOptions(
       { workspaceId, tripId },
-      // Poll while any job is mid-pipeline; the pump runs on a 5-min cron so
-      // faster polling buys nothing.
+      // Poll while any job is mid-pipeline. The pump advances on a 5-min
+      // cron, so 30s keeps the ritual feeling live without hammering the
+      // guard chain; user-driven transitions invalidate instantly anyway.
       {
         refetchInterval: (query) =>
           query.state.data?.jobs.some((j) => ACTIVE_STATUSES.has(j.status))
-            ? 15_000
+            ? 30_000
             : false,
       },
     ),
@@ -134,7 +135,12 @@ export function CastConsole({
   const tonight = tonightQuery.data;
   const jobs = statusQuery.data?.jobs ?? [];
   const episodes = statusQuery.data?.episodes ?? [];
-  const activeJob = jobs.find((j) => ACTIVE_STATUSES.has(j.status));
+  // Only a job for TONIGHT's date blocks the button — an unread script from
+  // an earlier day must never dead-end every future night's episode.
+  const activeJob = jobs.find(
+    (j) =>
+      ACTIVE_STATUSES.has(j.status) && j.targetDate === tonight?.targetDate,
+  );
 
   return (
     <>
@@ -286,7 +292,24 @@ export function CastConsole({
         <div className="font-mono text-xs uppercase tracking-widest text-[#8B949E]">
           Episodes
         </div>
-        {episodes.length === 0 ? (
+        {statusQuery.isLoading ? (
+          <p className="text-sm text-[#8B949E]">Loading episodes…</p>
+        ) : statusQuery.isError ? (
+          // An error must never masquerade as the empty state — in-flight
+          // jobs and existing episodes would silently vanish.
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-[#F85149]">
+              Could not load episodes: {statusQuery.error.message}
+            </p>
+            <button
+              type="button"
+              onClick={() => void statusQuery.refetch()}
+              className="rounded-[2px] border border-[#58A6FF]/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#58A6FF] transition-colors hover:bg-[#58A6FF]/10"
+            >
+              Retry
+            </button>
+          </div>
+        ) : episodes.length === 0 ? (
           <p className="text-sm text-[#8B949E]">
             No episodes yet. Tomorrow&apos;s drive is waiting for its narrator.
           </p>
@@ -420,17 +443,21 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
     setCaching(true);
     try {
       let blob = await getCachedEpisodeAudio(episode.id).catch(() => null);
+      let persisted = blob != null;
       if (!blob) {
         const response = await fetch(audioHref);
         if (!response.ok) {
           throw new Error(`Audio fetch failed (${response.status})`);
         }
         blob = await response.blob();
-        await putCachedEpisodeAudio(episode.id, blob).catch(() => {
-          // Cache write failure only costs the offline bonus, not playback.
-        });
+        // Cache write failure only costs the offline bonus, not playback —
+        // but the "Ready offline" badge must never claim persistence that
+        // didn't happen (DESIGN.md: never imply a write succeeded).
+        persisted = await putCachedEpisodeAudio(episode.id, blob)
+          .then(() => true)
+          .catch(() => false);
       }
-      setCached(true);
+      setCached(persisted);
       const url = URL.createObjectURL(blob);
       setObjectUrl(url);
       return url;
@@ -518,7 +545,7 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
                 className={`rounded-[2px] border px-1.5 py-0.5 font-mono text-[10px] transition-colors ${
                   rate === r
                     ? "border-[#58A6FF] text-[#58A6FF]"
-                    : "border-[#30363D] text-[#8B949E]"
+                    : "border-[#30363D] text-[#8B949E] hover:border-[#58A6FF] hover:text-[#58A6FF]"
                 }`}
               >
                 {r}×

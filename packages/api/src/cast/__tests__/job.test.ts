@@ -38,7 +38,14 @@ function fakePumpDb(opts: {
     insert: vi.fn(() => ({
       values: (values: SetValues) => {
         inserts.push(values);
-        return Promise.resolve([]);
+        const chain = {
+          onConflictDoNothing: () => Promise.resolve([]),
+          then: (
+            resolve: (rows: unknown[]) => unknown,
+            reject: (error: unknown) => unknown,
+          ) => Promise.resolve([]).then(resolve, reject),
+        };
+        return chain;
       },
     })),
     select: vi.fn(() => {
@@ -294,6 +301,38 @@ describe("runCastPump", () => {
     expect(String(updates.at(-1)?.error)).toMatch(/429/);
     // checkpointsJson untouched — resume must not re-bill.
     expect(updates.at(-1)).not.toHaveProperty("checkpointsJson");
+  });
+
+  it("claims from a {rows: [...]} driver shape too", async () => {
+    const { db, updates } = fakePumpDb({ claimRows: [] });
+    db.execute = vi.fn(async () => ({
+      rows: [claimedJob({ attemptCount: CAST_MAX_ATTEMPTS })],
+    })) as never;
+    const result = await runCastPump({ r2: fakeR2(), db });
+    // The job was claimed (and immediately failed on the attempts backstop) —
+    // proving the non-array driver row shape is handled.
+    expect(result.status).toBe("failed");
+    expect(updates[0]).toMatchObject({ status: "failed" });
+  });
+
+  it("an unbound R2 bucket is a retried error, not a crash loop", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "approved", scriptJson: SCRIPT })],
+    });
+    const result = await runCastPump({ r2: null, db, deps: baseDeps });
+    // approved → synthesizing advance happens first, then the guard throws.
+    expect(result.status).toBe("synthesizing");
+    expect(String(updates.at(-1)?.error)).toMatch(/R2 bucket is not bound/);
+    expect(updates.at(-1)).toMatchObject({ attemptCount: 1, claimedAt: null });
+  });
+
+  it("a synthesizing job without a script errors instead of faking an episode", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "synthesizing", scriptJson: null })],
+    });
+    const result = await runCastPump({ r2: fakeR2(), db, deps: baseDeps });
+    expect(result.status).toBe("synthesizing");
+    expect(String(updates.at(-1)?.error)).toMatch(/without a script/);
   });
 
   it("the final allowed attempt's error is terminal", async () => {

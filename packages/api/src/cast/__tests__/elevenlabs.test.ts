@@ -47,10 +47,12 @@ describe("voice/model resolution", () => {
 });
 
 describe("synthesizeSpeech", () => {
-  it("refuses to call out without an API key", async () => {
+  it("refuses to call out without an API key — no network attempt", async () => {
+    const fetchImpl = vi.fn() as unknown as typeof fetch;
     await expect(
-      synthesizeSpeech({ text: "hi", voiceId: "v", modelId: "m" }),
+      synthesizeSpeech({ text: "hi", voiceId: "v", modelId: "m", fetchImpl }),
     ).rejects.toThrow(/ELEVENLABS_API_KEY/);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("posts the pinned CBR output format and returns bytes", async () => {

@@ -222,6 +222,7 @@ describe("cast.generate", () => {
 
   it("a replaced failed job's checkpoints are cleared at enqueue", async () => {
     const { db, updates } = createDbMock({
+      updateReturningQueue: [[{ id: "job_failed" }]], // guarded mark wins
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
@@ -248,7 +249,12 @@ describe("cast.generate", () => {
     await caller.cast.generate({ ...SCOPE, durationMinutes: 30 });
     // The failed job's checkpoint list is emptied (R2 delete is best-effort
     // and skipped in tests where no bucket is bound).
-    expect(updates[0]).toEqual({ checkpointsJson: [] });
+    // Checkpoints wiped AND the job marked superseded, so a later Retry
+    // refuses instead of silently re-billing every segment.
+    expect(updates[0]).toEqual({
+      checkpointsJson: [],
+      error: "Superseded by a newer generation for this day.",
+    });
   });
 
   it("rejects a non-member outright (auth chain, not the router body)", async () => {
@@ -291,12 +297,23 @@ describe("cast.approveScript", () => {
 });
 
 describe("cast.retry", () => {
+  const failedJob = (overrides: Record<string, unknown> = {}) => ({
+    id: "job_1",
+    status: "failed",
+    scriptJson: { segments: [] },
+    targetDate: "2026-07-28",
+    error: "ElevenLabs 429",
+    ...overrides,
+  });
+
   it("a failed job with a script resumes synthesis (never restarts)", async () => {
     const { db, updates } = createDbMock({
       selectQueue: [
         ...authSelects(),
-        [{ id: "job_1", status: "failed", scriptJson: { segments: [] } }],
+        [failedJob()],
+        [], // no active sibling job for the same date
       ],
+      updateReturningQueue: [[{ id: "job_1" }]], // guarded revive wins
     });
     const caller = createCaller(db);
     const result = await caller.cast.retry({ ...SCOPE, jobId: "job_1" });
@@ -311,27 +328,68 @@ describe("cast.retry", () => {
 
   it("a failed job without a script restarts from scripting", async () => {
     const { db } = createDbMock({
-      selectQueue: [
-        ...authSelects(),
-        [{ id: "job_1", status: "failed", scriptJson: null }],
-      ],
+      selectQueue: [...authSelects(), [failedJob({ scriptJson: null })], []],
+      updateReturningQueue: [[{ id: "job_1" }]],
     });
     const caller = createCaller(db);
     const result = await caller.cast.retry({ ...SCOPE, jobId: "job_1" });
     expect(result.status).toBe("pending");
   });
 
+  it("a revive that loses the race to a supersede refuses with CONFLICT", async () => {
+    const { db } = createDbMock({
+      selectQueue: [...authSelects(), [failedJob()], []],
+      updateReturningQueue: [[]], // guarded update matched no row
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.retry({ ...SCOPE, jobId: "job_1" }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
   it("only failed jobs can be retried", async () => {
     const { db } = createDbMock({
       selectQueue: [
         ...authSelects(),
-        [{ id: "job_1", status: "synthesizing", scriptJson: null }],
+        [failedJob({ status: "synthesizing", scriptJson: null })],
       ],
     });
     const caller = createCaller(db);
     await expect(
       caller.cast.retry({ ...SCOPE, jobId: "job_1" }),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("a superseded job refuses retry — its paid audio is gone", async () => {
+    const { db } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [
+          failedJob({
+            error: "Superseded by a newer generation for this day.",
+          }),
+        ],
+      ],
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.retry({ ...SCOPE, jobId: "job_1" }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("refuses while another job holds the active slot (no raw unique-violation 500)", async () => {
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [failedJob()],
+        [{ id: "job_2" }], // active sibling for the same date
+      ],
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.retry({ ...SCOPE, jobId: "job_1" }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(updates).toHaveLength(0);
   });
 });
 

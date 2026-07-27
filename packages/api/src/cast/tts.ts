@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { CastCheckpoint, CastScript } from "@sortey/db/schema";
 
 import { parseMp3Segment } from "./concat";
-import { synthesizeSpeech } from "./elevenlabs";
+import { type SynthesizeSpeech, synthesizeSpeech } from "./elevenlabs";
 
 /**
  * Per-segment TTS with R2 cost checkpoints (eng-review Issue 2).
@@ -64,10 +64,26 @@ export async function synthesizeScriptSegments(params: {
   onCheckpoint: (checkpoint: CastCheckpoint) => Promise<void>;
   deadline?: number; // epoch ms
   now?: () => number;
-  synthesize?: typeof synthesizeSpeech;
+  synthesize?: SynthesizeSpeech;
 }): Promise<SynthesizeOutcome> {
   const now = params.now ?? Date.now;
   const synthesize = params.synthesize ?? synthesizeSpeech;
+
+  // Verify all parked checkpoints up front, in parallel — a checkpoint whose
+  // object vanished (manual cleanup, bucket lifecycle) must re-synthesize
+  // rather than produce a silent hole in the episode. One round-trip wave
+  // instead of N serial gets on every resume.
+  const verifiedHashes = new Set(
+    (
+      await Promise.all(
+        params.existingCheckpoints.map(async (checkpoint) =>
+          (await params.r2.get(checkpoint.r2Key))
+            ? checkpoint.contentHash
+            : null,
+        ),
+      )
+    ).filter((hash): hash is string => hash != null),
+  );
   const byHash = new Map(
     params.existingCheckpoints.map((c) => [c.contentHash, c]),
   );
@@ -83,15 +99,9 @@ export async function synthesizeScriptSegments(params: {
     });
 
     const existing = byHash.get(contentHash);
-    if (existing) {
-      // Verify the parked audio is still there — a checkpoint whose object
-      // vanished (manual cleanup, bucket lifecycle) must re-synthesize rather
-      // than produce a silent hole in the episode.
-      const object = await params.r2.get(existing.r2Key);
-      if (object) {
-        checkpoints.push(existing);
-        continue;
-      }
+    if (existing && verifiedHashes.has(contentHash)) {
+      checkpoints.push(existing);
+      continue;
     }
 
     if (params.deadline != null && now() >= params.deadline) {
@@ -128,22 +138,26 @@ export async function synthesizeScriptSegments(params: {
   return { checkpoints, finished: true, charactersBilled };
 }
 
-/** Fetch parked segment audio for concat, in checkpoint order. */
+/**
+ * Fetch parked segment audio for concat, in checkpoint order. Parallel: peak
+ * memory is unchanged (concat holds every segment anyway) and finalization
+ * stops paying N serial R2 round-trips.
+ */
 export async function loadCheckpointAudio(
   r2: CastR2Bucket,
   checkpoints: CastCheckpoint[],
 ): Promise<Uint8Array[]> {
-  const out: Uint8Array[] = [];
-  for (const checkpoint of checkpoints) {
-    const object = await r2.get(checkpoint.r2Key);
-    if (!object) {
-      throw new Error(
-        `Checkpoint audio missing from R2: ${checkpoint.r2Key} (segment ${checkpoint.segmentKey})`,
-      );
-    }
-    out.push(new Uint8Array(await object.arrayBuffer()));
-  }
-  return out;
+  return Promise.all(
+    checkpoints.map(async (checkpoint) => {
+      const object = await r2.get(checkpoint.r2Key);
+      if (!object) {
+        throw new Error(
+          `Checkpoint audio missing from R2: ${checkpoint.r2Key} (segment ${checkpoint.segmentKey})`,
+        );
+      }
+      return new Uint8Array(await object.arrayBuffer());
+    }),
+  );
 }
 
 /** Best-effort temp cleanup — on success and on terminal abandonment. */

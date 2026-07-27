@@ -40,6 +40,9 @@ describe("steerCopilot", () => {
     });
     const warn = r.options.find((o) => o.id === "opt:bryce-denver-same-day");
     expect(warn).toBeDefined();
+    // The "Avoid:" option must never become the recommendation.
+    expect(warn?.recommended).toBe(false);
+    expect(r.recommendedOptionId).not.toBe("opt:bryce-denver-same-day");
     expect(r.reply.toLowerCase()).toMatch(/grand junction|gj|bryce/);
   });
 

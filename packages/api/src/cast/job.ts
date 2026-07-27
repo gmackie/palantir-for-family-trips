@@ -44,7 +44,6 @@ type ClaimedJob = {
   attemptCount: number;
   scriptJson: CastScript | null;
   checkpointsJson: CastCheckpoint[] | null;
-  ttsCharacters: number;
 };
 
 export type CastPumpDeps = {
@@ -100,8 +99,7 @@ export async function claimNextCastJob(
       status,
       attempt_count AS "attemptCount",
       script_json AS "scriptJson",
-      checkpoints_json AS "checkpointsJson",
-      tts_characters AS "ttsCharacters"
+      checkpoints_json AS "checkpointsJson"
   `)) as ClaimedJob[] | { rows?: ClaimedJob[] };
 
   const list = Array.isArray(rows) ? rows : (rows.rows ?? []);
@@ -120,6 +118,18 @@ export async function runCastPump(params: {
   const deps: CastPumpDeps = { ...defaultDeps, ...params.deps };
   const now = params.now ?? Date.now;
   const deadline = now() + (params.timeBudgetMs ?? CAST_PUMP_TIME_BUDGET_MS);
+
+  // Expire unread scripts whose drive day has passed. awaiting_approval is
+  // never claimed below, so without this sweep one skipped night would hold
+  // the per-day slot forever and dead-end every future Generate.
+  await db.execute(sql`
+    UPDATE cast_episode_job
+    SET status = 'failed',
+        error = 'Script expired unread — its drive day has passed.',
+        claimed_at = NULL
+    WHERE status = 'awaiting_approval'
+      AND target_date < (now() AT TIME ZONE 'UTC')::date
+  `);
 
   const job = await claimNextCastJob(db);
   if (!job) {
@@ -317,21 +327,28 @@ async function runSynthesisStep(params: {
     durationSeconds: concat.segmentDurationSeconds[i] ?? 0,
   }));
 
-  await db.insert(castEpisodes).values({
-    tripId: job.tripId,
-    jobId: job.id,
-    targetDate: job.targetDate,
-    durationMinutes: job.durationMinutes,
-    title: script.episodeTitle,
-    r2Key: finalKey,
-    sizeBytes: concat.bytes.byteLength,
-    durationSeconds: concat.durationSeconds.toFixed(2),
-    segmentsJson: segmentsMeta,
-    voiceId,
-    ttsModel,
-    scriptModel: deps.scriptModel(),
-    ttsCharacters: jobRow?.ttsCharacters ?? 0,
-  });
+  // Idempotent under crash-replay: a throw between this insert and the
+  // status flip below re-runs finalization on the next firing — the unique
+  // index on jobId makes the second insert a no-op instead of a duplicate
+  // episode row.
+  await db
+    .insert(castEpisodes)
+    .values({
+      tripId: job.tripId,
+      jobId: job.id,
+      targetDate: job.targetDate,
+      durationMinutes: job.durationMinutes,
+      title: script.episodeTitle,
+      r2Key: finalKey,
+      sizeBytes: concat.bytes.byteLength,
+      durationSeconds: concat.durationSeconds.toFixed(2),
+      segmentsJson: segmentsMeta,
+      voiceId,
+      ttsModel,
+      scriptModel: deps.scriptModel(),
+      ttsCharacters: jobRow?.ttsCharacters ?? 0,
+    })
+    .onConflictDoNothing();
 
   await db
     .update(castEpisodeJobs)
