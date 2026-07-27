@@ -182,6 +182,75 @@ describe("cast.generate", () => {
     expect(inserts).toHaveLength(0);
   });
 
+  it("conflict racing a completing job: retries the insert once and wins", async () => {
+    const { db } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [{ tz: "America/Denver" }],
+        DAY_WITH_SEGMENT,
+        SEGMENT,
+        [], // cleanup
+        [], // active job vanished (completed between conflict and select)
+      ],
+      insertReturningQueue: [[], [{ id: "job_2" }]],
+    });
+    const caller = createCaller(db);
+    const result = await caller.cast.generate({
+      ...SCOPE,
+      durationMinutes: 30,
+    });
+    expect(result).toMatchObject({ jobId: "job_2", deduplicated: false });
+  });
+
+  it("double conflict with no visible active job surfaces CONFLICT", async () => {
+    const { db } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [{ tz: "America/Denver" }],
+        DAY_WITH_SEGMENT,
+        SEGMENT,
+        [], // cleanup
+        [], // no active job visible
+      ],
+      insertReturningQueue: [[], []],
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.generate({ ...SCOPE, durationMinutes: 30 }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("a replaced failed job's checkpoints are cleared at enqueue", async () => {
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [{ tz: "America/Denver" }],
+        DAY_WITH_SEGMENT,
+        SEGMENT,
+        [
+          {
+            id: "job_failed",
+            checkpointsJson: [
+              {
+                segmentKey: "intro",
+                contentHash: "abc",
+                r2Key: "cast/tmp/trip_1/abc.mp3",
+                sizeBytes: 100,
+                durationSeconds: 1,
+              },
+            ],
+          },
+        ],
+      ],
+      insertReturningQueue: [[{ id: "job_9" }]],
+    });
+    const caller = createCaller(db);
+    await caller.cast.generate({ ...SCOPE, durationMinutes: 30 });
+    // The failed job's checkpoint list is emptied (R2 delete is best-effort
+    // and skipped in tests where no bucket is bound).
+    expect(updates[0]).toEqual({ checkpointsJson: [] });
+  });
+
   it("rejects a non-member outright (auth chain, not the router body)", async () => {
     const { db } = createDbMock({
       selectQueue: [
@@ -263,6 +332,67 @@ describe("cast.retry", () => {
     await expect(
       caller.cast.retry({ ...SCOPE, jobId: "job_1" }),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+});
+
+describe("cast.status", () => {
+  it("returns jobs and episodes newest first for polling", async () => {
+    const job = {
+      id: "job_1",
+      targetDate: "2026-07-28",
+      durationMinutes: 30,
+      status: "synthesizing",
+      error: null,
+      attemptCount: 1,
+      llmInputTokens: 100,
+      llmOutputTokens: 500,
+      ttsCharacters: 2000,
+      createdAt: new Date(),
+      updatedAt: null,
+    };
+    const episode = {
+      id: "ep_1",
+      jobId: "job_0",
+      targetDate: "2026-07-27",
+      durationMinutes: 15,
+      title: "Yesterday's Drive",
+      sizeBytes: 1000,
+      durationSeconds: "900",
+      segmentsJson: [],
+      createdAt: new Date(),
+    };
+    const { db } = createDbMock({
+      selectQueue: [...authSelects(), [job], [episode]],
+    });
+    const caller = createCaller(db);
+    const result = await caller.cast.status(SCOPE);
+    expect(result.jobs).toEqual([job]);
+    expect(result.episodes).toEqual([episode]);
+  });
+});
+
+describe("cast.script", () => {
+  it("returns the parked script for the read gate", async () => {
+    const job = {
+      id: "job_1",
+      status: "awaiting_approval",
+      scriptJson: { episodeTitle: "T", segments: [] },
+      targetDate: "2026-07-28",
+      durationMinutes: 30,
+    };
+    const { db } = createDbMock({ selectQueue: [...authSelects(), [job]] });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.script({ ...SCOPE, jobId: "job_1" }),
+    ).resolves.toEqual(job);
+  });
+
+  it("NOT_FOUND for a job outside this trip", async () => {
+    const { db } = createDbMock({ selectQueue: [...authSelects(), []] });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.script({ ...SCOPE, jobId: "job_x" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
 
