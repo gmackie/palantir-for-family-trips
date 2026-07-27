@@ -37,6 +37,20 @@
   **Priority:** P4
   One noisy speed reading >2.2 m/s at cold start flips the UI to Driving Mode (and auto-starts recording) with no hold time. Consider requiring a short hold for the first transition too.
 
+## Corridor Cast (post-P0 follow-ups — see design doc `mackieg-detached-b17b8ae-design-20260723-113903.md` and plan v2 at https://yub8q70wviyl.postplan.dev)
+
+- [ ] Native audio player for Corridor Cast (expo-audio + drive-mode mini player)
+  **Priority:** P2
+  P0 ships web-only because the standalone trip-device build has no expo-av/expo-audio and a mid-trip rebuild+reinstall is impractical. Post-trip: add expo-audio, a drive-mode mini player, background playback with Maps, and lock-screen controls, then rebuild with the trip-device EAS profile (the `eas-build-post-install` hook must build workspace deps first — see `sortey-standalone-trip-profile` learning). Blocked by: trip ending / device access for reinstall; P0 pipeline shipped.
+
+- [ ] Precache service worker for in-app offline Corridor Cast playback
+  **Priority:** P1
+  P0's offline guarantee is Download MP3 (played from the Files app); the IndexedDB blob player only works when the app shell can load. A minimal SW that precaches the player route's HTML + vinext static assets at prefetch time (cache-first offline, NO Range/206 logic, no audio caching) restores in-app airplane-mode playback with segment titles and speed control. Deferred from P0 (eng-review Issue 6) because vinext hashed-chunk enumeration and offline session/tRPC hydration are white-screen-prone and must be tested at home, not discovered on I-70. Depends on: P0 player shipped.
+
+- [ ] Corridor Cast script-quality eval + real documentary grounding source
+  **Priority:** P2
+  Two-part trust upgrade deferred from P0 (eng-review Issues 7/8): (1) `cast/__evals__` structural eval — fixture day contexts asserting schema validity, per-segment word budgets ±20%, disclaimers, must-mention anchors, ≥1 grounded POI reference — as the regression floor once prompts iterate; (2) a real grounding source for documentary content (Wikipedia/corridor-town lookups in the context pack), since trip data can only ground operational facts (roads/towns/distances/stops/anchors) — P0 handles this with two-tier prompt honesty (grounded ops facts; hedged, non-specific model-knowledge color). Together these raise the D4 "source-backed claims" premise from ritual to machinery. Depends on: P0 prompt stabilized.
+
 ## Completed
 
 - [x] v0.1.0.0 — Active-trip command center: cold-start redirect (one-shot), motion modes, fuel-colored map, quick stops, breadcrumb recording with re-queue on failed upload, GPS watcher leak fixes, ATS scoped to local networking, expo vitest wired into CI.
