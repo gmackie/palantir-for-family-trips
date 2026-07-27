@@ -45,8 +45,8 @@ export default function PricingPage() {
             example trip or member caps) and pricing before charging anyone.
           </p>
           <p className="text-muted-foreground mt-4 text-sm leading-6">
-            Questions about commercial use or family groups larger than a private
-            beta? Email{" "}
+            Questions about commercial use or family groups larger than a
+            private beta? Email{" "}
             <a className="underline" href="mailto:support@gmacko.com">
               support@gmacko.com
             </a>

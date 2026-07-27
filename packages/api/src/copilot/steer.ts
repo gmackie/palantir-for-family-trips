@@ -49,9 +49,7 @@ function classify(message: string): CopilotMoveType {
   if (/hike|heat|scenery|rest|short day|miles matter/.test(m)) {
     return "preference";
   }
-  if (
-    /tonight|camp|yosemite|bay|from the bay|leaving|headed|heading/.test(m)
-  ) {
+  if (/tonight|camp|yosemite|bay|from the bay|leaving|headed|heading/.test(m)) {
     return "frame";
   }
   if (/zion|bryce|utah|denver|omaha|lake forest|tracy/.test(m)) {
@@ -173,7 +171,8 @@ function utahOptions(
         (legHours(world, "node:yosemite_valley", "node:zion") ?? 9.5) +
         (legHours(world, "node:zion", "node:bryce") ?? 1.8) +
         (legHours(world, "node:bryce", "node:grand_junction") ?? 4.5),
-      maxDayDriveHours: legHours(world, "node:yosemite_valley", "node:zion") ?? 9.5,
+      maxDayDriveHours:
+        legHours(world, "node:yosemite_valley", "node:zion") ?? 9.5,
       hikeQuality: 2,
       heatRisk: 1,
       anchorRisk: 1,
@@ -328,9 +327,7 @@ export function steerCopilot(input: CopilotSteerInput): CopilotSteerResult {
   const today = todayIso(input.today);
   const message = input.message.trim();
   const moveType = classify(message);
-  const denver = world.brief.anchors?.find((a) =>
-    /denver/i.test(a.title),
-  );
+  const denver = world.brief.anchors?.find((a) => /denver/i.test(a.title));
 
   const baseChrome = {
     nextAnchorTitle: denver?.title,
@@ -339,7 +336,8 @@ export function steerCopilot(input: CopilotSteerInput): CopilotSteerResult {
 
   if (!message) {
     return {
-      reply: "Say what changed — camp tonight, Utah split, drive times, laundry…",
+      reply:
+        "Say what changed — camp tonight, Utah split, drive times, laundry…",
       moveType: "general",
       options: [],
       chrome: baseChrome,
@@ -358,17 +356,21 @@ export function steerCopilot(input: CopilotSteerInput): CopilotSteerResult {
     };
   }
 
-  if (moveType === "service_need" || /costco|laundry|truck/.test(message.toLowerCase())) {
-    if (/costco/.test(message.toLowerCase()) && !/tonight|camp|sleep|laundry/.test(message.toLowerCase())) {
+  if (
+    moveType === "service_need" ||
+    /costco|laundry|truck/.test(message.toLowerCase())
+  ) {
+    if (
+      /costco/.test(message.toLowerCase()) &&
+      !/tonight|camp|sleep|laundry/.test(message.toLowerCase())
+    ) {
       return {
         reply: `Along Bay → Yosemite (seed): ${costcoList(world)}. Last smart fuel is usually **Tracy** before 120.`,
         moveType: "service_need",
         options: [],
         chrome: {
           ...baseChrome,
-          facts: world.pois
-            .filter((p) => p.isCostco)
-            .map((p) => p.name),
+          facts: world.pois.filter((p) => p.isCostco).map((p) => p.name),
         },
         sources: ["rules", "tools"],
       };

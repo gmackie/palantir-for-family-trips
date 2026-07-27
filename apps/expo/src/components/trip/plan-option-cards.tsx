@@ -1,6 +1,5 @@
-import { Pressable, Text, View } from "react-native";
-
 import type { PlanOption } from "@sortey/api/copilot";
+import { Pressable, Text, View } from "react-native";
 import { C, mono, R } from "~/utils/design";
 
 export function PlanOptionCards({
@@ -26,11 +25,7 @@ export function PlanOptionCards({
             key={opt.id}
             style={{
               borderWidth: 1,
-              borderColor: applied
-                ? C.success
-                : rec
-                  ? C.info
-                  : C.border,
+              borderColor: applied ? C.success : rec ? C.info : C.border,
               backgroundColor: C.bg,
               borderRadius: R.md,
               padding: 12,
@@ -72,7 +67,9 @@ export function PlanOptionCards({
             <Text style={{ color: C.muted, fontSize: 13, lineHeight: 18 }}>
               {opt.summary}
             </Text>
-            <Text style={{ color: C.placeholder, fontSize: 11, fontFamily: mono }}>
+            <Text
+              style={{ color: C.placeholder, fontSize: 11, fontFamily: mono }}
+            >
               {opt.costs.totalDriveHours.toFixed(1)}h total · max day{" "}
               {opt.costs.maxDayDriveHours.toFixed(1)}h · hike{" "}
               {opt.costs.hikeQuality}/3 · heat {opt.costs.heatRisk}/3 · anchor

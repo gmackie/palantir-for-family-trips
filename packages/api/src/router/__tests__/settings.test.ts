@@ -378,8 +378,7 @@ function createCaller(options?: {
     // session GUCs via execute; pass the same mock through as the tx.
     execute: vi.fn(async () => undefined),
     transaction: vi.fn(
-      async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> =>
-        fn(db),
+      async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> => fn(db),
     ),
   };
 

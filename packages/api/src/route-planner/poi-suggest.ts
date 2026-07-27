@@ -111,21 +111,17 @@ export function suggestOvernightsAlongRoute(
     endpointName: ep.name,
     lat: ep.lat,
     lng: ep.lng,
-    suggestions: rankPoisNear(
-      { lat: ep.lat, lng: ep.lng },
-      pois,
-      {
-        maxMiles,
-        limit: per,
-        preferSleep: true,
-        categories: [
-          "wild_camping",
-          "campsite",
-          "parking_overnight",
-          "rest_area",
-          "parking",
-        ],
-      },
-    ),
+    suggestions: rankPoisNear({ lat: ep.lat, lng: ep.lng }, pois, {
+      maxMiles,
+      limit: per,
+      preferSleep: true,
+      categories: [
+        "wild_camping",
+        "campsite",
+        "parking_overnight",
+        "rest_area",
+        "parking",
+      ],
+    }),
   }));
 }

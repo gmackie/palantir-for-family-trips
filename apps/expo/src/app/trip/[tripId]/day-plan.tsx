@@ -20,7 +20,12 @@ import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 const INTENTS = ["play", "drive", "position", "event", "recovery"] as const;
-const OVERNIGHT_KINDS = ["dispersed", "campground", "hotel", "unknown"] as const;
+const OVERNIGHT_KINDS = [
+  "dispersed",
+  "campground",
+  "hotel",
+  "unknown",
+] as const;
 
 const INTENT_COLOR: Record<string, string> = {
   play: C.success,
@@ -383,9 +388,7 @@ export default function DayPlanScreen() {
           <SummaryChip
             label="Miles"
             value={
-              planMap?.totalMiles
-                ? String(Math.round(planMap.totalMiles))
-                : "—"
+              planMap?.totalMiles ? String(Math.round(planMap.totalMiles)) : "—"
             }
             color={C.warning}
           />
@@ -670,7 +673,9 @@ export default function DayPlanScreen() {
               textAlign: "center",
             }}
           >
-            {busy || applyDraft.isPending ? "Applying…" : "Days only: Jul 11–15"}
+            {busy || applyDraft.isPending
+              ? "Applying…"
+              : "Days only: Jul 11–15"}
           </Text>
         </Pressable>
 
@@ -726,8 +731,7 @@ export default function DayPlanScreen() {
                     borderColor: isToday
                       ? C.warning
                       : (INTENT_COLOR[d.intent] ?? C.info) + "66",
-                    backgroundColor:
-                      (INTENT_COLOR[d.intent] ?? C.info) + "18",
+                    backgroundColor: (INTENT_COLOR[d.intent] ?? C.info) + "18",
                     opacity: isPast && !isToday ? 0.5 : 1,
                   }}
                 >
@@ -1117,9 +1121,7 @@ export default function DayPlanScreen() {
                 </Text>
                 <TextInput
                   value={editForm[key]}
-                  onChangeText={(t) =>
-                    setEditForm((f) => ({ ...f, [key]: t }))
-                  }
+                  onChangeText={(t) => setEditForm((f) => ({ ...f, [key]: t }))}
                   placeholderTextColor={C.placeholder}
                   style={{
                     backgroundColor: C.surface,
@@ -1160,8 +1162,7 @@ export default function DayPlanScreen() {
                 >
                   <Text
                     style={{
-                      color:
-                        editForm.overnightKind === k ? C.info : C.muted,
+                      color: editForm.overnightKind === k ? C.info : C.muted,
                       fontSize: 11,
                       fontWeight: "700",
                     }}
@@ -1202,7 +1203,9 @@ export default function DayPlanScreen() {
                     gap: 2,
                   }}
                 >
-                  <Text style={{ color: C.fg, fontWeight: "700", fontSize: 14 }}>
+                  <Text
+                    style={{ color: C.fg, fontWeight: "700", fontSize: 14 }}
+                  >
                     {s.name}
                   </Text>
                   <Text
@@ -1257,11 +1260,7 @@ export default function DayPlanScreen() {
   );
 }
 
-function SummaryChip(props: {
-  label: string;
-  value: string;
-  color: string;
-}) {
+function SummaryChip(props: { label: string; value: string; color: string }) {
   return (
     <View
       style={{

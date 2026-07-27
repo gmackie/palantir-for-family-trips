@@ -4,12 +4,12 @@ import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
+import { downsamplePath } from "../route-planner/track";
 import {
   getTrackPath,
   getTrackStats,
   recordBreadcrumbs,
 } from "../route-planner/track-ops";
-import { downsamplePath } from "../route-planner/track";
 
 const tripScopedInput = z.object({
   workspaceId: z.string().min(1),

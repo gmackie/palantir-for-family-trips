@@ -260,7 +260,9 @@ export function RoomBoard({
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ color: C.muted, fontSize: 12 }}>+ assign…</Text>
+                  <Text style={{ color: C.muted, fontSize: 12 }}>
+                    + assign…
+                  </Text>
                 </Pressable>
               )}
             </View>

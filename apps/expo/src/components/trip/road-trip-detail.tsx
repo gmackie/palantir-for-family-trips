@@ -11,9 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-
-import { trpc, trpcClient } from "~/utils/api";
 import { setLastTripId } from "~/utils/active-trip";
+import { trpc, trpcClient } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import {
   saveTripOfflineBundle,
@@ -759,7 +758,9 @@ export function RoadTripDetail({
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ color: C.info, fontWeight: "700", fontSize: 13 }}>
+                <Text
+                  style={{ color: C.info, fontWeight: "700", fontSize: 13 }}
+                >
                   {a.label}
                 </Text>
               </Pressable>

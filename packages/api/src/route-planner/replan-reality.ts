@@ -3,10 +3,10 @@
  * Apply is handled by planItinerary / applyDraft on the router.
  */
 
+import { listAnchors } from "./anchor-ops";
 import type { DayPlanDraft } from "./day-plan";
 import { replanDraft } from "./day-plan";
 import { listDays } from "./day-plan-ops";
-import { listAnchors } from "./anchor-ops";
 
 export type ReplanReason = "behind" | "side_trip" | "stayed" | "manual";
 export type ReplanMode = "soft_days" | "soft_route";
@@ -67,7 +67,7 @@ export async function buildReplanPreview(
   const untilDate =
     nextAnchor != null
       ? addDays(nextAnchor.startDate as string, -1)
-      : days[days.length - 1]?.date ?? addDays(fromDate, 7);
+      : (days[days.length - 1]?.date ?? addDays(fromDate, 7));
 
   const warnings: string[] = [];
   if (nextAnchor) {

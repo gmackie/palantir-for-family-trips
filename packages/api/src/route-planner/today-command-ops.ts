@@ -5,7 +5,7 @@
 import { asc, desc, eq } from "@sortey/db";
 import { fuelLogs, tripSegments, trips } from "@sortey/db/schema";
 import SunCalc from "suncalc";
-
+import { resolveVanState } from "../daymap/vanstate-ops";
 import { haversineMiles } from "../trips/driving-summary";
 import { listAnchors } from "./anchor-ops";
 import type { TripDayRow } from "./day-plan-ops";
@@ -15,13 +15,9 @@ import {
   desiredArrivalFromSunset,
   formatLocalHm,
 } from "./leave-by";
-import { assessSideTrip } from "./side-trip";
 import { scanTripAmenities } from "./poi-suggest-ops";
-import { resolveVanState } from "../daymap/vanstate-ops";
-import {
-  buildServiceQueue,
-  type ServiceStop,
-} from "./service-queue";
+import { buildServiceQueue, type ServiceStop } from "./service-queue";
+import { assessSideTrip } from "./side-trip";
 
 export interface TodayCommandResult {
   date: string;
@@ -130,9 +126,7 @@ export async function getTodayCommand(
   const tomorrowDay = days.find((d) => d.date === tomorrowStr) ?? null;
 
   const anchors = await listAnchors(db, p.tripId);
-  const nextAnchorRow = anchors.find(
-    (a) => (a.startDate as string) >= date,
-  ) as
+  const nextAnchorRow = anchors.find((a) => (a.startDate as string) >= date) as
     | {
         title: string;
         startDate: string;
@@ -168,7 +162,10 @@ export async function getTodayCommand(
 
   const todaySegMiles = segs
     .filter((s) => s.startDate === date)
-    .reduce((sum, s) => sum + (s.distanceMiles != null ? Number(s.distanceMiles) : 0), 0);
+    .reduce(
+      (sum, s) => sum + (s.distanceMiles != null ? Number(s.distanceMiles) : 0),
+      0,
+    );
 
   const targetLat =
     day?.overnightLat != null
@@ -185,7 +182,12 @@ export async function getTodayCommand(
 
   let milesRemaining = 0;
   let leaveByMilesSource: TodayCommandResult["leaveByMilesSource"] = null;
-  if (p.lat != null && p.lng != null && targetLat != null && targetLng != null) {
+  if (
+    p.lat != null &&
+    p.lng != null &&
+    targetLat != null &&
+    targetLng != null
+  ) {
     milesRemaining =
       Math.round(
         haversineMiles(
@@ -274,7 +276,10 @@ export async function getTodayCommand(
 
   const tomorrowSegMiles = segs
     .filter((s) => s.startDate === tomorrowStr)
-    .reduce((sum, s) => sum + (s.distanceMiles != null ? Number(s.distanceMiles) : 0), 0);
+    .reduce(
+      (sum, s) => sum + (s.distanceMiles != null ? Number(s.distanceMiles) : 0),
+      0,
+    );
 
   const navigateOvernight =
     day?.overnightLat != null && day.overnightLng != null
@@ -427,9 +432,7 @@ export async function getTodayCommand(
 
 function leaveByTargetLabel(
   day: TripDayRow | null,
-  anchor:
-    | { title: string }
-    | undefined,
+  anchor: { title: string } | undefined,
 ): string {
   return day?.overnightName ?? anchor?.title ?? "target";
 }

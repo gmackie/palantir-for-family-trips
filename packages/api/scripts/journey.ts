@@ -27,12 +27,20 @@ import { pins, tripSegments, trips } from "@sortey/db/schema";
 
 import type { DayBriefing } from "../src/daymap/briefing";
 import { computeBriefing } from "../src/daymap/briefing-ops";
-import { computeServiceAlerts, type ServiceLevels } from "../src/daymap/service-ops";
+import {
+  computeServiceAlerts,
+  type ServiceLevels,
+} from "../src/daymap/service-ops";
 import {
   recordReading,
   resolveVanState,
   TRACKED_RESOURCES,
 } from "../src/daymap/vanstate-ops";
+import {
+  createAnchor,
+  deleteAnchor,
+  listAnchors,
+} from "../src/route-planner/anchor-ops";
 import type { StopKind } from "../src/route-planner/journey-logic";
 import {
   deleteStopOp,
@@ -42,11 +50,6 @@ import {
 import { buildRecap, type TripRecap } from "../src/route-planner/recap";
 import { geocode, reverseGeocode } from "../src/route-planner/routing";
 import { getTrackStats } from "../src/route-planner/track-ops";
-import {
-  createAnchor,
-  deleteAnchor,
-  listAnchors,
-} from "../src/route-planner/anchor-ops";
 
 function parseArgs(argv: string[]): {
   command: string;
@@ -203,8 +206,7 @@ function renderRecap(r: TripRecap): string {
   L.push(
     `**${r.dateStart} → ${r.dateEnd}** · ${r.days} days · ${r.totalMiles} mi · ${r.stopCount} stops`,
   );
-  if (r.actualMiles != null)
-    L.push(`**Driven (GPS):** ${r.actualMiles} mi`);
+  if (r.actualMiles != null) L.push(`**Driven (GPS):** ${r.actualMiles} mi`);
   if (r.states.length > 0) L.push(`**States:** ${r.states.join(" → ")}`);
   if (r.longestLeg)
     L.push(`**Longest leg:** ${r.longestLeg.miles} mi → ${r.longestLeg.name}`);
@@ -491,7 +493,7 @@ async function main() {
       console.log(
         "Commands: list | log | update | delete | geocode | reverse | " +
           "service-alerts | briefing | recap | reading | vanstate | track | anchor\n" +
-          "  anchor add --trip <id> --title \"Open Sauce\" --date YYYY-MM-DD [--place \"...\"] [--end YYYY-MM-DD] [--kind event]\n" +
+          '  anchor add --trip <id> --title "Open Sauce" --date YYYY-MM-DD [--place "..."] [--end YYYY-MM-DD] [--kind event]\n' +
           "  anchor list --trip <id>\n" +
           "  reading  --trip <id> --resource grey|black|fresh|propane|fuel --level <0-100> [--note ...]\n" +
           "  vanstate --trip <id>\n" +

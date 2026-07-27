@@ -207,7 +207,8 @@ export default function ChatScreen() {
             tonightKind: result.chrome?.tonightKind ?? prev.tonightKind,
             nextAnchorTitle:
               result.chrome?.nextAnchorTitle ?? prev.nextAnchorTitle,
-            nextAnchorDate: result.chrome?.nextAnchorDate ?? prev.nextAnchorDate,
+            nextAnchorDate:
+              result.chrome?.nextAnchorDate ?? prev.nextAnchorDate,
             facts: result.chrome?.facts ?? prev.facts,
           }));
         }
@@ -298,9 +299,7 @@ export default function ChatScreen() {
     nextAnchorTitle:
       chrome.nextAnchorTitle ?? todayCmd?.nextAnchor?.title ?? null,
     nextAnchorDate:
-      chrome.nextAnchorDate ??
-      todayCmd?.nextAnchor?.startDate ??
-      null,
+      chrome.nextAnchorDate ?? todayCmd?.nextAnchor?.startDate ?? null,
     facts: chrome.facts,
   };
 

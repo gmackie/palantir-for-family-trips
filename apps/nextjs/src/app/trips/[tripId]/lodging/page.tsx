@@ -42,8 +42,6 @@ function formatDate(date: Date | string) {
   }).format(new Date(date));
 }
 
-
-
 export default async function LodgingPage(props: {
   params: Promise<{ tripId: string }>;
 }) {

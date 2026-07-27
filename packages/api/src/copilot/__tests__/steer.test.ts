@@ -44,7 +44,9 @@ describe("steerCopilot", () => {
   });
 
   it("lists Costcos along the way", () => {
-    const r = steerCopilot({ message: "wheres the nearest costcos along the way" });
+    const r = steerCopilot({
+      message: "wheres the nearest costcos along the way",
+    });
     expect(r.reply).toMatch(/Costco/i);
     expect(r.chrome?.facts?.some((f) => /Costco/i.test(f))).toBe(true);
   });

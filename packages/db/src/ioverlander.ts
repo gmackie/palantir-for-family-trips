@@ -57,7 +57,14 @@ export const CATEGORY_MAP: Record<string, string> = {
 export const AMENITY_GROUPS = {
   sleep: ["wild_camping", "campsite", "parking_overnight", "rest_area"],
   parking: ["parking", "parking_overnight", "rest_area"],
-  service: ["water", "dump_station", "propane", "shower", "laundry", "mechanic"],
+  service: [
+    "water",
+    "dump_station",
+    "propane",
+    "shower",
+    "laundry",
+    "mechanic",
+  ],
   fuel: ["fuel"],
   food: ["grocery", "restaurant"],
   road: ["toll", "rest_area", "parking"],
@@ -171,7 +178,9 @@ export function parseIoverlanderCsv(
   const iLng = colIndex(header, "longitude", "lon", "lng");
   const iId = colIndex(header, "id", "place id");
   if (iName < 0 || iCat < 0 || iLat < 0 || iLng < 0) {
-    throw new Error(`CSV missing required columns. Found: ${header.join(", ")}`);
+    throw new Error(
+      `CSV missing required columns. Found: ${header.join(", ")}`,
+    );
   }
 
   const wsPrefix = workspaceId ? `${workspaceId}/` : "";

@@ -1,8 +1,7 @@
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
-
-import { defaultSeedWorld, steerCopilot } from "../copilot";
 import { tripProcedure } from "../auth/guards";
+import { defaultSeedWorld, steerCopilot } from "../copilot";
 
 /**
  * Chat-primary co-pilot. Pure rules + seed world for P0.

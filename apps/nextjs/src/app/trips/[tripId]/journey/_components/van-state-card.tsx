@@ -56,8 +56,8 @@ export function VanStateCard({
         Van state
       </div>
       <p className="text-sm text-[#8B949E]">
-        Log tank &amp; supply levels. We learn your van&apos;s real drain rate so
-        service alerts warn you before grey/black/fresh/propane run out.
+        Log tank &amp; supply levels. We learn your van&apos;s real drain rate
+        so service alerts warn you before grey/black/fresh/propane run out.
       </p>
 
       <div className="flex flex-col gap-2">
@@ -103,8 +103,7 @@ function ResourceRow({
 
   // Waste (grey/black) is bad when high; supply (fresh/propane) bad when low.
   const warn =
-    level != null &&
-    (kind === "waste" ? level >= 80 : level <= 20)
+    level != null && (kind === "waste" ? level >= 80 : level <= 20)
       ? "text-[#F85149]"
       : "text-[#3FB950]";
 

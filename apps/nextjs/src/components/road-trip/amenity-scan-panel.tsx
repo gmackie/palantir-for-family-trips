@@ -81,10 +81,7 @@ export function AmenityScanPanel(props: {
 
       {open && (
         <div className="space-y-3 px-3 pb-3">
-          <PoiUpload
-            workspaceId={props.workspaceId}
-            tripId={props.tripId}
-          />
+          <PoiUpload workspaceId={props.workspaceId} tripId={props.tripId} />
 
           <div className="flex flex-wrap gap-1">
             <button

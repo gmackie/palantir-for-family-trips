@@ -26,7 +26,12 @@ export interface ServiceQueueInput {
     milesAway: number;
     category?: string;
   } | null;
-  parking?: { name: string; lat: number; lng: number; milesAway: number } | null;
+  parking?: {
+    name: string;
+    lat: number;
+    lng: number;
+    milesAway: number;
+  } | null;
   /** If true, elevate dump (grey/black full soon). */
   needDump?: boolean;
   needWater?: boolean;

@@ -1,8 +1,5 @@
 import { and, eq, gte, inArray, isNull, lte, or } from "@sortey/db";
-import {
-  AMENITY_GROUPS,
-  importIoverlanderCsv,
-} from "@sortey/db/ioverlander";
+import { AMENITY_GROUPS, importIoverlanderCsv } from "@sortey/db/ioverlander";
 import { importedPois, poiCache } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
@@ -84,7 +81,9 @@ export const corridorRouter = {
         .select()
         .from(importedPois)
         .where(and(...conditions))
-        .limit(input.rankByDistance ? Math.min(500, input.limit * 4) : input.limit)) as Array<{
+        .limit(
+          input.rankByDistance ? Math.min(500, input.limit * 4) : input.limit,
+        )) as Array<{
         id: string;
         source: string;
         externalId: string;

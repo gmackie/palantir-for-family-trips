@@ -3,27 +3,29 @@
  */
 import type { CopilotLeg, CopilotPoi, CopilotWorld } from "./types";
 
-export const SEED_NODES: Record<string, { label: string; lat: number; lng: number }> =
-  {
-    "node:bay_area": { label: "Bay Area", lat: 37.55, lng: -122.3 },
-    "node:tracy": { label: "Tracy", lat: 37.74, lng: -121.43 },
-    "node:groveland": { label: "Groveland", lat: 37.84, lng: -120.23 },
-    "node:yosemite_valley": {
-      label: "Yosemite Valley",
-      lat: 37.746,
-      lng: -119.594,
-    },
-    "node:zion": { label: "Zion", lat: 37.298, lng: -113.026 },
-    "node:bryce": { label: "Bryce Canyon", lat: 37.628, lng: -112.168 },
-    "node:grand_junction": {
-      label: "Grand Junction",
-      lat: 39.064,
-      lng: -108.551,
-    },
-    "node:denver": { label: "Denver", lat: 39.739, lng: -104.99 },
-    "node:omaha": { label: "Omaha", lat: 41.257, lng: -95.995 },
-    "node:lake_forest": { label: "Lake Forest", lat: 42.259, lng: -87.841 },
-  };
+export const SEED_NODES: Record<
+  string,
+  { label: string; lat: number; lng: number }
+> = {
+  "node:bay_area": { label: "Bay Area", lat: 37.55, lng: -122.3 },
+  "node:tracy": { label: "Tracy", lat: 37.74, lng: -121.43 },
+  "node:groveland": { label: "Groveland", lat: 37.84, lng: -120.23 },
+  "node:yosemite_valley": {
+    label: "Yosemite Valley",
+    lat: 37.746,
+    lng: -119.594,
+  },
+  "node:zion": { label: "Zion", lat: 37.298, lng: -113.026 },
+  "node:bryce": { label: "Bryce Canyon", lat: 37.628, lng: -112.168 },
+  "node:grand_junction": {
+    label: "Grand Junction",
+    lat: 39.064,
+    lng: -108.551,
+  },
+  "node:denver": { label: "Denver", lat: 39.739, lng: -104.99 },
+  "node:omaha": { label: "Omaha", lat: 41.257, lng: -95.995 },
+  "node:lake_forest": { label: "Lake Forest", lat: 42.259, lng: -87.841 },
+};
 
 export const SEED_LEGS: CopilotLeg[] = [
   { fromKey: "node:bay_area", toKey: "node:tracy", hours: 1.2, miles: 60 },
