@@ -25,10 +25,10 @@ function addDays(iso: string, n: number): string {
 
 function classify(message: string): CopilotMoveType {
   const m = message.toLowerCase();
-  if (
-    /how long|hours|drive time|how far|eta|miles to/.test(m) ||
-    /bryce.*denver|denver.*bryce|zion.*bryce/.test(m)
-  ) {
+  // Pure drive-time questions only — a route pair alone ("Zion or Bryce?",
+  // "sleep at Bryce then Denver?") is a comparison, not a distance lookup,
+  // and must fall through to ask_options below.
+  if (/how long|hours|drive time|how far|eta|miles to/.test(m)) {
     return "question";
   }
   if (
