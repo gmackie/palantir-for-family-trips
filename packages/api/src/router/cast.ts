@@ -13,8 +13,21 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
-import { probeCastDriveLeg, resolveCastTargetDate } from "../cast/context";
+import {
+  castTodayInTz,
+  probeCastDriveLeg,
+  resolveCastTargetDate,
+} from "../cast/context";
+import { CAST_EXPIRED_ERROR } from "../cast/job";
 import { type CastR2Bucket, deleteCheckpoints } from "../cast/tts";
+import { assertRateLimit } from "../rate-limit";
+
+/** LLM spend guard: script generation starts without any approval gate. */
+const CAST_GENERATE_RATE_LIMIT = {
+  limit: 6,
+  windowMs: 60 * 60 * 1000,
+  message: "Too many episode generations. Wait a bit and try again.",
+} as const;
 
 /**
  * Corridor Cast — night-before episode generation for tomorrow's drive.
@@ -103,8 +116,22 @@ export const castRouter = {
         .limit(1)) as Array<{ tz: string }>;
       if (!trip) throw new TRPCError({ code: "NOT_FOUND" });
 
+      assertRateLimit({
+        key: `cast:generate:${ctx.session.user.id}`,
+        ...CAST_GENERATE_RATE_LIMIT,
+      });
+
       const targetDate =
         input.targetDate ?? resolveCastTargetDate(trip.tz, new Date());
+
+      // A past drive day would only generate a script for the expiry sweep
+      // to kill — after the LLM spend. Refuse up front.
+      if (targetDate < castTodayInTz(trip.tz, new Date())) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `${targetDate} has already passed in ${trip.tz}.`,
+        });
+      }
 
       // Server-side no-leg rejection (test plan: direct API call on a no-leg
       // day must fail even though the button is hidden).
@@ -325,6 +352,16 @@ export const castRouter = {
             "This generation was replaced by a newer one for the same day — use Generate instead.",
         });
       }
+      if (job.error === CAST_EXPIRED_ERROR) {
+        // An expired script was NEVER approved — reviving it to synthesizing
+        // would spend the full TTS bill around the read gate, for a drive day
+        // that already passed.
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "This script expired unread and its drive day has passed — generate a new episode instead.",
+        });
+      }
 
       // Reviving this job must not collide with the one-active-job-per-day
       // index: a concurrent active job means the slot is taken (a raw retry
@@ -352,22 +389,36 @@ export const castRouter = {
         : "pending";
       // Status-guarded revive: if a concurrent generate superseded (or
       // anything else moved) this job between our select and now, the update
-      // matches nothing and we refuse instead of corrupting live state.
-      const revived = (await ctx.db
-        .update(castEpisodeJobs)
-        .set({
-          status: nextStatus,
-          error: null,
-          attemptCount: 0,
-          claimedAt: null,
-        })
-        .where(
-          and(
-            eq(castEpisodeJobs.id, input.jobId),
-            eq(castEpisodeJobs.status, "failed" as CastJobStatus),
-          ),
-        )
-        .returning({ id: castEpisodeJobs.id })) as Array<{ id: string }>;
+      // matches nothing and we refuse instead of corrupting live state. A
+      // concurrent generate can also take the day slot between our active
+      // check and this update — the partial unique index then raises 23505,
+      // which must surface as CONFLICT, not an opaque 500.
+      let revived: Array<{ id: string }>;
+      try {
+        revived = (await ctx.db
+          .update(castEpisodeJobs)
+          .set({
+            status: nextStatus,
+            error: null,
+            attemptCount: 0,
+            claimedAt: null,
+          })
+          .where(
+            and(
+              eq(castEpisodeJobs.id, input.jobId),
+              eq(castEpisodeJobs.status, "failed" as CastJobStatus),
+            ),
+          )
+          .returning({ id: castEpisodeJobs.id })) as Array<{ id: string }>;
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Another generation for this day is already in flight.",
+          });
+        }
+        throw error;
+      }
       if (revived.length === 0) {
         throw new TRPCError({
           code: "CONFLICT",
@@ -379,6 +430,21 @@ export const castRouter = {
 } satisfies TRPCRouterRecord;
 
 const SUPERSEDED_ERROR = "Superseded by a newer generation for this day.";
+
+/** Postgres 23505 across driver wrappings (postgres-js nests under `cause`). */
+function isUniqueViolation(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current != null; depth++) {
+    if (
+      typeof current === "object" &&
+      (current as { code?: unknown }).code === "23505"
+    ) {
+      return true;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
 
 /**
  * A failed job being replaced loses its resume rights: its paid temp audio is

@@ -1,9 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@localhost:5432/gmacko_test";
 
 const { appRouter } = await import("../../root");
+const { resetRateLimitBuckets } = await import("../../rate-limit");
+
+beforeEach(() => {
+  // cast.generate carries a per-user rate limit; tests share a user id.
+  resetRateLimitBuckets();
+});
 
 const SESSION_USER = {
   id: "user_1",
@@ -257,6 +263,33 @@ describe("cast.generate", () => {
     });
   });
 
+  it("rejects a target date that already passed in the trip's tz", async () => {
+    const { db, inserts } = createDbMock({
+      selectQueue: [...authSelects(), [{ tz: "America/Denver" }]],
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.generate({
+        ...SCOPE,
+        durationMinutes: 30,
+        targetDate: "2020-01-01",
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("rejects a calendar-invalid target date at the input layer", async () => {
+    const { db } = createDbMock({ selectQueue: [...authSelects()] });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.generate({
+        ...SCOPE,
+        durationMinutes: 30,
+        targetDate: "2026-02-31",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   it("rejects a non-member outright (auth chain, not the router body)", async () => {
     const { db } = createDbMock({
       selectQueue: [
@@ -358,6 +391,24 @@ describe("cast.retry", () => {
     await expect(
       caller.cast.retry({ ...SCOPE, jobId: "job_1" }),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("an expired-unread script refuses retry — TTS spend must not bypass the read gate", async () => {
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [
+          failedJob({
+            error: "Script expired unread — its drive day has passed.",
+          }),
+        ],
+      ],
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.retry({ ...SCOPE, jobId: "job_1" }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(updates).toHaveLength(0);
   });
 
   it("a superseded job refuses retry — its paid audio is gone", async () => {

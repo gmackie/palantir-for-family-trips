@@ -78,16 +78,20 @@ export type CastDayContext = {
  * is the tripwire for the tz misconfiguration (eng-review Issue 9.8).
  */
 export function resolveCastTargetDate(tz: string, now: Date): string {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
+  // Advance today-in-tz by one calendar day in UTC space (calendar
+  // arithmetic — DST shifts can't skew a date+24h by a whole day).
+  return addDays(castTodayInTz(tz, now), 1);
+}
+
+/** Today's YYYY-MM-DD calendar date in the trip's timezone. */
+export function castTodayInTz(tz: string, now: Date): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  });
-  // en-CA formats as YYYY-MM-DD. Format today in tz, then advance that
-  // calendar date by one day in UTC space (calendar arithmetic — DST shifts
-  // can't skew a date+24h by a whole day).
-  return addDays(formatter.format(now), 1);
+  }).format(now);
 }
 
 /**

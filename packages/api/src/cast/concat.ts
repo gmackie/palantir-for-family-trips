@@ -149,6 +149,15 @@ function walkMp3Frames(bytes: Uint8Array): {
       );
     }
 
+    // A header whose declared frame extends past the buffer is a truncated
+    // stream (interrupted download/synthesis) — refuse rather than splice a
+    // partial frame with full duration credited.
+    if (offset + header.frameLength > bytes.length) {
+      throw new Mp3ValidationError(
+        `MP3 stream truncated mid-frame at byte ${offset} (frame needs ${header.frameLength} bytes, ${bytes.length - offset} remain)`,
+      );
+    }
+
     if (!isMetadataFrame(bytes, offset, header.frameLength)) {
       frames.push({ offset, length: header.frameLength });
     }

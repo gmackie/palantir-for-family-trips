@@ -43,6 +43,11 @@ describe("parseMp3Segment", () => {
     );
   });
 
+  it("rejects a stream truncated mid-frame instead of crediting full duration", () => {
+    const truncated = validMp3(5).subarray(0, 5 * 417 - 100);
+    expect(() => parseMp3Segment(truncated)).toThrow(/truncated mid-frame/);
+  });
+
   it("rejects a stream that is mostly junk", () => {
     const junk = new Uint8Array(5000).fill(0x41);
     const stream = buildMp3([junk, validMp3(2)]);

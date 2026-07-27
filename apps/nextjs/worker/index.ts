@@ -87,6 +87,10 @@ const SECRET_KEYS = [
 /** Public/non-secret runtime vars that must also be on process.env for Next/Sentry. */
 const PUBLIC_ENV_KEYS = [
   "APP_ENV",
+  // Corridor Cast model overrides — without these the env knobs the code
+  // reads (cast/script.ts, cast/elevenlabs.ts) silently never arrive.
+  "CAST_SCRIPT_MODEL",
+  "ELEVENLABS_TTS_MODEL",
   "APP_URL",
   "NEXT_PUBLIC_APP_URL",
   "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",

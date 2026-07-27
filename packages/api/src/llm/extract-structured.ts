@@ -33,6 +33,8 @@ export async function generateStructured<T>(params: {
   schema: z.ZodType<T>;
   image?: StructuredImageInput;
   maxTokens?: number;
+  /** Per-request cap — the SDK default (10 min) can outlive a cron budget. */
+  timeoutMs?: number;
   onUsage?: (usage: LlmUsage) => void;
 }): Promise<T> {
   const content: Anthropic.ContentBlockParam[] = [];
@@ -48,23 +50,26 @@ export async function generateStructured<T>(params: {
   }
   content.push({ type: "text", text: params.userText });
 
-  const response = await params.client.messages.parse({
-    model: params.model,
-    max_tokens: params.maxTokens ?? 4096,
-    // Cache the large system prompt — every subsequent request only pays
-    // for the input + response tokens.
-    system: [
-      {
-        type: "text",
-        text: params.systemPrompt,
-        cache_control: { type: "ephemeral" },
+  const response = await params.client.messages.parse(
+    {
+      model: params.model,
+      max_tokens: params.maxTokens ?? 4096,
+      // Cache the large system prompt — every subsequent request only pays
+      // for the input + response tokens.
+      system: [
+        {
+          type: "text",
+          text: params.systemPrompt,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content }],
+      output_config: {
+        format: zodOutputFormat(params.schema),
       },
-    ],
-    messages: [{ role: "user", content }],
-    output_config: {
-      format: zodOutputFormat(params.schema),
     },
-  });
+    params.timeoutMs != null ? { timeout: params.timeoutMs } : undefined,
+  );
 
   params.onUsage?.({
     inputTokens: response.usage.input_tokens,

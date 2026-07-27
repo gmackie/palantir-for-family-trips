@@ -32,6 +32,9 @@ import {
 
 export const CAST_LEASE_STALE_MINUTES = 20;
 export const CAST_MAX_ATTEMPTS = 4;
+/** Marker error for unread scripts whose drive day passed — refused by retry. */
+export const CAST_EXPIRED_ERROR =
+  "Script expired unread — its drive day has passed.";
 /** Leave lots of runway before wrangler's 15-minute cron wall clock. */
 export const CAST_PUMP_TIME_BUDGET_MS = 4 * 60 * 1000;
 
@@ -119,16 +122,21 @@ export async function runCastPump(params: {
   const now = params.now ?? Date.now;
   const deadline = now() + (params.timeBudgetMs ?? CAST_PUMP_TIME_BUDGET_MS);
 
-  // Expire unread scripts whose drive day has passed. awaiting_approval is
-  // never claimed below, so without this sweep one skipped night would hold
-  // the per-day slot forever and dead-end every future Generate.
+  // Expire unread scripts whose drive day has passed IN THE TRIP'S TZ (a UTC
+  // comparison would expire a US trip's script mid-afternoon on the drive day
+  // itself). awaiting_approval is never claimed below, so without this sweep
+  // one skipped night would hold the per-day slot forever and dead-end every
+  // future Generate. The error text is the retry-refusal marker: an expired
+  // script was never approved, so retry must not funnel it into TTS spend.
   await db.execute(sql`
-    UPDATE cast_episode_job
+    UPDATE cast_episode_job AS j
     SET status = 'failed',
-        error = 'Script expired unread — its drive day has passed.',
+        error = ${CAST_EXPIRED_ERROR},
         claimed_at = NULL
-    WHERE status = 'awaiting_approval'
-      AND target_date < (now() AT TIME ZONE 'UTC')::date
+    FROM trip AS t
+    WHERE j.trip_id = t.id
+      AND j.status = 'awaiting_approval'
+      AND j.target_date < (now() AT TIME ZONE t.tz)::date
   `);
 
   const job = await claimNextCastJob(db);
@@ -150,7 +158,7 @@ export async function runCastPump(params: {
 
   try {
     if (job.status === "pending") {
-      const status = await runScriptStep(db, job, deps);
+      const status = await runScriptStep(db, job, deps, deadline, now);
       return { claimed: true, jobId: job.id, status };
     }
 
@@ -202,6 +210,8 @@ async function runScriptStep(
   db: any,
   job: ClaimedJob,
   deps: CastPumpDeps,
+  deadline: number,
+  now: () => number,
 ): Promise<CastJobStatus> {
   const context = await deps.buildContext(db, {
     tripId: job.tripId,
@@ -222,14 +232,33 @@ async function runScriptStep(
 
   let inputTokens = 0;
   let outputTokens = 0;
-  const script = await deps.generateScript({
-    context,
-    durationMinutes: job.durationMinutes,
-    onUsage: (usage) => {
-      inputTokens += usage.inputTokens;
-      outputTokens += usage.outputTokens;
-    },
-  });
+  let script: Awaited<ReturnType<typeof deps.generateScript>>;
+  try {
+    script = await deps.generateScript({
+      context,
+      durationMinutes: job.durationMinutes,
+      deadline,
+      now,
+      onUsage: (usage) => {
+        inputTokens += usage.inputTokens;
+        outputTokens += usage.outputTokens;
+      },
+    });
+  } catch (error) {
+    // The tokens already spent must be recorded even on a failed run — cost
+    // accounting under-reporting exactly when generation is flaky is how a
+    // bill surprise hides.
+    if (inputTokens > 0 || outputTokens > 0) {
+      await db
+        .update(castEpisodeJobs)
+        .set({
+          llmInputTokens: sql`${castEpisodeJobs.llmInputTokens} + ${inputTokens}`,
+          llmOutputTokens: sql`${castEpisodeJobs.llmOutputTokens} + ${outputTokens}`,
+        })
+        .where(eq(castEpisodeJobs.id, job.id));
+    }
+    throw error;
+  }
 
   // Read gate (eng-review Issue 8): the script is parked for the traveler to
   // read before a single TTS character is billed. No auto-advance.
