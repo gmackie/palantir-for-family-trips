@@ -37,7 +37,7 @@
   **Priority:** P4
   One noisy speed reading >2.2 m/s at cold start flips the UI to Driving Mode (and auto-starts recording) with no hold time. Consider requiring a short hold for the first transition too.
 
-## Corridor Cast (post-P0 follow-ups — see design doc `mackieg-detached-b17b8ae-design-20260723-113903.md` and plan v2 at https://yub8q70wviyl.postplan.dev)
+## Corridor Cast (post-P0 follow-ups — see `docs/plans/2026-07-22-corridor-cast-podcast-studio.html` and plan v2 at https://yub8q70wviyl.postplan.dev)
 
 - [ ] Native audio player for Corridor Cast (expo-audio + drive-mode mini player)
   **Priority:** P2

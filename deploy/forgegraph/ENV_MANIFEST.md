@@ -16,7 +16,7 @@ Secrets to configure per stage via `forge secret set <key> <value>`.
 | Key | Feature | Notes |
 |---|---|---|
 | `RESEND_API_KEY` | Email (magic links, invites) | From resend.com. Domain must be verified. |
-| `ANTHROPIC_API_KEY` | Receipt OCR | Claude Sonnet 4.6 vision. ~$0.01-0.04/receipt. |
+| `ANTHROPIC_API_KEY` | Receipt OCR + Corridor Cast scripts | Claude Sonnet 4.6 (vision for receipts; text for episode scripts). ~$0.01-0.04/receipt; cast jobs fail at the script stage without it. |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Map views | Restrict by HTTP referer in GCP console |
 | `NEXT_PUBLIC_GOOGLE_MAP_ID` | Styled maps | Optional, for custom map styling |
 | `PUSHER_APP_ID` | Realtime claiming | From pusher.com |
