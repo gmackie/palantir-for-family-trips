@@ -43,6 +43,13 @@ export async function synthesizeSpeech(params: {
   }
   const fetchImpl = params.fetchImpl ?? fetch;
 
+  // Feature-detected: consumer packages typecheck this file against TS libs
+  // without AbortSignal.timeout (expo) or with skewed AbortSignal shapes
+  // (trpc-cli/mcp-server); workers + node both have it at runtime.
+  const timeoutSignal = (
+    AbortSignal as unknown as { timeout?: (ms: number) => unknown }
+  ).timeout?.(params.timeoutMs ?? TTS_REQUEST_TIMEOUT_MS);
+
   const response = await fetchImpl(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(params.voiceId)}?output_format=${ELEVENLABS_OUTPUT_FORMAT}`,
     {
@@ -55,7 +62,7 @@ export async function synthesizeSpeech(params: {
         text: params.text,
         model_id: params.modelId,
       }),
-      signal: AbortSignal.timeout(params.timeoutMs ?? TTS_REQUEST_TIMEOUT_MS),
+      ...(timeoutSignal ? { signal: timeoutSignal as never } : {}),
     },
   );
 
