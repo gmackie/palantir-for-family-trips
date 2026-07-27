@@ -1,6 +1,7 @@
 import { adminRouter } from "./router/admin";
 import { anchorsRouter } from "./router/anchors";
 import { authRouter } from "./router/auth";
+import { castRouter } from "./router/cast";
 import { chatRouter } from "./router/chat";
 import { copilotRouter } from "./router/copilot";
 import { corridorRouter } from "./router/corridor";
@@ -32,6 +33,7 @@ export const appRouter = createTRPCRouter({
   admin: adminRouter,
   anchors: anchorsRouter,
   auth: authRouter,
+  cast: castRouter,
   chat: chatRouter,
   copilot: copilotRouter,
   corridor: corridorRouter,

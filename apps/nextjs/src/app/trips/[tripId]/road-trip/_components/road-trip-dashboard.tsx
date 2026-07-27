@@ -447,6 +447,12 @@ export function RoadTripDashboard(props: {
         )}
 
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            href={`/trips/${trip.id}/cast`}
+            className="rounded-[2px] border border-[#30363D] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E] transition-colors hover:bg-[#30363D]/40 hover:text-[#C9D1D9]"
+          >
+            Cast
+          </Link>
           {trip.destinationName && (
             <span className="text-xs text-[#8B949E]">
               {trip.destinationName}

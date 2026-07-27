@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, pgTable, unique } from "drizzle-orm/pg-core";
+import { index, pgTable, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -1655,6 +1655,147 @@ export const memberLocations = pgTable(
   }),
   (table) => [
     unique("member_location_trip_user_unique").on(table.tripId, table.userId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Corridor Cast — "Tonight's Episode": a generated podcast for tomorrow's
+// drive. The night-before tap enqueues a cast_episode_job; the worker's cron
+// pump advances it (script → read gate → per-segment TTS → concat → R2) and a
+// completed run writes a cast_episode row pointing at the final MP3.
+// See docs/plans/2026-07-22-corridor-cast-podcast-studio.html (Phase 0 rev 3).
+
+export const castJobStatusEnum = [
+  "pending", // enqueued; pump will build context + generate the script
+  "awaiting_approval", // script ready — read gate before any TTS spend
+  "approved", // script approved; pump will synthesize + concat
+  "synthesizing", // TTS in progress (resumable via per-segment R2 checkpoints)
+  "complete",
+  "failed",
+] as const;
+export type CastJobStatus = (typeof castJobStatusEnum)[number];
+
+/** Statuses that hold the one-active-job-per-(trip,date) slot. */
+export const CAST_JOB_ACTIVE_STATUSES = [
+  "pending",
+  "awaiting_approval",
+  "approved",
+  "synthesizing",
+] as const;
+
+export type CastScriptSegment = {
+  key: string;
+  title: string;
+  /** Spoken text for this chapter, ready for TTS. */
+  text: string;
+  wordTarget: number;
+};
+
+export type CastScript = {
+  episodeTitle: string;
+  outline: Array<{
+    key: string;
+    title: string;
+    beats: string[];
+    wordTarget: number;
+  }>;
+  segments: CastScriptSegment[];
+};
+
+/** One synthesized-segment checkpoint: paid audio parked in R2 temp space. */
+export type CastCheckpoint = {
+  segmentKey: string;
+  /** hash(segment text + voice + model) — resume never re-bills a segment. */
+  contentHash: string;
+  r2Key: string;
+  sizeBytes: number;
+  durationSeconds: number;
+};
+
+export const castEpisodeJobs = pgTable(
+  "cast_episode_job",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    createdByUserId: t
+      .text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Drive day the episode covers, YYYY-MM-DD in the trip's tz. */
+    targetDate: t.date().notNull(),
+    durationMinutes: t.integer().notNull().default(30), // 15 | 30
+    status: t.text().$type<CastJobStatus>().notNull().default("pending"),
+    /**
+     * Cron pump lease. Set atomically on claim, cleared on voluntary release
+     * before the cron wall clock; a claim older than 20 min is stale and may
+     * be reclaimed by a later pump run.
+     */
+    claimedAt: t.timestamp({ mode: "date", withTimezone: true }),
+    attemptCount: t.integer().notNull().default(0),
+    error: t.varchar({ length: 2000 }),
+    scriptJson: t.jsonb().$type<CastScript>(),
+    checkpointsJson: t.jsonb().$type<CastCheckpoint[]>(),
+    llmInputTokens: t.integer().notNull().default(0),
+    llmOutputTokens: t.integer().notNull().default(0),
+    /** Characters actually billed to ElevenLabs across all attempts. */
+    ttsCharacters: t.integer().notNull().default(0),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .$onUpdateFn(() => sql`now()`),
+  }),
+  (table) => [
+    // Server-side dedup: at most one non-terminal job per (trip, day). The
+    // enqueue mutation inserts with ON CONFLICT against this index.
+    uniqueIndex("cast_job_trip_date_active_unique")
+      .on(table.tripId, table.targetDate)
+      .where(sql`status NOT IN ('complete', 'failed')`),
+    index("cast_job_status_idx").on(table.status),
+  ],
+);
+
+export const castEpisodes = pgTable(
+  "cast_episode",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    jobId: t.uuid().references(() => castEpisodeJobs.id, {
+      onDelete: "set null",
+    }),
+    targetDate: t.date().notNull(),
+    durationMinutes: t.integer().notNull(),
+    title: t.varchar({ length: 300 }).notNull(),
+    /** Final MP3 in the app bucket under the cast/ prefix. */
+    r2Key: t.varchar({ length: 500 }).notNull(),
+    sizeBytes: t.integer().notNull(),
+    durationSeconds: t.numeric().notNull(),
+    /** Chapter markers; offsets come from actual synthesized durations. */
+    segmentsJson: t
+      .jsonb()
+      .$type<
+        Array<{ title: string; startSeconds: number; durationSeconds: number }>
+      >()
+      .notNull(),
+    voiceId: t.varchar({ length: 100 }).notNull(),
+    ttsModel: t.varchar({ length: 100 }).notNull(),
+    scriptModel: t.varchar({ length: 100 }).notNull(),
+    ttsCharacters: t.integer().notNull().default(0),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  }),
+  (table) => [
+    index("cast_episode_trip_date_idx").on(table.tripId, table.targetDate),
   ],
 );
 

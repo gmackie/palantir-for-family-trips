@@ -31,12 +31,20 @@ export default async function JourneyPage(props: {
           <h1 className="text-lg font-semibold text-[#C9D1D9]">Journey Log</h1>
           <p className="text-sm text-[#8B949E]">{trip.name}</p>
         </div>
-        <Link
-          href={`/trips/${tripId}/road-trip`}
-          className="text-sm text-[#58A6FF] hover:underline"
-        >
-          ← Road trip
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/trips/${tripId}/cast`}
+            className="text-sm text-[#58A6FF] hover:underline"
+          >
+            Corridor Cast
+          </Link>
+          <Link
+            href={`/trips/${tripId}/road-trip`}
+            className="text-sm text-[#58A6FF] hover:underline"
+          >
+            ← Road trip
+          </Link>
+        </div>
       </div>
 
       <AnchorsCard workspaceId={workspace.id} tripId={tripId} />

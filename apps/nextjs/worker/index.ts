@@ -1,5 +1,5 @@
 import { wrapFetch } from "@forgegraph/otel/workers";
-import { runWithRealtimeRuntime } from "@sortey/api";
+import { runCastPump, runWithRealtimeRuntime } from "@sortey/api";
 import { and, eq } from "@sortey/db";
 import { db } from "@sortey/db/client";
 import { runWithDatabaseRuntime } from "@sortey/db/runtime";
@@ -78,6 +78,10 @@ const SECRET_KEYS = [
   "GOOGLE_ROUTES_API_KEY",
   "RESEND_API_KEY",
   "ANTHROPIC_API_KEY",
+  // Corridor Cast TTS — must be listed here or they never reach process.env
+  // (eng-review Issue 9.9).
+  "ELEVENLABS_API_KEY",
+  "ELEVENLABS_VOICE_ID_DEFAULT",
 ] as const;
 
 /** Public/non-secret runtime vars that must also be on process.env for Next/Sentry. */
@@ -320,7 +324,34 @@ const instrumentedFetch = wrapFetch(
 // module so wrangler can bind it (see `durable_objects` in wrangler.jsonc).
 export { TripRoom } from "./trip-room";
 
+// Corridor Cast job pump. The every-5-minutes cron trigger (wrangler.jsonc)
+// claims at most one cast job per firing (claim-with-lease; stale leases
+// reclaimed after 20 min) and advances it: script → read gate → per-segment
+// TTS with R2 checkpoints → concat → final episode. The pump checkpoints and
+// voluntarily releases its lease well before the cron wall clock.
+async function runScheduled(env: Env): Promise<void> {
+  syncEnvSecrets(env);
+  await runWithDatabaseRuntime(
+    {
+      databaseUrl:
+        env.HYPERDRIVE?.connectionString ?? process.env.DATABASE_URL ?? null,
+      r2: env.R2,
+    },
+    async () => {
+      try {
+        await runCastPump({ r2: env.R2 ?? null });
+      } catch (error) {
+        // A pump crash must never take down the cron handler — the claimed
+        // job's lease goes stale and a later firing reclaims it.
+        console.error("cast pump failed", error);
+      }
+    },
+  );
+}
+
 export default {
-  async scheduled(_event: ScheduledEvent, _env: Env, _ctx: ExecutionContext) {},
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+    await runScheduled(env);
+  },
   fetch: instrumentedFetch,
 };
