@@ -4,6 +4,22 @@ All notable changes to Sortey are documented in this file.
 
 Versions follow the gstack `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [0.2.0.0] - 2026-07-27
+
+### Added
+- **Corridor Cast — Tonight's Episode.** Tap once the night before and Sortey writes and voices a private podcast for tomorrow's drive: a 15- or 30-minute episode narrating your actual route, stops, reservations, and the country you'll pass through. Road facts come straight from your trip plan; the storytelling color is clearly framed as campfire truth.
+- You read the script before any voice minutes are spent — the episode only goes to synthesis after you approve it, and unread scripts quietly expire once their drive day passes.
+- Episodes are built for airplane mode: download the MP3 to your Files app as the guarantee, with an in-app player (chapter jumps, playback speed, offline copy) as the bonus.
+- Generation is resilient on van internet: work resumes exactly where it stopped after any failure, already-voiced chapters are never billed twice, and a failed run shows a Retry that genuinely resumes.
+- The Generate button shows the exact date and timezone it will narrate, so a misconfigured trip clock is visible before you spend anything.
+- Trip co-pilot chat (early preview on mobile): ask "2 Zion or 2 Bryce?", "how long is Bryce to Denver?", or "where's laundry tonight?" and get plan options with drive-time math instead of prose.
+
+### Changed
+- The road-trip dashboard and Journey page link to the new Cast page.
+
+### Fixed
+- Co-pilot comparison questions ("X or Y?") now return actual plan options instead of being misread as drive-time lookups.
+
 ## [0.1.0.0] - 2026-07-18
 
 ### Added
