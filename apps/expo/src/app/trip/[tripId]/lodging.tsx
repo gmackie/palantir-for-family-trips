@@ -306,7 +306,8 @@ function TransitRow({
           Alert.alert("No update", "No live status available yet");
         }
       },
-      onError: (err) => Alert.alert("Couldn't refresh flight status", err.message),
+      onError: (err) =>
+        Alert.alert("Couldn't refresh flight status", err.message),
     }),
   );
 
@@ -371,7 +372,12 @@ function TransitRow({
             }
             disabled={refresh.isPending}
             hitSlop={8}
-            style={{ marginTop: 4, alignSelf: "flex-start", minHeight: 32, justifyContent: "center" }}
+            style={{
+              marginTop: 4,
+              alignSelf: "flex-start",
+              minHeight: 32,
+              justifyContent: "center",
+            }}
           >
             <Text
               style={{

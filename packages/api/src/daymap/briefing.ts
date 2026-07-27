@@ -169,7 +169,8 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
       schedule.push({
         part: "morning",
         title: planned.title ?? planned.overnightName ?? "Event day",
-        detail: planned.heroDetail ?? "Fixed commitment — protect the calendar.",
+        detail:
+          planned.heroDetail ?? "Fixed commitment — protect the calendar.",
       });
     } else if (indoors && work) {
       const why = smoky
@@ -234,10 +235,7 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
     }
 
     // ── Evening: camp before dark ──
-    const campName =
-      camp?.name ??
-      planned?.overnightName ??
-      input.stopName;
+    const campName = camp?.name ?? planned?.overnightName ?? input.stopName;
     if (campName) {
       schedule.push({
         part: "evening",
@@ -292,7 +290,8 @@ export function assembleBriefing(input: BriefingInput): DayBriefing {
           ? "tomorrow"
           : `in ${anchor.daysUntil} days`;
     const where = a.placeName ? ` at ${a.placeName}` : "";
-    const dist = anchor.milesAway != null ? ` · ${anchor.milesAway} mi away` : "";
+    const dist =
+      anchor.milesAway != null ? ` · ${anchor.milesAway} mi away` : "";
     if (anchor.behind) {
       notes.push(
         `⚠️ ${a.title} ${when}${where}${dist} — need ~${anchor.milesPerDay} mi/day to make it. Push on.`,

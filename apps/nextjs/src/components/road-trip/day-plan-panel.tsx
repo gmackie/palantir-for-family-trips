@@ -10,7 +10,12 @@ import { OvernightSuggest } from "~/components/road-trip/overnight-suggest";
 import { useTRPC } from "~/trpc/react";
 
 const INTENTS = ["play", "drive", "position", "event", "recovery"] as const;
-const OVERNIGHT_KINDS = ["dispersed", "campground", "hotel", "unknown"] as const;
+const OVERNIGHT_KINDS = [
+  "dispersed",
+  "campground",
+  "hotel",
+  "unknown",
+] as const;
 
 const INTENT_STYLE: Record<string, string> = {
   play: "bg-[#3FB950]/15 text-[#3FB950] border-[#3FB950]/30",
@@ -162,8 +167,7 @@ export function DayPlanPanel(props: {
   const planItinerary = useMutation(
     trpc.planner.planItinerary.mutationOptions({
       onSuccess: (r) => {
-        const kept =
-          r.keptPastDays > 0 ? ` · kept ${r.keptPastDays} past` : "";
+        const kept = r.keptPastDays > 0 ? ` · kept ${r.keptPastDays} past` : "";
         const gps = r.usedLiveOrigin ? " · GPS origin" : "";
         const sleep =
           r.overnightsAssigned > 0
@@ -336,8 +340,7 @@ export function DayPlanPanel(props: {
           </button>
         </div>
         <p className="mt-1 font-mono text-[10px] text-[#8B949E]">
-          {dayCount}d
-          {playCount > 0 ? ` · ${playCount} play` : ""}
+          {dayCount}d{playCount > 0 ? ` · ${playCount} play` : ""}
           {planMiles != null && planMiles > 0
             ? ` · ${Math.round(planMiles).toLocaleString()} mi`
             : ""}
@@ -451,9 +454,7 @@ export function DayPlanPanel(props: {
               Seed empty
             </button>
           </div>
-          {msg && (
-            <p className="font-mono text-[10px] text-[#8B949E]">{msg}</p>
-          )}
+          {msg && <p className="font-mono text-[10px] text-[#8B949E]">{msg}</p>}
         </div>
       )}
 
@@ -522,7 +523,9 @@ export function DayPlanPanel(props: {
                 data-day-date={d.date}
                 onClick={() => setSelectedDate(d.date)}
                 className={`flex w-full flex-col gap-0.5 border-b border-[#21262D]/50 px-3 py-2.5 text-left transition-colors hover:bg-[#161B22] ${
-                  isSel ? "bg-[#161B22] ring-1 ring-inset ring-[#58A6FF]/40" : ""
+                  isSel
+                    ? "bg-[#161B22] ring-1 ring-inset ring-[#58A6FF]/40"
+                    : ""
                 } ${isPast ? "opacity-55" : ""}`}
               >
                 <div className="flex items-center gap-2">
@@ -627,9 +630,7 @@ export function DayPlanPanel(props: {
               onChange={(e) => {
                 const v = e.target.value;
                 save(selected, {
-                  overnightKind: v
-                    ? (v as OvernightKind)
-                    : null,
+                  overnightKind: v ? (v as OvernightKind) : null,
                 });
               }}
               className="mt-0.5 w-full rounded-[2px] border border-[#30363D] bg-[#0D1117] px-2 py-1 text-xs text-[#C9D1D9]"

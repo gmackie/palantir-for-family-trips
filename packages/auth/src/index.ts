@@ -111,6 +111,7 @@ export function initAuth<
   appleClientId?: string;
   appleClientSecret?: string;
   appleBundleIdentifier?: string;
+  devMagicLinkBypassEnabled?: boolean;
   extraPlugins?: TExtraPlugins;
 }) {
   const config = {
@@ -125,7 +126,7 @@ export function initAuth<
       },
     },
     plugins: [
-      devMagicLinkBypass(true),
+      devMagicLinkBypass(options.devMagicLinkBypassEnabled),
       oAuthProxy({
         productionURL: options.productionUrl,
       }),

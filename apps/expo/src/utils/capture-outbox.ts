@@ -110,9 +110,7 @@ export class CaptureOutbox {
     await this.save(entries);
   }
 
-  flush(
-    send: (command: CaptureCommand) => Promise<unknown>,
-  ): Promise<void> {
+  flush(send: (command: CaptureCommand) => Promise<unknown>): Promise<void> {
     if (this.flushing) return this.flushing;
     this.flushing = this.flushOnce(send).finally(() => {
       this.flushing = null;

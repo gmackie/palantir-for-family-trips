@@ -33,10 +33,10 @@ The sibling directory `../create-gmacko-app` is the template. Observed facts fro
 - Schema uses the functional `pgTable("name", (t) => ({...}))` style with `drizzle-zod`'s `createInsertSchema`
 - Scripts: `pnpm db:generate|migrate|push|check|seed|studio`, `pnpm auth:generate`
 
-**Auth (critical discovery)**
+**Auth (current state)**
 - `@sortey/auth` exports an `initAuth({...})` factory that takes `extraPlugins`
-- Currently wired for **Discord OAuth** + optional Apple + `@better-auth/expo` + `oAuthProxy`
-- **Magic link is NOT enabled.** It must be added via `extraPlugins` when `initAuth` is called from `apps/nextjs/src/auth/server.ts` (preferred — no fork), or by editing `@sortey/auth`. Prefer the former.
+- Runtime auth is Better Auth with magic links, optional Google/Apple providers, `@better-auth/expo`, `oAuthProxy`, and `nextCookies()`
+- Magic-link delivery is wired in `apps/nextjs/src/auth/server.ts`; development logs links and production sends via Resend (`RESEND_API_KEY`)
 - Auth consumers in the Next.js app live at `apps/nextjs/src/auth/client.ts` and `apps/nextjs/src/auth/server.ts`
 - Route handler is already mounted at `apps/nextjs/src/app/api/auth/[...all]/`
 
@@ -240,7 +240,7 @@ Each becomes a flat file in `packages/ui/src/`, with a co-located story. **No fo
 - The template ships CI config — use whatever is already in `.github/` or `.gitea/` under the template. Do NOT introduce new workflow files in this phase. If the template has no CI workflows for `apps/nextjs` specifically, that is a Phase 7 problem.
 
 0.8 **Extend `scripts/doctor.sh` (A21)**
-- Add checks for all env vars the trip app needs: `BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY`, `GOOGLE_MAPS_API_KEY`, `STORAGE_DRIVER`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`. These can be marked optional (warn, don't fail) since not all are needed until later phases.
+- Add checks for all env vars the trip app needs: `AUTH_SECRET`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_MAPS_API_KEY`, `STORAGE_DRIVER`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`. These can be marked optional (warn, don't fail) since not all are needed until later phases.
 
 0.9 **Docs scaffolding (A22)**
 Create the following files as stubs (table of contents only, content filled by later phases):
@@ -290,20 +290,19 @@ Create the following files as stubs (table of contents only, content filled by l
 
 **Out of scope**: adding any new domain tables. `trips` lives in Phase 2 because the Trip-vs-Workspace decision must be committed before we touch the schema.
 
-### Investigate Before Coding (mandatory, record in PR)
+### Implementation Notes
 
-- `apps/nextjs/src/auth/server.ts` — how is `initAuth` called today? Where does the Discord secret come from?
-- `apps/nextjs/src/env.ts` — what env vars does the app already require?
-- `packages/email/src/index.ts` — what's the public API for sending an email? Does it have a dev-mode log transport, or do we need to add one?
-- `packages/notifications/src/index.ts` — does this wrap `@sortey/email`, or is it a different channel (push, in-app)? Use whichever is right for transactional email.
-- `docker-compose.yml` — confirm Postgres service exists and note the port.
-- `packages/db/src/auth-schema.ts` — confirm `verification` table exists (Better Auth magic link uses it directly; no new tables should be needed).
+- `apps/nextjs/src/auth/server.ts` calls `initAuth()` with `magicLink(...)` and keeps `nextCookies()` last.
+- `apps/nextjs/src/auth/client.ts` includes `magicLinkClient()`, exposing `authClient.signIn.magicLink(...)`.
+- Development auth has `/api/dev/auto-login` and `/api/dev/last-magic-link`, both gated to `NODE_ENV === "development"`.
+- Production magic-link delivery requires `RESEND_API_KEY` and fails loudly if the secret is missing.
+- Better Auth magic links reuse the existing `verification` table in `packages/db/src/auth-schema.ts`; no extra auth tables are expected.
 
 ### Tasks
 
 1.1 **Local Postgres + env**
 - `docker compose up -d postgres` (exact service name from `docker-compose.yml`)
-- `cp .env.example .env`, fill `DATABASE_URL`, `BETTER_AUTH_SECRET`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` (template requires these for its existing auth setup — use dummy values locally if Discord OAuth isn't being tested this phase)
+- `cp .env.example .env`, fill `DATABASE_URL`, `AUTH_SECRET`, and `RESEND_API_KEY` when testing production-style email delivery. Social provider secrets are optional unless testing Google/Apple sign-in.
 - `pnpm doctor` — resolve anything it flags
 
 1.2 **Add magic-link plugin in `apps/nextjs/src/auth/server.ts`** (A3, A4)
@@ -997,7 +996,7 @@ pinAttendees: id, pinId (fk), userId (fk)
 
 - Write `forge.yml` declaring: Next.js app, Postgres addon, object storage bucket (S3-compatible), env var manifest
 - Wire Gitea Actions CI to build the container, push to Harbor, and trigger a ForgeGraph deploy on push to `main`
-- Document the secret rotation procedure for `ANTHROPIC_API_KEY`, `GOOGLE_MAPS_API_KEY`, `BETTER_AUTH_SECRET`, object storage keys, `PUSHER_*` (for realtime)
+- Document the secret rotation procedure for `AUTH_SECRET`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_MAPS_API_KEY`, object storage keys, `PUSHER_*` (for realtime)
 - Commit to email transport: Resend (already the template's choice per `@sortey/email`). Configure domain verification and DMARC alignment.
 - Stand up a staging environment and run a full smoke test (sign up → create trip → upload receipt → claim items → settle)
 
@@ -1093,7 +1092,7 @@ Closed out by direct file reads of `../create-gmacko-app`:
 - **Package manager**: pnpm 10.32.1
 - **Node**: 24
 - **ORM**: Drizzle 0.45 + postgres.js 3.4 + drizzle-zod, functional `pgTable` style
-- **Auth**: Better Auth via `@sortey/auth` `initAuth()` factory; currently wired for Discord OAuth + Expo + oAuthProxy. Magic link is NOT enabled and is added via `extraPlugins` in `apps/nextjs/src/auth/server.ts`.
+- **Auth**: Better Auth via `@sortey/auth` `initAuth()` factory; magic link is enabled in `apps/nextjs/src/auth/server.ts`, optional Google/Apple social sign-in remains available when credentials are configured, and Expo/oAuthProxy stay in the shared auth package.
 - **Lint/format**: Biome + oxlint + lefthook pre-commit
 - **Next.js**: 16.2.1, React 19
 - **Forms**: TanStack Form (`@tanstack/react-form`)

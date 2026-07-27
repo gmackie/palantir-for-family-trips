@@ -97,7 +97,8 @@ export const flagDefinitions = {
    */
   workspacesVisible: {
     defaultValue: false,
-    description: "Show the workspace switcher when the user has multiple workspaces",
+    description:
+      "Show the workspace switcher when the user has multiple workspaces",
     environments: {
       development: true,
       staging: true,

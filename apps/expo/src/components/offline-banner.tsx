@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { captureOutbox } from "~/utils/capture-outbox-native";
+import { C, mono, R } from "~/utils/design";
 import { fuelOutbox } from "~/utils/fuel-outbox-native";
 import { journeyOutbox } from "~/utils/journey-outbox-native";
 import { useNetworkStatus } from "~/utils/network-status";
-import { C, mono, R } from "~/utils/design";
 
 /**
  * Global connectivity + pending-sync strip. Mount once under the root Stack.

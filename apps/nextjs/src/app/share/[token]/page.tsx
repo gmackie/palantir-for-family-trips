@@ -109,7 +109,10 @@ export default async function SharePage(props: {
         )}
 
         <div className="border-t border-[#21262D] pt-4 text-center">
-          <Link href="/" className="text-xs text-[#8B949E] hover:text-[#58A6FF]">
+          <Link
+            href="/"
+            className="text-xs text-[#8B949E] hover:text-[#58A6FF]"
+          >
             Tracked with Sortey
           </Link>
         </div>

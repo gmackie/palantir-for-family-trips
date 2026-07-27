@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  computeLeaveBy,
-  desiredArrivalFromSunset,
-} from "../leave-by";
+import { computeLeaveBy, desiredArrivalFromSunset } from "../leave-by";
 
 describe("computeLeaveBy", () => {
   it("is not late when enough time remains", () => {

@@ -172,8 +172,7 @@ export async function computeBriefing(
         ? {
             lat: Number(plannedRow.overnightLat),
             lng: Number(plannedRow.overnightLng),
-            name:
-              plannedRow.overnightName ?? plannedRow.title ?? position.name,
+            name: plannedRow.overnightName ?? plannedRow.title ?? position.name,
           }
         : position;
   const forecast = await fetchDailyForecast({

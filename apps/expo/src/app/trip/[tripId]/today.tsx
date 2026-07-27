@@ -20,16 +20,10 @@ import {
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
-import {
-  createFuelOutboxId,
-  type FuelLogCommand,
-} from "~/utils/fuel-outbox";
+import { createFuelOutboxId, type FuelLogCommand } from "~/utils/fuel-outbox";
 import { fuelOutbox } from "~/utils/fuel-outbox-native";
 import { fetchIsOnline } from "~/utils/network-status";
-import {
-  loadTodaySnapshot,
-  saveTodaySnapshot,
-} from "~/utils/today-cache";
+import { loadTodaySnapshot, saveTodaySnapshot } from "~/utils/today-cache";
 import { useDwellSuggest } from "~/utils/use-dwell-suggest";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -222,7 +216,7 @@ export default function TodayScreen() {
             ? "Partial day"
             : status === "skipped"
               ? "Skipped"
-              : data.day?.heroTitle ?? "Done",
+              : (data.day?.heroTitle ?? "Done"),
       });
     },
     [data, setStatus, tripId, workspaceId],
@@ -236,7 +230,9 @@ export default function TodayScreen() {
 
   if (isLoading && !data) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center" }}>
+      <View
+        style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center" }}
+      >
         <Stack.Screen options={{ title: "Today" }} />
         <ActivityIndicator color={C.info} />
       </View>
@@ -346,10 +342,7 @@ export default function TodayScreen() {
               }
               tone={C.warning}
             />
-            <ActionBtn
-              label="Map"
-              onPress={() => go("/trip/[tripId]/map")}
-            />
+            <ActionBtn label="Map" onPress={() => go("/trip/[tripId]/map")} />
             <ActionBtn
               label="Drive"
               onPress={() => go("/trip/[tripId]/drive")}
@@ -525,9 +518,7 @@ export default function TodayScreen() {
                   setReplanOpen(true);
                 }}
               >
-                <Text
-                  style={{ color: C.fg, textDecorationLine: "underline" }}
-                >
+                <Text style={{ color: C.fg, textDecorationLine: "underline" }}>
                   Replan from here
                 </Text>
               </Pressable>
@@ -690,7 +681,9 @@ export default function TodayScreen() {
                   {i + 1}.
                 </Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: C.fg, fontSize: 14, fontWeight: "600" }}>
+                  <Text
+                    style={{ color: C.fg, fontSize: 14, fontWeight: "600" }}
+                  >
                     {s.kind.toUpperCase()} · {s.name}
                   </Text>
                   <Text style={{ color: C.muted, fontSize: 12 }}>
@@ -722,8 +715,8 @@ export default function TodayScreen() {
 
         {showFull && data.nextAnchor && (
           <Text style={{ color: C.muted, fontSize: 12 }}>
-            Next anchor: {data.nextAnchor.title} in {data.nextAnchor.daysAway}d (
-            {data.nextAnchor.startDate})
+            Next anchor: {data.nextAnchor.title} in {data.nextAnchor.daysAway}d
+            ({data.nextAnchor.startDate})
           </Text>
         )}
 
@@ -776,14 +769,8 @@ export default function TodayScreen() {
             label="Day plan"
             onPress={() => go("/trip/[tripId]/day-plan", { date: data.date })}
           />
-          <ActionBtn
-            label="Drive"
-            onPress={() => go("/trip/[tripId]/drive")}
-          />
-          <ActionBtn
-            label="Map"
-            onPress={() => go("/trip/[tripId]/map")}
-          />
+          <ActionBtn label="Drive" onPress={() => go("/trip/[tripId]/drive")} />
+          <ActionBtn label="Map" onPress={() => go("/trip/[tripId]/map")} />
           <ActionBtn
             label="Log stop"
             onPress={() => go("/trip/[tripId]/log-stop")}

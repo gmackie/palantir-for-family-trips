@@ -2,11 +2,7 @@
  * Pure helpers for active-trip default navigation (no SecureStore / RN deps).
  */
 
-export const ACTIVE_TRIP_STATUSES = new Set([
-  "en_route",
-  "active",
-  "paused",
-]);
+export const ACTIVE_TRIP_STATUSES = new Set(["en_route", "active", "paused"]);
 
 export type TripListItem = {
   id: string;

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createFuelOutboxId,
-  FuelOutbox,
   type FuelLogCommand,
+  FuelOutbox,
   type FuelOutboxStorage,
 } from "./fuel-outbox";
 

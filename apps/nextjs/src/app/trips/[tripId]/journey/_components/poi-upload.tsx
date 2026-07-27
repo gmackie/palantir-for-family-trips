@@ -63,9 +63,9 @@ export function PoiUpload({
       </div>
       <p className="text-sm text-[#8B949E]">
         Upload your own iOverlander CSV export to power legal overnight parking,
-        water, dump &amp; propane stops on this trip. iOverlander data can&apos;t
-        be shared between users, so bring your own copy — we scope it to your
-        workspace and skip duplicates.{" "}
+        water, dump &amp; propane stops on this trip. iOverlander data
+        can&apos;t be shared between users, so bring your own copy — we scope it
+        to your workspace and skip duplicates.{" "}
         <a
           href="https://www.ioverlander.com/countries/places_by_country"
           target="_blank"

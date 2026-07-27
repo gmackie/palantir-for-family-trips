@@ -8,14 +8,12 @@ Secrets to configure per stage via `forge secret set <key> <value>`.
 |---|---|---|
 | `DATABASE_URL` | `postgresql://app:secret@postgres.internal:5432/trip` | Managed by ForgeGraph Postgres addon |
 | `AUTH_SECRET` | `<random 64+ char string>` | Better Auth session signing. Generate with `openssl rand -base64 48` |
-| `AUTH_DISCORD_ID` | `placeholder-for-magic-link-only` | Required by template auth config. Placeholder OK if only using magic links. |
-| `AUTH_DISCORD_SECRET` | `placeholder-for-magic-link-only` | Same as above |
+| `RESEND_API_KEY` | `re_...` | Email delivery for magic links and trip invites. Domain must be verified. |
 
 ## Required for features
 
 | Key | Feature | Notes |
 |---|---|---|
-| `RESEND_API_KEY` | Email (magic links, invites) | From resend.com. Domain must be verified. |
 | `ANTHROPIC_API_KEY` | Receipt OCR | Claude Sonnet 4.6 vision. ~$0.01-0.04/receipt. |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Map views | Restrict by HTTP referer in GCP console |
 | `NEXT_PUBLIC_GOOGLE_MAP_ID` | Styled maps | Optional, for custom map styling |
@@ -34,6 +32,8 @@ Secrets to configure per stage via `forge secret set <key> <value>`.
 | `SENTRY_ORG` | Error monitoring |
 | `NEXT_PUBLIC_SENTRY_DSN` | Client error reporting |
 | `UPLOADTHING_TOKEN` | Production receipt storage (replaces local disk) |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional Google sign-in |
+| `AUTH_APPLE_ID` / `AUTH_APPLE_SECRET` | Optional Apple sign-in |
 
 ## Secret rotation
 
