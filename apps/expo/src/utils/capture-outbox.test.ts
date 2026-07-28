@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   CaptureOutbox,
-  createCaptureId,
   type CaptureOutboxStorage,
+  createCaptureId,
   type ExpenseCaptureCommand,
 } from "./capture-outbox";
 
@@ -17,7 +17,9 @@ function memoryStorage(): CaptureOutboxStorage {
   };
 }
 
-function expense(overrides: Partial<ExpenseCaptureCommand> = {}): ExpenseCaptureCommand {
+function expense(
+  overrides: Partial<ExpenseCaptureCommand> = {},
+): ExpenseCaptureCommand {
   return {
     kind: "expense.create",
     clientId: createCaptureId(),

@@ -10,11 +10,14 @@
     "dev:ios": "expo start --ios",
     "build:device:ios": "eas build --profile development-device --platform ios",
     "build:device:android": "eas build --profile development-device --platform android",
+    "build:preview:sim:local": "npx eas-cli@20.5.1 build --profile preview-simulator --platform ios --local --non-interactive",
+    "build:preview:device:local": "npx eas-cli@20.5.1 build --profile preview-device --platform ios --local --non-interactive",
+    "build:preview:device": "npx eas-cli@20.5.1 build --profile preview-device --platform ios --non-interactive",
     "eas-build-post-install": "pnpm --workspace-root turbo run build --filter=@sortey/expo...",
-    "update:development": "npx eas-cli@20.5.1 update --channel development --environment development",
-    "update:preview": "npx eas-cli@20.5.1 update --channel preview --environment preview",
-    "update:production": "npx eas-cli@20.5.1 update --channel production --environment production",
-    "update:production:rollout": "npx eas-cli@20.5.1 update --channel production --environment production --rollout-percentage 10",
+    "update:development": "npx eas-cli@20.5.1 update --channel development --environment development --non-interactive",
+    "update:preview": "npx eas-cli@20.5.1 update --channel preview --environment preview --non-interactive",
+    "update:production": "npx eas-cli@20.5.1 update --channel production --environment production --non-interactive",
+    "update:production:rollout": "npx eas-cli@20.5.1 update --channel production --environment production --rollout-percentage 10 --non-interactive",
     "check:app-store": "node ./scripts/check-app-store-readiness.mjs",
     "submit:ios": "eas submit --platform ios --profile production --latest --non-interactive --wait",
     "submit:ios:id": "eas submit --platform ios --profile production --non-interactive --wait --id",
@@ -32,9 +35,15 @@
     "preflight:ios": "/Volumes/dev/preflight/preflight prove-app --app-dir . --platform ios --lane simulator --wait-for-runner",
     "preflight:android": "/Volumes/dev/preflight/preflight prove-app --app-dir . --platform android --lane simulator --wait-for-runner",
     "preflight:local": "/Volumes/dev/preflight/preflight prove-app --app-dir . --platform ios --lane simulator --local-readiness",
+    "preflight:preview:sim": "/Volumes/dev/preflight/preflight prove-app --app-dir . --platform ios --lane simulator --build-strategy local --wait-for-runner",
+    "preflight:preview:device": "/Volumes/dev/preflight/preflight prove-app --app-dir . --platform ios --lane development --build-strategy local --wait-for-runner",
     "format": "biome check .",
     "lint": "oxlint .",
-    "typecheck": "tsc --noEmit"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "ota:publish:preview": "node --experimental-strip-types /Volumes/dev/preflight-app/packages/ota/scripts/publish-local.mjs --app sortey --channel preview --platform ios",
+    "ota:publish:development": "node --experimental-strip-types /Volumes/dev/preflight-app/packages/ota/scripts/publish-local.mjs --app sortey --channel development --platform ios"
   },
   "dependencies": {
     "@better-auth/expo": "catalog:",
@@ -106,6 +115,7 @@
     "metro-cache": "0.83.7",
     "oxlint": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "^4.1.7"
   }
 }

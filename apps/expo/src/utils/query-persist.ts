@@ -4,8 +4,9 @@
  *
  * Persist only keys that look like trip-scoped queries to keep size bounded.
  */
-import * as FileSystem from "expo-file-system/legacy";
+
 import type { QueryClient } from "@tanstack/react-query";
+import * as FileSystem from "expo-file-system/legacy";
 
 const CACHE_PATH = `${FileSystem.documentDirectory ?? ""}sortey-cache/rq-persist-v1.json`;
 const MAX_BYTES = 4_000_000; // ~4 MB safety cap
@@ -34,7 +35,9 @@ export async function persistQueryClient(client: QueryClient): Promise<void> {
   try {
     const cache = client.getQueryCache().getAll();
     const dehydrated = cache
-      .filter((q) => q.state.status === "success" && isTripScopedQuery(q.queryKey))
+      .filter(
+        (q) => q.state.status === "success" && isTripScopedQuery(q.queryKey),
+      )
       .map((q) => ({
         queryKey: q.queryKey,
         state: {
@@ -75,9 +78,13 @@ export async function restoreQueryClient(client: QueryClient): Promise<void> {
     if (!Array.isArray(entries)) return;
 
     for (const entry of entries) {
-      client.setQueryData(entry.queryKey as readonly unknown[], entry.state.data, {
-        updatedAt: entry.state.dataUpdatedAt,
-      });
+      client.setQueryData(
+        entry.queryKey as readonly unknown[],
+        entry.state.data,
+        {
+          updatedAt: entry.state.dataUpdatedAt,
+        },
+      );
     }
   } catch {
     // best-effort
@@ -85,7 +92,10 @@ export async function restoreQueryClient(client: QueryClient): Promise<void> {
 }
 
 /** Debounced persist hook helper — call from app root after mutations/fetches. */
-export function schedulePersist(client: QueryClient, delayMs = 2_000): () => void {
+export function schedulePersist(
+  client: QueryClient,
+  delayMs = 2_000,
+): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const unsub = client.getQueryCache().subscribe(() => {
     if (timer) clearTimeout(timer);

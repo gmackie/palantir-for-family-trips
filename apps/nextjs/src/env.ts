@@ -24,6 +24,7 @@ export const env = createEnv({
     // AviationStack live flight tracking (optional; absent → refreshTransitStatus
     // is a no-op and the arrivals board shows manually-entered times only).
     AVIATIONSTACK_API_KEY: z.string().optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),

@@ -9,6 +9,10 @@
       {
         "appID": "P4SWQXAB5H.com.gmacko.sortey.dev",
         "paths": ["/invite/*", "/trip/*"]
+      },
+      {
+        "appID": "P4SWQXAB5H.com.gmacko.sortey.expo",
+        "paths": ["/invite/*", "/trip/*"]
       }
     ]
   }

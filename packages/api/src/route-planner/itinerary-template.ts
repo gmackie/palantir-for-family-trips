@@ -92,7 +92,7 @@ export function openSauceFullStops(): ItineraryStopDef[] {
     },
     {
       name: "North Bay staging",
-      lat: 38.440,
+      lat: 38.44,
       lng: -122.714,
       date: "2026-07-15",
       intent: "position",
@@ -129,7 +129,11 @@ export function openSauceFullStops(): ItineraryStopDef[] {
       heroDetail:
         "Mon Valley intro; Tue Mist Trail; Wed Tioga/Tuolumne — one hero/day",
       cutIfBehind: "Tunnel View + one short walk only",
-      anchor: { title: "Yosemite park days", kind: "must_see", endDate: "2026-07-22" },
+      anchor: {
+        title: "Yosemite park days",
+        kind: "must_see",
+        endDate: "2026-07-22",
+      },
     },
     {
       name: "Ahwahnee / Yosemite Valley",
@@ -148,7 +152,7 @@ export function openSauceFullStops(): ItineraryStopDef[] {
     },
     {
       name: "Reno / Tahoe approach",
-      lat: 39.530,
+      lat: 39.53,
       lng: -119.814,
       date: "2026-07-24",
       intent: "drive",
@@ -159,8 +163,8 @@ export function openSauceFullStops(): ItineraryStopDef[] {
     },
     {
       name: "Eastern Nevada",
-      lat: 39.250,
-      lng: -114.880,
+      lat: 39.25,
+      lng: -114.88,
       date: "2026-07-25",
       intent: "drive",
       overnightKind: "unknown",
@@ -179,12 +183,16 @@ export function openSauceFullStops(): ItineraryStopDef[] {
       heroTitle: "Bryce amphitheater",
       heroDetail: "Jul 27: Navajo / Queen's Garden or rim — one hero",
       cutIfBehind: "Sunrise Point overlook only",
-      anchor: { title: "Bryce Canyon", kind: "must_see", endDate: "2026-07-27" },
+      anchor: {
+        title: "Bryce Canyon",
+        kind: "must_see",
+        endDate: "2026-07-27",
+      },
     },
     {
       name: "Moab",
       lat: 38.573,
-      lng: -109.550,
+      lng: -109.55,
       date: "2026-07-28",
       intent: "play",
       extraNights: 1,
@@ -250,9 +258,10 @@ export function expandStopDays(stop: ItineraryStopDef): Array<{
       title: stop.name,
       overnightName: stop.name,
       overnightKind: stop.overnightKind ?? null,
-      heroTitle: i === 0 || intent === "play" || intent === "event"
-        ? (stop.heroTitle ?? null)
-        : null,
+      heroTitle:
+        i === 0 || intent === "play" || intent === "event"
+          ? (stop.heroTitle ?? null)
+          : null,
       heroDetail: stop.heroDetail ?? null,
       cutIfBehind: stop.cutIfBehind ?? null,
       lat: stop.lat,
@@ -265,8 +274,7 @@ export function expandStopDays(stop: ItineraryStopDef): Array<{
 
 function lastNightOf(stop: ItineraryStopDef): string {
   const nights = 1 + (stop.extraNights ?? 0);
-  const t =
-    Date.parse(`${stop.date}T12:00:00Z`) + (nights - 1) * 86_400_000;
+  const t = Date.parse(`${stop.date}T12:00:00Z`) + (nights - 1) * 86_400_000;
   return new Date(t).toISOString().slice(0, 10);
 }
 

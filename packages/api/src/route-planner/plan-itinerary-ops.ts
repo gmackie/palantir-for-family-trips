@@ -10,13 +10,9 @@ const encode: (path: Array<[number, number]>, precision?: number) => string =
   (polylineCodec as any).encode ??
   // biome-ignore lint/suspicious/noExplicitAny: dual package shape
   (polylineCodec as any).default?.encode;
+
 import { and, asc, eq, gte, isNull, lt, or } from "@sortey/db";
-import {
-  tripAnchors,
-  tripDays,
-  tripSegments,
-  trips,
-} from "@sortey/db/schema";
+import { tripAnchors, tripDays, tripSegments, trips } from "@sortey/db/schema";
 
 import { haversineMiles } from "../trips/driving-summary";
 import { createAnchor, listAnchors } from "./anchor-ops";
@@ -24,10 +20,10 @@ import type { DayPlanDraft } from "./day-plan";
 import { applyDraft, listDays } from "./day-plan-ops";
 import {
   expandStopDays,
-  injectLiveOrigin,
   type ItineraryStopDef,
-  type LiveOrigin,
+  injectLiveOrigin,
   itineraryLegs,
+  type LiveOrigin,
   openSauceFullStops,
   remainingStopsFromDate,
 } from "./itinerary-template";
@@ -187,8 +183,7 @@ export async function planItineraryOp(
       .where(eq(tripSegments.tripId, p.tripId))) as Array<{
       sortOrder: number;
     }>;
-    sortOrder =
-      existingSegs.reduce((m, s) => Math.max(m, s.sortOrder), -1) + 1;
+    sortOrder = existingSegs.reduce((m, s) => Math.max(m, s.sortOrder), -1) + 1;
   }
   let totalMiles = 0;
   let routedLegs = 0;
@@ -255,7 +250,8 @@ export async function planItineraryOp(
                     : `★ ${d.heroTitle}`,
                 detail:
                   d.intent === "drive"
-                    ? (d.heroDetail ?? "Bank daylight; optional stops if ahead.")
+                    ? (d.heroDetail ??
+                      "Bank daylight; optional stops if ahead.")
                     : (d.heroDetail ?? "One hero effort today."),
               },
               {

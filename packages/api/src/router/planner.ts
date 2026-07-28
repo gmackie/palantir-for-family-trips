@@ -228,7 +228,11 @@ export const plannerRouter = {
           runState: "on_plan",
           note: `Replan applied (${input.reason})`,
         });
-        return { ...result, mode: "soft_days" as const, summary: preview.summary };
+        return {
+          ...result,
+          mode: "soft_days" as const,
+          summary: preview.summary,
+        };
       }
 
       // soft_route: route + days from live origin using template remainder
@@ -246,7 +250,11 @@ export const plannerRouter = {
         runState: "on_plan",
         note: `Replan applied (${input.reason})`,
       });
-      return { ...result, mode: "soft_route" as const, summary: preview.summary };
+      return {
+        ...result,
+        mode: "soft_route" as const,
+        summary: preview.summary,
+      };
     }),
 
   upsertDay: tripProcedure()

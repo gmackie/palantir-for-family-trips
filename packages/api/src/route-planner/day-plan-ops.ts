@@ -6,10 +6,10 @@ import { and, asc, eq, gte, lte } from "@sortey/db";
 import { tripDays } from "@sortey/db/schema";
 
 import {
-  eachDateInclusive,
   type DayBlock,
   type DayIntent,
   type DayPlanDraft,
+  eachDateInclusive,
   type OvernightKind,
 } from "./day-plan";
 
@@ -69,12 +69,7 @@ export async function listDays(
     .orderBy(asc(tripDays.date))) as TripDayRow[];
 }
 
-export type DayStatus =
-  | "planned"
-  | "active"
-  | "done"
-  | "skipped"
-  | "partial";
+export type DayStatus = "planned" | "active" | "done" | "skipped" | "partial";
 
 export interface UpsertDayInput {
   tripId: string;
@@ -112,10 +107,8 @@ export async function upsertDay(
     title: p.title ?? null,
     overnightName: p.overnightName ?? null,
     overnightKind: p.overnightKind ?? null,
-    overnightLat:
-      p.overnightLat != null ? p.overnightLat.toString() : null,
-    overnightLng:
-      p.overnightLng != null ? p.overnightLng.toString() : null,
+    overnightLat: p.overnightLat != null ? p.overnightLat.toString() : null,
+    overnightLng: p.overnightLng != null ? p.overnightLng.toString() : null,
     heroTitle: p.heroTitle ?? null,
     heroDetail: p.heroDetail ?? null,
     cutIfBehind: p.cutIfBehind ?? null,

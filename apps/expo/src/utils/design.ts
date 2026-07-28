@@ -20,6 +20,9 @@ export const C = {
   orange: "#D29922",
   orangeBg: "rgba(210,153,34,0.15)",
 
+  /** Accent for anchor/event/overnight-zone markers (GitHub-dark purple). */
+  accentPurple: "#A371F7",
+
   placeholder: "#484f58",
   white: "#fff",
 

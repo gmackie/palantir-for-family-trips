@@ -1,6 +1,0 @@
-
-> @sortey/monitoring@ lint /Users/mackieg/.config/superpowers/worktrees/sortey/landing-20260717/packages/monitoring
-> oxlint .
-
-Found 0 warnings and 0 errors.
-Finished in 9ms on 3 files with 95 rules using 12 threads.

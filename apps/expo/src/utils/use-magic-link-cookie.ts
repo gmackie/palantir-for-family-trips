@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { parseSetCookieHeader } from "better-auth/cookies";
 import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
-import { parseSetCookieHeader } from "better-auth/cookies";
+import { useEffect } from "react";
 
 import { authClient } from "./auth";
 

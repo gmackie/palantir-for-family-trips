@@ -142,9 +142,7 @@ export function OvernightSuggest(props: {
         ))}
       </div>
 
-      {loading && (
-        <p className="text-[10px] text-[#484F58]">Searching POIs…</p>
-      )}
+      {loading && <p className="text-[10px] text-[#484F58]">Searching POIs…</p>}
 
       <ul className="max-h-36 space-y-1 overflow-y-auto">
         {suggestions.map((s) => (

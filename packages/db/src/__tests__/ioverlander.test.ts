@@ -12,7 +12,10 @@ describe("parseIoverlanderCsv", () => {
       "43,City Dump,Sanitation Dump Station,45.6,-121.6",
     ].join("\n");
 
-    const { rows, catCounts, total, skipped } = parseIoverlanderCsv(csv, "ws-1");
+    const { rows, catCounts, total, skipped } = parseIoverlanderCsv(
+      csv,
+      "ws-1",
+    );
 
     expect(total).toBe(2);
     expect(skipped).toBe(0);
@@ -46,9 +49,10 @@ describe("parseIoverlanderCsv", () => {
   });
 
   it("falls back to a coord-based externalId when the CSV has no id column", () => {
-    const csv = ["Name,Category,Latitude,Longitude", "Camp,Wild Camping,1.25,2.5"].join(
-      "\n",
-    );
+    const csv = [
+      "Name,Category,Latitude,Longitude",
+      "Camp,Wild Camping,1.25,2.5",
+    ].join("\n");
     const { rows } = parseIoverlanderCsv(csv, "ws-9");
     expect(rows[0]!.externalId).toBe("iov/ws-9/1.25,2.5/camp");
   });
@@ -60,7 +64,9 @@ describe("parseIoverlanderCsv", () => {
   });
 
   it("handles quoted fields with embedded commas", () => {
-    const csv = [HEADER, '99,"Smith, John Pullout",Wild Camping,3,4'].join("\n");
+    const csv = [HEADER, '99,"Smith, John Pullout",Wild Camping,3,4'].join(
+      "\n",
+    );
     const { rows } = parseIoverlanderCsv(csv, "ws-1");
     expect(rows[0]!.name).toBe("Smith, John Pullout");
   });

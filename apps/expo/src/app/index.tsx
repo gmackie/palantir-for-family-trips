@@ -15,6 +15,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+import {
+  defaultRouteForTrip,
+  getLastTripId,
+  isActiveTripStatus,
+  pickDefaultTrip,
+  setLastTripId,
+} from "~/utils/active-trip";
 import { queryClient, trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { C, mono, R } from "~/utils/design";
@@ -421,6 +428,21 @@ function UserHeader({
   );
 }
 
+// Matches STATUS_COLORS in the trip detail screens so the list card border
+// agrees with the status pill shown after tapping through.
+const TRIP_STATUS_COLORS: Record<string, string> = {
+  planning: C.warning,
+  confirmed: C.info,
+  en_route: C.warning,
+  active: C.success,
+  paused: C.warning,
+  completed: C.muted,
+};
+
+// Module-level so the active-trip redirect fires once per app launch, not once
+// per TripList mount — otherwise every return to '/' re-hijacks to the trip.
+let hasAutoRedirected = false;
+
 function TripList({
   user,
 }: {
@@ -434,6 +456,30 @@ function TripList({
       workspaceId: workspaceId ?? "",
     }),
   );
+
+  // Cold-start: if a trip is actively running, land there instead of the list.
+  useEffect(() => {
+    if (hasAutoRedirected || !trips || trips.length === 0) return;
+    const active = pickDefaultTrip(
+      trips.map((t) => ({
+        id: t.id,
+        status: t.status,
+        tripMode: (t as { tripMode?: string | null }).tripMode,
+        startDate: t.startDate,
+        endDate: t.endDate,
+        name: t.name,
+      })),
+      getLastTripId(),
+    );
+    if (!active || !isActiveTripStatus(active.status)) return;
+    hasAutoRedirected = true;
+    void setLastTripId(active.id);
+    const dest = defaultRouteForTrip(active, "unknown");
+    router.replace({
+      pathname: dest.pathname as "/trip/[tripId]",
+      params: { tripId: dest.params.tripId },
+    });
+  }, [trips, router]);
 
   if (!workspaceId) {
     return (
@@ -619,22 +665,36 @@ function TripList({
           const daysUntil = item.startDate
             ? getDaysUntilTrip(item.startDate)
             : null;
+          const active = isActiveTripStatus(item.status);
           return (
             <Pressable
               key={item.id}
-              onPress={() =>
+              onPress={() => {
+                void setLastTripId(item.id);
+                const dest = defaultRouteForTrip(
+                  {
+                    id: item.id,
+                    status: item.status,
+                    tripMode: (item as { tripMode?: string | null }).tripMode,
+                    startDate: item.startDate,
+                    endDate: item.endDate,
+                  },
+                  "unknown",
+                );
                 router.push({
-                  pathname: "/trip/[tripId]",
-                  params: { tripId: item.id },
-                })
-              }
+                  pathname: dest.pathname as "/trip/[tripId]",
+                  params: { tripId: dest.params.tripId },
+                });
+              }}
               style={{
                 backgroundColor: C.surface,
                 borderRadius: R.md,
                 padding: 16,
                 marginBottom: 12,
                 borderWidth: 1,
-                borderColor: C.border,
+                borderColor: active
+                  ? (TRIP_STATUS_COLORS[item.status] ?? C.warning)
+                  : C.border,
               }}
             >
               <View

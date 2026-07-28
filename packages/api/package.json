@@ -30,6 +30,10 @@
     "./ocr/review": {
       "types": "./dist/ocr/review.d.ts",
       "default": "./src/ocr/review.ts"
+    },
+    "./copilot": {
+      "types": "./src/copilot/index.ts",
+      "default": "./src/copilot/index.ts"
     }
   },
   "license": "MIT",

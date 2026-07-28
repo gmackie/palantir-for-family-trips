@@ -46,7 +46,13 @@ function ordered(points: TrackPoint[]): TrackPoint[] {
 export function buildTrackStats(points: TrackPoint[]): TrackStats {
   const pts = ordered(points);
   if (pts.length === 0) {
-    return { points: 0, actualMiles: 0, firstAt: null, lastAt: null, bounds: null };
+    return {
+      points: 0,
+      actualMiles: 0,
+      firstAt: null,
+      lastAt: null,
+      bounds: null,
+    };
   }
 
   let miles = 0;

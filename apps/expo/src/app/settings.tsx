@@ -1224,8 +1224,8 @@ function OtaUpdatesSection() {
         App updates
       </Text>
       <Text style={{ color: C.muted, marginBottom: 12, fontSize: 14 }}>
-        Over-the-air updates deliver day plan, amenities, and route tools without
-        a store rebuild. Channel follows the EAS profile (
+        Over-the-air updates deliver day plan, amenities, and route tools
+        without a store rebuild. Channel follows the EAS profile (
         {ota.channel ?? (env.isDevelopment ? "metro" : "unknown")}).
       </Text>
       {ota.updateId && (

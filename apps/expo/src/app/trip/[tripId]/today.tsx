@@ -20,16 +20,10 @@ import {
 import type { RouterOutputs } from "~/utils/api";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
-import {
-  createFuelOutboxId,
-  type FuelLogCommand,
-} from "~/utils/fuel-outbox";
+import { createFuelOutboxId, type FuelLogCommand } from "~/utils/fuel-outbox";
 import { fuelOutbox } from "~/utils/fuel-outbox-native";
 import { fetchIsOnline } from "~/utils/network-status";
-import {
-  loadTodaySnapshot,
-  saveTodaySnapshot,
-} from "~/utils/today-cache";
+import { loadTodaySnapshot, saveTodaySnapshot } from "~/utils/today-cache";
 import { useDwellSuggest } from "~/utils/use-dwell-suggest";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -222,7 +216,7 @@ export default function TodayScreen() {
             ? "Partial day"
             : status === "skipped"
               ? "Skipped"
-              : data.day?.heroTitle ?? "Done",
+              : (data.day?.heroTitle ?? "Done"),
       });
     },
     [data, setStatus, tripId, workspaceId],
@@ -236,7 +230,9 @@ export default function TodayScreen() {
 
   if (isLoading && !data) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center" }}>
+      <View
+        style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center" }}
+      >
         <Stack.Screen options={{ title: "Today" }} />
         <ActivityIndicator color={C.info} />
       </View>
@@ -299,6 +295,61 @@ export default function TodayScreen() {
           </Text>
         )}
 
+        {/* Stopped-mode primary actions */}
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: C.border,
+            backgroundColor: C.surface,
+            borderRadius: R.md,
+            padding: 12,
+            gap: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: C.muted,
+              fontSize: 11,
+              fontWeight: "800",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            Stopped actions
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <ActionBtn
+              label="Quick stop"
+              onPress={() =>
+                go("/trip/[tripId]/log-stop", {
+                  quick: "rest",
+                  ...(coords
+                    ? { lat: String(coords.lat), lng: String(coords.lng) }
+                    : {}),
+                })
+              }
+              tone={C.info}
+            />
+            <ActionBtn
+              label="Park for night"
+              onPress={() =>
+                go("/trip/[tripId]/log-stop", {
+                  quick: "overnight",
+                  ...(coords
+                    ? { lat: String(coords.lat), lng: String(coords.lng) }
+                    : {}),
+                })
+              }
+              tone={C.warning}
+            />
+            <ActionBtn label="Map" onPress={() => go("/trip/[tripId]/map")} />
+            <ActionBtn
+              label="Drive"
+              onPress={() => go("/trip/[tripId]/drive")}
+            />
+          </View>
+        </View>
+
         {dwell && (
           <View
             style={{
@@ -313,14 +364,30 @@ export default function TodayScreen() {
             <Text style={{ color: C.info, fontWeight: "700" }}>
               Stopped ~{dwell.minutes} min — log this place?
             </Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
               <ActionBtn
-                label="Log stop"
+                label="Quick stop"
                 onPress={() => {
                   dismissDwell();
-                  go("/trip/[tripId]/log-stop");
+                  go("/trip/[tripId]/log-stop", {
+                    quick: "rest",
+                    lat: String(dwell.lat),
+                    lng: String(dwell.lng),
+                  });
                 }}
                 tone={C.info}
+              />
+              <ActionBtn
+                label="Park for night"
+                onPress={() => {
+                  dismissDwell();
+                  go("/trip/[tripId]/log-stop", {
+                    quick: "overnight",
+                    lat: String(dwell.lat),
+                    lng: String(dwell.lng),
+                  });
+                }}
+                tone={C.warning}
               />
               <ActionBtn label="Dismiss" onPress={dismissDwell} />
             </View>
@@ -451,9 +518,7 @@ export default function TodayScreen() {
                   setReplanOpen(true);
                 }}
               >
-                <Text
-                  style={{ color: C.fg, textDecorationLine: "underline" }}
-                >
+                <Text style={{ color: C.fg, textDecorationLine: "underline" }}>
                   Replan from here
                 </Text>
               </Pressable>
@@ -616,7 +681,9 @@ export default function TodayScreen() {
                   {i + 1}.
                 </Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: C.fg, fontSize: 14, fontWeight: "600" }}>
+                  <Text
+                    style={{ color: C.fg, fontSize: 14, fontWeight: "600" }}
+                  >
                     {s.kind.toUpperCase()} · {s.name}
                   </Text>
                   <Text style={{ color: C.muted, fontSize: 12 }}>
@@ -648,8 +715,8 @@ export default function TodayScreen() {
 
         {showFull && data.nextAnchor && (
           <Text style={{ color: C.muted, fontSize: 12 }}>
-            Next anchor: {data.nextAnchor.title} in {data.nextAnchor.daysAway}d (
-            {data.nextAnchor.startDate})
+            Next anchor: {data.nextAnchor.title} in {data.nextAnchor.daysAway}d
+            ({data.nextAnchor.startDate})
           </Text>
         )}
 
@@ -702,14 +769,8 @@ export default function TodayScreen() {
             label="Day plan"
             onPress={() => go("/trip/[tripId]/day-plan", { date: data.date })}
           />
-          <ActionBtn
-            label="Drive"
-            onPress={() => go("/trip/[tripId]/drive")}
-          />
-          <ActionBtn
-            label="Map"
-            onPress={() => go("/trip/[tripId]/map")}
-          />
+          <ActionBtn label="Drive" onPress={() => go("/trip/[tripId]/drive")} />
+          <ActionBtn label="Map" onPress={() => go("/trip/[tripId]/map")} />
           <ActionBtn
             label="Log stop"
             onPress={() => go("/trip/[tripId]/log-stop")}

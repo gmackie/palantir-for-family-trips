@@ -87,9 +87,7 @@ export class FuelOutbox {
     await this.save(entries);
   }
 
-  flush(
-    send: (command: FuelLogCommand) => Promise<unknown>,
-  ): Promise<void> {
+  flush(send: (command: FuelLogCommand) => Promise<unknown>): Promise<void> {
     if (this.flushing) return this.flushing;
     this.flushing = this.flushOnce(send).finally(() => {
       this.flushing = null;
@@ -105,8 +103,7 @@ export class FuelOutbox {
       try {
         await send(entry.command);
         const index = entries.findIndex(
-          (candidate) =>
-            candidate.command.clientId === entry.command.clientId,
+          (candidate) => candidate.command.clientId === entry.command.clientId,
         );
         if (index !== -1) entries.splice(index, 1);
       } catch (error) {

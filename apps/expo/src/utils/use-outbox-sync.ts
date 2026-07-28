@@ -34,12 +34,7 @@ export function useOutboxSync() {
         }),
       );
       await fuelOutbox.flush((command) => {
-        const {
-          clientId: _clientId,
-          workspaceId,
-          tripId,
-          ...rest
-        } = command;
+        const { clientId: _clientId, workspaceId, tripId, ...rest } = command;
         return trpcClient.fuelLogs.create.mutate({
           workspaceId,
           tripId,

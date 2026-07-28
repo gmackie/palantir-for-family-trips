@@ -13,6 +13,14 @@ import { devMagicLinkStore } from "./dev-magic-link";
 const baseUrl =
   env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export const auth = initAuth({
   baseUrl,
   productionUrl: env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? baseUrl,
@@ -24,6 +32,7 @@ export const auth = initAuth({
   appleClientId: env.AUTH_APPLE_ID,
   appleClientSecret: env.AUTH_APPLE_SECRET,
   appleBundleIdentifier: env.AUTH_APPLE_BUNDLE_ID,
+  devMagicLinkBypassEnabled: env.NODE_ENV === "development",
   extraPlugins: [
     magicLink({
       sendMagicLink: async ({ email, url }) => {
@@ -34,11 +43,18 @@ export const auth = initAuth({
           return;
         }
 
+        if (!env.RESEND_API_KEY) {
+          throw new Error(
+            "RESEND_API_KEY is required to send production magic links",
+          );
+        }
+
+        const safeUrl = escapeHtml(url);
         await sendEmail(
           {
             to: email,
             subject: "Sign in to Sortey",
-            html: `<p>Open the button below to sign in.</p><p><a href="${url}">Sign in to Sortey</a></p>`,
+            html: `<p>Open the button below to sign in.</p><p><a href="${safeUrl}">Sign in to Sortey</a></p>`,
             text: `Sign in to Sortey: ${url}`,
           },
           "Sortey <noreply@gmac.io>",

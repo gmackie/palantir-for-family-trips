@@ -8,10 +8,7 @@ import { ErrorBoundary } from "~/components/error-boundary";
 import { OutboxSyncHost } from "~/components/outbox-sync-host";
 import { queryClient } from "~/utils/api";
 import { C } from "~/utils/design";
-import {
-  restoreQueryClient,
-  schedulePersist,
-} from "~/utils/query-persist";
+import { restoreQueryClient, schedulePersist } from "~/utils/query-persist";
 import { useMagicLinkCookie } from "~/utils/use-magic-link-cookie";
 import { useOtaUpdates } from "~/utils/use-ota-updates";
 import { usePushNotifications } from "~/utils/use-push-notifications";

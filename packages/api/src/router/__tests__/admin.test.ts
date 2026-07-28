@@ -338,6 +338,9 @@ function createFakeDb(input?: {
 
       throw new Error("Unexpected insert table");
     }),
+    // rlsSessionMiddleware sets session GUCs via execute inside the wrapper
+    // transaction; a no-op is correct for the in-memory mock.
+    execute: vi.fn(async () => undefined),
     transaction: vi.fn(async (fn: (tx: typeof db) => Promise<unknown>) => {
       const snapshot = {
         user: structuredClone(state.user),

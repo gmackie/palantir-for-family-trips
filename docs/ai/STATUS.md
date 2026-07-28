@@ -142,8 +142,17 @@ Advisor plans 001–006 are all MERGED (see `plans/README.md`).
 - Preflight Android emulator proof passed: workflow `pfw_ffce5206-bac4-486b-b919-4406cd008389`, app-open job `pfjob_8ead2345-0f96-4b46-aa14-6cff0de55165`, Maestro job `pfjob_91c716cf-a276-42ec-af25-c315ad141e1d`, `tests=1`, `failures=0`.
 - Android EAS development-device build is queued/running: build `71566a55-16e8-45d5-8b62-01dd411493c9`, profile `development-device`, channel `development`, distribution `internal`, Expo project `@gmacko/sortie`.
 - Android build caveat: the submitted build uses Git commit `1c3c087d` because the active JJ working-copy commit has not been exported to Git.
-- iOS EAS development-device build is blocked by Apple credentials/provisioning: the main app profile needs the iPad UDID added, and the `SorteyShare` extension needs credentials for `com.gmacko.sortey.dev.share-extension`.
+- iOS EAS development-device build is blocked by Apple credentials/provisioning: the main app profile needs the iPad UDID added, and the `SorteyShare` extension needs credentials for `com.gmacko.sortey.dev.share-extension`. (Bundle ids here predate the 2026-07 variant rename: development is now `com.gmacko.sortey.expo` "Sortey (Expo)", preview is `com.gmacko.sortey.dev` "Sortey (Dev)".)
 - Physical-device proof is not yet complete: `adb devices -l` currently shows only the emulator, and local iPhone/iPad devices are offline in `xcrun xctrace list devices`.
+
+### Active-trip command center (v0.1.0.0 — 2026-07-18) ✅ SHIPPED
+- Cold-start one-shot redirect into the running trip: lands on Today Command (parked) or Driving Mode (en route) — `apps/expo/src/app/index.tsx` + `apps/expo/src/utils/active-trip.ts`
+- Motion modes: Driving/Stopped chrome switched by GPS speed with debounced transitions — `apps/expo/src/utils/use-motion-mode.ts`
+- Fuel-colored route map: green/amber bands from van tank/MPG, Costco-first fuel stops — `apps/expo/src/utils/fuel-route-colors.ts` (client/server parity tests against `packages/api/src/route-planner/zones.ts`)
+- GPS breadcrumb recording with re-queue on failed upload (`apps/expo/src/utils/use-breadcrumb-recorder.ts`); `drivingSummary` sole-van fallback in `packages/api/src/router/trips.ts`
+- Quick-stop deep links from Driving Mode into stop logging with kind + location prefilled
+- Variant identity rename (fleet standard): development → `com.gmacko.sortey.expo` "Sortey (Expo)", preview → `com.gmacko.sortey.dev` "Sortey (Dev)"; retired `sortey-preview://` removed from auth trustedOrigins; ATS scoped to `NSAllowsLocalNetworking` only
+- Expo vitest wired into turbo CI (+45 tests); local preview build profiles + Preflight OTA loop (`apps/expo/docs/preview-build-ota-loop.md`)
 
 ### Realtime — Group chat + live locations ✅ COMPLETE
 - `TripRoom` Durable Object (Cloudflare Workers) — one WS room per trip

@@ -23,6 +23,17 @@
 - Corridor POI bundle + map polyline-only offline canvas
 - Background GPS breadcrumb ring buffer
 
+### Superseding note (co-pilot / POI world model)
+
+Conversation-level **trip co-pilot** planning (options, Costco/camps/laundry
+offline, on-device SLM) needs a **queryable local POI store**, not only JSON
+trip packs. That world model is specified in:
+
+**[`docs/plans/2026-07-14-trip-copilot-on-device.md`](../plans/2026-07-14-trip-copilot-on-device.md)**
+
+There: **SQLite** for POIs/services/legs/brief; react-query persist remains for
+small trip documents and outboxes.
+
 ## Why
 
 The driving use case is a van + backcountry road trip: North Cascades, the

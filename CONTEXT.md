@@ -101,6 +101,30 @@ _Avoid_: Activity, attraction (too generic)
 Regenerate Trip Days from the current position (or a from-date) until the next Anchor, packing must-visits and play days. Draft first, then apply. Does not replace turn-by-turn navigation.
 _Avoid_: Reroute (navigator), reschedule (calendar-only)
 
+**Trip Co-Pilot**:
+A tool-using planning participant (on-device and/or server) that argues options with costs (hours, nights, anchor risk) and never invents miles or POIs. In multi-party mode it facilitates; it does not self-commit plan changes.
+_Avoid_: AI itinerary generator, chatbot (too vague)
+
+**Planning Session**:
+A bounded conversation (solo with co-pilot, or party of trip members + co-pilot) that produces structured Plan Options, stances, and an optional Decision/Commit into Trip Days. Distinct from free-form trip chat.
+_Avoid_: Group brainstorm, thread (overloaded with chat)
+
+**Command Surface / plan chrome**:
+The always-visible plan truth on an active road trip (tonight, next nights, legs, open options). Not a separate product from chat — it is the structured header/artifact that chat and agents update.
+_Avoid_: Replacing chat as the interaction model
+
+**Trip Chat**:
+Primary human interaction for coordination and planning (voice or text). Co-pilot and external agents post into the same timeline with structured option cards. Free-form banter and planning moves share one thread; planning moves are typed so they render as plan artifacts.
+_Avoid_: Demoting chat to an aside; chat-only with no structured Apply path
+
+**Agent interfaces (MCP / CLI / API)**:
+How non-human agents read plan state, propose options, post to trip chat, and (with grant) apply options — same domain ops as the in-app co-pilot, without using the mobile UI.
+_Avoid_: Scraping the app; a second incompatible planning model
+
+**Corridor Cast / Tonight's Episode**:
+A private podcast episode generated the night before a drive day: 15 or 30 minutes narrating tomorrow's actual route, stops, reservations, and the country along the corridor. The script is drafted from trip data (operational facts grounded; storytelling color hedged), must be read and approved before any TTS spend, and quietly expires if its drive day passes unread. Voiced per-segment with resumable checkpoints; the offline guarantee is the downloaded MP3.
+_Avoid_: Audio tour (venue-scripted), briefing (that's the operational Day Brief), AI radio
+
 **Amenity Scan**:
 Long-term van-planning view of corridor POIs (iOverlander etc.) near each Trip Day overnight: sleep, dump, water, fuel, parking, tolls — plus warnings when gaps exist.
 _Avoid_: POI dump, place search (too generic)

@@ -74,7 +74,7 @@ export function useOtaUpdates(opts?: {
         if (promptOnReady) {
           Alert.alert(
             "Update ready",
-            "A new version of Sortey is ready (day plan, amenities, and route tools). Restart to apply.",
+            "A new Sortey JS update is ready (active trip, map, planner). Restart to apply — no App Store reinstall needed.",
             [
               { text: "Later", style: "cancel" },
               {

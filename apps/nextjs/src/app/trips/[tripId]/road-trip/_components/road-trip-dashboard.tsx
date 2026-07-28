@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DayChips } from "~/components/road-trip/day-chips";
 import { DayPlanPanel } from "~/components/road-trip/day-plan-panel";
-import { TodayCommandPanel } from "~/components/road-trip/today-command-panel";
 import { FuelLogPanel } from "~/components/road-trip/fuel-log-panel";
 import { PoiInfoCard } from "~/components/road-trip/poi-info-card";
 import { RouteGradientMap } from "~/components/road-trip/route-gradient-map";
+import { TodayCommandPanel } from "~/components/road-trip/today-command-panel";
 import { TripStatsBar } from "~/components/road-trip/trip-stats-bar";
 import { TripTikStrip } from "~/components/road-trip/triptik-strip";
 import { useTRPC } from "~/trpc/react";
@@ -447,6 +447,12 @@ export function RoadTripDashboard(props: {
         )}
 
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            href={`/trips/${trip.id}/cast`}
+            className="rounded-[2px] border border-[#30363D] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E] transition-colors hover:bg-[#30363D]/40 hover:text-[#C9D1D9]"
+          >
+            Cast
+          </Link>
           {trip.destinationName && (
             <span className="text-xs text-[#8B949E]">
               {trip.destinationName}
@@ -528,7 +534,9 @@ export function RoadTripDashboard(props: {
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-6">
-                <p className="text-xs text-[#484F58]">No segments planned yet.</p>
+                <p className="text-xs text-[#484F58]">
+                  No segments planned yet.
+                </p>
                 <Link
                   href={`/trips/${trip.id}`}
                   className="mt-2 text-xs text-[#58A6FF] hover:underline"
@@ -618,7 +626,8 @@ export function RoadTripDashboard(props: {
                   No route planned
                 </p>
                 <p className="mt-1 text-xs text-[#8B949E]">
-                  Build the full map plan or add a route to see the gradient map.
+                  Build the full map plan or add a route to see the gradient
+                  map.
                 </p>
                 <Link
                   href={`/trips/${trip.id}`}
@@ -662,22 +671,22 @@ export function RoadTripDashboard(props: {
         <aside className="w-[360px] shrink-0 overflow-hidden border-l border-[#21262D] bg-[#0D1117]">
           {/* Tab bar */}
           <div className="flex border-b border-[#21262D]">
-            {(
-              ["plan", "fuel", "van", "pois", "ferry"] as InspectorTab[]
-            ).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 px-2 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] transition-colors ${
-                  tab === activeTab
-                    ? "border-b-2 border-[#58A6FF] text-[#58A6FF]"
-                    : "text-[#8B949E] hover:text-[#C9D1D9]"
-                }`}
-              >
-                {TAB_LABELS[tab]}
-              </button>
-            ))}
+            {(["plan", "fuel", "van", "pois", "ferry"] as InspectorTab[]).map(
+              (tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 px-2 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] transition-colors ${
+                    tab === activeTab
+                      ? "border-b-2 border-[#58A6FF] text-[#58A6FF]"
+                      : "text-[#8B949E] hover:text-[#C9D1D9]"
+                  }`}
+                >
+                  {TAB_LABELS[tab]}
+                </button>
+              ),
+            )}
           </div>
 
           {/* Tab content */}

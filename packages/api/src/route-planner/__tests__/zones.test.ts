@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  colorPolylineByFuelRange,
   computeFuelZones,
   computeOvernightZones,
   DEFAULT_FUEL_THRESHOLD,
+  fuelBandAt,
   fuelRangeMiles,
+  isCostcoName,
   type LatLng,
   OVERNIGHT_ZONE_RADIUS_MILES,
   type ZoneSegment,
@@ -116,5 +119,133 @@ describe("computeOvernightZones", () => {
     expect(zones).toHaveLength(1);
     // 475 + 375 accumulated through the second boundary.
     expect(zones[0]!.mileMarker).toBe(850);
+  });
+});
+
+describe("fuelBandAt / colorPolylineByFuelRange", () => {
+  it("classifies safe → caution → empty by remaining range", () => {
+    expect(fuelBandAt(0, 200)).toBe("safe");
+    expect(fuelBandAt(100, 200)).toBe("safe");
+    expect(fuelBandAt(160, 200)).toBe("caution"); // 40 mi left = 20%
+    expect(fuelBandAt(200, 200)).toBe("empty");
+    expect(fuelBandAt(250, 200)).toBe("empty");
+  });
+
+  it("colors a long eastbound route with multiple bands", () => {
+    // ~690 miles, range 200 → cycles safe → caution and back. "empty" never
+    // appears in polyline coloring: the accumulator auto-refills at each
+    // range boundary (empty is reachable via fuelBandAt directly).
+    const points = eastwardLine(-100, 11, 1);
+    const segs = colorPolylineByFuelRange(points, 200);
+    expect(segs.length).toBeGreaterThanOrEqual(2);
+    const bands = new Set(segs.map((s) => s.band));
+    expect(bands).toEqual(new Set(["safe", "caution"]));
+    for (const s of segs) {
+      expect(s.coordinates.length).toBeGreaterThanOrEqual(2);
+      expect(s.color).toMatch(/^#/);
+    }
+  });
+
+  it("returns [] without a usable range or polyline", () => {
+    expect(colorPolylineByFuelRange(eastwardLine(-100, 5, 1), 0)).toEqual([]);
+    expect(colorPolylineByFuelRange([], 200)).toEqual([]);
+  });
+
+  it("classifies exact band boundaries (remaining 0 → empty, remaining == caution cutoff → caution)", () => {
+    // remaining exactly 0 → empty (<= comparison).
+    expect(fuelBandAt(200, 200)).toBe("empty");
+    // remaining exactly rangeMiles * cautionFraction (200 * 0.25 = 50) → caution.
+    expect(fuelBandAt(150, 200)).toBe("caution");
+    // One mile shy of the cutoff (remaining 51) is still safe.
+    expect(fuelBandAt(149, 200)).toBe("safe");
+  });
+
+  it("treats a nonpositive or NaN range as safe (no van model → no alarm)", () => {
+    expect(fuelBandAt(50, 0)).toBe("safe");
+    expect(fuelBandAt(50, -100)).toBe("safe");
+    expect(fuelBandAt(50, Number.NaN)).toBe("safe");
+  });
+
+  it("honors a custom cautionFraction in fuelBandAt", () => {
+    // 50% fraction: remaining exactly 100 of 200 → caution; 101 → safe.
+    expect(fuelBandAt(100, 200, 0.5)).toBe("caution");
+    expect(fuelBandAt(99, 200, 0.5)).toBe("safe");
+    // Same miles under the default 25% fraction would still be safe.
+    expect(fuelBandAt(100, 200)).toBe("safe");
+  });
+
+  it("returns [] for a single-point polyline", () => {
+    expect(colorPolylineByFuelRange([{ lat: 0, lng: 0 }], 200)).toEqual([]);
+  });
+
+  it("starts mid-band when milesSinceFill offsets the tank", () => {
+    // ~276 mi route, range 200, already 160 mi since fill → remaining 40
+    // (20% of range) → the polyline opens in caution, then refills to safe.
+    const points = eastwardLine(-100, 5, 1);
+    const segs = colorPolylineByFuelRange(points, 200, { milesSinceFill: 160 });
+    expect(segs[0]!.band).toBe("caution");
+    expect(segs.some((s) => s.band === "safe")).toBe(true);
+  });
+
+  it("normalizes milesSinceFill beyond one tank into the current cycle", () => {
+    const points = eastwardLine(-100, 5, 1);
+    // 560 ≡ 160 (mod 200) → identical coloring.
+    const wrapped = colorPolylineByFuelRange(points, 200, {
+      milesSinceFill: 560,
+    });
+    const direct = colorPolylineByFuelRange(points, 200, {
+      milesSinceFill: 160,
+    });
+    expect(wrapped).toEqual(direct);
+  });
+
+  it("never emits empty on a multi-tank route; bands alternate at each split", () => {
+    // ~2073 mi at range 150 → many refill cycles. The wrap loop refills the
+    // accumulator at each range boundary, so "empty" can never appear and
+    // consecutive segments always carry different bands.
+    const points = eastwardLine(-120, 31, 1);
+    const segs = colorPolylineByFuelRange(points, 150);
+    expect(segs.length).toBeGreaterThanOrEqual(4);
+    expect(segs.every((s) => s.band !== "empty")).toBe(true);
+    for (let i = 1; i < segs.length; i++) {
+      expect(segs[i]!.band).not.toBe(segs[i - 1]!.band);
+    }
+  });
+
+  it("adjacent segments share the split coordinate", () => {
+    const points = eastwardLine(-100, 11, 1);
+    const segs = colorPolylineByFuelRange(points, 200);
+    expect(segs.length).toBeGreaterThanOrEqual(2);
+    for (let i = 1; i < segs.length; i++) {
+      const prev = segs[i - 1]!;
+      const curr = segs[i]!;
+      expect(prev.toIndex).toBe(curr.fromIndex);
+      expect(prev.coordinates[prev.coordinates.length - 1]).toEqual(
+        curr.coordinates[0],
+      );
+    }
+  });
+
+  it("honors a custom cautionFraction in polyline coloring", () => {
+    // ~276 mi at range 300: with the default 25% fraction, caution begins at
+    // 225 mi — only the final point crosses it, so its 1-coord tail segment is
+    // filtered and the whole polyline stays safe. A 90% fraction flips to
+    // caution after just 30 mi.
+    const points = eastwardLine(-100, 5, 1);
+    const defaults = colorPolylineByFuelRange(points, 300);
+    const eager = colorPolylineByFuelRange(points, 300, {
+      cautionFraction: 0.9,
+    });
+    expect(defaults.map((s) => s.band)).toEqual(["safe"]);
+    expect(eager.map((s) => s.band)).toEqual(["safe", "caution"]);
+  });
+});
+
+describe("isCostcoName", () => {
+  it("detects Costco stations case-insensitively", () => {
+    expect(isCostcoName("Costco Gasoline")).toBe(true);
+    expect(isCostcoName("costco #123")).toBe(true);
+    expect(isCostcoName("Shell")).toBe(false);
+    expect(isCostcoName(null)).toBe(false);
   });
 });

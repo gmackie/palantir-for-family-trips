@@ -775,9 +775,7 @@ export const routePlannerRouter = {
       const sampled =
         points.length <= 400
           ? points
-          : points.filter(
-              (_, i) => i % Math.ceil(points.length / 400) === 0,
-            );
+          : points.filter((_, i) => i % Math.ceil(points.length / 400) === 0);
 
       return assessSideTrip({
         position: { lat: input.lat, lng: input.lng },

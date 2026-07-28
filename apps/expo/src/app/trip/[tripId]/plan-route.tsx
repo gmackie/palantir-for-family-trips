@@ -309,8 +309,8 @@ export default function PlanRouteScreen() {
           </Text>
           <Text style={{ color: C.muted, fontSize: 14, marginBottom: 24 }}>
             Search for your origin and destination. The route will be split into
-            driving days automatically. Compare dual candidates (coast / inland /
-            shorter) before you commit.
+            driving days automatically. Compare dual candidates (coast / inland
+            / shorter) before you commit.
           </Text>
 
           <View style={{ gap: 20 }}>

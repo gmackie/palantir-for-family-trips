@@ -41,6 +41,8 @@ describe("workspace RLS rollout", () => {
       { tableName: "trip_day", tripColumn: "trip_id" },
       { tableName: "van_state_reading", tripColumn: "trip_id" },
       { tableName: "member_location", tripColumn: "trip_id" },
+      { tableName: "cast_episode_job", tripColumn: "trip_id" },
+      { tableName: "cast_episode", tripColumn: "trip_id" },
     ]);
   });
 
@@ -108,9 +110,7 @@ describe("workspace RLS rollout", () => {
     expect(membershipSelect).toMatch(
       /user_id" = current_setting\('app\.user_id'/,
     );
-    expect(membershipSelect).toMatch(
-      /platform_role', true\) = 'admin'/,
-    );
+    expect(membershipSelect).toMatch(/platform_role', true\) = 'admin'/);
     // Same-table subqueries recurse under FORCE RLS (42P17), including the
     // "peer workspace_id IN (SELECT … FROM workspace_membership)" pattern.
     expect(membershipSelect).not.toMatch(/from "workspace_membership"/i);
@@ -120,9 +120,7 @@ describe("workspace RLS rollout", () => {
     expect(membershipUpdate).not.toMatch(/from "workspace_membership"/i);
     expect(
       statements.some((s) =>
-        s.includes(
-          'create policy "workspace_membership_default_join_insert"',
-        ),
+        s.includes('create policy "workspace_membership_default_join_insert"'),
       ),
     ).toBe(true);
   });

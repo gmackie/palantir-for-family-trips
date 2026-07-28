@@ -11,10 +11,7 @@ import { vanStateReadings } from "@sortey/db/schema";
 
 import type { Reading } from "./consumption";
 import { learnRates } from "./consumption";
-import {
-  DEFAULT_RATES_PCT_PER_DAY,
-  DEFAULT_RESOURCE_MODELS,
-} from "./service";
+import { DEFAULT_RATES_PCT_PER_DAY, DEFAULT_RESOURCE_MODELS } from "./service";
 import type { ServiceLevels } from "./service-ops";
 
 /** Resources we track, and which way each moves (fill = waste, drain = supply). */

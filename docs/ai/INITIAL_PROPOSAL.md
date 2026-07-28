@@ -104,7 +104,7 @@ docs/ai              Planning artifacts (this file, IMPLEMENTATION_PLAN.md, etc.
 
 - ForgeGraph app on the standard `apps/nextjs` target.
 - Postgres provisioned per create-gmacko-app defaults.
-- Secrets: `BETTER_AUTH_SECRET`, `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY`, object storage credentials.
+- Secrets: `AUTH_SECRET`, `RESEND_API_KEY`, `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY`, object storage credentials.
 
 ## UX Notes
 

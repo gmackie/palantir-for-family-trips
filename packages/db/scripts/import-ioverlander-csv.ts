@@ -45,7 +45,8 @@ async function main() {
   const dryRun = args["dry-run"] === true;
   // Scope this upload to a workspace (iOverlander can't be redistributed, so a
   // user's POIs stay private). Omit only for shared/seed datasets.
-  const workspaceId = typeof args.workspace === "string" ? args.workspace : null;
+  const workspaceId =
+    typeof args.workspace === "string" ? args.workspace : null;
   if (!workspaceId) {
     console.warn(
       "⚠️  No --workspace given: importing as SHARED (workspaceId=NULL). " +
@@ -57,7 +58,9 @@ async function main() {
 
   if (dryRun) {
     const parsed = parseIoverlanderCsv(text, workspaceId);
-    console.log(`Parsed ${parsed.total} iOverlander POIs (${parsed.skipped} skipped).`);
+    console.log(
+      `Parsed ${parsed.total} iOverlander POIs (${parsed.skipped} skipped).`,
+    );
     console.log(
       Object.entries(parsed.catCounts)
         .sort((a, b) => b[1] - a[1])

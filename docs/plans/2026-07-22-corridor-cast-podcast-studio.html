@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corridor Cast — Podcast Studio Plan</title>
+<style>
+  :root {
+    --bg: #0c0a0f;
+    --surface: #16121c;
+    --surface2: #1e1826;
+    --ink: #f3ebe3;
+    --muted: #a89890;
+    --line: #3a2f3d;
+    --accent: #e8a54b;
+    --accent2: #c45c26;
+    --accent-soft: #3a2818;
+    --mint: #7dcea0;
+    --mint-soft: #1a2e24;
+    --info: #9bb7e8;
+    --info-soft: #1a2438;
+    --warn: #e6c069;
+    --warn-soft: #3a3120;
+    --bad: #ef9a94;
+    --bad-soft: #3a2422;
+    --hero: radial-gradient(ellipse 120% 80% at 10% 0%, #3a1a12 0%, transparent 50%),
+            radial-gradient(ellipse 80% 60% at 90% 20%, #2a1838 0%, transparent 45%),
+            linear-gradient(165deg, #120e14 0%, #0c0a0f 60%, #1a1018 100%);
+    --display: "Avenir Next", Futura, "Segoe UI", system-ui, sans-serif;
+    --body: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.65 var(--body); }
+  main { max-width: 920px; margin: 0 auto; padding: 0 1.5rem 5rem; }
+  header.hero {
+    background: var(--hero); border-bottom: 1px solid var(--line);
+    padding: 3.5rem 1.5rem 2.25rem; margin-bottom: 2rem;
+  }
+  .hero-inner { max-width: 920px; margin: 0 auto; }
+  .kicker { font: 600 .78rem var(--display); text-transform: uppercase; letter-spacing: .2em; color: var(--accent); margin-bottom: .75rem; }
+  h1 { font: 800 2.5rem/1.12 var(--display); letter-spacing: -.02em; margin: 0 0 .6rem; }
+  .meta { color: var(--muted); font: .9rem var(--display); }
+  .meta span + span::before { content: "·"; margin: 0 .5rem; }
+  h2 { font: 700 1.35rem var(--display); margin: 2.75rem 0 .75rem; padding-bottom: .4rem; border-bottom: 1px solid var(--line); color: var(--ink); }
+  h3 { font: 650 1.05rem var(--display); margin: 1.5rem 0 .5rem; color: var(--accent); }
+  h4 { font: 650 .95rem var(--display); margin: 1.1rem 0 .4rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: .78rem; }
+  p { margin: .5rem 0 1rem; }
+  .badge {
+    display: inline-block; padding: .12rem .6rem; border-radius: 999px;
+    font: 600 .72rem var(--display); letter-spacing: .03em; vertical-align: middle;
+  }
+  .badge.draft { background: var(--info-soft); color: var(--info); }
+  .badge.todo { background: var(--line); color: var(--muted); }
+  .badge.done { background: var(--mint-soft); color: var(--mint); }
+  .badge.risk { background: var(--warn-soft); color: var(--warn); }
+  .badge.p0 { background: var(--accent-soft); color: var(--accent); }
+  .badge.p1 { background: var(--info-soft); color: var(--info); }
+  .badge.p2 { background: var(--line); color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; }
+  .stat b { display: block; font: 800 1.85rem/1.1 var(--display); color: var(--accent); }
+  .stat span { color: var(--muted); font: .75rem var(--display); text-transform: uppercase; letter-spacing: .08em; }
+  .progress { display: flex; gap: 4px; height: 10px; margin: .75rem 0 2rem; }
+  .progress i { flex: 1; border-radius: 5px; background: var(--line); }
+  .progress i.active { background: var(--accent); }
+  .progress i.done { background: var(--mint); }
+  .timeline { list-style: none; margin: 1rem 0; padding: 0 0 0 1.4rem; border-left: 2px solid var(--line); }
+  .timeline li { position: relative; padding: 0 0 1.1rem; }
+  .timeline li::before {
+    content: ""; position: absolute; left: -1.75rem; top: .35rem;
+    width: .65rem; height: .65rem; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--muted);
+  }
+  .timeline li.active::before { border-color: var(--accent); background: var(--accent-soft); }
+  .timeline b { font-family: var(--display); }
+  table { width: 100%; border-collapse: collapse; margin: .75rem 0 1.25rem; font-size: .9rem; }
+  th { text-align: left; color: var(--muted); font: 600 .72rem var(--display); text-transform: uppercase; letter-spacing: .06em; }
+  th, td { padding: .5rem .55rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  code { background: var(--surface2); border: 1px solid var(--line); border-radius: 4px; padding: .1rem .35rem; font: .84em var(--mono); }
+  pre { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; overflow-x: auto; font: .82rem/1.5 var(--mono); color: #e0d6cc; }
+  pre code { border: none; background: none; padding: 0; }
+  ul, ol { padding-left: 1.3rem; }
+  li { margin: .25rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.25rem; margin: 1rem 0; }
+  .goals { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 640px) { .goals { grid-template-columns: 1fr; } }
+  .goals h3 { margin-top: 0; color: var(--ink); }
+  details { border: 1px solid var(--line); border-radius: 10px; padding: .6rem .9rem; margin: .6rem 0; background: var(--surface); }
+  summary { cursor: pointer; font: 600 1em var(--display); }
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0; padding: .75rem 1rem; margin: 1rem 0; }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  figure.diagram { margin: 1.25rem 0 .25rem; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1rem; overflow-x: auto; }
+  figure.diagram svg { max-width: 100%; height: auto; min-width: 720px; }
+  figure.diagram figcaption { color: var(--muted); font: .85rem var(--display); margin-top: .75rem; text-align: center; }
+
+  /* Studio mock wireframe */
+  .studio {
+    background: var(--surface2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 1rem;
+    margin: 1.25rem 0;
+    font-family: var(--display);
+  }
+  .studio-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line); padding-bottom: .75rem; margin-bottom: 1rem;
+  }
+  .studio-bar .onair {
+    font: 700 .7rem var(--display); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent2); border: 1px solid var(--accent2); border-radius: 4px; padding: .2rem .5rem;
+  }
+  .studio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  @media (max-width: 700px) { .studio-grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: .85rem;
+  }
+  .panel h5 {
+    margin: 0 0 .6rem; font: 650 .72rem var(--display); text-transform: uppercase;
+    letter-spacing: .1em; color: var(--muted);
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .chip {
+    border: 1px solid var(--line); border-radius: 999px; padding: .28rem .7rem;
+    font: 600 .78rem var(--display); color: var(--muted); background: transparent;
+  }
+  .chip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+  .tile {
+    border: 1px solid var(--line); border-radius: 10px; padding: .55rem .65rem;
+    font: 600 .8rem var(--display); color: var(--ink); background: var(--bg);
+    display: flex; align-items: flex-start; gap: .45rem;
+  }
+  .tile.sel { border-color: var(--mint); background: var(--mint-soft); }
+  .tile .box {
+    width: .9rem; height: .9rem; border: 1.5px solid var(--muted); border-radius: 3px;
+    flex-shrink: 0; margin-top: .1rem;
+  }
+  .tile.sel .box { background: var(--mint); border-color: var(--mint); }
+  .tile small { display: block; font: 400 .68rem var(--display); color: var(--muted); margin-top: .15rem; font-weight: 400; }
+  .len-track {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; margin-top: .35rem;
+  }
+  .len-opt {
+    text-align: center; border: 1px solid var(--line); border-radius: 10px; padding: .55rem .3rem;
+    font: 600 .78rem var(--display); color: var(--muted);
+  }
+  .len-opt.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .len-opt b { display: block; font-size: 1.1rem; color: inherit; }
+  .cta {
+    margin-top: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+  }
+  .btn {
+    font: 700 .85rem var(--display); border-radius: 10px; padding: .65rem 1.1rem;
+    border: 1px solid var(--accent); background: linear-gradient(180deg, var(--accent) 0%, var(--accent2) 100%);
+    color: #1a0e08;
+  }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .vu {
+    flex: 1; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; min-width: 80px;
+  }
+  .vu i { display: block; height: 100%; width: 62%; background: linear-gradient(90deg, var(--mint), var(--accent)); }
+  .ribbon-mock {
+    font-family: var(--display); font-size: .82rem;
+    border-left: 2px solid var(--line); margin: 1rem 0; padding-left: 0;
+  }
+  .ribbon-mock .day {
+    display: grid; grid-template-columns: 3.5rem 1fr; gap: .5rem;
+    padding: .55rem 0 .55rem .9rem; border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+  .ribbon-mock .day::before {
+    content: ""; position: absolute; left: -5px; top: 1rem;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg);
+  }
+  .ribbon-mock .d { color: var(--muted); font-mono; font-size: .75rem; }
+  .ribbon-mock .chips { margin-top: .35rem; }
+  .topic-table td:first-child { font-family: var(--display); font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="kicker">Sortie · Road trip · Voice out</div>
+    <h1>Corridor Cast<br>Podcast Generation Studio</h1>
+    <p class="meta">
+      <span>2026-07-22 · rev 2026-07-23</span>
+      <span>sortey</span>
+      <span class="badge draft">Draft v2 — re-sliced</span>
+      <span class="badge p0">P0 Tonight's Episode</span>
+    </p>
+    <p style="max-width:42rem;color:var(--muted);margin:1rem 0 0;font:1rem/1.5 var(--display);">
+      Plan ribbon knows the drive. One tap the evening before renders tomorrow's episode — grounded LLM script from route context + corridor POIs, ElevenLabs audio, cached for offline playback in dead zones.
+      The full Studio (tiles, tones, presets) is the P1 growth path. No history CMS — generate, ground, cache.
+    </p>
+  </div>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat"><b>5</b><span>Phases</span></div>
+    <div class="stat"><b>2–4d</b><span>P0 slice (rev 2)</span></div>
+    <div class="stat"><b>0</b><span>Curated essays</span></div>
+    <div class="stat"><b>11L</b><span>TTS path</span></div>
+  </div>
+  <div class="progress" title="phase progress">
+    <i class="active"></i><i></i><i></i><i></i><i></i>
+  </div>
+
+  <h2>Overview</h2>
+  <p>
+    <strong>Corridor Cast</strong> is a trip-scoped audio layer on the Plan Ribbon / TripTik:
+    the user opens a <em>Podcast Studio</em> for a day or leg, picks <strong>episode length</strong> and
+    <strong>topic tiles</strong> (checkboxes grounded in the geography they will actually drive),
+    generates a multi-segment script, then optionally renders speech with ElevenLabs.
+    Playback lives on the ribbon (text + chips) and in Drive mode (mini player).
+  </p>
+  <div class="callout">
+    <strong>Product one-liner:</strong> “Produce a short, van-aware podcast for <em>this</em> drive — not a generic travel channel.”
+  </div>
+  <div class="callout">
+    <strong>Rev 2 (2026-07-23, /office-hours):</strong> The incumbents (GuideAlong, Autio, the AI-narrator wave) all GPS-trigger live narration because they lack itinerary knowledge. Sortey's moat is that the ribbon knows <em>tomorrow's</em> drive — so the product model is <strong>night-before render → offline morning playback</strong>, and audio caching is a P0 requirement, not P2 polish (dogfood corridors are cell dead zones). Premises revised: generation pipeline is P0 and the Studio UI is P1 chrome; scripts are <strong>grounded</strong> in stored route data + corridor POI search (no CMS, but no ungrounded generation either); play-time TTS is cut from P0 — the offline fallback is the downloaded MP3. Full rationale, cross-model review, and P0 spec: design doc <code>~/.gstack/projects/gmackie-palantir-for-family-trips/mackieg-detached-b17b8ae-design-20260723-113903.md</code> (approved, 3 adversarial review rounds).
+  </div>
+
+  <h2>Goals &amp; non-goals</h2>
+  <div class="goals">
+    <div class="card">
+      <h3>Goals</h3>
+      <ul>
+        <li><strong>P0:</strong> one-tap “Generate tomorrow's cast” (15/30 toggle only)</li>
+        <li><strong>P0:</strong> grounded scripts — route data + corridor POIs + day anchors</li>
+        <li><strong>P0:</strong> night-before render: script + ElevenLabs audio cached to R2</li>
+        <li><strong>P0:</strong> offline web playback (SW cache + Download MP3) — airplane-mode test</li>
+        <li><strong>P0:</strong> generation status, retry, per-episode cost visibility</li>
+        <li><strong>P1:</strong> Studio UX: length presets, topic tiles, tone; ribbon chips</li>
+        <li>Safe defaults (no autoplay while driving without consent)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Non-goals (P0)</h3>
+      <ul>
+        <li>Editorial CMS / seed history packs</li>
+        <li>Studio controls beyond the 15/30 length toggle (P1)</li>
+        <li>Native Expo audio — standalone trip build has no expo-av; rebuild mid-trip impractical (post-trip)</li>
+        <li>Play-time TTS fallback — offline fallback is the downloaded MP3</li>
+        <li>Multi-voice radio drama; live radio / streaming marketplace</li>
+        <li>GPS-triggered auto chapter by milepost (P2)</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Architecture</h2>
+  <figure class="diagram">
+<svg id="corridor-cast-flow" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 2636.67px; background-color: transparent;" viewBox="0 0 2636.671875 244" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#corridor-cast-flow{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#ccc;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#corridor-cast-flow .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#corridor-cast-flow .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#corridor-cast-flow .error-icon{fill:#a44141;}#corridor-cast-flow .error-text{fill:#ddd;stroke:#ddd;}#corridor-cast-flow .edge-thickness-normal{stroke-width:1px;}#corridor-cast-flow .edge-thickness-thick{stroke-width:3.5px;}#corridor-cast-flow .edge-pattern-solid{stroke-dasharray:0;}#corridor-cast-flow .edge-thickness-invisible{stroke-width:0;fill:none;}#corridor-cast-flow .edge-pattern-dashed{stroke-dasharray:3;}#corridor-cast-flow .edge-pattern-dotted{stroke-dasharray:2;}#corridor-cast-flow .marker{fill:lightgrey;stroke:lightgrey;}#corridor-cast-flow .marker.cross{stroke:lightgrey;}#corridor-cast-flow svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#corridor-cast-flow p{margin:0;}#corridor-cast-flow .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#ccc;}#corridor-cast-flow .cluster-label text{fill:#F9FFFE;}#corridor-cast-flow .cluster-label span{color:#F9FFFE;}#corridor-cast-flow .cluster-label span p{background-color:transparent;}#corridor-cast-flow .label text,#corridor-cast-flow span{fill:#ccc;color:#ccc;}#corridor-cast-flow .node rect,#corridor-cast-flow .node circle,#corridor-cast-flow .node ellipse,#corridor-cast-flow .node polygon,#corridor-cast-flow .node path{fill:#1f2020;stroke:#ccc;stroke-width:1px;}#corridor-cast-flow .rough-node .label text,#corridor-cast-flow .node .label text,#corridor-cast-flow .image-shape .label,#corridor-cast-flow .icon-shape .label{text-anchor:middle;}#corridor-cast-flow .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#corridor-cast-flow .rough-node .label,#corridor-cast-flow .node .label,#corridor-cast-flow .image-shape .label,#corridor-cast-flow .icon-shape .label{text-align:center;}#corridor-cast-flow .node.clickable{cursor:pointer;}#corridor-cast-flow .root .anchor path{fill:lightgrey!important;stroke-width:0;stroke:lightgrey;}#corridor-cast-flow .arrowheadPath{fill:lightgrey;}#corridor-cast-flow .edgePath .path{stroke:lightgrey;stroke-width:1px;}#corridor-cast-flow .flowchart-link{stroke:lightgrey;fill:none;}#corridor-cast-flow .edgeLabel{background-color:hsl(0, 0%, 34.4117647059%);text-align:center;}#corridor-cast-flow .edgeLabel p{background-color:hsl(0, 0%, 34.4117647059%);}#corridor-cast-flow .edgeLabel rect{opacity:0.5;background-color:hsl(0, 0%, 34.4117647059%);fill:hsl(0, 0%, 34.4117647059%);}#corridor-cast-flow .labelBkg{background-color:rgba(87.75, 87.75, 87.75, 0.5);}#corridor-cast-flow .cluster rect{fill:hsl(180, 1.5873015873%, 28.3529411765%);stroke:rgba(255, 255, 255, 0.25);stroke-width:1px;}#corridor-cast-flow .cluster text{fill:#F9FFFE;}#corridor-cast-flow .cluster span{color:#F9FFFE;}#corridor-cast-flow div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(20, 1.5873015873%, 12.3529411765%);border:1px solid rgba(255, 255, 255, 0.25);border-radius:2px;pointer-events:none;z-index:100;}#corridor-cast-flow .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#ccc;}#corridor-cast-flow rect.text{fill:none;stroke-width:0;}#corridor-cast-flow .icon-shape,#corridor-cast-flow .image-shape{background-color:hsl(0, 0%, 34.4117647059%);text-align:center;}#corridor-cast-flow .icon-shape p,#corridor-cast-flow .image-shape p{background-color:hsl(0, 0%, 34.4117647059%);padding:2px;}#corridor-cast-flow .icon-shape .label rect,#corridor-cast-flow .image-shape .label rect{opacity:0.5;background-color:hsl(0, 0%, 34.4117647059%);fill:hsl(0, 0%, 34.4117647059%);}#corridor-cast-flow .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#corridor-cast-flow .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#corridor-cast-flow .node .neo-node{stroke:#ccc;}#corridor-cast-flow [data-look="neo"].node rect,#corridor-cast-flow [data-look="neo"].cluster rect,#corridor-cast-flow [data-look="neo"].node polygon{stroke:url(#corridor-cast-flow-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#corridor-cast-flow [data-look="neo"].swimlane.cluster rect{filter:none;}#corridor-cast-flow [data-look="neo"].node path{stroke:url(#corridor-cast-flow-gradient);stroke-width:1px;}#corridor-cast-flow [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#corridor-cast-flow [data-look="neo"].node .neo-line path{stroke:#ccc;filter:none;}#corridor-cast-flow [data-look="neo"].node circle{stroke:url(#corridor-cast-flow-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#corridor-cast-flow [data-look="neo"].node circle .state-start{fill:#000000;}#corridor-cast-flow [data-look="neo"].icon-shape .icon{fill:url(#corridor-cast-flow-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#corridor-cast-flow [data-look="neo"].icon-shape .icon-neo path{stroke:url(#corridor-cast-flow-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#corridor-cast-flow :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="corridor-cast-flow_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-pointEnd-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="11.5" refY="7" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="14" orient="auto"><path d="M 0 0 L 11.5 7 L 0 14 z" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-pointStart-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="1" refY="7" markerUnits="userSpaceOnUse" markerWidth="11.5" markerHeight="14" orient="auto"><polygon points="0,7 11.5,14 11.5,0" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-circleEnd-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refY="5" refX="12.25" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-circleStart-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-2" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="corridor-cast-flow_flowchart-v2-crossEnd-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="17.7" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5;"/></marker><marker id="corridor-cast-flow_flowchart-v2-crossStart-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="-3.5" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5; stroke-dasharray: 1, 0;"/></marker><g class="root"><g class="clusters"><g class="cluster" id="corridor-cast-flow-play" data-look="classic"><rect style="" x="2162.859375" y="8" width="465.8125" height="228"/><g class="cluster-label" transform="translate(2364.140625, 8)"><foreignObject width="63.25" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="nodeLabel"><p>Playback</p></span></div></foreignObject></g></g><g class="cluster" id="corridor-cast-flow-pipe" data-look="classic"><rect style="" x="1242.359375" y="19" width="870.5" height="217"/><g class="cluster-label" transform="translate(1649.046875, 19)"><foreignObject width="57.125" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="nodeLabel"><p>Pipeline</p></span></div></foreignObject></g></g><g class="cluster" id="corridor-cast-flow-studio" data-look="classic"><rect style="" x="8" y="60" width="1184.359375" height="124"/><g class="cluster-label" transform="translate(547.9375, 60)"><foreignObject width="104.484375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="nodeLabel"><p>Podcast Studio</p></span></div></foreignObject></g></g></g><g class="edgePaths"><path d="M213.094,122L217.26,122C221.427,122,229.76,122,237.427,122C245.094,122,252.094,122,255.594,122L259.094,122" id="corridor-cast-flow-L_Day_Len_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Day_Len_0" data-points="W3sieCI6MjEzLjA5Mzc1LCJ5IjoxMjJ9LHsieCI6MjM4LjA5Mzc1LCJ5IjoxMjJ9LHsieCI6MjYzLjA5Mzc1LCJ5IjoxMjJ9XQ==" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M427.969,122L432.135,122C436.302,122,444.635,122,452.302,122C459.969,122,466.969,122,470.469,122L473.969,122" id="corridor-cast-flow-L_Len_Topics_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Len_Topics_0" data-points="W3sieCI6NDI3Ljk2ODc1LCJ5IjoxMjJ9LHsieCI6NDUyLjk2ODc1LCJ5IjoxMjJ9LHsieCI6NDc3Ljk2ODc1LCJ5IjoxMjJ9XQ==" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M728.703,122L732.87,122C737.036,122,745.37,122,753.036,122C760.703,122,767.703,122,771.203,122L774.703,122" id="corridor-cast-flow-L_Topics_Tone_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Topics_Tone_0" data-points="W3sieCI6NzI4LjcwMzEyNSwieSI6MTIyfSx7IngiOjc1My43MDMxMjUsInkiOjEyMn0seyJ4Ijo3NzguNzAzMTI1LCJ5IjoxMjJ9XQ==" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M945.391,122L949.557,122C953.724,122,962.057,122,969.724,122C977.391,122,984.391,122,987.891,122L991.391,122" id="corridor-cast-flow-L_Tone_Gen_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Tone_Gen_0" data-points="W3sieCI6OTQ1LjM5MDYyNSwieSI6MTIyfSx7IngiOjk3MC4zOTA2MjUsInkiOjEyMn0seyJ4Ijo5OTUuMzkwNjI1LCJ5IjoxMjJ9XQ==" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M1167.359,122L1171.526,122C1175.693,122,1184.026,122,1192.359,122C1200.693,122,1209.026,122,1217.359,122C1225.693,122,1234.026,122,1241.693,122C1249.359,122,1256.359,122,1259.859,122L1263.359,122" id="corridor-cast-flow-L_Gen_LLM_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Gen_LLM_0" data-points="W3sieCI6MTE2Ny4zNTkzNzUsInkiOjEyMn0seyJ4IjoxMTkyLjM1OTM3NSwieSI6MTIyfSx7IngiOjEyMTcuMzU5Mzc1LCJ5IjoxMjJ9LHsieCI6MTI0Mi4zNTkzNzUsInkiOjEyMn0seyJ4IjoxMjY3LjM1OTM3NSwieSI6MTIyfV0=" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M1471.797,122L1475.964,122C1480.13,122,1488.464,122,1496.13,122C1503.797,122,1510.797,122,1514.297,122L1517.797,122" id="corridor-cast-flow-L_LLM_CacheT_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_LLM_CacheT_0" data-points="W3sieCI6MTQ3MS43OTY4NzUsInkiOjEyMn0seyJ4IjoxNDk2Ljc5Njg3NSwieSI6MTIyfSx7IngiOjE1MjEuNzk2ODc1LCJ5IjoxMjJ9XQ==" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M1647.675,149L1655.633,153.167C1663.591,157.333,1679.506,165.667,1690.964,169.833C1702.422,174,1709.422,174,1712.922,174L1716.422,174" id="corridor-cast-flow-L_CacheT_TTS_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CacheT_TTS_0" data-points="W3sieCI6MTY0Ny42NzU0ODA3NjkyMzA3LCJ5IjoxNDl9LHsieCI6MTY5NS40MjE4NzUsInkiOjE3NH0seyJ4IjoxNzIwLjQyMTg3NSwieSI6MTc0fV0=" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M1890.453,174L1894.62,174C1898.786,174,1907.12,174,1914.786,174C1922.453,174,1929.453,174,1932.953,174L1936.453,174" id="corridor-cast-flow-L_TTS_CacheA_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_TTS_CacheA_0" data-points="W3sieCI6MTg5MC40NTMxMjUsInkiOjE3NH0seyJ4IjoxOTE1LjQ1MzEyNSwieSI6MTc0fSx7IngiOjE5NDAuNDUzMTI1LCJ5IjoxNzR9XQ==" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M2087.859,174L2092.026,174C2096.193,174,2104.526,174,2112.859,174C2121.193,174,2129.526,174,2137.859,174C2146.193,174,2154.526,174,2163.141,174C2171.755,174,2180.651,174,2185.099,174L2189.547,174" id="corridor-cast-flow-L_CacheA_Queue_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CacheA_Queue_0" data-points="W3sieCI6MjA4Ny44NTkzNzUsInkiOjE3NH0seyJ4IjoyMTEyLjg1OTM3NSwieSI6MTc0fSx7IngiOjIxMzcuODU5Mzc1LCJ5IjoxNzR9LHsieCI6MjE2Mi44NTkzNzUsInkiOjE3NH0seyJ4IjoyMTkzLjU0Njg3NSwieSI6MTc0fV0=" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M2365.156,174L2370.271,174C2375.385,174,2385.615,174,2394.229,174C2402.844,174,2409.844,174,2413.344,174L2416.844,174" id="corridor-cast-flow-L_Queue_Drive_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Queue_Drive_0" data-points="W3sieCI6MjM2NS4xNTYyNSwieSI6MTc0fSx7IngiOjIzOTUuODQzNzUsInkiOjE3NH0seyJ4IjoyNDIwLjg0Mzc1LCJ5IjoxNzR9XQ==" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/><path d="M1647.675,95L1655.633,90.833C1663.591,86.667,1679.506,78.333,1705.8,74.167C1732.094,70,1768.766,70,1805.438,70C1842.109,70,1878.781,70,1913.568,70C1948.354,70,1981.255,70,2014.156,70C2047.057,70,2079.958,70,2100.576,70C2121.193,70,2129.526,70,2137.859,70C2146.193,70,2154.526,70,2162.193,70C2169.859,70,2176.859,70,2180.359,70L2183.859,70" id="corridor-cast-flow-L_CacheT_Ribbon_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CacheT_Ribbon_0" data-points="W3sieCI6MTY0Ny42NzU0ODA3NjkyMzA3LCJ5Ijo5NX0seyJ4IjoxNjk1LjQyMTg3NSwieSI6NzB9LHsieCI6MTgwNS40Mzc1LCJ5Ijo3MH0seyJ4IjoxOTE1LjQ1MzEyNSwieSI6NzB9LHsieCI6MjAxNC4xNTYyNSwieSI6NzB9LHsieCI6MjExMi44NTkzNzUsInkiOjcwfSx7IngiOjIxMzcuODU5Mzc1LCJ5Ijo3MH0seyJ4IjoyMTYyLjg1OTM3NSwieSI6NzB9LHsieCI6MjE4Ny44NTkzNzUsInkiOjcwfV0=" data-look="classic" marker-end="url(#corridor-cast-flow_flowchart-v2-pointEnd)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_Day_Len_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_Len_Topics_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_Topics_Tone_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_Tone_Gen_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_Gen_LLM_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_LLM_CacheT_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_CacheT_TTS_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_TTS_CacheA_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_CacheA_Queue_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_Queue_Drive_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_CacheT_Ribbon_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default" id="corridor-cast-flow-flowchart-Day-0" data-look="classic" transform="translate(123.046875, 122)"><rect class="basic label-container" style="" x="-90.046875" y="-27" width="180.09375" height="54"/><g class="label" style="" transform="translate(-60.046875, -12)"><rect/><foreignObject width="120.09375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Select day or leg</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-Len-1" data-look="classic" transform="translate(345.53125, 122)"><rect class="basic label-container" style="" x="-82.4375" y="-27" width="164.875" height="54"/><g class="label" style="" transform="translate(-52.4375, -12)"><rect/><foreignObject width="104.875" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Episode length</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-Topics-2" data-look="classic" transform="translate(603.3359375, 122)"><rect class="basic label-container" style="" x="-125.3671875" y="-27" width="250.734375" height="54"/><g class="label" style="" transform="translate(-95.3671875, -12)"><rect/><foreignObject width="190.734375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Topic tiles and checkboxes</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-Tone-3" data-look="classic" transform="translate(862.046875, 122)"><rect class="basic label-container" style="" x="-83.34375" y="-27" width="166.6875" height="54"/><g class="label" style="" transform="translate(-53.34375, -12)"><rect/><foreignObject width="106.6875" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Tone and voice</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-Gen-4" data-look="classic" transform="translate(1081.375, 122)"><rect class="basic label-container" style="" x="-85.984375" y="-27" width="171.96875" height="54"/><g class="label" style="" transform="translate(-55.984375, -12)"><rect/><foreignObject width="111.96875" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Generate script</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-LLM-5" data-look="classic" transform="translate(1369.578125, 122)"><rect class="basic label-container" style="" x="-102.21875" y="-27" width="204.4375" height="54"/><g class="label" style="" transform="translate(-72.21875, -12)"><rect/><foreignObject width="144.4375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>LLM script segments</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-CacheT-6" data-look="classic" transform="translate(1596.109375, 122)"><rect class="basic label-container" style="" x="-74.3125" y="-27" width="148.625" height="54"/><g class="label" style="" transform="translate(-44.3125, -12)"><rect/><foreignObject width="88.625" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Cache script</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-TTS-7" data-look="classic" transform="translate(1805.4375, 174)"><rect class="basic label-container" style="" x="-85.015625" y="-27" width="170.03125" height="54"/><g class="label" style="" transform="translate(-55.015625, -12)"><rect/><foreignObject width="110.03125" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>ElevenLabs TTS</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-CacheA-8" data-look="classic" transform="translate(2014.15625, 174)"><rect class="basic label-container" style="" x="-73.703125" y="-27" width="147.40625" height="54"/><g class="label" style="" transform="translate(-43.703125, -12)"><rect/><foreignObject width="87.40625" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Cache audio</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-Ribbon-9" data-look="classic" transform="translate(2279.3515625, 70)"><rect class="basic label-container" style="" x="-91.4921875" y="-27" width="182.984375" height="54"/><g class="label" style="" transform="translate(-61.4921875, -12)"><rect/><foreignObject width="122.984375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Plan ribbon chips</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-Drive-10" data-look="classic" transform="translate(2512.2578125, 174)"><rect class="basic label-container" style="" x="-91.4140625" y="-27" width="182.828125" height="54"/><g class="label" style="" transform="translate(-61.4140625, -12)"><rect/><foreignObject width="122.828125" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Drive mini player</p></span></div></foreignObject></g></g><g class="node default" id="corridor-cast-flow-flowchart-Queue-11" data-look="classic" transform="translate(2279.3515625, 174)"><rect class="basic label-container" style="" x="-85.8046875" y="-27" width="171.609375" height="54"/><g class="label" style="" transform="translate(-55.8046875, -12)"><rect/><foreignObject width="111.609375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Episode playlist</p></span></div></foreignObject></g></g></g></g></g><defs><filter id="corridor-cast-flow-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#FFFFFF"/></filter></defs><defs><filter id="corridor-cast-flow-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#FFFFFF"/></filter></defs><linearGradient id="corridor-cast-flow-gradient" gradientUnits="objectBoundingBox" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#cccccc" stop-opacity="1"/><stop offset="100%" stop-color="hsl(180, 0%, 18.3529411765%)" stop-opacity="1"/></linearGradient></svg>
+    <figcaption>Studio → LLM script → optional ElevenLabs → ribbon + drive player</figcaption>
+  </figure>
+  <details class="mermaid-source">
+    <summary>Mermaid source</summary>
+    <pre>flowchart LR
+  subgraph studio [Podcast Studio]
+    Day[Select day or leg]
+    Len[Episode length]
+    Topics[Topic tiles and checkboxes]
+    Tone[Tone and voice]
+    Gen[Generate script]
+  end
+  subgraph pipe [Pipeline]
+    LLM[LLM script segments]
+    CacheT[Cache script]
+    TTS[ElevenLabs TTS]
+    CacheA[Cache audio]
+  end
+  subgraph play [Playback]
+    Ribbon[Plan ribbon chips]
+    Drive[Drive mini player]
+    Queue[Episode playlist]
+  end
+  Day --> Len --> Topics --> Tone --> Gen
+  Gen --> LLM --> CacheT --> TTS --> CacheA
+  CacheA --> Queue --> Drive
+  CacheT --> Ribbon</pre>
+  </details>
+
+  <h3>Principles</h3>
+  <ul>
+    <li><strong>Plan is context, not content.</strong> Trip days, legs, highways, overnight names feed the prompt.</li>
+    <li><strong>Text is source of truth;</strong> audio is a render of script segments.</li>
+    <li><strong>Generate on user action;</strong> cache aggressively; never pre-render a whole trip.</li>
+    <li><strong>Chat-primary still holds:</strong> co-pilot can open Studio prefilled or “make a cast for tomorrow.”</li>
+  </ul>
+
+  <h2>1. Podcast Generation Studio</h2>
+  <p>
+    Full-screen sheet (mobile) or right rail / modal (web). Entry points:
+  </p>
+  <ul>
+    <li>Plan ribbon day card → <code>🎙 Corridor Cast</code></li>
+    <li>Leg overflow → <code>About this drive (audio)</code></li>
+    <li>Chat: “make a podcast for the death march” → Studio with day 23 preselected</li>
+    <li>Drive screen (parked only): <code>Prep today’s cast</code></li>
+  </ul>
+
+  <h3>Studio layout (wireframe)</h3>
+  <div class="studio">
+    <div class="studio-bar">
+      <div>
+        <div style="font:700 1rem var(--display);">Corridor Cast Studio</div>
+        <div style="color:var(--muted);font-size:.8rem;">Thu 24 · Zion full day → Bryce · or pick another day</div>
+      </div>
+      <span class="onair">Studio</span>
+    </div>
+    <div class="studio-grid">
+      <div class="panel">
+        <h5>1 · Scope</h5>
+        <div class="chip-row">
+          <span class="chip on">This day</span>
+          <span class="chip">This leg only</span>
+          <span class="chip">Whole trip montage</span>
+        </div>
+        <p style="margin:.65rem 0 0;font-size:.8rem;color:var(--muted);">
+          Context: intent play · sleep Bryce · highways UT-9 · US-89 · UT-12
+        </p>
+      </div>
+      <div class="panel">
+        <h5>2 · Episode length</h5>
+        <div class="len-track">
+          <div class="len-opt"><b>5</b>min<br>Snack</div>
+          <div class="len-opt on"><b>15</b>min<br>Standard</div>
+          <div class="len-opt"><b>30</b>min<br>Long haul</div>
+          <div class="len-opt"><b>45</b>min<br>Deep</div>
+        </div>
+        <p style="margin:.5rem 0 0;font-size:.75rem;color:var(--muted);">
+          Maps to segment count + words/segment (see table below)
+        </p>
+      </div>
+      <div class="panel" style="grid-column:1/-1;">
+        <h5>3 · Cover these topics</h5>
+        <div class="tile-grid">
+          <div class="tile sel"><span class="box"></span><span>Highways &amp; roads<small>I-15, UT-9 history &amp; role</small></span></div>
+          <div class="tile sel"><span class="box"></span><span>Towns &amp; gateways<small>Hurricane, Springdale stage</small></span></div>
+          <div class="tile sel"><span class="box"></span><span>Parks &amp; land<small>Zion canyon culture</small></span></div>
+          <div class="tile"><span class="box"></span><span>Geology &amp; landscape<small>Sandstone, plateaus</small></span></div>
+          <div class="tile sel"><span class="box"></span><span>Van &amp; logistics<small>Heat, shuttle, leave-by</small></span></div>
+          <div class="tile"><span class="box"></span><span>People &amp; culture<small>Indigenous, settler, tourism</small></span></div>
+          <div class="tile"><span class="box"></span><span>Food &amp; service stops<small>Where vans actually stop</small></span></div>
+          <div class="tile"><span class="box"></span><span>Wildlife &amp; climate<small>July heat, monsoon risk</small></span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h5>4 · Tone</h5>
+        <div class="chip-row">
+          <span class="chip on">Command dense</span>
+          <span class="chip">Warm host</span>
+          <span class="chip">Kid-friendly</span>
+          <span class="chip">Deadpan</span>
+        </div>
+      </div>
+      <div class="panel">
+        <h5>5 · Voice (ElevenLabs)</h5>
+        <div class="chip-row">
+          <span class="chip on">Sortie Guide</span>
+          <span class="chip">Alt A</span>
+          <span class="chip">Alt B</span>
+        </div>
+        <p style="margin:.5rem 0 0;font-size:.75rem;color:var(--muted);">P0: single preset voice ID in env</p>
+      </div>
+    </div>
+    <div class="cta">
+      <span class="btn">Generate script</span>
+      <span class="btn ghost">Generate + speak</span>
+      <div class="vu" title="cost meter"><i></i></div>
+      <span style="font:600 .75rem var(--display);color:var(--muted);">est. ~15 min · 5 segs · TTS on play</span>
+    </div>
+  </div>
+
+  <h3>Studio sections (detail)</h3>
+  <table>
+    <thead><tr><th>Section</th><th>Control</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Scope</strong></td>
+        <td>Day / single leg / multi-day montage</td>
+        <td>Loads trip_day + legs + overnight + highway labels into context pack</td>
+      </tr>
+      <tr>
+        <td><strong>Episode length</strong></td>
+        <td>5 / 15 / 30 / 45 min (custom advanced)</td>
+        <td>Sets target spoken minutes → segment budget for LLM</td>
+      </tr>
+      <tr>
+        <td><strong>Topic tiles</strong></td>
+        <td>Multi-select checkboxes (see catalog)</td>
+        <td>Default selection from heuristic + area; user overrides</td>
+      </tr>
+      <tr>
+        <td><strong>Emphasis</strong></td>
+        <td>Optional “must mention” free text</td>
+        <td>“Sister birthday tomorrow”, “death march no Vegas”</td>
+      </tr>
+      <tr>
+        <td><strong>Tone</strong></td>
+        <td>Chip set</td>
+        <td>Prompt style adapter</td>
+      </tr>
+      <tr>
+        <td><strong>Voice</strong></td>
+        <td>ElevenLabs voice preset</td>
+        <td>Used only when Speak / Generate+speak</td>
+      </tr>
+      <tr>
+        <td><strong>Actions</strong></td>
+        <td>Generate script · Generate+speak · Regenerate · Edit script</td>
+        <td>Speak can be deferred until Play (cheaper)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Tiles the user sees</h2>
+  <p>Two tile systems: <strong>topic tiles</strong> (studio inputs) and <strong>episode segment tiles</strong> (outputs on ribbon / playlist).</p>
+
+  <h3>2.1 Topic tiles (studio checkboxes)</h3>
+  <p>Fixed catalog; availability and defaults depend on <strong>area signals</strong> from the day/leg.</p>
+  <table class="topic-table">
+    <thead><tr><th>Tile id</th><th>Label</th><th>When offered / default on</th></tr></thead>
+    <tbody>
+      <tr><td><code>highways</code></td><td>Highways &amp; roads</td><td>Always if any highway labels; default <strong>on</strong> for drive days</td></tr>
+      <tr><td><code>towns</code></td><td>Towns &amp; gateways</td><td>If overnight / waypoints named; default on</td></tr>
+      <tr><td><code>parks</code></td><td>Parks &amp; public land</td><td>If near NPS/USFS/BLM keywords or play intent; default on for play days</td></tr>
+      <tr><td><code>geology</code></td><td>Geology &amp; landscape</td><td>Offered in mountain/desert corridors; default on for Zion/Bryce-like days</td></tr>
+      <tr><td><code>van_logistics</code></td><td>Van &amp; logistics</td><td>Always; default <strong>on</strong> (Sortie differentiator)</td></tr>
+      <tr><td><code>culture</code></td><td>People &amp; culture</td><td>Offered always; default off (opt-in depth)</td></tr>
+      <tr><td><code>food_service</code></td><td>Food &amp; service stops</td><td>Default on for long drive days</td></tr>
+      <tr><td><code>wildlife_climate</code></td><td>Wildlife &amp; climate</td><td>Seasonal default on in summer heat corridors</td></tr>
+      <tr><td><code>engineering</code></td><td>Engineering marvels</td><td>If tunnel/pass/dam/interstate in context (Hetch Hetchy, Zion tunnel, I-70)</td></tr>
+      <tr><td><code>history_deep</code></td><td>Deeper history</td><td>Always available; default off unless length ≥ 30m</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Area → default tile matrix (examples)</h4>
+  <table>
+    <thead><tr><th>Day type / area</th><th>Default selected tiles</th></tr></thead>
+    <tbody>
+      <tr><td>Death march (Yosemite → Hurricane)</td><td>highways, towns, van_logistics, food_service, wildlife_climate</td></tr>
+      <tr><td>Zion play day</td><td>parks, geology, towns, van_logistics, culture (opt)</td></tr>
+      <tr><td>Bryce morning + I-70</td><td>parks, geology, highways, van_logistics</td></tr>
+      <tr><td>Birthday Denver event day</td><td>towns, culture, van_logistics (light); parks off</td></tr>
+      <tr><td>I-80 plains (North Platte)</td><td>highways, towns, history_deep, food_service, van_logistics</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Heuristic inputs: <code>day.intent</code>, overnight name, title/hero text, highway list on leg,
+    coarse region tags if geocoder available (optional P1). Missing signals → show full catalog with safe defaults (highways + van_logistics).
+  </p>
+
+  <h3>2.2 Segment tiles (episode playlist)</h3>
+  <p>After generation, studio shows an ordered list of segment tiles:</p>
+  <div class="card">
+    <div class="tile-grid" style="grid-template-columns:1fr;">
+      <div class="tile sel" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span>1 · Leaving the foothills</span>
+          <span style="color:var(--muted);font-size:.75rem;">~3 min · ▶</span>
+        </div>
+        <small>Topics: highways, van_logistics · status: script ready</small>
+      </div>
+      <div class="tile" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span>2 · Central Valley on 99</span>
+          <span style="color:var(--muted);font-size:.75rem;">~3 min · ○</span>
+        </div>
+        <small>Topics: highways, food_service · TTS not rendered yet</small>
+      </div>
+    </div>
+  </div>
+  <p>Each segment tile actions: Play (triggers TTS if needed), Regenerate segment, Edit text, Skip in playlist, Pin to ribbon.</p>
+
+  <h3>2.3 Ribbon chips (ambient)</h3>
+  <div class="ribbon-mock">
+    <div class="day">
+      <div class="d">23</div>
+      <div>
+        <strong>→ drive</strong> · Hetchy → Hurricane · death march
+        <div class="chips chip-row">
+          <span class="chip on">🎙 Cast ready · 15m</span>
+          <span class="chip">CA-99</span>
+          <span class="chip">I-15</span>
+          <span class="chip">Hurricane ⓘ</span>
+        </div>
+      </div>
+    </div>
+    <div class="day">
+      <div class="d">24</div>
+      <div>
+        <strong>▲ play</strong> · Zion · sleep Bryce
+        <div class="chips chip-row">
+          <span class="chip">🎙 Studio</span>
+          <span class="chip">Zion</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>3. Episode length</h2>
+  <table>
+    <thead><tr><th>Preset</th><th>Target spoken</th><th>Segments</th><th>~Words / seg</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Snack</strong></td><td>5 min</td><td>2–3</td><td>120–150</td><td>Town intro, single highway</td></tr>
+      <tr><td><strong>Standard</strong> (default)</td><td>15 min</td><td>4–6</td><td>130–160</td><td>Most drive days</td></tr>
+      <tr><td><strong>Long haul</strong></td><td>30 min</td><td>8–10</td><td>130–160</td><td>Death march, I-80 day</td></tr>
+      <tr><td><strong>Deep</strong></td><td>45 min</td><td>12–14</td><td>130–160</td><td>Opt-in; cost warning</td></tr>
+      <tr><td>Custom</td><td>3–60 min</td><td>derived</td><td>cap hard</td><td>Advanced disclosure</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>UI shows <strong>estimated TTS cost band</strong> (low / med / high) from length × voice.</li>
+    <li>Default path: generate <em>script only</em>; TTS per segment on first Play (cheaper, snappier studio).</li>
+    <li><code>Generate + speak all</code> available with confirm for 30m+.</li>
+    <li>Hard caps: max chars per segment; max segments per episode; server rate limit per trip/day.</li>
+  </ul>
+
+  <h2>4. Topic checkboxes &amp; prompt packing</h2>
+  <p>Selected tile ids become a structured field in the generation request:</p>
+  <pre><code>CorridorCastGenerateInput {
+  tripId: string
+  scope: { type: "day" | "leg" | "range"; dayDate?: string; legKey?: string; untilDate?: string }
+  lengthPreset: "snack" | "standard" | "long" | "deep" | "custom"
+  targetMinutes?: number
+  topics: Array&lt;
+    "highways" | "towns" | "parks" | "geology" | "van_logistics" |
+    "culture" | "food_service" | "wildlife_climate" | "engineering" | "history_deep"
+  &gt;
+  tone: "command" | "warm" | "kid" | "deadpan"
+  mustMention?: string
+  voiceId?: string
+  speakNow?: boolean
+}</code></pre>
+
+  <h3>Context pack (server-built, not user-edited)</h3>
+  <ul>
+    <li>Day intent, title, hero, cutIfBehind, overnight</li>
+    <li>Ordered place names / waypoints if known</li>
+    <li>Highway labels on the leg(s)</li>
+    <li>Anchors that day or next (birthday, reservations)</li>
+    <li>Season / month for climate framing</li>
+  </ul>
+
+  <h3>LLM output schema</h3>
+  <pre><code>CorridorCastEpisode {
+  id, title, targetMinutes, topics[],
+  segments: [{
+    id, order, title,
+    topics: string[],      // subset
+    script: string,        // spoken prose
+    approxSeconds: number,
+    vanNotes?: string[]    // UI only, not spoken unless tone includes
+  }],
+  disclaimers: string[]    // e.g. verify gate hours
+}</code></pre>
+  <p>Prompt rules: short sentences; no fabricated hours/fees/closures; prefer landscape + human story + van tips; respect selected topics only; fill length budget without padding fluff.</p>
+
+  <h2>5. Playback surfaces</h2>
+  <table>
+    <thead><tr><th>Surface</th><th>Controls</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Studio playlist</td><td>Play / next / edit</td><td>Full power</td></tr>
+      <tr><td>Ribbon chip</td><td>Open cast / play</td><td>Passenger + parked</td></tr>
+      <tr><td>Drive mini player</td><td>Play pause next title only</td><td>Glanceable; no script UI</td></tr>
+      <tr><td>Chat</td><td>Card with Play</td><td>Same episode object</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    <strong>Safety:</strong> Do not auto-start audio on navigation start. Require explicit Play.
+    Background audio OK with Maps in foreground (iOS audio session). No lore essay while speed &gt; threshold unless already playing.
+  </div>
+
+  <h2>6. ElevenLabs integration</h2>
+  <ul>
+    <li><code>cast.speakSegment({ episodeId, segmentId, voiceId })</code> → audio URL</li>
+    <li>Cache key: <code>hash(script + voiceId + model)</code></li>
+    <li>Storage: existing <code>@sortey/storage</code> / R2 object; signed URL to clients</li>
+    <li>Env: <code>ELEVENLABS_API_KEY</code>, <code>ELEVENLABS_VOICE_ID_DEFAULT</code></li>
+    <li>Failure: fall back to text-only; show toast “script ready, voice unavailable”</li>
+  </ul>
+
+  <h2>7. Caching &amp; data (minimal)</h2>
+  <table>
+    <thead><tr><th>Store</th><th>Contents</th><th>P0?</th></tr></thead>
+    <tbody>
+      <tr><td><code>corridor_cast_episode</code></td><td>tripId, scope, options json, episode json, createdAt</td><td>Yes</td></tr>
+      <tr><td><code>corridor_cast_audio</code></td><td>segment hash, storage key, durationSec</td><td>Yes</td></tr>
+      <tr><td>Editorial entity table</td><td>—</td><td><strong>No</strong></td></tr>
+    </tbody>
+  </table>
+  <p>Optional later: promote popular global scripts (e.g. “I-15”) to shared cache — still LLM-origin, not hand-authored CMS.</p>
+
+  <h2>8. API surface (tRPC sketch)</h2>
+  <pre><code>cast.suggestTopics({ tripId, dayDate }) → { tiles: {id, label, defaultOn, reason}[] }
+cast.generate(CorridorCastGenerateInput) → CorridorCastEpisode
+cast.getEpisode({ episodeId })
+cast.listForTrip({ tripId })
+cast.speakSegment({ episodeId, segmentId, voiceId? }) → { audioUrl, durationSec }
+cast.updateSegmentScript({ episodeId, segmentId, script }) // invalidates audio hash
+cast.attachToDay({ episodeId, dayDate }) // ribbon chip</code></pre>
+  <p>All <code>tripProcedure</code>; cost/rate limited; no cross-workspace audio.</p>
+
+  <h2>9. Phases &amp; tasks</h2>
+  <ul class="timeline">
+    <li class="active"><b>Phase 0 (rev 2) — Tonight's Episode</b> — one-tap grounded generate → render → offline web playback; airplane-mode test</li>
+    <li><b>Phase 1 — Studio chrome</b> — length presets, topic tiles, tone, ribbon chips, smart defaults, chat entry</li>
+    <li><b>Phase 2 — Native + drive</b> — expo-audio rebuild post-trip, drive mini player, GPS chapter hooks</li>
+    <li><b>Phase 3 — Playlist polish</b> — multi-day montage, skip/reorder, passenger mode</li>
+    <li><b>Phase 4 — Optional tools</b> — light web verify for facts; full-trip offline pack</li>
+  </ul>
+
+  <h3>Phase 0 (rev 3) — Tonight's Episode <span class="badge p0">P0</span></h3>
+  <p>One tap the evening before; 15/30 length toggle; everything else defaulted. “Tomorrow” = next trip day in the trip's local timezone (<strong>pre-dogfood: verify the live trip row's <code>tz</code> isn't the <code>'UTC'</code> default, and render the resolved target date on the button</strong>); button hidden when the day has no segment WITH route geometry; server-side <code>ON CONFLICT</code> guarantees one active job per (tripId, date). Effort M (2–3 focused days after the eng-review scope cuts — no Queues, no service worker).</p>
+  <p><em>Rev 3 (2026-07-25, /plan-eng-review, 17 findings folded): job execution reuses the existing <code>*/5</code> cron <code>scheduled()</code> handler as a claim-with-lease pump (NOT Cloudflare Queues); offline guarantee is <strong>Download MP3</strong> with IndexedDB blob playback best-effort (NOT a Range/206 service worker — precache SW deferred to P1, see TODOS.md); R2 access via <code>getR2Bucket()</code> from <code>@sortey/db/runtime</code> under a <code>cast/</code> prefix in <code>sortie-receipts</code> (<code>@sortey/storage</code> is UploadThing-only — doc's original pointer was wrong); <code>extract-structured.ts</code> generalizes from <code>ocr/</code> to <code>llm/</code> (it's vision-only with <code>max_tokens: 4096</code> today; script generates outline-then-per-segment); <strong>two-tier grounding honesty</strong> — operational facts grounded and verified, documentary color hedged model-knowledge; night-before ritual gains a <strong>read-the-script gate before TTS spend</strong> (the P0 quality check — eval deferred to P1); per-segment R2 cost checkpoints so retries never re-bill; <code>ELEVENLABS_*</code> keys must join <code>SECRET_KEYS</code> in <code>worker/index.ts</code>. Full spec: approved design doc <code>mackieg-detached-b17b8ae-design-20260723-113903.md</code> (ENG CLEARED, no unresolved decisions).</em></p>
+  <table>
+    <thead><tr><th>Task</th><th>Files (indicative)</th><th>Verification</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Context pack: trip_day + legs + anchors + <code>corridor.ts</code> POI results (grounding)</td>
+        <td><code>packages/api/src/cast/context.ts</code></td>
+        <td>Fixture day 23 pack includes real POIs; prompt requires source-backed claims</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td><code>cast.generate</code> (tripProcedure) + zod episode schema + Anthropic script</td>
+        <td><code>packages/api/src/router/cast.ts</code>, prompt module (reuse <code>ocr/claude-extractor.ts</code> client pattern)</td>
+        <td>Day-23 generate returns 4–6 segments, ~130–160 words/spoken-min</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td><strong>(Rev 3)</strong> Cron pump in the existing empty <code>scheduled()</code> handler: atomic claim-with-lease (<code>UPDATE…RETURNING</code>, <code>claimed_at</code>, stale reclaim &gt;20m), voluntary checkpoint-and-release before the 15-min wall clock, wrapped in <code>runWithDatabaseRuntime</code></td>
+        <td><code>apps/nextjs/worker/index.ts</code>, <code>cast/job.ts</code></td>
+        <td>Two overlapping pumps process a job exactly once; killed run resumes ≤5 min later; no-op tick doesn't throw</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Per-segment ElevenLabs TTS (char limits force it) with <strong>(Rev 3)</strong> per-segment R2 temp checkpoints (hash-keyed; retries never re-bill; cleanup on success AND terminal failure) → 128kbps CBR streaming concat, strip non-first ID3/Xing, validate duration; offsets from actual audio written back to script JSON</td>
+        <td><code>cast/tts.ts</code>, <code>cast/concat.ts</code></td>
+        <td>Retry after seg-8 failure skips segs 1–7; concatenated MP3 reports correct duration; seek accurate</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Persist: <code>corridor_cast_episode</code> (script JSON, params, status, error, cost; keyed to day via tripId+date, <strong>(Rev 3)</strong> unique-active-job constraint) + <code>corridor_cast_audio</code> (R2 key, hash(script+voice+model), immutable rows; regenerate = new row); R2 via <code>getR2Bucket()</code> (<code>@sortey/db/runtime</code>), <code>cast/</code> prefix in <code>sortie-receipts</code></td>
+        <td>schema migration + <code>packages/db</code> runtime</td>
+        <td>Re-fetch by id; regenerate creates new audio row; double-tap/two-tab enqueue yields one job</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Web player: seek, segment titles, speed, <strong>Download MP3</strong>; episode list w/ status, cost, retry under the button</td>
+        <td>nextjs trip view components</td>
+        <td>Manual: generate, play, download</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td><strong>(Rev 3 — replaces the service worker)</strong> Download-first offline: authed Worker route streams MP3 from R2 (no signed URLs — none exist); <strong>Download MP3</strong> to Files is the P0 guarantee; IndexedDB blob + <code>URL.createObjectURL</code> powers best-effort in-app playback with native seek (no Range/206 handling); “Downloaded” state after both; precache SW deferred to P1 (TODOS.md)</td>
+        <td>player components, audio route, IndexedDB store</td>
+        <td><strong>Airplane-mode test:</strong> generate on Wi-Fi tonight, read script, render, Download to Files; play + seek full episode offline tomorrow from Files (in-app playback passing too = bonus)</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Phase 1 — Studio shell + chrome <span class="badge p1">P1 (was P0)</span></h3>
+  <p><em>Re-sliced 2026-07-23: the context/generate/persist rows below are delivered by Phase 0 (rev 2) above; what remains of this phase is the Studio surface itself — tiles, presets, tone, ribbon chip — plus <code>topics.ts</code>/<code>budget.ts</code> as proper modules.</em></p>
+  <table>
+    <thead><tr><th>Task</th><th>Files (indicative)</th><th>Verification</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Topic catalog + default heuristics pure module</td>
+        <td><code>packages/api/src/cast/topics.ts</code></td>
+        <td>Unit tests: Zion play vs death-march defaults</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Length → segment budget helper</td>
+        <td><code>packages/api/src/cast/budget.ts</code></td>
+        <td>5/15/30/45 map to segment counts</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Context pack from trip_day + legs</td>
+        <td><code>packages/api/src/cast/context.ts</code></td>
+        <td>Fixture trip 22–28 builds non-empty pack</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td><code>cast.generate</code> + zod episode schema + LLM</td>
+        <td><code>packages/api/src/router/cast.ts</code>, prompt module</td>
+        <td>Generate for day 23 returns 4–6 segments</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Persist episode rows</td>
+        <td>schema migration <code>corridor_cast_episode</code></td>
+        <td>Re-fetch episode by id</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Studio UI: scope, length, topic tiles, tone, generate</td>
+        <td>web + expo cast studio components</td>
+        <td>Manual: toggle tiles, generate, see playlist</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Ribbon chip “Cast” / “Studio”</td>
+        <td>day-plan strip / triptik</td>
+        <td>Chip opens studio with day prefilled</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Phase 2 — Native playback &amp; drive mode <span class="badge p2">P2 (was P1)</span></h3>
+  <p><em>Re-sliced: TTS client + audio cache moved into Phase 0 (rev 2). Remaining here: native expo-audio player (post-trip rebuild), drive mini player, cost-confirm modal.</em></p>
+  <table>
+    <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>TTS client + audio cache table/storage</td>
+        <td><code>cast/tts.ts</code>, storage adapter</td>
+        <td>Second speak is cache hit</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td><code>cast.speakSegment</code></td>
+        <td>router</td>
+        <td>Returns playable URL</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Player: studio + drive mini</td>
+        <td>expo-av / web audio</td>
+        <td>Background play with Maps (device)</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Cost confirm for Generate+speak all ≥30m</td>
+        <td>studio UI</td>
+        <td>Confirm modal shown</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Smart defaults &amp; chat <span class="badge p1">P1</span></h3>
+  <p><em>Re-sliced: Wi-Fi prefetch is now core Phase 0 (rev 2) behavior, not a smart default.</em></p>
+  <table>
+    <thead><tr><th>Task</th><th>Files</th><th>Verification</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>cast.suggestTopics</code> richer region tagging</td>
+        <td>topics.ts</td>
+        <td>Bryce day suggests geology+parks</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Copilot: open studio / generate from chat</td>
+        <td>copilot steer + cast</td>
+        <td>“podcast for tomorrow” creates episode</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+      <tr>
+        <td>Prefetch next segment audio on Wi-Fi</td>
+        <td>client player</td>
+        <td>Network logs show prefetch only on Wi-Fi</td>
+        <td><span class="badge todo">todo</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>10. Dogfood scenario (this trip)</h2>
+  <table>
+    <thead><tr><th>Day</th><th>Studio defaults</th><th>Length</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>23 death march</td><td>highways, towns, van, food, climate</td><td>30m long haul</td><td>Primary dogfood cast</td></tr>
+      <tr><td>24 Zion</td><td>parks, geology, van, towns</td><td>15m</td><td>Morning generate day before</td></tr>
+      <tr><td>25 Bryce→GJ</td><td>parks, highways, van</td><td>15m</td><td>Two-part: Bryce then I-70</td></tr>
+      <tr><td>26 birthday</td><td>towns, culture light, van</td><td>5–15m</td><td>Optional; social day</td></tr>
+      <tr><td>27–28 I-80</td><td>highways, towns, history_deep, food</td><td>15–30m</td><td>Plains cast</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Risks &amp; mitigations</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Hallucinated history on audio</td><td><strong>Ground prompts</strong> with route data + corridor POI results + day anchors; require source-backed claims (rev 2); disclaimers; short scripts; audit criterion: &gt;5% hallucinated claims across 20 episodes = premise falsified</td></tr>
+      <tr><td>Job outgrows a single Worker request (multi-min LLM+TTS, 15–30&nbsp;MB artifact)</td><td>CF Queues consumer with per-step checkpoints; hetzner render service as named fallback; validate Queues limits on build day 1</td></tr>
+      <tr><td>Offline playback fails on the drive</td><td>SW cache keyed by episode id (not expiring signed URL); 206 Range handling; no auth at playback; Download MP3 as primary reliability fallback; night-before ritual: keep player open until “Downloaded” shows</td></tr>
+      <tr><td>TTS cost blowup</td><td>Play-gated TTS; length caps; confirm 30m+; cache by script hash</td></tr>
+      <tr><td>Driver distraction</td><td>No autoplay; drive UI is controls only</td></tr>
+      <tr><td>Empty context (no highways)</td><td>Topic tiles still work; prompt uses overnight + title + region</td></tr>
+      <tr><td>Latency on generate</td><td>Streaming status “writing segment 2/6…”; don’t block whole app</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Verification</h2>
+  <ul>
+    <li><strong>Airplane-mode test (primary):</strong> generate over Wi-Fi tonight, confirm “Downloaded — ready offline,” play the full episode uninterrupted tomorrow in airplane mode — including seeking mid-episode</li>
+    <li>Dogfood ≥2 episodes on real remaining trip days (I-70/I-80); zero hallucinated route-critical facts noticed</li>
+    <li>Per-episode cost visible and ≤ ~$5 (30-min ceiling); failures surfaced and retryable, never silent</li>
+    <li>Unit: context pack grounding, schema parse, concat duration validation</li>
+    <li>Integration: generate episode for fixture trip day; persist; reload; regenerate creates new audio row</li>
+    <li>Safety: confirm audio does not start on drive mode enter</li>
+  </ul>
+
+  <h2>Open questions</h2>
+  <ol>
+    <li>Single global ElevenLabs voice only for launch, or per-workspace voice picker in P1?</li>
+    <li>Should chat co-pilot auto-suggest “Generate cast for tomorrow?” each evening?</li>
+    <li>Montage across days: P0 out of scope — confirm.</li>
+    <li>Kid-friendly tone: hard filter on topics (no fatal history?) — policy needed.</li>
+    <li>Store episodes trip-scoped forever or TTL cache after trip completes?</li>
+  </ol>
+
+  <h2>Decision log</h2>
+  <ul>
+    <li><strong>No history CMS for P0</strong> — LLM from route context; cache generated artifacts only. <em>(Rev 2: revised — no CMS stands, but generation must be grounded in route data + corridor POI search with source-backed claims; ungrounded generation was challenged in cross-model review and the challenge accepted.)</em></li>
+    <li><strong>Studio is first-class</strong> — length + topic tiles + tone. <em>(Rev 2: revised — Studio is the P1 growth path; P0 entry is one tap with a 15/30 toggle. The pipeline, not the chrome, is the product this week.)</em></li>
+    <li><strong>ElevenLabs is render path</strong> — <em>(Rev 2: revised — render is mandatory in the night-before pipeline, not optional at play time; play-time TTS cut from P0 entirely.)</em></li>
+    <li><strong>Ribbon remains source of trip truth</strong> — cast attaches to days; does not replace sleep/intent.</li>
+    <li><strong>Rev 2 (2026-07-23):</strong> Approach A “Tonight's Episode” chosen over full Studio (misses the live-trip window) and ambient auto-render (unrequested TTS spend, trust risk — revisit as opt-in fast-follow). Job runs via CF Queues with checkpoints (hetzner render service fallback). Per-segment TTS forced by ElevenLabs char limits; CBR concat with metadata stripping. Offline via SW cache (episode-id key, 206 Range) + Download MP3. Approved design doc: <code>mackieg-detached-b17b8ae-design-20260723-113903.md</code>.</li>
+    <li><strong>Rev 3 (2026-07-25, /plan-eng-review — ENG CLEARED, 17 findings folded, 0 unresolved):</strong> Queues → existing <code>*/5</code> cron claim-with-lease pump (repo already ships an empty <code>scheduled()</code> handler); SW Range/206 → download-first (MP3 to Files is the guarantee; IndexedDB blob best-effort in-app; precache SW → P1 TODOS.md); storage pointer corrected to <code>getR2Bucket()</code>/<code>@sortey/db/runtime</code> (<code>@sortey/storage</code> is UploadThing-only); <code>extract-structured</code> generalizes <code>ocr/</code>→<code>llm/</code> with outline-then-per-segment generation; grounding made honest as two tiers (ops facts grounded, documentary hedged); script-quality eval deferred — the ritual gains a read-the-script gate before TTS spend; per-segment cost checkpoints; enqueue <code>ON CONFLICT</code>; tz check + target-date on button; <code>ELEVENLABS_*</code> into <code>SECRET_KEYS</code>. Outside voice: Codex timed out, Claude subagent served — 12 findings, 3 accepted over the review's own calls.</li>
+  </ul>
+
+  <div class="card" style="margin-top:2rem;">
+    <h3 style="margin-top:0;color:var(--accent);">Next build slice</h3>
+    <p style="margin-bottom:0;">
+      Phase 0 (rev 2) — Tonight's Episode: grounded context pack + <code>cast.generate</code> +
+      Queues job pipeline + per-segment TTS/concat + web player with Download MP3 + service-worker
+      offline cache. Acceptance: the airplane-mode test on a real remaining drive day (I-70/I-80).
+      Before any code: write the five minutes of script you <em>wish</em> tomorrow's episode contained —
+      that artifact is the prompt spec and the first factual-audit baseline.
+    </p>
+  </div>
+</main>
+</body>
+</html>

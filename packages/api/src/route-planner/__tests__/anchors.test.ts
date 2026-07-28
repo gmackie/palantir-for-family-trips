@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { anchorPacing, type AnchorLike, nextAnchor } from "../anchors";
+import { type AnchorLike, anchorPacing, nextAnchor } from "../anchors";
 
 function anchor(p: Partial<AnchorLike> & { startDate: string }): AnchorLike {
   return {

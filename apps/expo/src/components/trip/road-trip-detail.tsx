@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-
+import { setLastTripId } from "~/utils/active-trip";
 import { trpc, trpcClient } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
 import {
@@ -102,12 +102,23 @@ export function RoadTripDetail({
 
   const setStatus = useMutation(
     trpc.trips.setStatus.mutationOptions({
-      onSuccess: () => {
+      onSuccess: (_data, vars) => {
         void queryClient.invalidateQueries(trpc.trips.get.queryFilter());
+        if (vars.status === "en_route") {
+          void setLastTripId(tripId);
+          router.push({
+            pathname: "/trip/[tripId]/drive" as never,
+            params: { tripId },
+          });
+        }
       },
       onError: (err) => Alert.alert("Error", err.message),
     }),
   );
+
+  useEffect(() => {
+    void setLastTripId(tripId);
+  }, [tripId]);
 
   const totalMiles = routePreview?.totalMiles ?? null;
   const totalGallons = fuelStats?.totalGallons ?? null;
@@ -188,7 +199,7 @@ export function RoadTripDetail({
     },
     {
       key: "chat",
-      label: "Chat",
+      label: "Chat · Co-pilot",
       icon: "chatbubbles-outline",
       path: "chat",
     },
@@ -682,6 +693,81 @@ export function RoadTripDetail({
           </Text>
         )}
       </Pressable>
+
+      {isActive && (
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: C.warning,
+            backgroundColor: `${C.warning}12`,
+            borderRadius: R.md,
+            padding: 14,
+            marginBottom: 16,
+            gap: 10,
+          }}
+        >
+          <Text
+            style={{
+              color: C.warning,
+              fontSize: 12,
+              fontWeight: "800",
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+            }}
+          >
+            Active trip · {trip.status.replace("_", " ")}
+          </Text>
+          <Text style={{ color: C.fg, fontSize: 15, fontWeight: "600" }}>
+            Today Command is your stop board. Drive is the glanceable companion
+            while moving. Map shows fuel-colored route + POIs.
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {(
+              [
+                { label: "Today", path: "today" },
+                { label: "Drive", path: "drive" },
+                { label: "Map", path: "map" },
+                {
+                  label: "Quick stop",
+                  path: "log-stop",
+                  params: { quick: "rest" },
+                },
+                {
+                  label: "Park for night",
+                  path: "log-stop",
+                  params: { quick: "overnight" },
+                },
+              ] as const
+            ).map((a) => (
+              <Pressable
+                key={a.label}
+                onPress={() =>
+                  router.push({
+                    pathname: `/trip/[tripId]/${a.path}` as never,
+                    params: { tripId, ...("params" in a ? a.params : {}) },
+                  })
+                }
+                style={{
+                  backgroundColor: C.surface,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  borderRadius: R.md,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  minHeight: 44,
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{ color: C.info, fontWeight: "700", fontSize: 13 }}
+                >
+                  {a.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Tab grid */}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>

@@ -1,6 +1,0 @@
-
-> @sortey/auth@ lint /Users/mackieg/.config/superpowers/worktrees/sortey/landing-20260717/packages/auth
-> oxlint .
-
-Found 0 warnings and 0 errors.
-Finished in 6ms on 3 files with 95 rules using 12 threads.

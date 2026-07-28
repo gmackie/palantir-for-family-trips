@@ -10,8 +10,8 @@ import { importedPois } from "@sortey/db/schema";
 import { haversineMiles } from "../trips/driving-summary";
 import { listDays, upsertDay } from "./day-plan-ops";
 import {
-  rankPoisNear,
   type RankedPoi,
+  rankPoisNear,
   type SuggestablePoi,
   suggestOvernightsAlongRoute,
 } from "./poi-suggest";
@@ -117,10 +117,8 @@ export async function suggestOvernightsForDay(
   const day = days.find((d) => d.date === p.date);
   if (!day) return { center: null, suggestions: [] };
 
-  let lat =
-    day.overnightLat != null ? Number(day.overnightLat) : Number.NaN;
-  let lng =
-    day.overnightLng != null ? Number(day.overnightLng) : Number.NaN;
+  let lat = day.overnightLat != null ? Number(day.overnightLat) : Number.NaN;
+  let lng = day.overnightLng != null ? Number(day.overnightLng) : Number.NaN;
   let name = day.overnightName ?? day.title ?? day.date;
 
   // Fall back to same-date segment destination if day has no coords yet.
@@ -144,15 +142,11 @@ export async function suggestOvernightsForDay(
     limit: 400,
   });
 
-  const suggestions = rankPoisNear(
-    { lat, lng },
-    pois,
-    {
-      maxMiles,
-      limit: p.limit ?? 15,
-      preferSleep: true,
-    },
-  );
+  const suggestions = rankPoisNear({ lat, lng }, pois, {
+    maxMiles,
+    limit: p.limit ?? 15,
+    preferSleep: true,
+  });
 
   return {
     center: { lat, lng, name },
@@ -177,11 +171,7 @@ export async function suggestAmenitiesNearDay(
 }> {
   const days = await listDays(db, p.tripId);
   const day = days.find((d) => d.date === p.date);
-  if (
-    !day ||
-    day.overnightLat == null ||
-    day.overnightLng == null
-  ) {
+  if (!day || day.overnightLat == null || day.overnightLng == null) {
     return { center: null, suggestions: [] };
   }
   const lat = Number(day.overnightLat);
@@ -201,11 +191,10 @@ export async function suggestAmenitiesNearDay(
       lng,
       name: day.overnightName ?? day.title ?? day.date,
     },
-    suggestions: rankPoisNear(
-      { lat, lng },
-      pois,
-      { maxMiles, limit: p.limit ?? 20 },
-    ),
+    suggestions: rankPoisNear({ lat, lng }, pois, {
+      maxMiles,
+      limit: p.limit ?? 20,
+    }),
   };
 }
 
@@ -447,17 +436,18 @@ export async function scanTripAmenities(
     });
 
     const center = { lat, lng };
-    const sleep = rankPoisNear(center, all, {
-      maxMiles,
-      limit: 1,
-      preferSleep: true,
-      categories: [
-        "wild_camping",
-        "campsite",
-        "parking_overnight",
-        "rest_area",
-      ],
-    })[0] ?? null;
+    const sleep =
+      rankPoisNear(center, all, {
+        maxMiles,
+        limit: 1,
+        preferSleep: true,
+        categories: [
+          "wild_camping",
+          "campsite",
+          "parking_overnight",
+          "rest_area",
+        ],
+      })[0] ?? null;
     const dump =
       rankPoisNear(center, all, {
         maxMiles: 30,

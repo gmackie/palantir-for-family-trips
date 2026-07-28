@@ -1,11 +1,16 @@
 # OTA updates
 
-Sortey uses EAS Update for JavaScript and asset-only releases. Native changes
-still require a new EAS build and store/internal distribution.
+Sortey has two OTA paths for JavaScript and asset-only releases. Binaries
+built with `PREFLIGHT_OTA_URL` baked in (the `preview*` build profiles) use
+**Preflight-hosted OTA** with the fixed `sortey-p0` runtime — see
+[`preview-build-ota-loop.md`](./preview-build-ota-loop.md). Everything else
+uses **EAS Update**, documented below. Native changes still require a new
+build and store/internal distribution on either path.
 
 ## Compatibility boundary
 
-`app.config.ts` uses Expo's `fingerprint` runtime policy. An update is delivered
+When `PREFLIGHT_OTA_URL` is unset, `app.config.ts` uses Expo's `fingerprint`
+runtime policy. An update is delivered
 only to binaries with the same native fingerprint. Adding or upgrading a native
 module, changing config plugins, entitlements, permissions, bundle identifiers,
 or other native configuration requires a new binary before publishing updates.

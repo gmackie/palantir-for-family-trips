@@ -8,9 +8,9 @@ import { asc, eq } from "@sortey/db";
 import { tripAnchors } from "@sortey/db/schema";
 
 import {
-  anchorPacing,
   type AnchorLike,
   type AnchorPacing,
+  anchorPacing,
   nextAnchor,
 } from "./anchors";
 

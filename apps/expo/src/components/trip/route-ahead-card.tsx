@@ -289,7 +289,14 @@ export function RouteAheadCard({
               }}
             >
               <Text style={{ fontSize: 14 }}>{m.emoji}</Text>
-              <Text style={{ color: C.fg, fontSize: 13, fontWeight: "600", flex: 1 }}>
+              <Text
+                style={{
+                  color: C.fg,
+                  fontSize: 13,
+                  fontWeight: "600",
+                  flex: 1,
+                }}
+              >
                 {m.emoji === "⛽" ? "Fuel zone" : "Overnight zone"}
               </Text>
               <Text

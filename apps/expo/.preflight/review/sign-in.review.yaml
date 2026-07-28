@@ -1,0 +1,29 @@
+# TrueFlight standard workflow: sign-in
+# Reaching the authenticated app as a Sortey traveler. Proves the R1
+# reviewer-login path. Sortey has a single end-user type (a trip participant
+# who owns their default workspace), so one sign-in flow / one account.
+#
+# Sign-in is a passwordless magic link (better-auth magicLinkClient) with
+# "Continue with Apple / Google" as alternatives. For an unattended reviewer
+# run the Release build must enable the magic-link bypass so entering the demo
+# email signs in without leaving the app for an inbox.
+# TODO: confirm the review/Release build ships BYPASS_MAGIC_LINK (devMagicLinkBypass)
+#       so "${TF_ACCOUNT_EMAIL}" + "Send magic link" completes auth in-app.
+#       If not, the reviewer must instead tap "Continue with Apple" (see below).
+#
+# tf:workflow id=sign-in title="Sign in to Sortey" account=traveler
+# tf:account role=traveler email="reviewer+traveler@sortey.app" secretRef=sortey/review/traveler_pw permissions=standard notes="Standard trip participant; owns the default workspace. Passwordless magic-link sign-in — secretRef holds the reviewer bypass token/link if the automated bypass is unavailable."
+# tf:verify "After the magic link, the workspace provisions and you reach the Sortey trips home (UserHeader with Settings + Sign out)."
+appId: com.gmacko.sortey
+---
+# tf:step "Launch the app — you land on the Sortey sign-in screen." capture=screenshot
+- launchApp
+- assertVisible: "Sign in"
+# tf:step "Enter the demo account email in the email field." capture=screenshot
+- tapOn: "you@example.com"
+- inputText: "${TF_ACCOUNT_EMAIL}"
+# tf:step "Tap Send magic link. With the reviewer bypass enabled you are signed straight in; otherwise open the magic link delivered to the demo inbox." capture=video
+- tapOn: "Send magic link"
+# tf:step "The workspace provisions and you reach the trips home, signed in." capture=screenshot
+# TODO: on a fresh account this shows "Welcome to Sortey"; on a seeded account it shows "Your Trips". Assert whichever the demo account is provisioned as.
+- assertVisible: "Settings"

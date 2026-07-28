@@ -1,0 +1,44 @@
+# TrueFlight standard workflow: core-flow
+# Sortey's headline feature: plan a shared group trip. A traveler picks a
+# template and steps through the create-trip wizard (template → mode → details
+# → dates), which drops them onto the live trip where the group coordinates
+# route, expenses, and location. This flow proves the reason the app exists.
+#
+# tf:workflow id=core-flow title="Plan a group trip" account=traveler
+# tf:account role=traveler email="reviewer+traveler@sortey.app" secretRef=sortey/review/traveler_pw permissions=standard notes="Standard trip participant; owns the default workspace."
+# tf:verify "A new trip is created and you land on the trip detail screen for it."
+appId: com.gmacko.sortey
+---
+# tf:step "Launch and sign in to reach the trips home." capture=screenshot
+- launchApp
+- assertVisible: "Sign in"
+- tapOn: "you@example.com"
+- inputText: "${TF_ACCOUNT_EMAIL}"
+- tapOn: "Send magic link"
+- assertVisible: "Settings"
+# tf:step "Start a new trip." capture=screenshot
+# TODO: on a fresh account tap "Create Your First Trip"; on a seeded account tap "+ New".
+- tapOn:
+    text: "Create Your First Trip"
+    optional: true
+- tapOn:
+    text: "+ New"
+    optional: true
+- assertVisible: "Start a trip"
+# tf:step "Pick the Beach Vacation template (a group trip with expense splitting)." capture=screenshot
+- tapOn: "Beach Vacation"
+# tf:step "Choose the trip mode and Group so members can split expenses, then continue." capture=screenshot
+- assertVisible: "What kind of trip?"
+- tapOn: "Group"
+- tapOn: "Next"
+# tf:step "Name the trip and continue." capture=screenshot
+- assertVisible: "Trip details"
+- tapOn: "Family Reunion 2026"
+- inputText: "Sortey Review Beach Trip"
+- tapOn: "Next"
+# tf:step "Leave the dates optional and create the trip." capture=video
+- assertVisible: "When?"
+- tapOn: "Create Trip"
+# tf:step "You land on the new trip's detail screen — the shared hub for route, expenses, and coordination." capture=screenshot
+# TODO: assert a stable element on the trip detail screen (the trip name "Sortey Review Beach Trip" once the header/summary is confirmed).
+- assertVisible: "Sortey Review Beach Trip"

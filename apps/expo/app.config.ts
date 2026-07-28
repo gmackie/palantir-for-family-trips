@@ -43,9 +43,15 @@ const BASE_BUNDLE_ID = "com.gmacko.sortey";
 const BASE_SCHEME = "sortey";
 const EAS_PROJECT_ID = "5f21337f-9f48-4b0c-8d02-656e4a08dc86";
 
+// Variant identity (fleet standard — see preflight-app docs/ai/VARIANT_IDENTITY.md):
+//   development → *.expo + Metro/dev-client (icon-expo / icon-dev legacy)
+//   preview     → *.dev  developer-preview launch-ready
+//   production  → bare store id
 const getVariantIcon = (): string => {
-  if (APP_VARIANT === "development") return "./assets/icon-dev.png";
-  if (APP_VARIANT === "preview") return "./assets/icon-preview.png";
+  if (APP_VARIANT === "development") {
+    return "./assets/icon-expo.png";
+  }
+  if (APP_VARIANT === "preview") return "./assets/icon-dev.png";
   return "./assets/icon-light.png";
 };
 
@@ -54,9 +60,9 @@ const getAppName = (): string => {
     case "production":
       return "Sortey";
     case "preview":
-      return "Sortey (Preview)";
-    default:
       return "Sortey (Dev)";
+    default:
+      return "Sortey (Expo)";
   }
 };
 
@@ -65,9 +71,9 @@ const getBundleId = (): string => {
     case "production":
       return BASE_BUNDLE_ID;
     case "preview":
-      return `${BASE_BUNDLE_ID}.preview`;
-    default:
       return `${BASE_BUNDLE_ID}.dev`;
+    default:
+      return `${BASE_BUNDLE_ID}.expo`;
   }
 };
 
@@ -76,9 +82,9 @@ const getScheme = (): string => {
     case "production":
       return BASE_SCHEME;
     case "preview":
-      return `${BASE_SCHEME}-preview`;
-    default:
       return `${BASE_SCHEME}-dev`;
+    default:
+      return `${BASE_SCHEME}-expo`;
   }
 };
 
@@ -166,13 +172,26 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: getVariantIcon(),
     userInterfaceStyle: "automatic",
     // OTA updates may only target binaries with an identical native runtime.
-    // Fingerprinting changes this value whenever native dependencies or native
-    // configuration change, while ordinary JS/assets changes remain OTA-safe.
-    runtimeVersion: { policy: "fingerprint" },
+    // Prefer Preflight-hosted OTA when PREFLIGHT_OTA_URL is set (see
+    // preflight-app/docs/plans/2026-07-14-preflight-native-ota.md). Otherwise
+    // keep EAS Update + fingerprint (legacy pilot path).
+    runtimeVersion: process.env.PREFLIGHT_OTA_URL
+      ? (process.env.PREFLIGHT_OTA_RUNTIME_VERSION ?? "sortey-p0")
+      : { policy: "fingerprint" },
     updates: {
-      url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      url: process.env.PREFLIGHT_OTA_URL
+        ? process.env.PREFLIGHT_OTA_URL
+        : `https://u.expo.dev/${EAS_PROJECT_ID}`,
       checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: 0,
+      requestHeaders: {
+        "expo-channel-name":
+          APP_VARIANT === "production"
+            ? "production"
+            : APP_VARIANT === "preview"
+              ? "preview"
+              : "development",
+      },
     },
     assetBundlePatterns: ["**/*"],
     ios: {
@@ -199,6 +218,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "Sortey uses the camera to scan receipts and capture trip photos.",
         NSPhotoLibraryUsageDescription:
           "Sortey accesses your photo library so you can attach receipts and share photos with your trip group.",
+        ...(process.env.PREFLIGHT_OTA_URL?.startsWith("http://")
+          ? {
+              NSAppTransportSecurity: {
+                // Covers the LAN Preflight OTA host (IP-literal http) without
+                // disabling ATS for every other connection the app makes.
+                NSAllowsLocalNetworking: true,
+              },
+            }
+          : {}),
       },
     },
     android: {
@@ -239,6 +267,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       POSTHOG_HOST,
       eas: {
         projectId: EAS_PROJECT_ID,
+      },
+      preflightOta: {
+        appSlug: "sortey",
+        enabled: Boolean(process.env.PREFLIGHT_OTA_URL),
       },
     },
     owner: "gmacko",
