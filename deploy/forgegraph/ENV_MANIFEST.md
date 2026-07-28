@@ -8,8 +8,7 @@ Secrets to configure per stage via `forge secret set <key> <value>`.
 |---|---|---|
 | `DATABASE_URL` | `postgresql://app:secret@postgres.internal:5432/trip` | Managed by ForgeGraph Postgres addon |
 | `AUTH_SECRET` | `<random 64+ char string>` | Better Auth session signing. Generate with `openssl rand -base64 48` |
-| `AUTH_DISCORD_ID` | `placeholder-for-magic-link-only` | Required by template auth config. Placeholder OK if only using magic links. |
-| `AUTH_DISCORD_SECRET` | `placeholder-for-magic-link-only` | Same as above |
+| `RESEND_API_KEY` | `re_...` | Email delivery for magic links and trip invites. Domain must be verified. |
 
 ## Required for features
 
@@ -38,6 +37,8 @@ Secrets to configure per stage via `forge secret set <key> <value>`.
 | `ELEVENLABS_VOICE_ID_DEFAULT` | Corridor Cast narrator voice (falls back to a built-in voice id) |
 | `ELEVENLABS_TTS_MODEL` | Corridor Cast TTS model override (default `eleven_turbo_v2_5`) |
 | `CAST_SCRIPT_MODEL` | Corridor Cast script model override (default `claude-sonnet-4-6`) |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional Google sign-in |
+| `AUTH_APPLE_ID` / `AUTH_APPLE_SECRET` | Optional Apple sign-in |
 
 ## Secret rotation
 

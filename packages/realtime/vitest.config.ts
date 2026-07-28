@@ -1,4 +1,4 @@
-import { baseConfig } from "@sortey/vitest-config/base";
+import { baseConfig } from "../../tooling/vitest/src/base";
 
 // `mergeMessages` + the pure backoff/typing helpers are environment-free, so the
 // base (node) config is sufficient. The socket lifecycle is integration-tested
