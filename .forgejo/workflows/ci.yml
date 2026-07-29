@@ -22,7 +22,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install (retry transient registry/network flakes)
+        run: |
+          for i in 1 2 3; do
+            pnpm install --frozen-lockfile && break
+            echo "::warning::pnpm install attempt $i failed; retrying in 10s" && sleep 10
+          done
 
       - name: Typecheck
         run: pnpm typecheck
