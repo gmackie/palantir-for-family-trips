@@ -4,6 +4,15 @@ All notable changes to Sortey are documented in this file.
 
 Versions follow the gstack `MAJOR.MINOR.PATCH.MICRO` scheme.
 
+## [Unreleased]
+
+### Added
+- **Corridor Cast episodes can now cite real research.** Corridor history, geology, and culture can be gathered ahead of time with tracked sources and attached to a drive leg; the narrator states sourced material confidently with a light spoken attribution, and keeps anything unconfirmed in hedged campfire-truth territory. Without a research file the episode behaves exactly as before.
+- Script writing falls back to Gemini when no Anthropic key is configured, so a deployment keyed for either model can still produce an episode.
+
+### Changed
+- The episode records which model actually wrote it, rather than the configured default.
+
 ## [0.2.0.0] - 2026-07-27
 
 ### Added

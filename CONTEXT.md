@@ -125,6 +125,10 @@ _Avoid_: Scraping the app; a second incompatible planning model
 A private podcast episode generated the night before a drive day: 15 or 30 minutes narrating tomorrow's actual route, stops, reservations, and the country along the corridor. The script is drafted from trip data (operational facts grounded; storytelling color hedged), must be read and approved before any TTS spend, and quietly expires if its drive day passes unread. Voiced per-segment with resumable checkpoints; the offline guarantee is the downloaded MP3.
 _Avoid_: Audio tour (venue-scripted), briefing (that's the operational Day Brief), AI radio
 
+**Grounding Brief**:
+Corridor research attached to a drive leg, gathered ahead of time with tracked sources. Each fact is either verified (a real recorded source stands behind it) or an unverified lead. Corridor Cast narrates verified facts confidently with soft spoken attribution and keeps unverified leads hedged like any other campfire color — a lead is never upgraded to a stated fact. Produced by an OODA research thread and pushed per segment; the newest brief for a segment wins.
+_Avoid_: Citations (we don't print footnotes, we speak attribution), fact-check (it's sourcing, not verification of the model's output)
+
 **Amenity Scan**:
 Long-term van-planning view of corridor POIs (iOverlander etc.) near each Trip Day overnight: sleep, dump, water, fuel, parking, tolls — plus warnings when gaps exist.
 _Avoid_: POI dump, place search (too generic)

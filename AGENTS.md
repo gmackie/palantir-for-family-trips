@@ -10,6 +10,7 @@ This repository is set up to work well with `Codex`, `Claude Code`, and `OpenCod
 - Use `pnpm`, `oxlint`, `biome`, and `turbo` as the default tooling surface.
 - Use ForgeGraph for deployment workflows and `forge` from [`../ForgeGraph`](../ForgeGraph) when working against the real deployment control plane.
 - Treat [docs/ai/DEVELOPER_EXPERIENCE.md](./docs/ai/DEVELOPER_EXPERIENCE.md) as the current support matrix for agent tooling, Cloudflare Workers, ForgeGraph, Nix, and mobile DX choices.
+- Read [docs/ai/CORRIDOR_CAST.md](./docs/ai/CORRIDOR_CAST.md) before touching Corridor Cast — the job state machine has two safety properties (the read gate and expiry-is-not-a-spend-path) that are easy to break by accident.
 - When the optional SaaS bootstrap pack is scaffolded, keep the generated bootstrap playbook feature-aware across `Claude-only`, `Codex`, and `OpenCode` sections, and keep Claude-only slash commands labeled as such.
 
 ## Planning Flow
