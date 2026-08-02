@@ -27,6 +27,11 @@ import {
   probeCastDriveLeg,
   resolveCastTargetDate,
 } from "../cast/context";
+import {
+  type CastVoice,
+  listCastVoices,
+  resolveTripVoiceId,
+} from "../cast/elevenlabs";
 import { CAST_EXPIRED_ERROR } from "../cast/job";
 import { type CastR2Bucket, deleteCheckpoints } from "../cast/tts";
 import { NoLlmProviderError, resolveLlmProvider } from "../llm/structured";
@@ -386,6 +391,66 @@ export const castRouter = {
         });
       }
       return { jobId: input.jobId };
+    }),
+
+  /**
+   * Narrator choices for this deployment's ElevenLabs key, plus the trip's
+   * current pick. Fails soft to an empty catalogue — a voice API outage must
+   * not break the cast page.
+   */
+  voices: tripProcedure()
+    .input(
+      z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }),
+    )
+    .query(async ({ ctx }) => {
+      const [trip] = (await ctx.db
+        .select({ castVoiceId: trips.castVoiceId })
+        .from(trips)
+        .where(eq(trips.id, ctx.tripId))
+        .limit(1)) as Array<{ castVoiceId: string | null }>;
+      if (!trip) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const voices: CastVoice[] = await listCastVoices();
+      return {
+        voices,
+        /** What the next episode will actually use. */
+        effectiveVoiceId: resolveTripVoiceId(trip.castVoiceId),
+        /** Null means "follow the deployment default". */
+        tripVoiceId: trip.castVoiceId,
+      };
+    }),
+
+  /** Choose the trip's narrator. Null restores the deployment default. */
+  setVoice: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        voiceId: z.string().trim().min(1).max(64).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Only a voice this key can actually speak with — an unusable id would
+      // otherwise surface as a mid-synthesis TTS failure after the read gate.
+      if (input.voiceId) {
+        const voices = await listCastVoices();
+        if (
+          voices.length > 0 &&
+          !voices.some((v) => v.voiceId === input.voiceId)
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That voice is not available to this deployment.",
+          });
+        }
+      }
+
+      await ctx.db
+        .update(trips)
+        .set({ castVoiceId: input.voiceId })
+        .where(eq(trips.id, ctx.tripId));
+
+      return { voiceId: resolveTripVoiceId(input.voiceId) };
     }),
 
   /**

@@ -99,6 +99,8 @@ middleware chain rather than by helper calls inside each resolver.
 | `approveScript` | `awaiting_approval` → `approved`. Fails `PRECONDITION_FAILED` from any other status |
 | `retry` | Revive a failed job. Refuses superseded jobs and expired scripts |
 | `uploadGroundingBrief` | Attach parsed OODA research to a segment, with a trip-scoped ownership check on the segment |
+| `voices` | The narrators this deployment's key can use, plus the trip's pick and the effective voice. Fails soft to an empty catalogue |
+| `setVoice` | Choose the trip's narrator; null restores the deployment default. Validated against the catalogue so an unusable id can't fail mid-synthesis |
 
 ### Audio route
 
@@ -141,6 +143,32 @@ back through the original Zod schema. That round trip matters: refinements
 on the way back. Thinking tokens get budget headroom on top of the caller's prose
 allowance, because Gemini 2.5 counts them against `maxOutputTokens` and a
 chapter would otherwise truncate mid-sentence.
+
+## Cost controls
+
+`generate` refuses at **enqueue** — before either spend begins — when:
+
+- no script provider is keyed (`NoLlmProviderError`), or
+- the trip has reached its monthly ceiling for TTS characters or LLM output
+  tokens (`packages/api/src/cast/budget.ts`).
+
+The budget is denominated in metered units rather than dollars, because model
+prices move and differ per provider. Usage **at** the limit blocks: the next
+episode is what would cross it. `tonight` returns usage, limits, and remaining
+budget so the console can warn before a tap is refused.
+
+## Script quality evals
+
+`packages/api/src/cast/evals` holds structural checks over
+`(context, script)` — no model calls, so they run in the normal suite and can
+also be pointed at real output. They assert word budgets, outline coverage,
+the sourcing disclaimer appropriate to whether a Grounding Brief exists, the
+destination and anchors being named, and prose free of markup that reads aloud
+as garbage. Corridor POI use and unused research are warnings.
+
+This is the regression floor that makes the prompts safe to edit: a prompt
+change that quietly drops the disclaimer or blows the length budget fails a
+test instead of shipping.
 
 ## Grounding tiers
 
@@ -196,7 +224,9 @@ listed below must also appear in `SECRET_KEYS` or `PUBLIC_ENV_KEYS` in
 | `ANTHROPIC_API_KEY` | secret | Preferred script provider |
 | `GEMINI_API_KEY` | secret | Fallback provider. Must be allowed to call `generativelanguage.googleapis.com` — a Maps-restricted key fails with `403 API_KEY_SERVICE_BLOCKED` |
 | `ELEVENLABS_API_KEY` | secret | Voicing |
-| `ELEVENLABS_VOICE_ID_DEFAULT` | secret | Optional; code defaults to the premade "George" voice |
+| `ELEVENLABS_VOICE_ID_DEFAULT` | secret | Deployment default narrator; a trip's own `castVoiceId` overrides it. Code falls back to the premade "George" |
+| `CAST_MONTHLY_TTS_CHARACTERS` | var | Per-trip monthly voice ceiling (default 900,000) |
+| `CAST_MONTHLY_LLM_OUTPUT_TOKENS` | var | Per-trip monthly script ceiling (default 400,000) |
 | `CAST_LLM_PROVIDER` | var | `anthropic` \| `gemini`. Overrides auto-resolution |
 | `CAST_SCRIPT_MODEL` | var | Claude model id |
 | `CAST_SCRIPT_MODEL_GEMINI` | var | Gemini model id — separate so a Claude id can never reach a Gemini call |

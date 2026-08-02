@@ -6,11 +6,12 @@ import {
   type CastScript,
   castEpisodeJobs,
   castEpisodes,
+  trips,
 } from "@sortey/db/schema";
 import { classifyLlmError } from "../llm/errors";
 import { concatMp3Segments, validateEpisodeAudio } from "./concat";
 import { buildCastDayContext } from "./context";
-import { castTtsModel, castVoiceId } from "./elevenlabs";
+import { castTtsModel, castVoiceId, resolveTripVoiceId } from "./elevenlabs";
 import { castScriptModel, generateCastScript } from "./script";
 import {
   type CastR2Bucket,
@@ -54,6 +55,7 @@ export type CastPumpDeps = {
   buildContext: typeof buildCastDayContext;
   generateScript: typeof generateCastScript;
   synthesizeSegments: typeof synthesizeScriptSegments;
+  /** Deployment default; a trip's own choice overrides it. */
   voiceId: () => string;
   ttsModel: () => string;
   scriptModel: () => string;
@@ -303,7 +305,16 @@ async function runSynthesisStep(params: {
     throw new Error("Job reached synthesis without a script");
   }
 
-  const voiceId = deps.voiceId();
+  // The trip's chosen narrator, else the deployment default. Read here (not
+  // at claim) so a voice change between enqueue and synthesis is honoured.
+  const [tripRow] = (await db
+    .select({ castVoiceId: trips.castVoiceId })
+    .from(trips)
+    .where(eq(trips.id, job.tripId))
+    .limit(1)) as Array<{ castVoiceId: string | null }>;
+  const voiceId = tripRow?.castVoiceId
+    ? resolveTripVoiceId(tripRow.castVoiceId)
+    : deps.voiceId();
   const ttsModel = deps.ttsModel();
   const persisted: CastCheckpoint[] = [...(job.checkpointsJson ?? [])];
 

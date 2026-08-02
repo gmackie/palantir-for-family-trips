@@ -95,6 +95,21 @@ export function CastConsole({
     ),
   );
 
+  const voicesQuery = useQuery(
+    trpc.cast.voices.queryOptions({ workspaceId, tripId }),
+  );
+  const setVoice = useMutation(
+    trpc.cast.setVoice.mutationOptions({
+      onSuccess: () => {
+        toast.success("Narrator updated. It applies to the next episode.");
+        void qc.invalidateQueries({
+          queryKey: trpc.cast.voices.queryKey({ workspaceId, tripId }),
+        });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
   const invalidateStatus = useCallback(() => {
     void qc.invalidateQueries({
       queryKey: trpc.cast.status.queryKey({ workspaceId, tripId }),
@@ -178,6 +193,36 @@ export function CastConsole({
                 Tomorrow&apos;s leg has no route geometry yet — the episode will
                 skip corridor points of interest.
               </p>
+            )}
+            {voicesQuery.data && voicesQuery.data.voices.length > 0 && (
+              <label className="flex flex-wrap items-center gap-2 text-xs text-[#8B949E]">
+                <span className="font-mono uppercase tracking-wider">
+                  Narrator
+                </span>
+                <select
+                  value={voicesQuery.data.tripVoiceId ?? ""}
+                  disabled={setVoice.isPending}
+                  onChange={(event) =>
+                    setVoice.mutate({
+                      workspaceId,
+                      tripId,
+                      voiceId: event.target.value || null,
+                    })
+                  }
+                  className="rounded-[2px] border border-[#30363D] bg-[#0A0C10] px-2 py-1 font-mono text-xs text-[#C9D1D9]"
+                >
+                  <option value="">Default voice</option>
+                  {voicesQuery.data.voices.map((voice) => (
+                    <option key={voice.voiceId} value={voice.voiceId}>
+                      {voice.name}
+                      {voice.labels.accent ? ` — ${voice.labels.accent}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[#8B949E]">
+                  applies to the next episode
+                </span>
+              </label>
             )}
             <div className="flex items-center gap-2">
               {([15, 30] as const).map((minutes) => (

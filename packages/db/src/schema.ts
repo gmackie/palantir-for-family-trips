@@ -229,6 +229,13 @@ export const trips = pgTable("trip", (t) => ({
   runState: t.text().$type<TripRunState>().notNull().default("on_plan"),
   runStateSince: t.timestamp({ mode: "date", withTimezone: true }),
   runStateNote: t.varchar({ length: 500 }),
+  /**
+   * Corridor Cast narrator for this trip. NULL keeps the deployment default
+   * (ELEVENLABS_VOICE_ID_DEFAULT, else the premade "George"). Stored per trip
+   * rather than per user: an episode is a shared artifact, and the group hears
+   * one voice.
+   */
+  castVoiceId: t.varchar({ length: 64 }),
   createdAt: t.timestamp().defaultNow().notNull(),
   updatedAt: t
     .timestamp({ mode: "date", withTimezone: true })

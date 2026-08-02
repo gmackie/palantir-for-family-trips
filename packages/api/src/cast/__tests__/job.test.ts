@@ -204,8 +204,11 @@ describe("runCastPump", () => {
 
     const { db, updates, inserts } = fakePumpDb({
       claimRows: [claimedJob({ status: "approved", scriptJson: SCRIPT })],
-      // runSynthesisStep re-reads accumulated ttsCharacters for the episode row.
-      selectQueue: [[{ ttsCharacters: 1234 }]],
+      selectQueue: [
+        [{ castVoiceId: null }], // trip narrator: follow the deployment default
+        // runSynthesisStep re-reads accumulated ttsCharacters for the episode row.
+        [{ ttsCharacters: 1234 }],
+      ],
     });
 
     const result = await runCastPump({
@@ -254,6 +257,32 @@ describe("runCastPump", () => {
     for (const checkpoint of checkpoints) {
       expect(r2.objects.has(checkpoint.r2Key)).toBe(false);
     }
+  });
+
+  it("uses the trip's chosen narrator over the deployment default", async () => {
+    const r2 = fakeR2();
+    const { db, inserts } = fakePumpDb({
+      claimRows: [claimedJob({ status: "approved", scriptJson: SCRIPT })],
+      selectQueue: [[{ castVoiceId: "v_trip_choice" }], [{ ttsCharacters: 0 }]],
+    });
+    const seen: string[] = [];
+
+    await runCastPump({
+      r2,
+      db,
+      deps: {
+        ...baseDeps,
+        synthesizeSegments: vi.fn(async (params: { voiceId: string }) => {
+          seen.push(params.voiceId);
+          return { checkpoints: [], finished: true, charactersBilled: 0 };
+        }) as never,
+      },
+    });
+
+    // Read at synthesis, not at claim, so a voice changed after enqueue still
+    // takes effect. (The episode row recording the voice it was spoken with is
+    // covered by the full synthesis test above.)
+    expect(seen).toEqual(["v_trip_choice"]);
   });
 
   it("synthesizing: voluntary checkpoint-and-release when out of budget", async () => {
