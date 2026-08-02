@@ -395,6 +395,12 @@
   </div>
   <p class="thesis">The north star: the van's real state drives the plan. DriftPort answers "can the van support what we are about to do?" — Sortey turns that into where to stop, when to service, and what today looks like. This is the milestone that makes Sortey better than notes plus maps.</p>
 
+  <div class="call warn">
+    <div class="t">Correction — 2026-08-02</div>
+    <p>This milestone was written from the DayMap spec rather than from the code, and it over-scoped as a result. <code>daymap/consumption.ts</code> (learned rates), <code>daymap/service.ts</code> (<code>predictServiceNeeds</code>, <code>matchServiceStops</code>), and <code>daymap/briefing.ts</code> already exist. The genuine gap was narrower: matching was nearest-by-straight-line from the current position, with no notion of route position — so it could recommend a stop already driven past — and there was no clustering. <code>daymap/service-run.ts</code> now covers both. VanState persistence (<code>van_state_reading</code>) also already exists, keyed by trip.</p>
+    <p>Reading the spec is not reading the system. Same mistake the stale claims in <code>STATUS.md</code> make.</p>
+  </div>
+
   <div class="tablewrap"><table>
     <thead><tr><th>Task</th><th>Files / surface</th><th>Verification</th><th>Status</th></tr></thead>
     <tbody>
