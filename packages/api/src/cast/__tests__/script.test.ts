@@ -1,4 +1,3 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 
 process.env.DATABASE_URL ??=
@@ -6,6 +5,7 @@ process.env.DATABASE_URL ??=
 
 const { generateCastScript } = await import("../script");
 
+import type { StructuredRequest } from "../../llm/structured";
 import type { CastDayContext } from "../context";
 
 const CONTEXT: CastDayContext = {
@@ -37,19 +37,25 @@ const OUTLINE = {
   ],
 };
 
-function fakeClient(responses: unknown[]) {
+/** A StructuredGenerator that replays canned responses and records requests. */
+function fakeGenerator(responses: unknown[]) {
   let call = 0;
-  const parse = vi.fn(async () => ({
-    parsed_output: responses[call++],
-    usage: { input_tokens: 100, output_tokens: 50 },
-    stop_reason: "end_turn",
-  }));
-  return { client: { messages: { parse } } as unknown as Anthropic, parse };
+  const requests: StructuredRequest<unknown>[] = [];
+  const generate = vi.fn(async (request: StructuredRequest<unknown>) => {
+    requests.push(request);
+    const response = responses[call++];
+    if (response === undefined) {
+      throw new Error("Model failed to produce a valid structured output.");
+    }
+    request.onUsage?.({ inputTokens: 100, outputTokens: 50 });
+    return response;
+  });
+  return { generate: generate as never, requests, generate_: generate };
 }
 
 describe("generateCastScript", () => {
   it("generates outline then one call per chapter, threading continuity", async () => {
-    const { client, parse } = fakeClient([
+    const { generate, requests, generate_ } = fakeGenerator([
       OUTLINE,
       { text: "Intro narration ends with the sunrise." },
       { text: "Canyon narration." },
@@ -60,12 +66,11 @@ describe("generateCastScript", () => {
     const script = await generateCastScript({
       context: CONTEXT,
       durationMinutes: 30,
-      client,
-      model: "test-model",
+      generate,
       onUsage: (usage) => usages.push(usage.outputTokens),
     });
 
-    expect(parse).toHaveBeenCalledTimes(4); // 1 outline + 3 chapters
+    expect(generate_).toHaveBeenCalledTimes(4); // 1 outline + 3 chapters
     expect(script.episodeTitle).toBe("Over the Divide");
     expect(script.segments.map((s) => s.key)).toEqual([
       "intro",
@@ -78,24 +83,18 @@ describe("generateCastScript", () => {
     expect(usages).toHaveLength(4);
 
     // The second chapter's prompt carries the tail of the first chapter.
-    const canyonCall = (parse.mock.calls as unknown as [unknown][])[2]?.[0] as {
-      messages: Array<{ content: Array<{ type: string; text?: string }> }>;
-    };
-    const canyonText = canyonCall.messages[0]?.content.find(
-      (c) => c.type === "text",
-    )?.text;
+    const canyonText = requests[2]?.userText ?? "";
     expect(canyonText).toContain("sunrise");
     expect(canyonText).toContain("soft transition");
   });
 
   it("propagates a failed structured parse instead of inventing a chapter", async () => {
-    const { client } = fakeClient([OUTLINE, undefined]);
+    const { generate } = fakeGenerator([OUTLINE]);
     await expect(
       generateCastScript({
         context: CONTEXT,
         durationMinutes: 15,
-        client,
-        model: "test-model",
+        generate,
       }),
     ).rejects.toThrow(/valid structured output/);
   });

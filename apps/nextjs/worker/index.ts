@@ -90,6 +90,10 @@ const PUBLIC_ENV_KEYS = [
   // Corridor Cast model overrides — without these the env knobs the code
   // reads (cast/script.ts, cast/elevenlabs.ts) silently never arrive.
   "CAST_SCRIPT_MODEL",
+  // Gemini is the fallback script provider when ANTHROPIC_API_KEY is absent;
+  // its model id is separate so a Claude id can never reach a Gemini call.
+  "CAST_SCRIPT_MODEL_GEMINI",
+  "CAST_LLM_PROVIDER",
   "ELEVENLABS_TTS_MODEL",
   "APP_URL",
   "NEXT_PUBLIC_APP_URL",
