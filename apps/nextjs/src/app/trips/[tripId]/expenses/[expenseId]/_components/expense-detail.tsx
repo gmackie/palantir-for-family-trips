@@ -3,8 +3,9 @@
 import type { AppRouter } from "@sortey/api";
 import { needsOcrReview } from "@sortey/api/ocr/review";
 import { Button } from "@sortey/ui/button";
+import { ExpenseSharesPanel } from "@sortey/ui/expense-shares-panel";
 import { Input } from "@sortey/ui/input";
-import { Separator } from "@sortey/ui/separator";
+import { LineItemRow } from "@sortey/ui/line-item-row";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import Link from "next/link";
@@ -32,12 +33,12 @@ export function ExpenseDetail(props: {
   workspaceId: string;
   expenseId: string;
   currentUserId: string;
+  claimMode: "tap" | "organizer";
   initialData: ExpenseGetOutput;
 }) {
-  const { tripId, workspaceId, expenseId, currentUserId } = props;
+  const { tripId, workspaceId, expenseId, currentUserId, claimMode } = props;
   const trpc = useTRPC();
 
-  // Live data with realtime updates
   useExpenseRealtime({ expenseId, workspaceId, tripId });
 
   const { data } = useQuery({
@@ -45,13 +46,17 @@ export function ExpenseDetail(props: {
     initialData: props.initialData,
   });
 
+  const { data: members = [] } = useQuery(
+    trpc.trips.listMembers.queryOptions({ workspaceId, tripId }),
+  );
+
   const expense = data.expense;
   const lineItems = data.lineItems;
   const shares = data.shares;
   const isDraft = expense.status === "draft";
+  const isOrganizer =
+    members.find((m) => m.userId === currentUserId)?.role === "organizer";
 
-  // OCR provenance: flag low-confidence/failed scans for review, and always
-  // surface any reconciler warnings (e.g. arithmetic mismatch, redacted card).
   const ocrWarnings = expense.ocrWarnings ?? [];
   const ocrNeedsReview = needsOcrReview({
     ocrConfidence: expense.ocrConfidence,
@@ -59,7 +64,6 @@ export function ExpenseDetail(props: {
   });
   const showOcrNotice = ocrNeedsReview || ocrWarnings.length > 0;
 
-  // Draft editing state
   const [editingDraft, setEditingDraft] = useState(false);
   const [draftMerchant, setDraftMerchant] = useState(expense.merchant);
   const [draftSubtotal, setDraftSubtotal] = useState(
@@ -71,7 +75,6 @@ export function ExpenseDetail(props: {
     (expense.totalCents / 100).toFixed(2),
   );
 
-  // Line item adding state
   const [addingLineItem, setAddingLineItem] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
@@ -88,6 +91,14 @@ export function ExpenseDetail(props: {
   const unclaimLineItem = useMutation(
     trpc.expenses.unclaimLineItem.mutationOptions(),
   );
+  const assignLineItem = useMutation(
+    trpc.expenses.assignLineItem.mutationOptions(),
+  );
+
+  const claimPending =
+    claimLineItem.isPending ||
+    unclaimLineItem.isPending ||
+    assignLineItem.isPending;
 
   async function handleSaveDraft() {
     await updateDraft.mutateAsync({
@@ -109,7 +120,7 @@ export function ExpenseDetail(props: {
 
   async function handleAddLineItem() {
     const priceCents = Math.round(parseFloat(newItemPrice) * 100);
-    if (!newItemName || isNaN(priceCents)) return;
+    if (!newItemName || Number.isNaN(priceCents)) return;
 
     await addLineItem.mutateAsync({
       workspaceId,
@@ -156,9 +167,18 @@ export function ExpenseDetail(props: {
     }
   }
 
+  async function handleAssign(lineItemId: string, userIds: string[]) {
+    await assignLineItem.mutateAsync({
+      workspaceId,
+      tripId,
+      expenseId,
+      lineItemId,
+      userIds,
+    });
+  }
+
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
           <p className="text-muted-foreground text-sm uppercase tracking-[0.24em]">
@@ -174,6 +194,11 @@ export function ExpenseDetail(props: {
             <StatusPill tone={isDraft ? "warning" : "success"}>
               {expense.status}
             </StatusPill>
+            {!isDraft && (
+              <span className="capitalize">
+                {claimMode === "tap" ? "Tap to claim" : "Organizer assigns"}
+              </span>
+            )}
           </div>
         </div>
 
@@ -182,7 +207,6 @@ export function ExpenseDetail(props: {
         </Button>
       </div>
 
-      {/* OCR review notice */}
       {showOcrNotice && (
         <section
           className={`rounded-3xl border p-5 ${
@@ -234,7 +258,6 @@ export function ExpenseDetail(props: {
         </section>
       )}
 
-      {/* Totals card */}
       <section className="bg-card rounded-3xl border p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Totals</h2>
@@ -328,32 +351,40 @@ export function ExpenseDetail(props: {
             </div>
           </div>
         ) : (
-          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-            <div>
-              <dt className="text-muted-foreground text-xs">Subtotal</dt>
-              <dd className="text-lg font-bold tabular-nums">
-                {formatCents(expense.subtotalCents)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-xs">Tax</dt>
-              <dd className="text-lg font-bold tabular-nums">
-                {formatCents(expense.taxCents)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-xs">Tip</dt>
-              <dd className="text-lg font-bold tabular-nums">
-                {formatCents(expense.tipCents)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-xs">Total</dt>
-              <dd className="text-lg font-bold tabular-nums">
-                {formatCents(expense.totalCents)}
-              </dd>
-            </div>
-          </dl>
+          <>
+            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <div>
+                <dt className="text-muted-foreground text-xs">Subtotal</dt>
+                <dd className="text-lg font-bold font-mono tabular-nums">
+                  {formatCents(expense.subtotalCents)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Tax</dt>
+                <dd className="text-lg font-bold font-mono tabular-nums">
+                  {formatCents(expense.taxCents)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Tip</dt>
+                <dd className="text-lg font-bold font-mono tabular-nums">
+                  {formatCents(expense.tipCents)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Total</dt>
+                <dd className="text-lg font-bold font-mono tabular-nums">
+                  {formatCents(expense.totalCents)}
+                </dd>
+              </div>
+            </dl>
+            {!isDraft && (expense.taxCents > 0 || expense.tipCents > 0) && (
+              <p className="text-muted-foreground mt-3 text-xs">
+                Tax and tip are split automatically based on each member&apos;s
+                share of the subtotal.
+              </p>
+            )}
+          </>
         )}
 
         {isDraft && (
@@ -365,7 +396,6 @@ export function ExpenseDetail(props: {
         )}
       </section>
 
-      {/* Line items */}
       <section className="bg-card rounded-3xl border p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">
@@ -431,126 +461,47 @@ export function ExpenseDetail(props: {
             No line items yet.{" "}
             {isDraft
               ? "Add items to enable per-item claiming."
-              : "This expense has no itemized breakdown."}
+              : "This expense has no itemized breakdown — the total splits equally among trip members."}
           </p>
         ) : (
           <div className="mt-4 space-y-2">
-            {lineItems.map((item) => {
-              const isClaimed = item.claimantUserIds.includes(currentUserId);
-              const claimCount = item.claimantUserIds.length;
-
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 rounded-xl border p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.name}</p>
-                    <p className="text-muted-foreground text-xs tabular-nums">
-                      {formatCents(item.lineTotalCents)}
-                      {Number(item.quantity) > 1 &&
-                        ` (x${item.quantity} @ ${formatCents(item.unitPriceCents)})`}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {claimCount > 0 && (
-                      <span className="text-muted-foreground text-xs">
-                        {claimCount} claimed
-                      </span>
-                    )}
-
-                    {!isDraft && (
-                      <Button
-                        variant={isClaimed ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToggleClaim(item.id, isClaimed)}
-                        disabled={
-                          claimLineItem.isPending || unclaimLineItem.isPending
-                        }
-                      >
-                        {isClaimed ? "Claimed" : "Claim"}
-                      </Button>
-                    )}
-
-                    {isDraft && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRemoveLineItem(item.id)}
-                        disabled={removeLineItem.isPending}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {lineItems.map((item) => (
+              <LineItemRow
+                key={item.id}
+                item={item}
+                members={members}
+                claimMode={claimMode}
+                currentUserId={currentUserId}
+                isOrganizer={isOrganizer}
+                isDraft={isDraft}
+                currency={expense.currency}
+                pending={claimPending || removeLineItem.isPending}
+                onToggleClaim={
+                  !isDraft && claimMode === "tap"
+                    ? handleToggleClaim
+                    : undefined
+                }
+                onAssign={
+                  !isDraft && claimMode === "organizer" && isOrganizer
+                    ? handleAssign
+                    : undefined
+                }
+                onRemove={isDraft ? handleRemoveLineItem : undefined}
+              />
+            ))}
           </div>
         )}
       </section>
 
-      {/* Shares summary */}
-      <section className="bg-card rounded-3xl border p-6">
-        <h2 className="text-lg font-semibold">Shares</h2>
-
-        {shares.warnings.length > 0 && (
-          <div className="mt-3 space-y-1">
-            {shares.warnings.map((warning, i) => (
-              <p key={i} className="text-xs text-[#D29922]">
-                {warning}
-              </p>
-            ))}
-          </div>
-        )}
-
-        {shares.shares.length === 0 ? (
-          <p className="text-muted-foreground mt-4 text-sm">
-            No shares computed yet.
-          </p>
-        ) : (
-          <div className="mt-4 space-y-2">
-            {shares.shares.map((share) => (
-              <div
-                key={share.userId}
-                className="flex items-center justify-between rounded-xl border p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">
-                    {share.userId === currentUserId
-                      ? "You"
-                      : share.userId.slice(0, 8)}
-                    {share.userId === expense.payerUserId && (
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        (payer)
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-muted-foreground text-xs tabular-nums">
-                    Sub {formatCents(share.subtotalCents)} + Tax{" "}
-                    {formatCents(share.taxCents)} + Tip{" "}
-                    {formatCents(share.tipCents)}
-                  </p>
-                </div>
-                <p className="text-base font-bold tabular-nums">
-                  {formatCents(share.totalCents)}
-                </p>
-              </div>
-            ))}
-
-            {shares.payerRoundingAbsorptionCents !== 0 && (
-              <>
-                <Separator />
-                <p className="text-muted-foreground text-xs tabular-nums">
-                  Payer absorbs{" "}
-                  {formatCents(shares.payerRoundingAbsorptionCents)} in rounding
-                </p>
-              </>
-            )}
-          </div>
-        )}
-      </section>
+      <ExpenseSharesPanel
+        shares={shares.shares}
+        warnings={shares.warnings}
+        payerUserId={expense.payerUserId}
+        payerRoundingAbsorptionCents={shares.payerRoundingAbsorptionCents}
+        members={members}
+        currentUserId={currentUserId}
+        currency={expense.currency}
+      />
     </div>
   );
 }

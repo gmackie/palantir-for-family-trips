@@ -11,11 +11,17 @@ export default async function ExpenseDetailPage(props: {
   const { caller, workspace, session } = await requireTripsWorkspace();
 
   try {
-    const data = await caller.expenses.get({
-      workspaceId: workspace.id,
-      tripId,
-      expenseId,
-    });
+    const [data, trip] = await Promise.all([
+      caller.expenses.get({
+        workspaceId: workspace.id,
+        tripId,
+        expenseId,
+      }),
+      caller.trips.get({
+        workspaceId: workspace.id,
+        tripId,
+      }),
+    ]);
 
     return (
       <main className="container mx-auto max-w-5xl px-4 py-10">
@@ -24,6 +30,7 @@ export default async function ExpenseDetailPage(props: {
           workspaceId={workspace.id}
           expenseId={expenseId}
           currentUserId={session.user.id}
+          claimMode={trip.claimMode}
           initialData={data}
         />
       </main>

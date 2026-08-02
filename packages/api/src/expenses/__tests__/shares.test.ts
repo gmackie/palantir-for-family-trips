@@ -28,6 +28,23 @@ describe("computeExpenseShares", () => {
     expect(result.warnings).toEqual([]);
   });
 
+  it("no line items splits the subtotal equally among trip participants", () => {
+    const result = computeExpenseShares({
+      payerUserId: "alice",
+      subtotalCents: 1000,
+      taxCents: 0,
+      tipCents: 0,
+      participantUserIds: ["alice", "bob"],
+      lineItems: [],
+    });
+
+    const alice = result.shares.find((s) => s.userId === "alice");
+    const bob = result.shares.find((s) => s.userId === "bob");
+    expect(result.shares).toHaveLength(2);
+    expect(alice?.subtotalCents).toBe(500);
+    expect(bob?.subtotalCents).toBe(500);
+  });
+
   it("two people split a shared line item evenly (even cents)", () => {
     const result = computeExpenseShares({
       payerUserId: "alice",
