@@ -303,6 +303,53 @@ describe("runCastPump", () => {
     expect(updates.at(-1)).not.toHaveProperty("checkpointsJson");
   });
 
+  it("a billing failure fails the job now instead of burning every attempt", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    const result = await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => ({ hasDriveLeg: true }) as never),
+        generateScript: vi.fn(async () => {
+          throw new Error(
+            "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] Your prepayment credits are depleted.",
+          );
+        }) as never,
+      },
+    });
+    // Attempt 1 of 4, but retrying an empty wallet just delays the same answer.
+    expect(result.status).toBe("failed");
+    expect(updates.at(-1)).toMatchObject({ status: "failed", attemptCount: 1 });
+    expect(String(updates.at(-1)?.error)).toMatch(/out of credit/);
+    // The raw vendor blob must not be what the console shows.
+    expect(String(updates.at(-1)?.error)).not.toMatch(/generativelanguage/);
+  });
+
+  it("a transient model error still gets its retries", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    const result = await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => ({ hasDriveLeg: true }) as never),
+        generateScript: vi.fn(async () => {
+          throw new Error("rate limit exceeded");
+        }) as never,
+      },
+    });
+    expect(result.status).toBe("pending");
+    expect(updates.at(-1)).toMatchObject({
+      status: "pending",
+      attemptCount: 1,
+    });
+  });
+
   it("claims from a {rows: [...]} driver shape too", async () => {
     const { db, updates } = fakePumpDb({ claimRows: [] });
     db.execute = vi.fn(async () => ({

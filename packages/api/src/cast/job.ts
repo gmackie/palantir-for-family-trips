@@ -7,6 +7,7 @@ import {
   castEpisodeJobs,
   castEpisodes,
 } from "@sortey/db/schema";
+import { classifyLlmError } from "../llm/errors";
 import { concatMp3Segments, validateEpisodeAudio } from "./concat";
 import { buildCastDayContext } from "./context";
 import { castTtsModel, castVoiceId } from "./elevenlabs";
@@ -181,10 +182,17 @@ export async function runCastPump(params: {
     });
     return { claimed: true, jobId: job.id, ...outcome };
   } catch (error) {
+    // A missing key or an empty billing account fails identically on every
+    // attempt, so retrying just delays the same answer by 20 minutes behind a
+    // raw vendor blob. Fail those now, with a message that says what to fix.
+    const providerFailure = classifyLlmError(error);
     const message =
-      error instanceof Error ? error.message : String(error ?? "unknown error");
+      providerFailure?.message ??
+      (error instanceof Error
+        ? error.message
+        : String(error ?? "unknown error"));
     const attempts = job.attemptCount + 1;
-    const terminal = attempts >= CAST_MAX_ATTEMPTS;
+    const terminal = providerFailure?.terminal || attempts >= CAST_MAX_ATTEMPTS;
     await db
       .update(castEpisodeJobs)
       .set({
