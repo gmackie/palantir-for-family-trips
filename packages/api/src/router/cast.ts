@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "@sortey/db";
+import { and, desc, eq, gte, inArray, sql } from "@sortey/db";
 import { getR2Bucket } from "@sortey/db/runtime";
 import {
   CAST_JOB_ACTIVE_STATUSES,
@@ -16,12 +16,20 @@ import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
 import {
+  assertWithinCastBudget,
+  CastBudgetExceededError,
+  castBudgetLimits,
+  monthStart,
+  remainingCastBudget,
+} from "../cast/budget";
+import {
   castTodayInTz,
   probeCastDriveLeg,
   resolveCastTargetDate,
 } from "../cast/context";
 import { CAST_EXPIRED_ERROR } from "../cast/job";
 import { type CastR2Bucket, deleteCheckpoints } from "../cast/tts";
+import { NoLlmProviderError, resolveLlmProvider } from "../llm/structured";
 import { assertRateLimit } from "../rate-limit";
 
 /** LLM spend guard: script generation starts without any approval gate. */
@@ -55,6 +63,41 @@ const jobSummary = {
   updatedAt: castEpisodeJobs.updatedAt,
 };
 
+/** This calendar month's metered Corridor Cast usage for one trip. */
+async function loadCastMonthUsage(
+  // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
+  db: any,
+  tripId: string,
+  now: Date = new Date(),
+): Promise<{
+  llmOutputTokens: number;
+  ttsCharacters: number;
+  episodes: number;
+}> {
+  const [row] = (await db
+    .select({
+      llmOutputTokens: sql<number>`coalesce(sum(${castEpisodeJobs.llmOutputTokens}), 0)::int`,
+      ttsCharacters: sql<number>`coalesce(sum(${castEpisodeJobs.ttsCharacters}), 0)::int`,
+      episodes: sql<number>`count(*)::int`,
+    })
+    .from(castEpisodeJobs)
+    .where(
+      and(
+        eq(castEpisodeJobs.tripId, tripId),
+        gte(castEpisodeJobs.createdAt, monthStart(now)),
+      ),
+    )) as Array<{
+    llmOutputTokens: number;
+    ttsCharacters: number;
+    episodes: number;
+  }>;
+  return {
+    llmOutputTokens: Number(row?.llmOutputTokens ?? 0),
+    ttsCharacters: Number(row?.ttsCharacters ?? 0),
+    episodes: Number(row?.episodes ?? 0),
+  };
+}
+
 export const castRouter = {
   /**
    * Everything the Generate button needs: tomorrow's resolved target date IN
@@ -82,7 +125,18 @@ export const castRouter = {
         tripId: ctx.tripId,
         targetDate,
       });
-      return { targetDate, tz: trip.tz, ...probe };
+      // Surfaced so the console can warn before the ceiling refuses a tap.
+      const usage = await loadCastMonthUsage(ctx.db, ctx.tripId);
+      return {
+        targetDate,
+        tz: trip.tz,
+        ...probe,
+        budget: {
+          usage,
+          limits: castBudgetLimits(),
+          remaining: remainingCastBudget(usage),
+        },
+      };
     }),
 
   /** Enqueue tomorrow's episode. Idempotent: a second tap returns the active job. */
@@ -122,6 +176,36 @@ export const castRouter = {
         key: `cast:generate:${ctx.session.user.id}`,
         ...CAST_GENERATE_RATE_LIMIT,
       });
+
+      // Preflight: an unkeyed deployment would enqueue a job that can only
+      // fail. Say so now instead of surfacing it 5 minutes later as a job
+      // error the traveller has to go read.
+      try {
+        resolveLlmProvider();
+      } catch (error) {
+        if (error instanceof NoLlmProviderError) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "No script model is configured for this deployment, so an episode cannot be written.",
+          });
+        }
+        throw error;
+      }
+
+      // Spend ceiling, checked before either the model or the voice bill
+      // starts. Refusing afterwards is just an expensive error message.
+      try {
+        assertWithinCastBudget(await loadCastMonthUsage(ctx.db, ctx.tripId));
+      } catch (error) {
+        if (error instanceof CastBudgetExceededError) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
 
       const targetDate =
         input.targetDate ?? resolveCastTargetDate(trip.tz, new Date());

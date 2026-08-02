@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@localhost:5432/gmacko_test";
+// generate() preflights the script provider; without one it refuses before
+// touching the database, which is its own test below.
+process.env.ANTHROPIC_API_KEY ??= "test-key";
 
 const { appRouter } = await import("../../root");
 const { resetRateLimitBuckets } = await import("../../rate-limit");
@@ -125,12 +128,16 @@ const SEGMENT = [
   },
 ];
 
+/** A trip that has spent nothing this month. */
+const NO_USAGE = [{ llmOutputTokens: 0, ttsCharacters: 0, episodes: 0 }];
+
 describe("cast.generate", () => {
   it("enqueues a job for a drive day", async () => {
     const { db, inserts } = createDbMock({
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }], // trip tz
+        NO_USAGE, // budget: this month's metered usage
         DAY_WITH_SEGMENT, // probe: trip_day
         SEGMENT, // probe: segment by id
         [], // cleanup: no failed jobs
@@ -156,6 +163,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [], // cleanup
@@ -170,6 +178,59 @@ describe("cast.generate", () => {
       durationMinutes: 15,
     });
     expect(result).toMatchObject({ jobId: "job_1", deduplicated: true });
+  });
+
+  it("refuses before touching the database when no provider is configured", async () => {
+    // An unkeyed deployment would enqueue a job that can only fail four times.
+    const { db, inserts } = createDbMock({
+      selectQueue: [...authSelects(), [{ tz: "America/Denver" }]],
+    });
+    const caller = createCaller(db);
+    const anthropic = process.env.ANTHROPIC_API_KEY;
+    const gemini = process.env.GEMINI_API_KEY;
+    const google = process.env.GOOGLE_AI_API_KEY;
+    process.env.ANTHROPIC_API_KEY = undefined as unknown as string;
+    process.env.GEMINI_API_KEY = undefined as unknown as string;
+    process.env.GOOGLE_AI_API_KEY = undefined as unknown as string;
+    // biome-ignore lint/performance/noDelete: env vars must be absent, not "undefined"
+    delete process.env.ANTHROPIC_API_KEY;
+    // biome-ignore lint/performance/noDelete: see above
+    delete process.env.GEMINI_API_KEY;
+    // biome-ignore lint/performance/noDelete: see above
+    delete process.env.GOOGLE_AI_API_KEY;
+    try {
+      await expect(
+        caller.cast.generate({ ...SCOPE, durationMinutes: 30 }),
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringMatching(/no script model is configured/i),
+      });
+      expect(inserts).toHaveLength(0);
+    } finally {
+      if (anthropic) process.env.ANTHROPIC_API_KEY = anthropic;
+      if (gemini) process.env.GEMINI_API_KEY = gemini;
+      if (google) process.env.GOOGLE_AI_API_KEY = google;
+    }
+  });
+
+  it("refuses when the trip has spent its month's voice budget", async () => {
+    // Enforced at enqueue: refusing after the spend is just an expensive
+    // error message.
+    const { db, inserts } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [{ tz: "America/Denver" }],
+        [{ llmOutputTokens: 10, ttsCharacters: 5_000_000, episodes: 40 }],
+      ],
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.generate({ ...SCOPE, durationMinutes: 30 }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringMatching(/voice characters/i),
+    });
+    expect(inserts).toHaveLength(0);
   });
 
   it("rejects a no-drive-leg day server-side even though the button is hidden", async () => {
@@ -193,6 +254,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [], // cleanup
@@ -213,6 +275,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [], // cleanup
@@ -232,6 +295,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [
@@ -605,6 +669,7 @@ describe("cast.tonight", () => {
         [{ tz: "America/Denver" }],
         DAY_WITH_SEGMENT,
         SEGMENT,
+        NO_USAGE, // tonight reads the budget after probing the leg
       ],
     });
     const caller = createCaller(db);

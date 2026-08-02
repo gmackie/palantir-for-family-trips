@@ -47,8 +47,8 @@
   **Priority:** P1
   P0's offline guarantee is Download MP3 (played from the Files app); the IndexedDB blob player only works when the app shell can load. A minimal SW that precaches the player route's HTML + vinext static assets at prefetch time (cache-first offline, NO Range/206 logic, no audio caching) restores in-app airplane-mode playback with segment titles and speed control. Deferred from P0 (eng-review Issue 6) because vinext hashed-chunk enumeration and offline session/tRPC hydration are white-screen-prone and must be tested at home, not discovered on I-70. Depends on: P0 player shipped.
 
-- [ ] Corridor Cast script-quality eval + real documentary grounding source
-  **Priority:** P2
+- [x] Corridor Cast script-quality eval + real documentary grounding source
+  **Priority:** P2 — done 2026-08-02
   Two-part trust upgrade deferred from P0 (eng-review Issues 7/8): (1) `cast/__evals__` structural eval — fixture day contexts asserting schema validity, per-segment word budgets ±20%, disclaimers, must-mention anchors, ≥1 grounded POI reference — as the regression floor once prompts iterate; (2) a real grounding source for documentary content (Wikipedia/corridor-town lookups in the context pack), since trip data can only ground operational facts (roads/towns/distances/stops/anchors) — P0 handles this with two-tier prompt honesty (grounded ops facts; hedged, non-specific model-knowledge color). Together these raise the D4 "source-backed claims" premise from ritual to machinery. Depends on: P0 prompt stabilized.
 
 - [x] Evict the Corridor Cast IndexedDB audio cache on sign-out
