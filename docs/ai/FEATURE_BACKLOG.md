@@ -83,7 +83,7 @@ Source: `docs/plans/2026-07-09-itinerary-planner.md`, DayMap/DriftPort specs, `C
 | R7 | Route gradient (mobile Driving Mode) | ✅ | `RouteAheadCard` gradient bar + zone markers on Drive |
 | R8 | P2 hour-aware packer for plain A→B | ✅ | `estimateDriveDays` + `totalDriveMiles` / `leadInMiles` on replanDraft |
 | R9 | P4 dual-candidate routes (coast vs inland) | ✅ | `listCandidates` + select; `planRoute.preferredRoute` writes chosen polyline |
-| R10 | P5 cut-if-behind automation | 🟡 | Cut text seeded; no auto-drop of blocks |
+| R10 | P5 cut-if-behind automation | ✅ | `cut-if-behind.ts` + replan wiring: a `behind` replan drops the days the traveller pre-authorised (never a drive, event, or anchored day), reports each cut with their own words, and names the shortfall when cutting everything allowed still is not enough |
 | R11 | Predicted Stop as first-class list | ✅ | Predicted stops list on Route Ahead (fuel + overnight zones) |
 | R12 | DriftPort predictive service logistics | 🟡 | Telemetry spike + service queue; full consumption→POI matching open |
 | R13 | Work-window finder (DayMap B1) | ❌ | Spec only |
