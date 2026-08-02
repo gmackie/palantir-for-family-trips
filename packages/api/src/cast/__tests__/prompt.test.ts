@@ -25,6 +25,7 @@ const CONTEXT: CastDayContext = {
   day: null,
   anchors: [],
   pois: [],
+  grounding: null,
 };
 
 const OUTLINE: CastOutline = {
@@ -50,6 +51,39 @@ describe("buildOutlineUserPrompt", () => {
     const prompt = buildOutlineUserPrompt({ ...CONTEXT, degraded: true }, 15);
     expect(prompt).toContain("no route geometry");
     expect(prompt).toContain(`${15 * CAST_WORDS_PER_MINUTE}`);
+  });
+
+  it("a grounding brief surfaces a RESEARCH directive; absence stays silent", () => {
+    const without = buildOutlineUserPrompt(CONTEXT, 30);
+    expect(without).not.toContain("RESEARCH:");
+
+    const withBrief = buildOutlineUserPrompt(
+      {
+        ...CONTEXT,
+        grounding: {
+          title: "Moab to Grand Junction corridor",
+          facts: [
+            {
+              title: "Uranium boom",
+              text: "Charlie Steen's Mi Vida mine…",
+              verified: true,
+              sourceIndexes: [1],
+            },
+          ],
+        },
+      },
+      30,
+    );
+    expect(withBrief).toContain("RESEARCH:");
+    expect(withBrief).toContain("Moab to Grand Junction corridor");
+    // The facts themselves ride in via the CONTEXT JSON dump.
+    expect(withBrief).toContain("Charlie Steen");
+  });
+
+  it("system prompt carries the tier-1.5 sourced-material rules", async () => {
+    const { CAST_SYSTEM_PROMPT } = await import("../prompt");
+    expect(CAST_SYSTEM_PROMPT).toContain("TIER 1.5");
+    expect(CAST_SYSTEM_PROMPT).toContain("Never upgrade an unverified lead");
   });
 });
 

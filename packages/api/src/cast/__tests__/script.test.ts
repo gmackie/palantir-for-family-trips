@@ -25,6 +25,7 @@ const CONTEXT: CastDayContext = {
   day: null,
   anchors: [],
   pois: [],
+  grounding: null,
 };
 
 const OUTLINE = {

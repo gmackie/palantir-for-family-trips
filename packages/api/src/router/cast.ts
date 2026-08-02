@@ -6,6 +6,8 @@ import {
   type CastScript,
   castEpisodeJobs,
   castEpisodes,
+  castGroundingBriefs,
+  tripSegments,
   trips,
 } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
@@ -300,6 +302,88 @@ export const castRouter = {
         });
       }
       return { jobId: input.jobId };
+    }),
+
+  /**
+   * Push a provenance-tracked research brief for a drive segment (produced by
+   * an OODA research thread — the cast-grounding bridge parses the export).
+   * Latest brief per segment wins; the script generator's tier-1.5 rules let
+   * verified facts be narrated with attribution.
+   */
+  uploadGroundingBrief: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        segmentId: z.string().min(1),
+        title: z.string().min(1).max(300),
+        facts: z
+          .array(
+            z.object({
+              title: z.string().min(1).max(300),
+              text: z.string().min(1).max(4000),
+              verified: z.boolean(),
+              sourceIndexes: z.array(z.number().int()).max(20),
+            }),
+          )
+          .min(1)
+          .max(80),
+        sources: z
+          .array(
+            z.object({
+              index: z.number().int(),
+              capabilityId: z.string().max(200),
+              url: z.string().max(1000).nullable(),
+              retrievedAt: z.string().max(100).nullable(),
+            }),
+          )
+          .max(80),
+        provenance: z
+          .object({
+            oodaThreadId: z.string().max(200).optional(),
+            exportedAt: z.string().max(100).optional(),
+            workspaceCommit: z.string().max(100).optional(),
+          })
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // The segment must belong to this trip — a cross-trip segment id would
+      // let a member attach research to someone else's corridor.
+      const [segment] = (await ctx.db
+        .select({ id: tripSegments.id })
+        .from(tripSegments)
+        .where(
+          and(
+            eq(tripSegments.id, input.segmentId),
+            eq(tripSegments.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<{ id: string }>;
+      if (!segment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Segment does not belong to this trip.",
+        });
+      }
+
+      const inserted = (await ctx.db
+        .insert(castGroundingBriefs)
+        .values({
+          tripId: ctx.tripId,
+          segmentId: input.segmentId,
+          title: input.title,
+          facts: input.facts,
+          sources: input.sources,
+          provenance: input.provenance ?? null,
+        })
+        .returning({ id: castGroundingBriefs.id })) as Array<{ id: string }>;
+
+      return {
+        briefId: inserted[0]?.id,
+        factCount: input.facts.length,
+        verifiedCount: input.facts.filter((f) => f.verified).length,
+      };
     }),
 
   /**

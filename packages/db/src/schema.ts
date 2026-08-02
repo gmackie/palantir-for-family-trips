@@ -1802,6 +1802,63 @@ export const castEpisodes = pgTable(
   ],
 );
 
+/** One source line from an OODA research-brief export's `## Sources` index. */
+export type CastGroundingSource = {
+  index: number;
+  capabilityId: string;
+  url: string | null;
+  retrievedAt: string | null;
+};
+
+/**
+ * One narratable research fact. `verified: false` mirrors OODA's
+ * `[UNVERIFIED]` marker — a lead, not a fact; the script prompt keeps it
+ * hedged exactly like unsourced model knowledge.
+ */
+export type CastGroundingFact = {
+  title: string;
+  text: string;
+  verified: boolean;
+  sourceIndexes: number[];
+};
+
+/**
+ * Provenance-tracked documentary research for one drive segment, produced by
+ * an OODA research thread (docs: /Volumes/dev/bob/ooda) and pushed via the
+ * cast-grounding bridge. Latest row per (trip, segment) wins. Raises tier-2
+ * "campfire truth" color into source-backed narration (eng-review Issue 7
+ * follow-up).
+ */
+export const castGroundingBriefs = pgTable(
+  "cast_grounding_brief",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    segmentId: t
+      .uuid()
+      .notNull()
+      .references(() => tripSegments.id, { onDelete: "cascade" }),
+    title: t.varchar({ length: 300 }).notNull(),
+    facts: t.jsonb().$type<CastGroundingFact[]>().notNull(),
+    sources: t.jsonb().$type<CastGroundingSource[]>().notNull(),
+    provenance: t.jsonb().$type<{
+      oodaThreadId?: string;
+      exportedAt?: string;
+      workspaceCommit?: string;
+    }>(),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  }),
+  (table) => [
+    index("cast_grounding_trip_segment_idx").on(table.tripId, table.segmentId),
+  ],
+);
+
 export const CreateUserPreferencesSchema = createInsertSchema(userPreferences, {
   theme: z.enum(["light", "dark", "system"]).default("system"),
   language: z.string().max(10).default("en"),

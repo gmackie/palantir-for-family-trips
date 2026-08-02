@@ -53,6 +53,7 @@ export const tripChildRlsTargets = [
   { tableName: "member_location", tripColumn: "trip_id" },
   { tableName: "cast_episode_job", tripColumn: "trip_id" },
   { tableName: "cast_episode", tripColumn: "trip_id" },
+  { tableName: "cast_grounding_brief", tripColumn: "trip_id" },
 ] as const;
 
 /**

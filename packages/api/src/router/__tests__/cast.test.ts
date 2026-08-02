@@ -505,6 +505,66 @@ describe("cast.script", () => {
   });
 });
 
+describe("cast.uploadGroundingBrief", () => {
+  const BRIEF_INPUT = {
+    ...SCOPE,
+    segmentId: "seg_1",
+    title: "Moab to Grand Junction corridor",
+    facts: [
+      {
+        title: "Uranium boom",
+        text: "Charlie Steen's Mi Vida mine…",
+        verified: true,
+        sourceIndexes: [1],
+      },
+      {
+        title: "Ghost vineyards",
+        text: "Locals say…",
+        verified: false,
+        sourceIndexes: [],
+      },
+    ],
+    sources: [
+      {
+        index: 1,
+        capabilityId: "wikipedia-search",
+        url: "https://en.wikipedia.org/wiki/Moab,_Utah",
+        retrievedAt: "2026-07-30T02:00:00Z",
+      },
+    ],
+  };
+
+  it("stores a brief for a segment in this trip", async () => {
+    const { db, inserts } = createDbMock({
+      selectQueue: [...authSelects(), [{ id: "seg_1" }]],
+      insertReturningQueue: [[{ id: "brief_1" }]],
+    });
+    const caller = createCaller(db);
+    const result = await caller.cast.uploadGroundingBrief(BRIEF_INPUT);
+    expect(result).toEqual({
+      briefId: "brief_1",
+      factCount: 2,
+      verifiedCount: 1,
+    });
+    expect(inserts[0]).toMatchObject({
+      tripId: TRIP_ID,
+      segmentId: "seg_1",
+      title: "Moab to Grand Junction corridor",
+    });
+  });
+
+  it("refuses a segment that belongs to another trip", async () => {
+    const { db, inserts } = createDbMock({
+      selectQueue: [...authSelects(), []], // segment lookup scoped to trip
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.uploadGroundingBrief(BRIEF_INPUT),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(inserts).toHaveLength(0);
+  });
+});
+
 describe("cast.tonight", () => {
   it("resolves tomorrow in the trip tz and probes the drive leg", async () => {
     const { db } = createDbMock({
