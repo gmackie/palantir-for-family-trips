@@ -2,6 +2,8 @@ import { and, desc, eq, gte, inArray, sql } from "@sortey/db";
 import { getR2Bucket } from "@sortey/db/runtime";
 import {
   CAST_JOB_ACTIVE_STATUSES,
+  type CastGroundingFact,
+  type CastGroundingSource,
   type CastJobStatus,
   type CastScript,
   castEpisodeJobs,
@@ -533,6 +535,150 @@ export const castRouter = {
         factCount: input.facts.length,
         verifiedCount: input.facts.filter((f) => f.verified).length,
       };
+    }),
+
+  /**
+   * The trip's research: every segment's latest brief with its sources, plus
+   * the drive legs that have none. The gaps matter as much as the briefs —
+   * research is gathered out-of-band in an OODA thread, so knowing which
+   * corridor is still unresearched is the whole prompt to go do it.
+   */
+  grounding: tripProcedure()
+    .input(
+      z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }),
+    )
+    .query(async ({ ctx }) => {
+      const briefs = (await ctx.db
+        .select({
+          id: castGroundingBriefs.id,
+          segmentId: castGroundingBriefs.segmentId,
+          title: castGroundingBriefs.title,
+          facts: castGroundingBriefs.facts,
+          sources: castGroundingBriefs.sources,
+          provenance: castGroundingBriefs.provenance,
+          createdAt: castGroundingBriefs.createdAt,
+          segmentName: tripSegments.name,
+        })
+        .from(castGroundingBriefs)
+        .innerJoin(
+          tripSegments,
+          eq(tripSegments.id, castGroundingBriefs.segmentId),
+        )
+        .where(eq(castGroundingBriefs.tripId, ctx.tripId))
+        .orderBy(desc(castGroundingBriefs.createdAt))) as Array<{
+        id: string;
+        segmentId: string;
+        title: string;
+        facts: CastGroundingFact[];
+        sources: CastGroundingSource[];
+        provenance: unknown;
+        createdAt: Date;
+        segmentName: string;
+      }>;
+
+      // Only the newest brief per segment is ever used by the context pack,
+      // so superseded ones are noise here too.
+      const latestBySegment = new Map<string, (typeof briefs)[number]>();
+      for (const brief of briefs) {
+        if (!latestBySegment.has(brief.segmentId)) {
+          latestBySegment.set(brief.segmentId, brief);
+        }
+      }
+
+      const segments = (await ctx.db
+        .select({ id: tripSegments.id, name: tripSegments.name })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, ctx.tripId))
+        .orderBy(tripSegments.sortOrder)) as Array<{
+        id: string;
+        name: string;
+      }>;
+
+      return {
+        briefs: [...latestBySegment.values()].map((brief) => ({
+          id: brief.id,
+          segmentId: brief.segmentId,
+          segmentName: brief.segmentName,
+          title: brief.title,
+          createdAt: brief.createdAt,
+          sources: brief.sources,
+          facts: brief.facts,
+          verifiedCount: brief.facts.filter((f) => f.verified).length,
+        })),
+        /** Segments with no research yet — the queue for the next thread. */
+        gaps: segments
+          .filter((segment) => !latestBySegment.has(segment.id))
+          .map((segment) => ({ segmentId: segment.id, name: segment.name })),
+      };
+    }),
+
+  /**
+   * Drop one fact from a brief. A bad lead should be removable without
+   * re-running the research thread — and removing it must not silently
+   * renumber the others.
+   */
+  removeGroundingFact: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        briefId: z.string().min(1),
+        factTitle: z.string().min(1).max(300),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [brief] = (await ctx.db
+        .select({
+          id: castGroundingBriefs.id,
+          facts: castGroundingBriefs.facts,
+        })
+        .from(castGroundingBriefs)
+        .where(
+          and(
+            eq(castGroundingBriefs.id, input.briefId),
+            eq(castGroundingBriefs.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<{ id: string; facts: CastGroundingFact[] }>;
+      if (!brief) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const remaining = brief.facts.filter((f) => f.title !== input.factTitle);
+      if (remaining.length === brief.facts.length) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "That fact is not in this brief.",
+        });
+      }
+
+      await ctx.db
+        .update(castGroundingBriefs)
+        .set({ facts: remaining })
+        .where(eq(castGroundingBriefs.id, brief.id));
+
+      return { factCount: remaining.length };
+    }),
+
+  /** Discard a brief entirely — the next episode falls back to hedged color. */
+  deleteGroundingBrief: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        briefId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const deleted = (await ctx.db
+        .delete(castGroundingBriefs)
+        .where(
+          and(
+            eq(castGroundingBriefs.id, input.briefId),
+            eq(castGroundingBriefs.tripId, ctx.tripId),
+          ),
+        )
+        .returning({ id: castGroundingBriefs.id })) as Array<{ id: string }>;
+      if (deleted.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
+      return { deleted: true };
     }),
 
   /**

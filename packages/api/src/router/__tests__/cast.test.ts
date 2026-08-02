@@ -43,6 +43,7 @@ function createDbMock(opts: {
   selectQueue: unknown[][];
   insertReturningQueue?: unknown[][];
   updateReturningQueue?: unknown[][];
+  deleteReturningQueue?: unknown[][];
 }) {
   const inserts: Array<Record<string, unknown>> = [];
   const updates: Array<Record<string, unknown>> = [];
@@ -53,6 +54,8 @@ function createDbMock(opts: {
       // biome-ignore lint/suspicious/noExplicitAny: test chain stub
       const chain: any = {
         from: () => chain,
+        innerJoin: () => chain,
+        leftJoin: () => chain,
         where: () => chain,
         orderBy: () => chain,
         limit: () => Promise.resolve(rows),
@@ -92,6 +95,15 @@ function createDbMock(opts: {
         return chain;
       },
     })),
+    delete: vi.fn(() => {
+      // biome-ignore lint/suspicious/noExplicitAny: test chain stub
+      const chain: any = {
+        where: () => chain,
+        returning: () =>
+          Promise.resolve(opts.deleteReturningQueue?.shift() ?? []),
+      };
+      return chain;
+    }),
     execute: vi.fn(async () => undefined),
     transaction: vi.fn(
       async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> => fn(db),
@@ -677,5 +689,150 @@ describe("cast.tonight", () => {
     expect(result.tz).toBe("America/Denver");
     expect(result.hasDriveLeg).toBe(true);
     expect(result.targetDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("cast.grounding", () => {
+  const BRIEF = {
+    id: "brief_1",
+    segmentId: "seg_1",
+    title: "Bryce → Moab corridor",
+    facts: [
+      {
+        title: "Waterpocket Fold",
+        text: "…",
+        verified: true,
+        sourceIndexes: [1],
+      },
+      {
+        title: "Burr Trail lead",
+        text: "…",
+        verified: false,
+        sourceIndexes: [],
+      },
+    ],
+    sources: [
+      {
+        index: 1,
+        capabilityId: "web.fetch",
+        url: "https://usgs.gov/x",
+        retrievedAt: null,
+      },
+    ],
+    provenance: null,
+    createdAt: new Date("2026-08-02T00:00:00.000Z"),
+    segmentName: "Bryce Canyon area → Moab",
+  };
+
+  it("returns the latest brief per segment and names the unresearched legs", async () => {
+    const superseded = { ...BRIEF, id: "brief_0", title: "older" };
+    const { db } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [BRIEF, superseded], // newest first, same segment
+        [
+          { id: "seg_1", name: "Bryce Canyon area → Moab" },
+          { id: "seg_2", name: "Moab → Grand Junction" },
+        ],
+      ],
+    });
+    const result = await createCaller(db).cast.grounding(SCOPE);
+
+    // Only the newest survives — the context pack ignores the rest, so
+    // showing them would misrepresent what a script will actually use.
+    expect(result.briefs).toHaveLength(1);
+    expect(result.briefs[0]).toMatchObject({
+      id: "brief_1",
+      verifiedCount: 1,
+      segmentName: "Bryce Canyon area → Moab",
+    });
+    expect(result.gaps).toEqual([
+      { segmentId: "seg_2", name: "Moab → Grand Junction" },
+    ]);
+  });
+});
+
+describe("cast.removeGroundingFact", () => {
+  const brief = (facts: unknown[]) => [{ id: "brief_1", facts }];
+
+  it("drops just the named fact", async () => {
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        brief([
+          { title: "Keep me", text: "…", verified: true, sourceIndexes: [1] },
+          { title: "Drop me", text: "…", verified: false, sourceIndexes: [] },
+        ]),
+      ],
+    });
+    const result = await createCaller(db).cast.removeGroundingFact({
+      ...SCOPE,
+      briefId: "brief_1",
+      factTitle: "Drop me",
+    });
+    expect(result.factCount).toBe(1);
+    expect(updates[0]).toMatchObject({
+      facts: [{ title: "Keep me", verified: true, sourceIndexes: [1] }],
+    });
+  });
+
+  it("404s an unknown fact instead of silently writing the list back", async () => {
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        brief([
+          { title: "Only", text: "…", verified: true, sourceIndexes: [] },
+        ]),
+      ],
+    });
+    await expect(
+      createCaller(db).cast.removeGroundingFact({
+        ...SCOPE,
+        briefId: "brief_1",
+        factTitle: "Nope",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(updates).toHaveLength(0);
+  });
+
+  it("404s a brief belonging to another trip", async () => {
+    const { db } = createDbMock({ selectQueue: [...authSelects(), []] });
+    await expect(
+      createCaller(db).cast.removeGroundingFact({
+        ...SCOPE,
+        briefId: "brief_elsewhere",
+        factTitle: "x",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("cast.deleteGroundingBrief", () => {
+  it("discards a brief that belongs to this trip", async () => {
+    const { db } = createDbMock({
+      selectQueue: [...authSelects()],
+      deleteReturningQueue: [[{ id: "brief_1" }]],
+    });
+    await expect(
+      createCaller(db).cast.deleteGroundingBrief({
+        ...SCOPE,
+        briefId: "brief_1",
+      }),
+    ).resolves.toEqual({ deleted: true });
+  });
+
+  it("404s rather than reporting success for another trip's brief", async () => {
+    // The where clause is trip-scoped, so a cross-trip id deletes nothing —
+    // and must not come back as `deleted: true`.
+    const { db } = createDbMock({
+      selectQueue: [...authSelects()],
+      deleteReturningQueue: [[]],
+    });
+    await expect(
+      createCaller(db).cast.deleteGroundingBrief({
+        ...SCOPE,
+        briefId: "brief_elsewhere",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
