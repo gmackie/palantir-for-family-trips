@@ -4,6 +4,7 @@
  */
 
 import { listAnchors } from "./anchor-ops";
+import { applyCutIfBehind, describeCuts } from "./cut-if-behind";
 import type { DayPlanDraft } from "./day-plan";
 import { replanDraft } from "./day-plan";
 import { listDays } from "./day-plan-ops";
@@ -19,6 +20,14 @@ export interface ReplanPreview {
   keptPastDays: number;
   nextAnchor: { title: string; startDate: string } | null;
   warnings: string[];
+  /**
+   * Days the traveller pre-authorised dropping, when replanning because they
+   * are behind. Empty for every other reason — a side trip or a manual replan
+   * is not a schedule deficit.
+   */
+  cuts: Array<{ date: string; because: string }>;
+  /** Days still unrecovered after every allowed cut. */
+  cutShortfallDays: number;
   summary: string;
   proposedLegs: Array<{
     fromName: string;
@@ -80,7 +89,33 @@ export async function buildReplanPreview(
   }
 
   // Preserve curated future day titles as must-visits where possible
-  const future = days.filter((d) => d.date >= fromDate && d.date <= untilDate);
+  const allFuture = days.filter(
+    (d) => d.date >= fromDate && d.date <= untilDate,
+  );
+
+  // Behind schedule: honour the decision the traveller already wrote down
+  // rather than making them re-derive it. `daysBehind` is how many days of
+  // plan sit between now and the next immovable commitment that reality has
+  // eaten; one day is the floor, since a replan for "behind" means at least
+  // that much. Cut days drop out of the must-visits the draft is built from.
+  const anchorDates = new Set(
+    anchors.map((a) => String((a as { startDate: unknown }).startDate)),
+  );
+  const cutDecision =
+    p.reason === "behind"
+      ? applyCutIfBehind(
+          allFuture.map((d) => ({
+            date: d.date,
+            intent: d.intent,
+            cutIfBehind: d.cutIfBehind,
+            hasAnchor: anchorDates.has(d.date),
+          })),
+          1,
+        )
+      : null;
+  const cutDates = new Set(cutDecision?.cut.map((c) => c.day.date) ?? []);
+  const future = allFuture.filter((d) => !cutDates.has(d.date));
+  if (cutDecision) warnings.push(...describeCuts(cutDecision));
   const mustVisits = future
     .filter((d) => d.title && d.intent !== "drive")
     .map((d) => ({
@@ -153,6 +188,12 @@ export async function buildReplanPreview(
       ? { title: nextAnchor.title, startDate: nextAnchor.startDate }
       : null,
     warnings,
+    cuts:
+      cutDecision?.cut.map((c) => ({
+        date: c.day.date,
+        because: c.because,
+      })) ?? [],
+    cutShortfallDays: cutDecision?.shortfallDays ?? 0,
     summary: summaryParts.filter(Boolean).join(" "),
     proposedLegs,
   };
