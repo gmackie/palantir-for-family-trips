@@ -2,9 +2,9 @@
 
 ## Fuel Range & Map
 
-- [ ] Feed real fuel state into route coloring
-  **Priority:** P1
-  `map.tsx` calls `colorPolylineByFuelRange` with no `milesSinceFill`, so the route always assumes a full tank at the trip origin, and the wrap loop "auto-refills" past projected empty — the route flips back to green exactly where the tank would run dry. Use the latest fuel log + odometer/breadcrumb miles, and render the `empty` band instead of silently refilling. (Flagged independently by Claude and Codex adversarial review.)
+- [x] Feed real fuel state into route coloring
+  **Priority:** P1 — done 2026-08-02
+  `colorPolylineByFuelRange` no longer wraps: `milesSinceFill` is not reduced modulo the tank (an already-dry van reads empty, not full) and the accumulator resets only at caller-supplied `refuelAtMiles` — the predicted Fuel Zones — so the route goes red where the tank actually runs dry and stays red. `routePlanner.zones` now returns `milesSinceFill`, computed from the GPS breadcrumb distance since the latest fuel log (0 when no track exists, matching driving-summary's topped-off assumption), and `map.tsx` passes both it and the Fuel Zone mile markers.
 
 - [ ] Split map polylines at missing segments
   **Priority:** P2

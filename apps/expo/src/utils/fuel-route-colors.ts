@@ -51,15 +51,35 @@ export function fuelBandAt(
   return "safe";
 }
 
+/**
+ * Split a route polyline into colored segments by remaining fuel range.
+ *
+ * The tank only refills where `refuelAtMiles` says it does — those are the
+ * predicted Fuel Zones, in cumulative route miles. Past the last one the route
+ * stays **red**: running dry is the thing this coloring exists to warn about,
+ * so it must not be papered over by assuming a fill-up happens exactly when the
+ * tank empties. `milesSinceFill` offsets the start and is NOT wrapped into one
+ * tank cycle — a van that is already past empty reads as empty, not as full.
+ */
 export function colorPolylineByFuelRange(
   points: LatLng[],
   rangeMiles: number,
-  options?: { milesSinceFill?: number; cautionFraction?: number },
+  options?: {
+    milesSinceFill?: number;
+    cautionFraction?: number;
+    /** Cumulative route miles at which the tank is refilled. */
+    refuelAtMiles?: number[];
+  },
 ): FuelColoredSegment[] {
   if (points.length < 2 || !(rangeMiles > 0)) return [];
 
   const cautionFraction = options?.cautionFraction ?? DEFAULT_CAUTION_FRACTION;
-  let sinceLastFill = Math.max(options?.milesSinceFill ?? 0, 0) % rangeMiles;
+  let sinceLastFill = Math.max(options?.milesSinceFill ?? 0, 0);
+  const refuels = [...(options?.refuelAtMiles ?? [])]
+    .filter((m) => Number.isFinite(m) && m > 0)
+    .sort((a, b) => a - b);
+  let nextRefuel = 0;
+  let cumulative = 0;
 
   const segments: FuelColoredSegment[] = [];
   let segStart = 0;
@@ -68,8 +88,14 @@ export function colorPolylineByFuelRange(
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1]!;
     const curr = points[i]!;
-    sinceLastFill += haversineMiles(prev, curr);
-    while (sinceLastFill >= rangeMiles) sinceLastFill -= rangeMiles;
+    const d = haversineMiles(prev, curr);
+    cumulative += d;
+    sinceLastFill += d;
+
+    while (nextRefuel < refuels.length && cumulative >= refuels[nextRefuel]!) {
+      sinceLastFill = 0;
+      nextRefuel++;
+    }
 
     const band = fuelBandAt(sinceLastFill, rangeMiles, cautionFraction);
     if (band !== currentBand) {

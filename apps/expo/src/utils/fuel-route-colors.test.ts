@@ -87,17 +87,40 @@ describe("colorPolylineByFuelRange", () => {
     expect(segments[0]?.band).toBe("caution");
   });
 
-  it("auto-refills past the range boundary: bands cycle without ever going empty", () => {
-    // 700 miles on a 300-mile tank wraps twice; the wrap loop refills the
-    // tank, so "empty" is only reachable via fuelBandAt directly.
+  it("goes empty and STAYS empty past the range with no refuel points", () => {
+    // 700 miles on a 300-mile tank. The route must go red where the tank runs
+    // dry and stay red — silently "refilling" at the range boundary would
+    // assume away the exact thing this coloring warns about.
     const points = northwardRoute(700, 71); // ~10-mile steps
     const segments = colorPolylineByFuelRange(points, 300);
+    expect(segments.map((s) => s.band)).toEqual(["safe", "caution", "empty"]);
+    // Nothing follows empty: the last segment runs to the end of the route.
+    expect(segments.at(-1)?.coordinates.at(-1)).toEqual({
+      latitude: points.at(-1)!.lat,
+      longitude: points.at(-1)!.lng,
+    });
+  });
+
+  it("refuels only at the supplied Fuel Zone miles", () => {
+    // Refill at mile 250 (before empty) → the tank resets there and the route
+    // never reaches empty across 500 miles on a 300-mile tank.
+    const points = northwardRoute(500, 51);
+    const segments = colorPolylineByFuelRange(points, 300, {
+      refuelAtMiles: [250],
+    });
     const bands = segments.map((s) => s.band);
-    expect(new Set(bands)).toEqual(new Set(["safe", "caution"]));
-    // Alternates: no two adjacent segments share a band.
-    for (let i = 1; i < bands.length; i++) {
-      expect(bands[i]).not.toBe(bands[i - 1]);
-    }
+    expect(bands).not.toContain("empty");
+    expect(bands).toContain("safe");
+  });
+
+  it("an already-empty tank reads empty, not full", () => {
+    // 400 miles since fill on a 300-mile tank. The old modulo wrapped this to
+    // 100 and painted the route green from a dry tank.
+    const points = northwardRoute(50, 6);
+    const segments = colorPolylineByFuelRange(points, 300, {
+      milesSinceFill: 400,
+    });
+    expect(segments.map((s) => s.band)).toEqual(["empty"]);
   });
 
   it("clamps negative milesSinceFill to zero", () => {

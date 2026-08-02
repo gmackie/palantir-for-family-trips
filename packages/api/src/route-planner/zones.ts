@@ -104,12 +104,13 @@ export function computeFuelZones(
  *
  * - **safe** (green): plenty of range left before the next projected empty
  * - **caution** (amber): approaching empty — time to hunt Costco / fuel
- * - **empty** (red): at/past projected empty (reachable via `fuelBandAt`
- *   directly; polyline coloring auto-refills at each range boundary, so its
- *   segments cycle safe → caution and back)
+ * - **empty** (red): at/past projected empty, and it STAYS red — running dry is
+ *   the thing this coloring exists to warn about
  *
- * The accumulator resets at each fuel-zone mile so the route "refills" at
- * predicted stops (same cadence as `computeFuelZones`).
+ * The accumulator resets only at the `refuelAtMiles` the caller supplies (the
+ * predicted Fuel Zones from `computeFuelZones`). It does not reset at range
+ * boundaries: assuming a fill-up happens exactly when the tank empties would
+ * assume away the warning.
  */
 export type FuelBand = "safe" | "caution" | "empty";
 
@@ -145,7 +146,11 @@ export function fuelBandAt(
 
 /**
  * Split a route polyline into colored segments by remaining fuel range.
- * `milesSinceFill` offsets the start (miles already driven since last fill).
+ *
+ * `milesSinceFill` offsets the start (miles already driven since the last
+ * fill-up) and is NOT wrapped into one tank cycle — a van already past empty
+ * reads as empty, not as full. `refuelAtMiles` are cumulative route miles at
+ * which the tank is refilled; past the last one the route stays red.
  */
 export function colorPolylineByFuelRange(
   points: LatLng[],
@@ -153,14 +158,19 @@ export function colorPolylineByFuelRange(
   options?: {
     milesSinceFill?: number;
     cautionFraction?: number;
+    /** Cumulative route miles at which the tank is refilled. */
+    refuelAtMiles?: number[];
   },
 ): FuelColoredSegment[] {
   if (points.length < 2 || !(rangeMiles > 0)) return [];
 
   const cautionFraction = options?.cautionFraction ?? DEFAULT_CAUTION_FRACTION;
   let sinceLastFill = Math.max(options?.milesSinceFill ?? 0, 0);
-  // Normalize into one tank cycle so coloring still works after long drives.
-  sinceLastFill = sinceLastFill % rangeMiles;
+  const refuels = [...(options?.refuelAtMiles ?? [])]
+    .filter((m) => Number.isFinite(m) && m > 0)
+    .sort((a, b) => a - b);
+  let nextRefuel = 0;
+  let cumulative = 0;
 
   const segments: FuelColoredSegment[] = [];
   let segStart = 0;
@@ -170,11 +180,13 @@ export function colorPolylineByFuelRange(
     const prev = points[i - 1]!;
     const curr = points[i]!;
     const d = haversineMiles(prev, curr);
+    cumulative += d;
     sinceLastFill += d;
 
-    // Crossing a fuel zone: "refill" for subsequent coloring.
-    while (sinceLastFill >= rangeMiles) {
-      sinceLastFill -= rangeMiles;
+    // Refill only where a Fuel Zone actually is.
+    while (nextRefuel < refuels.length && cumulative >= refuels[nextRefuel]!) {
+      sinceLastFill = 0;
+      nextRefuel++;
     }
 
     const band = fuelBandAt(sinceLastFill, rangeMiles, cautionFraction);

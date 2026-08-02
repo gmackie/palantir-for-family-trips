@@ -573,7 +573,12 @@ export default function MapScreen() {
       }
     }
     if (allPoints.length < 2) return null;
-    return colorPolylineByFuelRange(allPoints, rangeMiles);
+    // Refill at the predicted Fuel Zones, not at every range boundary: the
+    // route must be allowed to go red where the tank actually runs dry.
+    return colorPolylineByFuelRange(allPoints, rangeMiles, {
+      milesSinceFill: zones.milesSinceFill ?? 0,
+      refuelAtMiles: (zones.fuelZones ?? []).map((z) => z.mileMarker),
+    });
   }, [segments, zones]);
 
   // Memoized: this screen re-renders every 5s (member-location polling) plus

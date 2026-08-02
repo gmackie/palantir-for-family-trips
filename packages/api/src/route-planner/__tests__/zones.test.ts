@@ -131,15 +131,20 @@ describe("fuelBandAt / colorPolylineByFuelRange", () => {
     expect(fuelBandAt(250, 200)).toBe("empty");
   });
 
-  it("colors a long eastbound route with multiple bands", () => {
-    // ~690 miles, range 200 → cycles safe → caution and back. "empty" never
-    // appears in polyline coloring: the accumulator auto-refills at each
-    // range boundary (empty is reachable via fuelBandAt directly).
+  it("colors a long eastbound route safe → caution → empty", () => {
+    // ~690 miles, range 200, no refuel points supplied: the route drains once
+    // and then stays empty. It must NOT silently refill at the range boundary.
     const points = eastwardLine(-100, 11, 1);
     const segs = colorPolylineByFuelRange(points, 200);
-    expect(segs.length).toBeGreaterThanOrEqual(2);
-    const bands = new Set(segs.map((s) => s.band));
-    expect(bands).toEqual(new Set(["safe", "caution"]));
+    // ~69-mile sample spacing can step straight over the caution window, so
+    // assert the shape rather than every band: starts safe, ends empty, and
+    // severity only ever increases without refuel points.
+    expect(segs[0]!.band).toBe("safe");
+    expect(segs.at(-1)!.band).toBe("empty");
+    const rank = { safe: 0, caution: 1, empty: 2 } as const;
+    for (let i = 1; i < segs.length; i++) {
+      expect(rank[segs[i]!.band]).toBeGreaterThan(rank[segs[i - 1]!.band]);
+    }
     for (const s of segs) {
       expect(s.coordinates.length).toBeGreaterThanOrEqual(2);
       expect(s.color).toMatch(/^#/);
@@ -180,36 +185,50 @@ describe("fuelBandAt / colorPolylineByFuelRange", () => {
 
   it("starts mid-band when milesSinceFill offsets the tank", () => {
     // ~276 mi route, range 200, already 160 mi since fill → remaining 40
-    // (20% of range) → the polyline opens in caution, then refills to safe.
+    // (20% of range) → opens in caution and runs dry. It does not return to
+    // safe: nothing refuels it.
     const points = eastwardLine(-100, 5, 1);
     const segs = colorPolylineByFuelRange(points, 200, { milesSinceFill: 160 });
-    expect(segs[0]!.band).toBe("caution");
-    expect(segs.some((s) => s.band === "safe")).toBe(true);
+    expect(segs.map((s) => s.band)).toEqual(["caution", "empty"]);
   });
 
-  it("normalizes milesSinceFill beyond one tank into the current cycle", () => {
+  it("does NOT wrap milesSinceFill into the current tank cycle", () => {
     const points = eastwardLine(-100, 5, 1);
-    // 560 ≡ 160 (mod 200) → identical coloring.
-    const wrapped = colorPolylineByFuelRange(points, 200, {
-      milesSinceFill: 560,
-    });
-    const direct = colorPolylineByFuelRange(points, 200, {
+    // 560 miles on a 200-mile tank is a van that ran dry 360 miles ago. The
+    // old modulo read that as 160 and painted the route green.
+    const past = colorPolylineByFuelRange(points, 200, { milesSinceFill: 560 });
+    expect(past.map((s) => s.band)).toEqual(["empty"]);
+
+    const within = colorPolylineByFuelRange(points, 200, {
       milesSinceFill: 160,
     });
-    expect(wrapped).toEqual(direct);
+    expect(within[0]!.band).toBe("caution");
   });
 
-  it("never emits empty on a multi-tank route; bands alternate at each split", () => {
-    // ~2073 mi at range 150 → many refill cycles. The wrap loop refills the
-    // accumulator at each range boundary, so "empty" can never appear and
-    // consecutive segments always carry different bands.
+  it("cycles through refuel points, then goes empty past the last one", () => {
+    // ~2073 mi at range 150. Fuel Zones every 150 mi cover the first 900 mi;
+    // beyond the last one the tank drains for real and the route ends red.
     const points = eastwardLine(-120, 31, 1);
-    const segs = colorPolylineByFuelRange(points, 150);
+    const refuelAtMiles = [150, 300, 450, 600, 750, 900];
+    const segs = colorPolylineByFuelRange(points, 150, { refuelAtMiles });
     expect(segs.length).toBeGreaterThanOrEqual(4);
-    expect(segs.every((s) => s.band !== "empty")).toBe(true);
+    expect(segs.some((s) => s.band === "safe")).toBe(true);
+    expect(segs.at(-1)!.band).toBe("empty");
     for (let i = 1; i < segs.length; i++) {
       expect(segs[i]!.band).not.toBe(segs[i - 1]!.band);
     }
+  });
+
+  it("refuel points keep a route green that would otherwise run dry", () => {
+    const points = eastwardLine(-100, 11, 1);
+    const dry = colorPolylineByFuelRange(points, 200);
+    expect(dry.some((s) => s.band === "empty")).toBe(true);
+
+    // A Fuel Zone before empty resets the tank; the route never goes red.
+    const topped = colorPolylineByFuelRange(points, 200, {
+      refuelAtMiles: [150, 300, 450, 600],
+    });
+    expect(topped.some((s) => s.band === "empty")).toBe(false);
   });
 
   it("adjacent segments share the split coordinate", () => {
