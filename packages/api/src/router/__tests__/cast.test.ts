@@ -369,6 +369,38 @@ describe("cast.retry", () => {
     expect(result.status).toBe("pending");
   });
 
+  it("a provider-failed job retries — funding the account is the whole fix", async () => {
+    // The pump now fails these on attempt 1 rather than burning all four
+    // (llm/errors.ts). The user's next move is to add credit and press Retry,
+    // so this must NOT join the error-keyed refusals above: superseded and
+    // expired are refused because reviving them would lose paid audio or
+    // bypass the read gate, and neither is true here.
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [
+          failedJob({
+            scriptJson: null,
+            error:
+              "The script model account is out of credit. Top up billing for the configured provider, then retry.",
+          }),
+        ],
+        [],
+      ],
+      updateReturningQueue: [[{ id: "job_1" }]],
+    });
+    const caller = createCaller(db);
+    const result = await caller.cast.retry({ ...SCOPE, jobId: "job_1" });
+    expect(result.status).toBe("pending");
+    // Attempts reset, so a funded retry gets a full budget rather than
+    // inheriting the failed run's count.
+    expect(updates[0]).toMatchObject({
+      status: "pending",
+      attemptCount: 0,
+      error: null,
+    });
+  });
+
   it("a revive that loses the race to a supersede refuses with CONFLICT", async () => {
     const { db } = createDbMock({
       selectQueue: [...authSelects(), [failedJob()], []],

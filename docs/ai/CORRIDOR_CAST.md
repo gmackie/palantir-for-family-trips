@@ -212,6 +212,20 @@ SELECT status, attempt_count, claimed_at, llm_input_tokens, llm_output_tokens,
 FROM cast_episode_job WHERE id = '<jobId>';
 ```
 
+**A job failed on its first attempt with a message about keys, credit, or the
+model.** That is `classifyLlmError` (`packages/api/src/llm/errors.ts`) doing its
+job: configuration and billing failures fail identically on every attempt, so
+they are made terminal immediately instead of burning four retries over twenty
+minutes behind a raw vendor blob. Fix what the message names — set the key, top
+up the provider, or correct the model id — then press **Retry**. Retry resumes
+the same job with its attempt count reset; a script already drafted is not
+re-drafted, and no voice minutes were spent to get here.
+
+Transient failures — a plain rate limit, a 5xx, a dropped socket — are left on
+the normal retry path and are not made terminal. The distinction that carries
+the weight is the 429 split: a rate limit is worth retrying, an empty account
+never is, and the two share a status code.
+
 **A job is stuck `synthesizing`.** Check `claimed_at`. If it is older than 20
 minutes the next cron firing reclaims it automatically and burns one attempt;
 there is nothing to do but wait. If `attempt_count` has reached 4 the job is
