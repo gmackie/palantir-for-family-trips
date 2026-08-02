@@ -20,9 +20,10 @@ import { type RouterInputs, trpc, trpcClient } from "~/utils/api";
 import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, PALETTE, R } from "~/utils/design";
 import {
-  colorPolylineByFuelRange,
+  colorRouteRunsByFuelRange,
   FUEL_BAND_COLORS,
   isCostcoName,
+  type RouteRun,
 } from "~/utils/fuel-route-colors";
 import { useLocationSharing } from "~/utils/use-location-sharing";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
@@ -562,23 +563,44 @@ export default function MapScreen() {
     const rangeMiles = zones?.rangeMiles ?? 0;
     if (!(rangeMiles > 0) || !zones?.hasVanModel) return null;
 
-    const allPoints: Array<{ lat: number; lng: number }> = [];
+    // One run per continuous stretch. A segment without route geometry breaks
+    // the line rather than joining across it — concatenating would draw a
+    // straight road that does not exist and charge its great-circle distance
+    // to the tank. Its own distanceMiles still counts against range.
+    const runs: RouteRun[] = [];
+    let current: Array<{ lat: number; lng: number }> = [];
+    let pendingGapMiles = 0;
+
+    const closeRun = () => {
+      if (current.length >= 2) {
+        runs.push({ points: current, gapMilesBefore: pendingGapMiles });
+        pendingGapMiles = 0;
+      }
+      current = [];
+    };
+
     for (const s of segments ?? []) {
-      if (!s.routePolyline) continue;
+      if (!s.routePolyline) {
+        closeRun();
+        pendingGapMiles += Number(s.distanceMiles ?? 0) || 0;
+        continue;
+      }
       for (const c of decodePolyline(s.routePolyline)) {
-        const last = allPoints[allPoints.length - 1];
+        const last = current[current.length - 1];
         if (last && last.lat === c.latitude && last.lng === c.longitude)
           continue;
-        allPoints.push({ lat: c.latitude, lng: c.longitude });
+        current.push({ lat: c.latitude, lng: c.longitude });
       }
     }
-    if (allPoints.length < 2) return null;
+    closeRun();
+
+    if (runs.length === 0) return null;
     // Refill at the predicted Fuel Zones, not at every range boundary: the
     // route must be allowed to go red where the tank actually runs dry.
-    return colorPolylineByFuelRange(allPoints, rangeMiles, {
+    return colorRouteRunsByFuelRange(runs, rangeMiles, {
       milesSinceFill: zones.milesSinceFill ?? 0,
       refuelAtMiles: (zones.fuelZones ?? []).map((z) => z.mileMarker),
-    });
+    }).flat();
   }, [segments, zones]);
 
   // Memoized: this screen re-renders every 5s (member-location polling) plus

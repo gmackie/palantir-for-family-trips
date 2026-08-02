@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   colorPolylineByFuelRange,
+  colorRouteRunsByFuelRange,
   DEFAULT_CAUTION_FRACTION,
   FUEL_BAND_COLORS,
   fuelBandAt,
@@ -18,6 +19,15 @@ function northwardRoute(totalMiles: number, pointCount: number): LatLng[] {
   return Array.from({ length: pointCount }, (_, i) => ({
     lat: (totalDeg * i) / (pointCount - 1),
     lng: 0,
+  }));
+}
+
+/** A due-east line at a fixed latitude, `miles` long across `count` points. */
+function eastwardRoute(miles: number, count: number, lat: number) {
+  const degPerMile = 1 / (69.172 * Math.cos((lat * Math.PI) / 180));
+  return Array.from({ length: count }, (_, i) => ({
+    lat,
+    lng: -100 + (miles * degPerMile * i) / (count - 1),
   }));
 }
 
@@ -145,5 +155,64 @@ describe("isCostcoName", () => {
     expect(isCostcoName(null)).toBe(false);
     expect(isCostcoName(undefined)).toBe(false);
     expect(isCostcoName("")).toBe(false);
+  });
+});
+
+describe("colorRouteRunsByFuelRange", () => {
+  it("keeps runs separate so no false road is drawn across a gap", () => {
+    // Two 50-mile runs 500 miles apart. Concatenating them would draw a
+    // straight line over country the route never touches.
+    const runA = northwardRoute(50, 6);
+    const runB = eastwardRoute(50, 6, 40);
+    const runs = colorRouteRunsByFuelRange(
+      [
+        { points: runA, gapMilesBefore: 0 },
+        { points: runB, gapMilesBefore: 500 },
+      ],
+      300,
+    );
+
+    expect(runs).toHaveLength(2);
+    // No segment spans both runs: every polyline stays within its own run.
+    const first = runs[0]!.flatMap((s) => s.coordinates);
+    const second = runs[1]!.flatMap((s) => s.coordinates);
+    expect(first.every((c) => c.longitude === runA[0]!.lng)).toBe(true);
+    expect(second.every((c) => c.latitude === runB[0]!.lat)).toBe(true);
+  });
+
+  it("charges the gap's miles to the tank even though nothing is drawn", () => {
+    // 250 miles of un-drawn segment on a 300-mile tank: the second run must
+    // open in caution, not safe — those miles were still driven.
+    const runs = colorRouteRunsByFuelRange(
+      [
+        { points: northwardRoute(20, 3), gapMilesBefore: 0 },
+        { points: eastwardRoute(20, 3, 40), gapMilesBefore: 250 },
+      ],
+      300,
+    );
+    expect(runs[0]![0]?.band).toBe("safe");
+    expect(runs[1]![0]?.band).toBe("caution");
+  });
+
+  it("a refuel inside the gap resets the tank for the next run", () => {
+    const runs = colorRouteRunsByFuelRange(
+      [
+        { points: northwardRoute(20, 3), gapMilesBefore: 0 },
+        { points: eastwardRoute(20, 3, 40), gapMilesBefore: 250 },
+      ],
+      300,
+      { refuelAtMiles: [200] },
+    );
+    // Filled at mile 200, so entering run two only ~70 miles are on the tank.
+    expect(runs[1]![0]?.band).toBe("safe");
+  });
+
+  it("returns [] without a usable range", () => {
+    expect(
+      colorRouteRunsByFuelRange(
+        [{ points: northwardRoute(20, 3), gapMilesBefore: 0 }],
+        0,
+      ),
+    ).toEqual([]);
   });
 });

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 import {
+  evictForeignEpisodeAudio,
   getCachedEpisodeAudio,
   listCachedEpisodeIds,
   putCachedEpisodeAudio,
@@ -63,9 +64,12 @@ function formatDate(iso: string): string {
 export function CastConsole({
   workspaceId,
   tripId,
+  userId,
 }: {
   workspaceId: string;
   tripId: string;
+  /** Scopes the offline audio cache — see cast-audio-store. */
+  userId: string;
 }) {
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -315,7 +319,7 @@ export function CastConsole({
           </p>
         ) : (
           episodes.map((episode) => (
-            <EpisodeRow key={episode.id} episode={episode} />
+            <EpisodeRow key={episode.id} episode={episode} userId={userId} />
           ))
         )}
       </div>
@@ -410,7 +414,13 @@ type EpisodeSummary = {
 
 const PLAYBACK_RATES = [1, 1.25, 1.5] as const;
 
-function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
+function EpisodeRow({
+  episode,
+  userId,
+}: {
+  episode: EpisodeSummary;
+  userId: string;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
@@ -421,15 +431,19 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
 
   useEffect(() => {
     let alive = true;
-    listCachedEpisodeIds()
+    // Purge any other account's blobs before trusting this list — the store
+    // is origin-scoped, so a shared browser can hold a previous user's audio.
+    evictForeignEpisodeAudio(userId)
+      .catch(() => {})
+      .then(() => listCachedEpisodeIds(userId))
       .then((ids) => {
-        if (alive) setCached(ids.includes(episode.id));
+        if (alive && ids) setCached(ids.includes(episode.id));
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [episode.id]);
+  }, [episode.id, userId]);
 
   useEffect(
     () => () => {
@@ -442,7 +456,9 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
     if (objectUrl) return objectUrl;
     setCaching(true);
     try {
-      let blob = await getCachedEpisodeAudio(episode.id).catch(() => null);
+      let blob = await getCachedEpisodeAudio(userId, episode.id).catch(
+        () => null,
+      );
       let persisted = blob != null;
       if (!blob) {
         const response = await fetch(audioHref);
@@ -453,7 +469,7 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
         // Cache write failure only costs the offline bonus, not playback —
         // but the "Ready offline" badge must never claim persistence that
         // didn't happen (DESIGN.md: never imply a write succeeded).
-        persisted = await putCachedEpisodeAudio(episode.id, blob)
+        persisted = await putCachedEpisodeAudio(userId, episode.id, blob)
           .then(() => true)
           .catch(() => false);
       }

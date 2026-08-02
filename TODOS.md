@@ -6,9 +6,9 @@
   **Priority:** P1 — done 2026-08-02
   `colorPolylineByFuelRange` no longer wraps: `milesSinceFill` is not reduced modulo the tank (an already-dry van reads empty, not full) and the accumulator resets only at caller-supplied `refuelAtMiles` — the predicted Fuel Zones — so the route goes red where the tank actually runs dry and stays red. `routePlanner.zones` now returns `milesSinceFill`, computed from the GPS breadcrumb distance since the latest fuel log (0 when no track exists, matching driving-summary's topped-off assumption), and `map.tsx` passes both it and the Fuel Zone mile markers.
 
-- [ ] Split map polylines at missing segments
-  **Priority:** P2
-  When a middle segment lacks `routePolyline`, the member polyline concatenates across the gap, drawing a false straight connection and counting its great-circle distance against fuel range. Break into one polyline per continuous run.
+- [x] Split map polylines at missing segments
+  **Priority:** P2 — done 2026-08-02
+  `colorRouteRunsByFuelRange` colors one run per continuous stretch; a segment without geometry ends the run rather than joining across it. Its own `distanceMiles` is carried forward as `gapMilesBefore` so the miles still count against range without drawing a road that doesn't exist.
 
 - [ ] Deduplicate fuel-band logic between `packages/api/route-planner/zones.ts` and `apps/expo/src/utils/fuel-route-colors.ts`
   **Priority:** P3
@@ -19,9 +19,9 @@
 
 ## Preflight OTA / Build Profiles
 
-- [ ] Sign Preflight OTA updates (expo-updates code signing) or serve HTTPS
-  **Priority:** P1
-  Preview device builds poll a plain-HTTP LAN endpoint while authenticated against the production API — any LAN peer that can answer for the OTA host can push arbitrary JS. Internal fleet only today, but code signing closes it. Also revisit the static `sortey-p0` runtimeVersion (manual bump required after any native change).
+- [x] Sign Preflight OTA updates (expo-updates code signing) or serve HTTPS
+  **Priority:** P1 — done 2026-08-02
+  `apps/expo/ota-config.js` refuses a non-loopback plain-HTTP `PREFLIGHT_OTA_URL` at config time, so a build that would trust a LAN peer can't be produced (loopback stays allowed for the simulator; ATS local networking is now only reachable on that path). Optional expo-updates code signing rides along via `PREFLIGHT_OTA_CODE_SIGNING_CERT` — set it once preflight-app signs manifests, and the client will reject anything unsigned even if the transport is later downgraded. Still open: the static `sortey-p0` runtimeVersion needs a manual bump after any native change.
 
 - [ ] Make Android preview OTA usable
   **Priority:** P3
@@ -51,13 +51,13 @@
   **Priority:** P2
   Two-part trust upgrade deferred from P0 (eng-review Issues 7/8): (1) `cast/__evals__` structural eval — fixture day contexts asserting schema validity, per-segment word budgets ±20%, disclaimers, must-mention anchors, ≥1 grounded POI reference — as the regression floor once prompts iterate; (2) a real grounding source for documentary content (Wikipedia/corridor-town lookups in the context pack), since trip data can only ground operational facts (roads/towns/distances/stops/anchors) — P0 handles this with two-tier prompt honesty (grounded ops facts; hedged, non-specific model-knowledge color). Together these raise the D4 "source-backed claims" premise from ritual to machinery. Depends on: P0 prompt stabilized.
 
-- [ ] Evict the Corridor Cast IndexedDB audio cache on sign-out
-  **Priority:** P2
-  Episode MP3s cache in origin-scoped IndexedDB keyed by episodeId with no user scoping — on a shared browser, a later account (or revoked member) retains playable audio of the trip. Clear the `corridor-cast` DB from the auth sign-out hook, or namespace keys by user id. (Ship review, security specialist.)
+- [x] Evict the Corridor Cast IndexedDB audio cache on sign-out
+  **Priority:** P2 — done 2026-08-02
+  Keyed `<userId>:<episodeId>` and foreign entries (including legacy unscoped keys) are purged on first access. Scoping beats an eviction hook: sign-out is only one of the ways a browser changes hands, and a session that expires or is revoked elsewhere fires nothing.
 
-- [ ] Composite index on imported_poi (lat, lng)
-  **Priority:** P3
-  Every corridor bounding-box query (cast context pack, poi-suggest, briefing, corridor router) range-scans imported_poi without a lat/lng index. One migration helps all of them. (Ship review, performance specialist.)
+- [x] Composite index on imported_poi (lat, lng)
+  **Priority:** P3 — done 2026-08-02
+  `imported_poi_lat_lng_idx`. The eventual upgrade is a PostGIS geography column + GiST (docs/adr/0001), which replaces the 5-sample box approximation with one ST_DWithin.
 
 - [ ] Copilot router tests + retire or wire copilot.estimateDrive
   **Priority:** P3

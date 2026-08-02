@@ -1456,6 +1456,13 @@ export const importedPois = pgTable(
       table.source,
       table.externalId,
     ),
+    // Every corridor query is a lat/lng bounding box — cast context packs,
+    // poi-suggest, the daily briefing, the corridor router. Without this they
+    // all sequential-scan the whole table. The eventual upgrade is a PostGIS
+    // geography column with a GiST index (docs/adr/0001), which turns the
+    // 5-sample box approximation into one ST_DWithin; this index is the cheap
+    // win until then.
+    index("imported_poi_lat_lng_idx").on(table.lat, table.lng),
   ],
 );
 
