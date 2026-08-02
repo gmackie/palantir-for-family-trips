@@ -101,6 +101,9 @@ middleware chain rather than by helper calls inside each resolver.
 | `uploadGroundingBrief` | Attach parsed OODA research to a segment, with a trip-scoped ownership check on the segment |
 | `voices` | The narrators this deployment's key can use, plus the trip's pick and the effective voice. Fails soft to an empty catalogue |
 | `setVoice` | Choose the trip's narrator; null restores the deployment default. Validated against the catalogue so an unusable id can't fail mid-synthesis |
+| `grounding` | The latest brief per segment with its sources, plus `gaps` — drive legs with no research yet |
+| `removeGroundingFact` | Drop one fact by title. 404s an unknown fact rather than silently rewriting the list |
+| `deleteGroundingBrief` | Discard a leg's research; the next episode falls back to hedged color |
 
 ### Audio route
 
@@ -212,6 +215,13 @@ DATABASE_URL=… pnpm exec tsx scripts/cast-grounding.ts list --trip <tripId>
 
 The context pack caps the brief at `GROUNDING_FACT_LIMIT` (40) facts so the
 prompt payload stays bounded regardless of how large the research grows.
+
+Only the **newest** brief per segment is ever used. The console's research
+panel reflects that — superseded briefs are hidden, because showing them would
+misrepresent what a script will actually draw on. The same panel lists the
+segments with no research yet: research is gathered out-of-band in an OODA
+thread, so knowing which corridor is still unresearched is the whole prompt to
+go do it.
 
 ## Environment
 

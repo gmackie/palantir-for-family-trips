@@ -110,6 +110,33 @@ export function CastConsole({
     }),
   );
 
+  const groundingQuery = useQuery(
+    trpc.cast.grounding.queryOptions({ workspaceId, tripId }),
+  );
+  const invalidateGrounding = useCallback(() => {
+    void qc.invalidateQueries({
+      queryKey: trpc.cast.grounding.queryKey({ workspaceId, tripId }),
+    });
+  }, [qc, trpc, workspaceId, tripId]);
+  const removeFact = useMutation(
+    trpc.cast.removeGroundingFact.mutationOptions({
+      onSuccess: () => {
+        toast.success("Fact dropped. It will not reach the next script.");
+        invalidateGrounding();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  const deleteBrief = useMutation(
+    trpc.cast.deleteGroundingBrief.mutationOptions({
+      onSuccess: () => {
+        toast.success("Research discarded for that leg.");
+        invalidateGrounding();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
   const invalidateStatus = useCallback(() => {
     void qc.invalidateQueries({
       queryKey: trpc.cast.status.queryKey({ workspaceId, tripId }),
@@ -335,6 +362,127 @@ export function CastConsole({
           ))}
         </div>
       )}
+
+      {/* ── Research ── */}
+      <div className="flex flex-col gap-3 rounded-lg border border-[#21262D] bg-[#0D1117] p-4">
+        <div className="font-mono text-xs uppercase tracking-widest text-[#8B949E]">
+          Corridor research
+        </div>
+        {groundingQuery.isLoading ? (
+          <p className="text-sm text-[#8B949E]">Loading research…</p>
+        ) : groundingQuery.isError ? (
+          <p className="text-sm text-[#F85149]">
+            Could not load research: {groundingQuery.error.message}
+          </p>
+        ) : (
+          <>
+            {groundingQuery.data?.briefs.length === 0 ? (
+              <p className="text-sm text-[#8B949E]">
+                No research yet. Without it the episode still runs — the
+                histories are just hedged as campfire truth.
+              </p>
+            ) : (
+              groundingQuery.data?.briefs.map((brief) => (
+                <details
+                  key={brief.id}
+                  className="rounded-[3px] border border-[#21262D] bg-[#0A0C10] p-3"
+                >
+                  <summary className="cursor-pointer text-sm text-[#C9D1D9]">
+                    {brief.segmentName}{" "}
+                    <span className="font-mono text-xs text-[#8B949E]">
+                      {brief.verifiedCount}/{brief.facts.length} sourced ·{" "}
+                      {brief.sources.length} sources
+                    </span>
+                  </summary>
+                  <p className="mt-2 text-xs text-[#8B949E]">{brief.title}</p>
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {brief.facts.map((fact) => (
+                      <li
+                        key={fact.title}
+                        className="flex items-start justify-between gap-3 border-[#21262D] border-t pt-2"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-[#C9D1D9]">
+                              {fact.title}
+                            </span>
+                            <span
+                              className={`rounded-[2px] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                fact.verified
+                                  ? "bg-[#3FB950]/15 text-[#3FB950]"
+                                  : "bg-[#D29922]/15 text-[#D29922]"
+                              }`}
+                            >
+                              {fact.verified ? "Sourced" : "Unverified"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-[#8B949E]">
+                            {fact.text}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={removeFact.isPending}
+                          onClick={() =>
+                            removeFact.mutate({
+                              workspaceId,
+                              tripId,
+                              briefId: brief.id,
+                              factTitle: fact.title,
+                            })
+                          }
+                          className="shrink-0 rounded-[2px] border border-[#30363D] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E] transition-colors hover:border-[#F85149] hover:text-[#F85149] disabled:opacity-50"
+                        >
+                          Drop
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {brief.sources.length > 0 && (
+                    <ol className="mt-3 flex flex-col gap-1 border-[#21262D] border-t pt-2">
+                      {brief.sources.map((source) => (
+                        <li
+                          key={source.index}
+                          className="font-mono text-[10px] text-[#8B949E]"
+                        >
+                          [{source.index}] {source.url ?? "no URL recorded"}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <button
+                    type="button"
+                    disabled={deleteBrief.isPending}
+                    onClick={() =>
+                      deleteBrief.mutate({
+                        workspaceId,
+                        tripId,
+                        briefId: brief.id,
+                      })
+                    }
+                    className="mt-3 self-start rounded-[2px] border border-[#30363D] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E] transition-colors hover:border-[#F85149] hover:text-[#F85149] disabled:opacity-50"
+                  >
+                    Discard this research
+                  </button>
+                </details>
+              ))
+            )}
+            {groundingQuery.data && groundingQuery.data.gaps.length > 0 && (
+              <p className="text-xs text-[#8B949E]">
+                No research yet for:{" "}
+                <span className="text-[#D29922]">
+                  {groundingQuery.data.gaps.map((g) => g.name).join(", ")}
+                </span>
+                . Run an OODA thread for those corridors and push it with{" "}
+                <code className="text-[#C9D1D9]">
+                  scripts/cast-grounding.ts push
+                </code>
+                .
+              </p>
+            )}
+          </>
+        )}
+      </div>
 
       {/* ── Episodes ── */}
       <div className="flex flex-col gap-3 rounded-lg border border-[#21262D] bg-[#0D1117] p-4">
