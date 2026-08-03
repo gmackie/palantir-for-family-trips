@@ -71,6 +71,77 @@ function mentions(haystack: string, needle: string): boolean {
   return n.length > 0 && normalize(haystack).includes(n);
 }
 
+/** Words too common to identify a fact when they appear in a script. */
+const ENTITY_STOPWORDS = new Set([
+  "the",
+  "and",
+  "why",
+  "how",
+  "what",
+  "when",
+  "lead",
+  "a",
+  "an",
+  "is",
+  "it",
+  "of",
+  "in",
+  "on",
+  "to",
+  "for",
+  "from",
+]);
+
+/**
+ * Distinctive proper-noun phrases in a research fact — "Waterpocket Fold",
+ * "Charlie Steen", "Robbers Roost".
+ *
+ * Matching the whole fact TITLE was the obvious approach and it was wrong:
+ * a title like "The Waterpocket Fold is the spine of the drive" never appears
+ * verbatim in narration, so a script that discusses the fold at length scored
+ * as ignoring it. Running the eval against a real stored script reported 1 of
+ * 7 facts used where at least 4 plainly were — an eval that cries wolf gets
+ * switched off, which is worse than not having one.
+ */
+export function factEntities(fact: { title: string; text: string }): string[] {
+  const source = `${fact.title}. ${fact.text}`;
+  const phrases = source.match(/\b[A-Z][\w'-]*(?:\s+[A-Z][\w'-]*)*/g) ?? [];
+  return phrases
+    .map((phrase) => phrase.trim())
+    .filter((phrase) => phrase.length >= 4)
+    .filter((phrase) => {
+      const words = phrase.toLowerCase().split(/\s+/);
+      // A single common word is not an entity; a multi-word phrase is.
+      return words.length > 1 || !ENTITY_STOPWORDS.has(words[0] ?? "");
+    });
+}
+
+/**
+ * True when the narration names something that identifies THIS fact.
+ *
+ * Entities shared across several facts cannot attribute usage to any one of
+ * them. Auditing a real script against a real brief showed exactly that: the
+ * Hole-in-the-Rock fact scored as "used" because the script said "Escalante",
+ * which it said while describing Highway 12. Counting shared ground as
+ * evidence turns the check into a rubber stamp — the opposite failure from
+ * crying wolf, and the more dangerous one, because nobody notices.
+ */
+export function factReferenced(
+  text: string,
+  fact: { title: string; text: string },
+  siblings: Array<{ title: string; text: string }> = [],
+): boolean {
+  const shared = new Set(
+    siblings
+      .filter((other) => other.title !== fact.title)
+      .flatMap((other) => factEntities(other).map((e) => e.toLowerCase())),
+  );
+  const distinctive = factEntities(fact).filter(
+    (entity) => !shared.has(entity.toLowerCase()),
+  );
+  return distinctive.some((entity) => mentions(text, entity));
+}
+
 export function evaluateCastScript(params: {
   context: CastDayContext;
   script: CastScript;
@@ -212,10 +283,9 @@ export function evaluateCastScript(params: {
   // Sourced research is the best color available — it should get used.
   if (context.grounding) {
     const verified = context.grounding.facts.filter((f) => f.verified);
-    const used = verified.filter((f) => {
-      const subject = f.title.split(/[:—-]/)[0] ?? f.title;
-      return mentions(fullText, subject.trim());
-    });
+    const used = verified.filter((f) =>
+      factReferenced(fullText, f, context.grounding?.facts ?? []),
+    );
     checks.push(
       check(
         "uses-research",
