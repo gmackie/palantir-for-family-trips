@@ -4,6 +4,7 @@ import {
   type CastCheckpoint,
   type CastJobStatus,
   type CastScript,
+  type CastScriptEval,
   castEpisodeJobs,
   castEpisodes,
   trips,
@@ -12,6 +13,7 @@ import { classifyLlmError } from "../llm/errors";
 import { concatMp3Segments, validateEpisodeAudio } from "./concat";
 import { buildCastDayContext } from "./context";
 import { castTtsModel, castVoiceId, resolveTripVoiceId } from "./elevenlabs";
+import { evaluateCastScript } from "./evals/script-eval";
 import { castScriptModel, generateCastScript } from "./script";
 import {
   type CastR2Bucket,
@@ -272,11 +274,32 @@ async function runScriptStep(
 
   // Read gate (eng-review Issue 8): the script is parked for the traveler to
   // read before a single TTS character is billed. No auto-advance.
+  // Score the draft before parking it at the read gate, so the human deciding
+  // whether to spend voice minutes can see where it missed its contract.
+  // Advisory only: a failing check informs the decision, it does not make it.
+  // Never let a scoring bug cost a generated script.
+  let evalReport: CastScriptEval | null = null;
+  try {
+    const report = evaluateCastScript({
+      context,
+      script,
+      durationMinutes: job.durationMinutes,
+    });
+    evalReport = {
+      passed: report.passed,
+      checks: report.checks,
+      evaluatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("cast eval failed", error);
+  }
+
   await db
     .update(castEpisodeJobs)
     .set({
       status: "awaiting_approval" as CastJobStatus,
       scriptJson: script,
+      evalJson: evalReport,
       llmInputTokens: sql`${castEpisodeJobs.llmInputTokens} + ${inputTokens}`,
       llmOutputTokens: sql`${castEpisodeJobs.llmOutputTokens} + ${outputTokens}`,
       error: null,

@@ -182,6 +182,57 @@ describe("runCastPump", () => {
     });
   });
 
+  it("scores the draft at the read gate, without gating on it", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => ({
+          hasDriveLeg: true,
+          anchors: [],
+          pois: [],
+          grounding: null,
+          segment: null,
+        })) as never,
+        generateScript: vi.fn(async () => SCRIPT) as never,
+      },
+    });
+
+    const parked = updates.at(-1) as { evalJson?: { checks: unknown[] } };
+    expect(parked).toMatchObject({ status: "awaiting_approval" });
+    // The report rides along with the script the human is about to read.
+    expect(parked.evalJson?.checks.length).toBeGreaterThan(0);
+  });
+
+  it("a scoring failure never costs a generated script", async () => {
+    // The eval is advisory. A bug in it must not discard work the model was
+    // already paid for.
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    const result = await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => {
+          // A context shaped so evaluateCastScript throws when it reads it.
+          return { hasDriveLeg: true } as never;
+        }) as never,
+        generateScript: vi.fn(async () => SCRIPT) as never,
+      },
+    });
+    expect(result.status).toBe("awaiting_approval");
+    expect(updates.at(-1)).toMatchObject({
+      status: "awaiting_approval",
+      scriptJson: SCRIPT,
+    });
+  });
+
   it("approved: synthesizes, concats, uploads, records the episode, cleans temp", async () => {
     const r2 = fakeR2();
     // Park both segments' audio in R2 as finished checkpoints would.

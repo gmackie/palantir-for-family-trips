@@ -566,6 +566,42 @@ function ScriptReview({
           words
         </span>
       </div>
+      {(() => {
+        // Advisory quality report. Shown so the person about to authorise
+        // voice minutes can see where the draft missed its contract — it does
+        // not gate approval, because a chapter 30 words short is not worth
+        // stranding an episode over.
+        const report = scriptQuery.data?.evalJson;
+        if (!report) return null;
+        const failures = report.checks.filter((c) => !c.passed);
+        if (failures.length === 0) {
+          return (
+            <p className="font-mono text-[10px] text-[#3FB950]">
+              Quality checks passed ({report.checks.length}/
+              {report.checks.length})
+            </p>
+          );
+        }
+        return (
+          <div className="flex flex-col gap-1 rounded-[3px] border border-[#30363D] bg-[#0A0C10] p-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#8B949E]">
+              Quality report — advisory
+            </p>
+            {failures.map((check) => (
+              <p
+                key={check.id}
+                className={`font-mono text-[10px] ${
+                  check.severity === "error"
+                    ? "text-[#F85149]"
+                    : "text-[#D29922]"
+                }`}
+              >
+                {check.id}: {check.detail}
+              </p>
+            ))}
+          </div>
+        );
+      })()}
       <div className="flex max-h-80 flex-col gap-3 overflow-y-auto pr-1">
         {script.segments.map((segment) => (
           <div key={segment.key}>

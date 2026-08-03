@@ -6,6 +6,7 @@ import {
   type CastGroundingSource,
   type CastJobStatus,
   type CastScript,
+  type CastScriptEval,
   castEpisodeJobs,
   castEpisodes,
   castGroundingBriefs,
@@ -346,6 +347,7 @@ export const castRouter = {
           scriptJson: castEpisodeJobs.scriptJson,
           targetDate: castEpisodeJobs.targetDate,
           durationMinutes: castEpisodeJobs.durationMinutes,
+          evalJson: castEpisodeJobs.evalJson,
         })
         .from(castEpisodeJobs)
         .where(
@@ -360,6 +362,7 @@ export const castRouter = {
         scriptJson: CastScript | null;
         targetDate: string;
         durationMinutes: number;
+        evalJson: CastScriptEval | null;
       }>;
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
       return job;

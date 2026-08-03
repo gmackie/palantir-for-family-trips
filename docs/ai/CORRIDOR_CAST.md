@@ -173,6 +173,12 @@ This is the regression floor that makes the prompts safe to edit: a prompt
 change that quietly drops the disclaimer or blows the length budget fails a
 test instead of shipping.
 
+The pump also scores every drafted script and stores the report on
+`cast_episode_job.evalJson`; the read gate renders the failures. It is
+**advisory, not a gate** — the human decision is the gate, and a chapter
+thirty words short is not worth stranding an episode over. A scoring error is
+caught and logged rather than costing a script the model was already paid for.
+
 ## Grounding tiers
 
 The system prompt (`packages/api/src/cast/prompt.ts`) enforces three tiers:

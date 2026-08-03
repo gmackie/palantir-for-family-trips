@@ -1716,6 +1716,20 @@ export type CastScript = {
   segments: CastScriptSegment[];
 };
 
+/** One structural check over a drafted script. */
+export type CastScriptEvalCheck = {
+  id: string;
+  severity: "error" | "warning";
+  passed: boolean;
+  detail: string;
+};
+
+export type CastScriptEval = {
+  passed: boolean;
+  checks: CastScriptEvalCheck[];
+  evaluatedAt: string;
+};
+
 /** One synthesized-segment checkpoint: paid audio parked in R2 temp space. */
 export type CastCheckpoint = {
   segmentKey: string;
@@ -1752,6 +1766,13 @@ export const castEpisodeJobs = pgTable(
     error: t.varchar({ length: 2000 }),
     scriptJson: t.jsonb().$type<CastScript>(),
     checkpointsJson: t.jsonb().$type<CastCheckpoint[]>(),
+    /**
+     * Structural quality report for the drafted script (cast/evals). Advisory,
+     * not a gate: the human read gate is the decision, and a failing check is
+     * information for it — blocking on one would strand an episode over a
+     * chapter that ran 30 words short.
+     */
+    evalJson: t.jsonb().$type<CastScriptEval>(),
     llmInputTokens: t.integer().notNull().default(0),
     llmOutputTokens: t.integer().notNull().default(0),
     /** Characters actually billed to ElevenLabs across all attempts. */
