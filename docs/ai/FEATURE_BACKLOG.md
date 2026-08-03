@@ -32,13 +32,23 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 | D1 | Room assignments API | ✅ | `packages/api/src/router/rooms.ts` + tests |
 | D2 | Room board (web) | ✅ | `apps/nextjs/.../lodging/_components/room-board.tsx` |
 | D3 | Room board (mobile) | ✅ | `apps/expo/src/components/trip/room-board.tsx` + lodging screen |
-| D4 | Member transit CRUD + list | ✅ | `lodging.createTransit` / `updateTransit` / `listTransitsForSegment` |
+| D4 | Member transit CRUD + list | 🟡 | The procedures exist; **only `listTransitsForSegment` and `refreshTransitStatus` have callers**. `createTransit`/`updateTransit` are unreachable from either app — transits can be viewed and refreshed, not created or edited (`scripts/audit-orphans.ts`, 2026-08-03) |
 | D5 | AviationStack refresh (web) | ✅ | `refreshTransitStatus` + `transit-refresh-button.tsx` |
 | D6 | AviationStack refresh (mobile) | ✅ | "Refresh status" on flight transit rows |
 | D7 | Ground transport groups | ✅ | API + web + mobile join/leave |
 | D8 | Personal workspace on first use | ✅ | `ensurePersonalWorkspace` from trips server path |
 | D9 | Workspace switcher in nav | ✅ | Flag-gated on trips list |
 | D10 | `workspacesVisible` flag | ✅ | `@sortey/flags` — off in prod, on in dev/staging |
+
+> **Audit correction (2026-08-03).** `scripts/audit-orphans.ts` finds 29 of 211
+> procedures with no caller in any app. Lodging is the notable one: the UI
+> reads (`listForSegment`, `listTransitsForSegment`, `listTransportGroups`) and
+> joins/leaves transport groups, but `createLodging`, `updateLodging`,
+> `deleteLodging`, `setGuests`, `createTransit`, `updateTransit`, and
+> `createTransportGroup` are unreachable. Rooms are fine — the room board uses
+> the separate `rooms.*` router, all of which is wired. Also unwired:
+> `pins.acquireEditLock` / `releaseEditLock` / `setAttendees`,
+> `trips.joinSegment` / `leaveSegment`, `planner.suggestOvernightsTrip`.
 
 **Track 1 acceptance**
 
