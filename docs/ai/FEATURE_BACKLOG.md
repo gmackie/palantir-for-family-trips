@@ -86,7 +86,7 @@ Source: `docs/plans/2026-07-09-itinerary-planner.md`, DayMap/DriftPort specs, `C
 | R10 | P5 cut-if-behind automation | ✅ | `cut-if-behind.ts` + replan wiring: a `behind` replan drops the days the traveller pre-authorised (never a drive, event, or anchored day), reports each cut with their own words, and names the shortfall when cutting everything allowed still is not enough |
 | R11 | Predicted Stop as first-class list | ✅ | Predicted stops list on Route Ahead (fuel + overnight zones) |
 | R12 | DriftPort predictive service logistics | 🟡 | Telemetry spike + service queue; full consumption→POI matching open |
-| R13 | Work-window finder (DayMap B1) | ❌ | Spec only |
+| R13 | Work-window finder (DayMap B1) | 🟡 | `daymap/work-window.ts` — pure planner ranking the day's parts against drive time, house power, and connectivity, with named blockers when nothing fits. Input-driven (manual or telemetry); not yet wired to a surface |
 
 **Track 3 acceptance (near-term)**
 
