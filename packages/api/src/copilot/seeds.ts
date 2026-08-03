@@ -126,6 +126,14 @@ export const SEED_POIS: CopilotPoi[] = [
   },
 ];
 
+/**
+ * A fixed dogfood world — the July-2026 California-to-Denver run.
+ *
+ * NOT for serving real trips: it was wired into the router once and every
+ * trip, anywhere, got advised about Denver deadlines and a Costco in Manteca.
+ * Real worlds come from `copilot/world-ops`. This survives as a fixture for
+ * tests and for exercising the rules engine against a known route.
+ */
 export function defaultSeedWorld(tripId?: string): CopilotWorld {
   return {
     pois: SEED_POIS,

@@ -1,16 +1,24 @@
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
-import { defaultSeedWorld, steerCopilot } from "../copilot";
+import { steerCopilot } from "../copilot";
+import { buildCopilotWorld } from "../copilot/world-ops";
 
 /**
- * Chat-primary co-pilot. Pure rules + seed world for P0.
- * Later: merge SQLite pack / server POIs into world.
+ * Chat-primary co-pilot: one planning turn per call, pure rules over the
+ * trip's own world.
+ *
+ * The world is built from THIS trip's anchors and segments (see
+ * `copilot/world-ops`). It used to come from `defaultSeedWorld` — a hardcoded
+ * July-2026 dogfood run — which meant every trip was advised about Denver
+ * deadlines and a Costco in Manteca. The co-pilot's whole premise is that it
+ * never invents miles or places, and borrowing a stranger's route broke that
+ * more thoroughly than any hallucination would.
  */
 export const copilotRouter = {
   /**
    * One planning turn: message → reply + PlanOption cards.
-   * Does not write the plan until client calls applyOption (or planner replan).
+   * Does not write the plan until the client calls applyOption (or replan).
    */
   steer: tripProcedure()
     .input(
@@ -26,8 +34,8 @@ export const copilotRouter = {
           .optional(),
       }),
     )
-    .mutation(({ input }) => {
-      const world = defaultSeedWorld(input.tripId);
+    .mutation(async ({ ctx, input }) => {
+      const world = await buildCopilotWorld(ctx.db, ctx.tripId);
       return steerCopilot({
         message: input.message,
         lat: input.lat,
@@ -37,7 +45,12 @@ export const copilotRouter = {
       });
     }),
 
-  /** Seed leg lookup for UI facts without a full steer. */
+  /**
+   * Drive-time lookup for UI facts without a full steer.
+   *
+   * `source: "missing"` is the honest answer for a leg this trip does not
+   * have — the caller shows "unknown", never a number from somewhere else.
+   */
   estimateDrive: tripProcedure()
     .input(
       z.object({
@@ -47,8 +60,8 @@ export const copilotRouter = {
         toKey: z.string().min(1),
       }),
     )
-    .query(({ input }) => {
-      const world = defaultSeedWorld(input.tripId);
+    .query(async ({ ctx, input }) => {
+      const world = await buildCopilotWorld(ctx.db, ctx.tripId);
       const leg = world.legs.find(
         (l) => l.fromKey === input.fromKey && l.toKey === input.toKey,
       );

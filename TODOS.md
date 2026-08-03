@@ -59,8 +59,8 @@
   **Priority:** P3 — done 2026-08-02
   `imported_poi_lat_lng_idx`. The eventual upgrade is a PostGIS geography column + GiST (docs/adr/0001), which replaces the 5-sample box approximation with one ST_DWithin.
 
-- [ ] Copilot router tests + retire or wire copilot.estimateDrive
-  **Priority:** P3
+- [x] Copilot router tests + retire or wire copilot.estimateDrive
+  **Priority:** P3 — partially done 2026-08-02: `defaultSeedWorld` no longer serves real trips. `copilot/world-ops.ts` builds the world from the trip's own anchors and segments; a trip with nothing planned gets an empty world rather than another trip's route. `estimateDrive` is wired to it and returns `source: "missing"` for a leg this trip does not have. Still open: router-level tests for the auth chain.
   copilotRouter has no router-level tests (auth chain, estimateDrive missing-leg fallback) and estimateDrive has no callers. Also: defaultSeedWorld hardcodes July-2026 dogfood anchors served to every trip — gate by trip id or derive from real anchors before the co-pilot feature ships beyond the dogfood. (Ship review, testing + maintainability specialists.)
 
 ## Completed
