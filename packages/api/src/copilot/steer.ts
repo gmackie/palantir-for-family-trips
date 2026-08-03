@@ -3,7 +3,11 @@
  * Parses intent from natural language (keyword heuristics) and returns
  * PlanOptions grounded in the seed/local world — no LLM required.
  */
-import { defaultSeedWorld, legHours, SEED_NODES } from "./seeds";
+import { legHours, SEED_NODES } from "./seeds";
+
+/** No trip knowledge. Every place-specific answer degrades to "I don't know". */
+const EMPTY_WORLD: CopilotWorld = { pois: [], legs: [], brief: {} };
+
 import type {
   CopilotMoveType,
   CopilotSteerInput,
@@ -323,7 +327,12 @@ function costcoList(world: CopilotWorld): string {
  * Main entry: pure co-pilot turn.
  */
 export function steerCopilot(input: CopilotSteerInput): CopilotSteerResult {
-  const world = input.world ?? defaultSeedWorld();
+  // An ABSENT world means "I do not know this trip", not "use the dogfood
+  // run". The server builds a real world (copilot/world-ops); the mobile
+  // offline fallback has none, and answering it out of a hardcoded
+  // July-2026 California route is how a van with no signal gets told about a
+  // Denver deadline that belongs to somebody else's summer.
+  const world = input.world ?? EMPTY_WORLD;
   const today = todayIso(input.today);
   const message = input.message.trim();
   const moveType = classify(message);

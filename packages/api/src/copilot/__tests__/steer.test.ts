@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import { defaultSeedWorld, legHours } from "../seeds";
 import { steerCopilot } from "../steer";
 
@@ -16,8 +15,12 @@ describe("steerCopilot", () => {
   });
 
   it("answers Bryce to Denver hours from leg table", () => {
+    // The dogfood world must be REQUESTED now — inheriting it implicitly is
+    // what let the offline mobile fallback answer every trip out of a
+    // hardcoded California route.
     const r = steerCopilot({
       message: "how long is the drive from Bryce to Denver on the 26th?",
+      world: defaultSeedWorld(),
     });
     expect(r.moveType).toBe("question");
     expect(r.reply).toMatch(/9\.3/);
@@ -49,6 +52,7 @@ describe("steerCopilot", () => {
   it("lists Costcos along the way", () => {
     const r = steerCopilot({
       message: "wheres the nearest costcos along the way",
+      world: defaultSeedWorld(),
     });
     expect(r.reply).toMatch(/Costco/i);
     expect(r.chrome?.facts?.some((f) => /Costco/i.test(f))).toBe(true);
@@ -58,5 +62,25 @@ describe("steerCopilot", () => {
 describe("legHours", () => {
   it("returns seed Bryce→Denver", () => {
     expect(legHours(defaultSeedWorld(), "node:bryce", "node:denver")).toBe(9.3);
+  });
+});
+
+describe("steerCopilot without a world", () => {
+  it("does not answer out of the dogfood run", () => {
+    // The mobile offline fallback calls steerCopilot with no world. It used
+    // to inherit a hardcoded July-2026 California route, so a van with no
+    // signal anywhere in the country got told about a Denver deadline.
+    const r = steerCopilot({
+      message: "how long is the drive from Bryce to Denver on the 26th?",
+    });
+    expect(r.reply).not.toMatch(/9\.3/);
+  });
+
+  it("names no places it was never told about", () => {
+    const r = steerCopilot({
+      message: "wheres the nearest costcos along the way",
+    });
+    expect(r.reply).not.toMatch(/Manteca/i);
+    expect(r.chrome?.facts?.join(" ") ?? "").not.toMatch(/Manteca/i);
   });
 });
