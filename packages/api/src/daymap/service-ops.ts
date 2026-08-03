@@ -4,7 +4,7 @@
  */
 
 import { decode } from "@googlemaps/polyline-codec";
-import { and, eq, gte, inArray, isNull, lte, or } from "@sortey/db";
+import { and, eq, gte, inArray, isNull, lte, or, sql } from "@sortey/db";
 import { importedPois, tripSegments } from "@sortey/db/schema";
 
 import {
@@ -111,6 +111,14 @@ export async function computeServiceAlerts(
             )
           : isNull(importedPois.workspaceId),
       ),
+    )
+    // Order by a cheap Manhattan proxy so the cap drops the FARTHEST rows.
+    // Without it Postgres returns an arbitrary 1,000 of however many sit in
+    // the box — 2,194 in the Bay Area alone — and the nearest dump station
+    // can simply be absent. The user is then told "none on your route", which
+    // is the one answer this feature must never give wrongly.
+    .orderBy(
+      sql`abs(${importedPois.lat} - ${position.lat}) + abs(${importedPois.lng} - ${position.lng})`,
     )
     .limit(1000)) as Array<{
     id: string;
