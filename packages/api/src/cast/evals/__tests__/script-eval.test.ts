@@ -4,6 +4,8 @@ import type { CastDayContext } from "../../context";
 import {
   countWords,
   evaluateCastScript,
+  factEntities,
+  factReferenced,
   formatEvalReport,
 } from "../script-eval";
 
@@ -250,5 +252,50 @@ describe("evaluateCastScript — warnings do not fail an episode", () => {
     const used = report.checks.find((c) => c.id === "uses-research");
     expect(used?.passed).toBe(false);
     expect(report.passed).toBe(true);
+  });
+});
+
+describe("factReferenced — found by auditing a real script", () => {
+  const fold = {
+    title: "The Waterpocket Fold is the spine of the drive",
+    text: "Capitol Reef is built around the Waterpocket Fold, a monocline.",
+  };
+  const hole = {
+    title: "Hole-in-the-Rock: six weeks of blasting",
+    text: "The road leaves Highway 12 at the town of Escalante.",
+  };
+  const byway = {
+    title: "Highway 12 is an All-American Road",
+    text: "It threads Escalante and ends near Torrey.",
+  };
+
+  it("pulls proper nouns, not whole titles", () => {
+    // Matching the full title scored a script that discusses the fold at
+    // length as ignoring it — no narration says a title verbatim.
+    expect(factEntities(fold)).toContain("Waterpocket Fold");
+  });
+
+  it("counts a fact its own entity identifies", () => {
+    expect(
+      factReferenced("the Waterpocket Fold runs a hundred miles", fold, [
+        fold,
+        hole,
+        byway,
+      ]),
+    ).toBe(true);
+  });
+
+  it("does NOT count ground shared with another fact", () => {
+    // The real failure: a script naming Escalante while describing Highway 12
+    // scored the Hole-in-the-Rock expedition as used. Shared ground cannot
+    // attribute usage, and a rubber stamp is worse than crying wolf because
+    // nobody notices it.
+    const narration = "Scenic Byway 12 runs past Escalante toward Torrey.";
+    expect(factReferenced(narration, hole, [fold, hole, byway])).toBe(false);
+    expect(factReferenced(narration, byway, [fold, hole, byway])).toBe(true);
+  });
+
+  it("with no siblings supplied, every entity counts", () => {
+    expect(factReferenced("we passed Escalante", hole)).toBe(true);
   });
 });
