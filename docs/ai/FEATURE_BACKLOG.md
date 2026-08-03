@@ -32,7 +32,7 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 | D1 | Room assignments API | ✅ | `packages/api/src/router/rooms.ts` + tests |
 | D2 | Room board (web) | ✅ | `apps/nextjs/.../lodging/_components/room-board.tsx` |
 | D3 | Room board (mobile) | ✅ | `apps/expo/src/components/trip/room-board.tsx` + lodging screen |
-| D4 | Member transit CRUD + list | 🟡 | Create + list + refresh wired on web (2026-08-03). `updateTransit` still has no caller — editing an existing transit is not possible |
+| D4 | Member transit CRUD + list | ✅ | Create, edit, list, refresh all wired on web (2026-08-03) |
 | D5 | AviationStack refresh (web) | ✅ | `refreshTransitStatus` + `transit-refresh-button.tsx` |
 | D6 | AviationStack refresh (mobile) | ✅ | "Refresh status" on flight transit rows |
 | D7 | Ground transport groups | ✅ | API + web + mobile join/leave |
@@ -46,8 +46,12 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 > unreachable. Now wired on web: `createLodging`, `deleteLodging`,
 > `createTransit`, `createTransportGroup`. Down to 24 orphans.
 >
+> Lodging is now fully wired — create, edit, guests, delete, plus transit
+> create/edit and transport-group create. Down to 21 orphans. `listForSegment`
+> gained `guestUserIds` because `setGuests` replaces the whole list, and an
+> editor that cannot read the current one can only clobber it.
+>
 > Still unwired, each needing a product call rather than a deletion:
-> `updateLodging` / `updateTransit` / `setGuests` (edit-in-place),
 > `pins.acquireEditLock` / `releaseEditLock` / `setAttendees`,
 > `trips.joinSegment` / `leaveSegment`, `planner.suggestOvernightsTrip`,
 > `corridor.amenityGroups` / `searchCached`, and the eight `admin.*`

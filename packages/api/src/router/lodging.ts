@@ -238,6 +238,12 @@ export const lodgingRouter = {
           totalCostCents: lodgings.totalCostCents,
           currency: lodgings.currency,
           notes: lodgings.notes,
+          // The ids, not just the count: `setGuests` replaces the whole list,
+          // so an editor that cannot read the current one can only clobber it.
+          guestUserIds: sql<string[]>`(
+            select coalesce(array_agg(user_id), '{}')::text[] from lodging_guest
+            where lodging_guest.lodging_id = ${lodgings.id}
+          )`,
           guestCount: sql<number>`(
             select count(*)::int from lodging_guest
             where lodging_guest.lodging_id = ${lodgings.id}
@@ -257,6 +263,7 @@ export const lodgingRouter = {
         totalCostCents: number | null;
         currency: string;
         notes: string | null;
+        guestUserIds: string[];
         guestCount: number;
       }>;
 
