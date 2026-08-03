@@ -23,6 +23,32 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROUTER_DIR = "src/router";
+
+/**
+ * Procedures that legitimately have no React caller, with the reason.
+ *
+ * An exemption list is a liability unless every entry says WHY — otherwise it
+ * becomes the place orphans go to be forgotten, which is the failure this
+ * script exists to catch. Each of these is reachable by design from somewhere
+ * `grep` over `apps/` cannot see.
+ */
+const EXEMPT: Record<string, string> = {
+  uploadGroundingBrief:
+    "operator path is packages/api/scripts/cast-grounding.ts (direct DB)",
+  unregisterPushToken: "called from the native push layer, not a React tree",
+  // The admin surface does not exist yet. These are kept rather than deleted
+  // because they hold real capability — waitlist review, launch controls —
+  // that would have to be rewritten from scratch. Revisit when an admin
+  // console is actually scheduled.
+  bootstrapStatus: "awaiting an admin console",
+  completeBootstrap: "awaiting an admin console",
+  getLaunchControls: "awaiting an admin console",
+  updateLaunchControls: "awaiting an admin console",
+  getUser: "awaiting an admin console",
+  listWaitlistEntries: "awaiting an admin console",
+  reviewWaitlistEntry: "awaiting an admin console",
+  listWorkspaces: "awaiting an admin console",
+};
 const CONSUMERS = [
   "../../apps/nextjs/src",
   "../../apps/expo/src",
@@ -68,7 +94,7 @@ function main() {
     for (const match of source.matchAll(PROCEDURE)) {
       const procedure = match[1]!;
       total++;
-      if (!referenced.has(procedure)) {
+      if (!referenced.has(procedure) && !(procedure in EXEMPT)) {
         orphans.push({ router: file.replace(/\.ts$/, ""), procedure });
       }
     }
@@ -84,7 +110,10 @@ function main() {
   }
   if (orphans.length === 0) console.log("  (none)");
   console.log(
-    "\nEach is either dead code, an agent-only surface (MCP/CLI), or something\nbuilt and never wired. The third is the one that bites.",
+    `\n${Object.keys(EXEMPT).length} exempt (non-React surfaces, see EXEMPT).`,
+  );
+  console.log(
+    "Anything listed above is either dead code or something built and never\nwired. The second is the one that bites.",
   );
 }
 
