@@ -32,7 +32,7 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 | D1 | Room assignments API | ✅ | `packages/api/src/router/rooms.ts` + tests |
 | D2 | Room board (web) | ✅ | `apps/nextjs/.../lodging/_components/room-board.tsx` |
 | D3 | Room board (mobile) | ✅ | `apps/expo/src/components/trip/room-board.tsx` + lodging screen |
-| D4 | Member transit CRUD + list | 🟡 | The procedures exist; **only `listTransitsForSegment` and `refreshTransitStatus` have callers**. `createTransit`/`updateTransit` are unreachable from either app — transits can be viewed and refreshed, not created or edited (`scripts/audit-orphans.ts`, 2026-08-03) |
+| D4 | Member transit CRUD + list | 🟡 | Create + list + refresh wired on web (2026-08-03). `updateTransit` still has no caller — editing an existing transit is not possible |
 | D5 | AviationStack refresh (web) | ✅ | `refreshTransitStatus` + `transit-refresh-button.tsx` |
 | D6 | AviationStack refresh (mobile) | ✅ | "Refresh status" on flight transit rows |
 | D7 | Ground transport groups | ✅ | API + web + mobile join/leave |
@@ -40,15 +40,18 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 | D9 | Workspace switcher in nav | ✅ | Flag-gated on trips list |
 | D10 | `workspacesVisible` flag | ✅ | `@sortey/flags` — off in prod, on in dev/staging |
 
-> **Audit correction (2026-08-03).** `scripts/audit-orphans.ts` finds 29 of 211
-> procedures with no caller in any app. Lodging is the notable one: the UI
-> reads (`listForSegment`, `listTransitsForSegment`, `listTransportGroups`) and
-> joins/leaves transport groups, but `createLodging`, `updateLodging`,
-> `deleteLodging`, `setGuests`, `createTransit`, `updateTransit`, and
-> `createTransportGroup` are unreachable. Rooms are fine — the room board uses
-> the separate `rooms.*` router, all of which is wired. Also unwired:
+> **Audit + fix (2026-08-03).** `scripts/audit-orphans.ts` found 29 of 211
+> procedures with no caller. The lodging page rendered three `disabled`
+> buttons over working procedures, so the whole write half of the feature was
+> unreachable. Now wired on web: `createLodging`, `deleteLodging`,
+> `createTransit`, `createTransportGroup`. Down to 24 orphans.
+>
+> Still unwired, each needing a product call rather than a deletion:
+> `updateLodging` / `updateTransit` / `setGuests` (edit-in-place),
 > `pins.acquireEditLock` / `releaseEditLock` / `setAttendees`,
-> `trips.joinSegment` / `leaveSegment`, `planner.suggestOvernightsTrip`.
+> `trips.joinSegment` / `leaveSegment`, `planner.suggestOvernightsTrip`,
+> `corridor.amenityGroups` / `searchCached`, and the eight `admin.*`
+> procedures (no admin surface exists yet).
 
 **Track 1 acceptance**
 

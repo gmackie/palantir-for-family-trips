@@ -6,6 +6,12 @@ import { notFound } from "next/navigation";
 
 import { requireTripsWorkspace } from "../../_lib/server";
 import { RoomBoard } from "./_components/room-board";
+import {
+  AddLodging,
+  AddTransit,
+  AddTransportGroup,
+  DeleteLodging,
+} from "./_components/segment-actions";
 import { TransitRefreshButton } from "./_components/transit-refresh-button";
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -111,9 +117,11 @@ export default async function LodgingPage(props: {
                   <h3 className="text-sm font-semibold text-[#C9D1D9]">
                     Lodging
                   </h3>
-                  <Button variant="outline" size="sm" disabled>
-                    Add lodging
-                  </Button>
+                  <AddLodging
+                    workspaceId={workspace.id}
+                    tripId={tripId}
+                    segmentId={segment.id}
+                  />
                 </div>
 
                 {lodgingList.length === 0 ? (
@@ -137,6 +145,14 @@ export default async function LodgingPage(props: {
                                 {PROVIDER_LABELS[l.provider] ?? l.provider}
                               </span>
                             )}
+                            <div className="mt-2">
+                              <DeleteLodging
+                                workspaceId={workspace.id}
+                                tripId={tripId}
+                                lodgingId={l.id}
+                                propertyName={l.propertyName}
+                              />
+                            </div>
                           </div>
                           {l.totalCostCents != null && (
                             <span className="font-mono text-sm font-medium tabular-nums text-[#C9D1D9]">
@@ -180,9 +196,15 @@ export default async function LodgingPage(props: {
                   <h3 className="text-sm font-semibold text-[#C9D1D9]">
                     Arrivals &amp; Departures
                   </h3>
-                  <Button variant="outline" size="sm" disabled>
-                    Add transit
-                  </Button>
+                  <AddTransit
+                    workspaceId={workspace.id}
+                    tripId={tripId}
+                    segmentId={segment.id}
+                    members={members.map((m) => ({
+                      userId: m.userId,
+                      name: m.displayName ?? m.userId,
+                    }))}
+                  />
                 </div>
 
                 {transits.length === 0 ? (
@@ -259,9 +281,11 @@ export default async function LodgingPage(props: {
                   <h3 className="text-sm font-semibold text-[#C9D1D9]">
                     Ground Transport
                   </h3>
-                  <Button variant="outline" size="sm" disabled>
-                    Add transport
-                  </Button>
+                  <AddTransportGroup
+                    workspaceId={workspace.id}
+                    tripId={tripId}
+                    segmentId={segment.id}
+                  />
                 </div>
 
                 {transportGroups.length === 0 ? (
