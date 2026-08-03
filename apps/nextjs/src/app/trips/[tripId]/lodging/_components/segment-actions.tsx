@@ -386,3 +386,336 @@ export function AddTransportGroup(props: Scope) {
     </form>
   );
 }
+
+/** ISO instant → the `datetime-local` shape an input will accept. */
+function toLocalInput(value: string | Date | null | undefined): string {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 16);
+}
+
+export function EditLodging(props: {
+  workspaceId: string;
+  tripId: string;
+  lodging: {
+    id: string;
+    propertyName: string;
+    address: string | null;
+    confirmationNumber: string | null;
+    checkInAt: string | Date;
+    checkOutAt: string | Date;
+  };
+}) {
+  const trpc = useTRPC();
+  const refresh = useRefresh();
+  const [open, setOpen] = useState(false);
+  const update = useMutation(
+    trpc.lodging.updateLodging.mutationOptions({
+      onSuccess: () => {
+        toast.success("Lodging updated.");
+        setOpen(false);
+        refresh();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E] hover:text-[#58A6FF]"
+        onClick={() => setOpen(true)}
+      >
+        Edit
+      </button>
+    );
+  }
+
+  const { lodging } = props;
+  return (
+    <form
+      className="mt-2 grid gap-2 rounded-[4px] border border-[#30363D] bg-[#0D1117] p-3 sm:grid-cols-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        const checkInAt = String(data.get("checkInAt") ?? "");
+        const checkOutAt = String(data.get("checkOutAt") ?? "");
+        if (new Date(checkOutAt) <= new Date(checkInAt)) {
+          toast.error("Check-out must be after check-in.");
+          return;
+        }
+        update.mutate({
+          workspaceId: props.workspaceId,
+          tripId: props.tripId,
+          lodgingId: lodging.id,
+          propertyName: String(data.get("propertyName") ?? "").trim(),
+          // Cleared fields send null, not undefined: undefined would leave the
+          // old value in place, which reads as "the edit did not save".
+          address: String(data.get("address") ?? "").trim() || null,
+          confirmationNumber:
+            String(data.get("confirmationNumber") ?? "").trim() || null,
+          checkInAt: new Date(checkInAt),
+          checkOutAt: new Date(checkOutAt),
+        });
+      }}
+    >
+      <label className="sm:col-span-2">
+        <span className={LABEL}>Property</span>
+        <input
+          name="propertyName"
+          required
+          defaultValue={lodging.propertyName}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>Check in</span>
+        <input
+          name="checkInAt"
+          type="datetime-local"
+          required
+          defaultValue={toLocalInput(lodging.checkInAt)}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>Check out</span>
+        <input
+          name="checkOutAt"
+          type="datetime-local"
+          required
+          defaultValue={toLocalInput(lodging.checkOutAt)}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>Address</span>
+        <input
+          name="address"
+          defaultValue={lodging.address ?? ""}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>Confirmation</span>
+        <input
+          name="confirmationNumber"
+          defaultValue={lodging.confirmationNumber ?? ""}
+          className={FIELD}
+        />
+      </label>
+      <div className="flex gap-2 sm:col-span-2">
+        <button type="submit" className={PRIMARY} disabled={update.isPending}>
+          {update.isPending ? "Saving…" : "Save changes"}
+        </button>
+        <button type="button" className={GHOST} onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function LodgingGuests(props: {
+  workspaceId: string;
+  tripId: string;
+  lodgingId: string;
+  guestUserIds: string[];
+  members: Array<{ userId: string; name: string }>;
+}) {
+  const trpc = useTRPC();
+  const refresh = useRefresh();
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>(props.guestUserIds);
+  const save = useMutation(
+    trpc.lodging.setGuests.mutationOptions({
+      onSuccess: () => {
+        toast.success("Guests updated.");
+        setOpen(false);
+        refresh();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E] hover:text-[#58A6FF]"
+        onClick={() => setOpen(true)}
+      >
+        Guests ({props.guestUserIds.length})
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-2 rounded-[4px] border border-[#30363D] bg-[#0D1117] p-3">
+      <span className={LABEL}>Who is staying here</span>
+      {props.members.map((member) => (
+        <label
+          key={member.userId}
+          className="flex items-center gap-2 text-sm text-[#C9D1D9]"
+        >
+          <input
+            type="checkbox"
+            checked={selected.includes(member.userId)}
+            onChange={(event) =>
+              setSelected((current) =>
+                event.target.checked
+                  ? [...current, member.userId]
+                  : current.filter((id) => id !== member.userId),
+              )
+            }
+          />
+          {member.name}
+        </label>
+      ))}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className={PRIMARY}
+          disabled={save.isPending}
+          onClick={() =>
+            save.mutate({
+              workspaceId: props.workspaceId,
+              tripId: props.tripId,
+              lodgingId: props.lodgingId,
+              userIds: selected,
+            })
+          }
+        >
+          {save.isPending ? "Saving…" : "Save guests"}
+        </button>
+        <button
+          type="button"
+          className={GHOST}
+          onClick={() => {
+            // Discard edits rather than leaving the checkboxes out of sync
+            // with what is actually stored.
+            setSelected(props.guestUserIds);
+            setOpen(false);
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function EditTransit(props: {
+  workspaceId: string;
+  tripId: string;
+  transit: {
+    id: string;
+    carrier: string | null;
+    transitNumber: string | null;
+    departureStation: string | null;
+    arrivalStation: string | null;
+    scheduledAt: string | Date;
+  };
+}) {
+  const trpc = useTRPC();
+  const refresh = useRefresh();
+  const [open, setOpen] = useState(false);
+  const update = useMutation(
+    trpc.lodging.updateTransit.mutationOptions({
+      onSuccess: () => {
+        toast.success("Transit updated.");
+        setOpen(false);
+        refresh();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="font-mono text-[10px] uppercase tracking-wider text-[#8B949E] hover:text-[#58A6FF]"
+        onClick={() => setOpen(true)}
+      >
+        Edit
+      </button>
+    );
+  }
+
+  const { transit } = props;
+  return (
+    <form
+      className="mt-2 grid gap-2 rounded-[4px] border border-[#30363D] bg-[#0D1117] p-3 sm:grid-cols-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        update.mutate({
+          workspaceId: props.workspaceId,
+          tripId: props.tripId,
+          transitId: transit.id,
+          carrier: String(data.get("carrier") ?? "").trim() || null,
+          transitNumber: String(data.get("transitNumber") ?? "").trim() || null,
+          departureStation:
+            String(data.get("departureStation") ?? "").trim() || null,
+          arrivalStation:
+            String(data.get("arrivalStation") ?? "").trim() || null,
+          scheduledAt: new Date(String(data.get("scheduledAt") ?? "")),
+        });
+      }}
+    >
+      <label>
+        <span className={LABEL}>Scheduled</span>
+        <input
+          name="scheduledAt"
+          type="datetime-local"
+          required
+          defaultValue={toLocalInput(transit.scheduledAt)}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>Carrier</span>
+        <input
+          name="carrier"
+          defaultValue={transit.carrier ?? ""}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>Number</span>
+        <input
+          name="transitNumber"
+          defaultValue={transit.transitNumber ?? ""}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>From</span>
+        <input
+          name="departureStation"
+          defaultValue={transit.departureStation ?? ""}
+          className={FIELD}
+        />
+      </label>
+      <label>
+        <span className={LABEL}>To</span>
+        <input
+          name="arrivalStation"
+          defaultValue={transit.arrivalStation ?? ""}
+          className={FIELD}
+        />
+      </label>
+      <div className="flex gap-2 sm:col-span-2">
+        <button type="submit" className={PRIMARY} disabled={update.isPending}>
+          {update.isPending ? "Saving…" : "Save changes"}
+        </button>
+        <button type="button" className={GHOST} onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}

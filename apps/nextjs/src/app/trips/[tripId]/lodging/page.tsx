@@ -11,6 +11,9 @@ import {
   AddTransit,
   AddTransportGroup,
   DeleteLodging,
+  EditLodging,
+  EditTransit,
+  LodgingGuests,
 } from "./_components/segment-actions";
 import { TransitRefreshButton } from "./_components/transit-refresh-button";
 
@@ -145,7 +148,22 @@ export default async function LodgingPage(props: {
                                 {PROVIDER_LABELS[l.provider] ?? l.provider}
                               </span>
                             )}
-                            <div className="mt-2">
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                              <EditLodging
+                                workspaceId={workspace.id}
+                                tripId={tripId}
+                                lodging={l}
+                              />
+                              <LodgingGuests
+                                workspaceId={workspace.id}
+                                tripId={tripId}
+                                lodgingId={l.id}
+                                guestUserIds={l.guestUserIds ?? []}
+                                members={members.map((m) => ({
+                                  userId: m.userId,
+                                  name: m.displayName ?? m.userId,
+                                }))}
+                              />
                               <DeleteLodging
                                 workspaceId={workspace.id}
                                 tripId={tripId}
@@ -255,6 +273,11 @@ export default async function LodgingPage(props: {
                             </p>
                           )}
                           <div className="mt-1 flex items-center justify-end gap-2">
+                            <EditTransit
+                              workspaceId={workspace.id}
+                              tripId={tripId}
+                              transit={t}
+                            />
                             <span
                               className={`inline-block rounded-[2px] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLORS[t.trackingStatus] ?? "bg-[#8B949E]/15 text-[#8B949E]"}`}
                             >
