@@ -51,12 +51,11 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 > gained `guestUserIds` because `setGuests` replaces the whole list, and an
 > editor that cannot read the current one can only clobber it.
 >
-> **Pin editing does not exist on any surface (2026-08-03).** `pins.update`,
-> `acquireEditLock`, `releaseEditLock`, and `setAttendees` are all uncalled —
-> pins can be created and deleted, not edited. The edit-lock machinery is
-> complete and correct (TTL column, expiry respected on both acquire and
-> update); it is waiting for an edit form nobody has built. Wiring the locks
-> means building pin editing first.
+> **Pin editing shipped 2026-08-03.** `map/_components/pin-editor.tsx` holds
+> the collaborative edit lock while the form is open — acquired on open,
+> released on save or cancel. Safety rests on the server-side
+> `editLockedUntil` TTL, not on release: a closed tab cannot strand a pin.
+> `pins.setAttendees` is still uncalled; who is going to a pin has no UI.
 >
 > Still unwired, each needing a product call rather than a deletion:
 > `trips.joinSegment` / `leaveSegment`, `planner.suggestOvernightsTrip`,
