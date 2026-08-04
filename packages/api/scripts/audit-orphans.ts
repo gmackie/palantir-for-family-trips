@@ -15,6 +15,14 @@
  * report than to cry wolf — an audit nobody trusts gets ignored, which is how
  * the orphans accumulated in the first place.
  *
+ * KNOWN FALSE NEGATIVE, and it already bit: matching is by bare procedure
+ * name, so anything sharing a name with a common identifier hides. `pins.update`
+ * reads as called because `updateMutation`, `updateDay`, and a hundred other
+ * `.update` references exist — it has no caller at all, and pin editing does
+ * not exist on any surface. Treat a clean run as "no obvious orphans", never
+ * as proof. Short, generic names (`update`, `list`, `get`, `create`) need
+ * checking by hand.
+ *
  *   pnpm -F @sortey/api exec tsx scripts/audit-orphans.ts
  */
 
