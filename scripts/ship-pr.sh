@@ -101,9 +101,11 @@ echo "PR #$NUMBER merged"
 git push forgejo --delete "$REF" >/dev/null 2>&1 || true
 git fetch forgejo --quiet
 
-# Only now, and only fast-forward: a diverged master means something else
-# landed and a hard reset would discard it.
-git merge --ff-only forgejo/master
+# Only now that the merge is confirmed. A squash merge means the remote holds
+# a DIFFERENT commit than the local one, so --ff-only always fails here; the
+# safe move is a hard reset to the confirmed-merged remote, which is exactly
+# the operation that is dangerous before the HTTP 200 above and harmless after.
+git reset --hard forgejo/master
 GSTACK_REDACT_PREPUSH=skip git push origin master
 
 echo "shipped: $(git log --oneline -1)"
