@@ -51,8 +51,14 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 > gained `guestUserIds` because `setGuests` replaces the whole list, and an
 > editor that cannot read the current one can only clobber it.
 >
+> **Pin editing does not exist on any surface (2026-08-03).** `pins.update`,
+> `acquireEditLock`, `releaseEditLock`, and `setAttendees` are all uncalled —
+> pins can be created and deleted, not edited. The edit-lock machinery is
+> complete and correct (TTL column, expiry respected on both acquire and
+> update); it is waiting for an edit form nobody has built. Wiring the locks
+> means building pin editing first.
+>
 > Still unwired, each needing a product call rather than a deletion:
-> `pins.acquireEditLock` / `releaseEditLock` / `setAttendees`,
 > `trips.joinSegment` / `leaveSegment`, `planner.suggestOvernightsTrip`,
 > `corridor.amenityGroups` / `searchCached`, and the eight `admin.*`
 > procedures (no admin surface exists yet).
