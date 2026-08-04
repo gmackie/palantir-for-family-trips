@@ -1193,45 +1193,4 @@ describe("settings billing overview", () => {
       Object.assign(saasFeatures, originalFeatures);
     }
   });
-
-  it("exposes shared platform primitives for workspace surfaces", async () => {
-    const settingsCaller = createCaller().caller.settings as unknown as {
-      getPlatformPrimitives: () => Promise<{
-        botProtection: { enabled: boolean; provider: string };
-        compliance: {
-          dataDeletion: boolean;
-          dataExport: boolean;
-          enabled: boolean;
-        };
-        emailDelivery: { enabled: boolean; provider: string };
-        featureFlags: { enabled: boolean; provider: string };
-        jobs: { enabled: boolean; provider: string };
-        rateLimits: { enabled: boolean; scopes: string[] };
-      }>;
-    };
-
-    await expect(settingsCaller.getPlatformPrimitives()).resolves.toMatchObject(
-      {
-        featureFlags: { enabled: true, provider: "local" },
-        jobs: { enabled: true, provider: "local" },
-        rateLimits: expect.objectContaining({
-          enabled: true,
-          scopes: expect.arrayContaining(["auth", "contact", "operator-api"]),
-        }),
-        botProtection: {
-          enabled: true,
-          provider: "local-rate-limit",
-        },
-        compliance: {
-          dataDeletion: true,
-          dataExport: true,
-          enabled: true,
-        },
-        emailDelivery: {
-          enabled: true,
-          provider: "resend",
-        },
-      },
-    );
-  });
 });

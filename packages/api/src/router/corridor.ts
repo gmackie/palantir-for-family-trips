@@ -130,40 +130,6 @@ export const corridorRouter = {
         .filter((r): r is NonNullable<typeof r> => r != null);
     }),
 
-  searchCached: tripProcedure()
-    .input(
-      z.object({
-        workspaceId: z.string().min(1),
-        tripId: z.string().min(1),
-        centerLat: z.number(),
-        centerLng: z.number(),
-        radiusMiles: z.number().positive().default(CORRIDOR_RADIUS_MILES),
-        category: z.string().optional(),
-        limit: z.number().int().min(1).max(200).default(100),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      const latDelta = input.radiusMiles * MILES_TO_DEGREES_LAT;
-      const lngDelta = input.radiusMiles * MILES_TO_DEGREES_LNG_AT_45;
-
-      const conditions = [
-        gte(poiCache.lat, (input.centerLat - latDelta).toString()),
-        lte(poiCache.lat, (input.centerLat + latDelta).toString()),
-        gte(poiCache.lng, (input.centerLng - lngDelta).toString()),
-        lte(poiCache.lng, (input.centerLng + lngDelta).toString()),
-      ];
-
-      if (input.category) {
-        conditions.push(eq(poiCache.category, input.category));
-      }
-
-      return ctx.db
-        .select()
-        .from(poiCache)
-        .where(and(...conditions))
-        .limit(input.limit);
-    }),
-
   /**
    * Import a user's own iOverlander CSV export, scoped to their workspace.
    *
