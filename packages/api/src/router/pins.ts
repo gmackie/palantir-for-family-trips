@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "@sortey/db";
+import { and, asc, eq, inArray, sql } from "@sortey/db";
 import {
   pinAttendees,
   pins,
@@ -51,25 +51,34 @@ export const pinsRouter = {
         typeof pins.$inferSelect
       >;
 
-      // Batch-load attendee counts
+      // One grouped query, not one per pin. The old loop issued a COUNT for
+      // every pin on the trip — invisible at three pins, a stall at fifty.
+      // The ids come back with it because `setAttendees` REPLACES the list,
+      // so an editor that can only read the count can only clobber it.
       const pinIds = rows.map((r) => r.id);
-      const attendeeCounts = new Map<string, number>();
+      const attendees = new Map<string, string[]>();
 
       if (pinIds.length > 0) {
-        for (const pin of rows) {
-          const countResult = (await ctx.db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(pinAttendees)
-            .where(eq(pinAttendees.pinId, pin.id))) as Array<{
-            count: number;
-          }>;
-          attendeeCounts.set(pin.id, countResult[0]?.count ?? 0);
+        const grouped = (await ctx.db
+          .select({
+            pinId: pinAttendees.pinId,
+            userIds: sql<string[]>`array_agg(${pinAttendees.userId})::text[]`,
+          })
+          .from(pinAttendees)
+          .where(inArray(pinAttendees.pinId, pinIds))
+          .groupBy(pinAttendees.pinId)) as Array<{
+          pinId: string;
+          userIds: string[];
+        }>;
+        for (const row of grouped) {
+          attendees.set(row.pinId, row.userIds ?? []);
         }
       }
 
       return rows.map((pin) => ({
         ...pin,
-        attendeeCount: attendeeCounts.get(pin.id) ?? 0,
+        attendeeUserIds: attendees.get(pin.id) ?? [],
+        attendeeCount: attendees.get(pin.id)?.length ?? 0,
       }));
     }),
 

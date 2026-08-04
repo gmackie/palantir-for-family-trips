@@ -2,7 +2,7 @@
 
 import { Button } from "@sortey/ui/button";
 import { Input } from "@sortey/ui/input";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -32,6 +32,7 @@ export function PinEditor(props: {
     notes?: string | null;
     lat: string;
     lng: string;
+    attendeeUserIds?: string[];
   };
   onClose: () => void;
 }) {
@@ -40,6 +41,9 @@ export function PinEditor(props: {
   const [title, setTitle] = useState(pin.title);
   const [notes, setNotes] = useState(pin.notes ?? "");
   const [locked, setLocked] = useState(false);
+  const [attendees, setAttendees] = useState<string[]>(
+    pin.attendeeUserIds ?? [],
+  );
   const releasedRef = useRef(false);
 
   const scope = {
@@ -47,6 +51,18 @@ export function PinEditor(props: {
     tripId: props.tripId,
     pinId: pin.id,
   };
+
+  const members = useQuery(
+    trpc.trips.listMembers.queryOptions({
+      workspaceId: props.workspaceId,
+      tripId: props.tripId,
+    }),
+  );
+  const saveAttendees = useMutation(
+    trpc.pins.setAttendees.mutationOptions({
+      onError: (error) => toast.error(error.message),
+    }),
+  );
 
   const acquire = useMutation(trpc.pins.acquireEditLock.mutationOptions({}));
   const release = useMutation(trpc.pins.releaseEditLock.mutationOptions({}));
@@ -111,19 +127,48 @@ export function PinEditor(props: {
         placeholder="Notes"
         onChange={(event) => setNotes(event.target.value)}
       />
+      {(members.data ?? []).length > 0 && (
+        <div className="space-y-1">
+          <p className="text-muted-foreground font-mono text-[10px] uppercase tracking-widest">
+            Who is going
+          </p>
+          {(members.data ?? []).map((member) => (
+            <label
+              key={member.userId}
+              className="flex items-center gap-2 text-sm"
+            >
+              <input
+                type="checkbox"
+                checked={attendees.includes(member.userId)}
+                onChange={(event) =>
+                  setAttendees((current) =>
+                    event.target.checked
+                      ? [...current, member.userId]
+                      : current.filter((id) => id !== member.userId),
+                  )
+                }
+              />
+              {member.displayName ?? member.userId}
+            </label>
+          ))}
+        </div>
+      )}
       <div className="flex gap-2">
         <Button
           size="sm"
           disabled={update.isPending || title.trim().length === 0}
-          onClick={() =>
+          onClick={() => {
+            // Attendees live in their own table, so they save separately —
+            // done first so a failure surfaces before the editor closes.
+            saveAttendees.mutate({ ...scope, userIds: attendees });
             update.mutate({
               ...scope,
               title: title.trim(),
               // Empty clears the note; undefined would leave the old one and
               // read as a failed save.
               notes: notes.trim() || null,
-            })
-          }
+            });
+          }}
         >
           {update.isPending ? "Saving…" : "Save"}
         </Button>
