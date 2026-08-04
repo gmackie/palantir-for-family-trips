@@ -8,6 +8,7 @@ This repository is set up to work well with `Codex`, `Claude Code`, and `OpenCod
 - Keep `docs/ai/INITIAL_PROPOSAL.md`, `docs/ai/IMPLEMENTATION_PLAN.md`, and `DESIGN.md` aligned with major product and implementation changes.
 - Prefer `jj` for local version control workflows. The repo is colocated with Git for interoperability.
 - Use `pnpm`, `oxlint`, `biome`, and `turbo` as the default tooling surface.
+- Ship PRs with [`scripts/ship-pr.sh`](./scripts/ship-pr.sh) rather than by hand: `forge pr create` targets `main` on a `master` repo, the head ref is a jj change name that must be pushed first, and the `forgejo` remote's embedded token is stale. The script also refuses to touch the local branch when a merge fails — doing that by hand destroyed a commit once.
 - Use ForgeGraph for deployment workflows and `forge` from [`../ForgeGraph`](../ForgeGraph) when working against the real deployment control plane.
 - Treat [docs/ai/DEVELOPER_EXPERIENCE.md](./docs/ai/DEVELOPER_EXPERIENCE.md) as the current support matrix for agent tooling, Cloudflare Workers, ForgeGraph, Nix, and mobile DX choices.
 - Read [docs/ai/CORRIDOR_CAST.md](./docs/ai/CORRIDOR_CAST.md) before touching Corridor Cast — the job state machine has two safety properties (the read gate and expiry-is-not-a-spend-path) that are easy to break by accident.
