@@ -13,14 +13,6 @@ const MILES_TO_DEGREES_LNG_AT_45 = 1 / 49;
 
 export const corridorRouter = {
   /** Amenity group → category lists (sleep, parking, service, fuel, food, road). */
-  amenityGroups: tripProcedure()
-    .input(
-      z.object({
-        workspaceId: z.string().min(1),
-        tripId: z.string().min(1),
-      }),
-    )
-    .query(() => AMENITY_GROUPS),
 
   searchImported: tripProcedure()
     .input(
