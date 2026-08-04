@@ -153,6 +153,12 @@
 <header class="hero">
   <div class="hero-inner">
     <p class="kicker">Sortey · Group Trip Command Center · Roadmap</p>
+    <div class="call ok" style="margin-top:20px">
+      <div class="t">Status — 2026-08-03</div>
+      <p><b>M1 and M2 closed</b> except what needs a funded model provider or a device. <b>M3's real gap was narrower than this document claimed</b> (see the correction in that section) and is filled. <b>M4 opened with a fix, not a feature</b>: the co-pilot was advising every trip out of a hardcoded dogfood route.</p>
+      <p>A separate thread ran alongside: <b>29 → 0 orphaned API procedures</b>. Four features shipped with a working read path and an unreachable write path — lodging you could not add, legs you could not join, pin attendees you could not set, proposals that could never be accepted. <code>scripts/audit-orphans.ts</code> is the detector; it now documents what it cannot see.</p>
+      <p><b>Still gated on you:</b> a funded provider (proved unresolvable three ways — no Anthropic key exists in the infrastructure, the billed Gemini project is out of prepaid credit, and Google's free tier is zero for new projects), a device window for the native player, and a trip to drive. None of the travel-day logic built here has met a road.</p>
+    </div>
     <h1>From a shipped cast<br><span class="thin">to a predictive travel day</span></h1>
     <p class="lead prose">Six milestones from <b>v0.2.0.0</b> (today: destination trips, road-trip planner, and Corridor Cast all live) to <b>v1.0.0.0</b>. Ordered by what unblocks the most, not by what is most fun to build.</p>
     <p class="meta">
