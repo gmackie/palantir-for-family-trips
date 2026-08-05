@@ -5,8 +5,12 @@
 # The manual dance has four footguns, all of them learned the hard way over
 # ~20 PRs, and one of them nearly cost real work:
 #
-#   1. `forge pr create` opens the Forgejo PR against `main`, even though this
-#      repo's default branch is `master`. It must be retargeted before merge.
+#   1. `forge pr create` opened the Forgejo PR against `main`, even though this
+#      repo's default branch is `master`. FIXED UPSTREAM 2026-08-05 in
+#      ForgeGraph c7fbbfb — stack-sync now resolves the repo's own default
+#      branch. The retarget below is kept because it is idempotent: it is a
+#      no-op on a correct base, and still rescues a changeset registered
+#      before that fix shipped.
 #   2. The head ref is the jj change name, which does not exist on the remote
 #      until you push the commit to it explicitly.
 #   3. The `forgejo` remote URL in .git/config carries an expired token; the
