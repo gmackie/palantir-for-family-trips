@@ -75,8 +75,8 @@ export const photosRouter = {
           userId: ctx.session.user.id,
           storageKey: input.storageKey,
           caption: input.caption ?? null,
-          lat: input.lat != null ? String(input.lat) : null,
-          lng: input.lng != null ? String(input.lng) : null,
+          lat: input.lat ?? null,
+          lng: input.lng ?? null,
           takenAt: input.takenAt ? new Date(input.takenAt) : null,
         })
         .returning()) as Array<typeof tripPhotos.$inferSelect>;

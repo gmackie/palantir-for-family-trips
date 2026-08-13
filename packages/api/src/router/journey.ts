@@ -302,10 +302,10 @@ export const journeyRouter = {
           .update(tripSegments)
           .set({
             originName: origin.name,
-            originLat: String(origin.lat),
-            originLng: String(origin.lng),
+            originLat: origin.lat,
+            originLng: origin.lng,
             routePolyline: routed.polyline,
-            distanceMiles: String(routed.miles),
+            distanceMiles: routed.miles,
             durationMinutes: routed.minutes,
           })
           .where(eq(tripSegments.id, target.segmentId));

@@ -50,9 +50,11 @@ const groundTransportTypeSchema = z.enum([
   "public_transit",
 ]);
 
+// D1/SQLite stores lat/lng as REAL (number). Coerce string|number input to a
+// number so it matches the `real()` columns (was String() for pg numeric).
 const coordinateSchema = z
   .union([z.string(), z.number()])
-  .transform((v) => String(v));
+  .transform((v) => Number(v));
 
 const tripScopedInput = z.object({
   workspaceId: z.string().min(1),

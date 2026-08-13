@@ -51,10 +51,10 @@ export const corridorRouter = {
       const lngDelta = input.radiusMiles * MILES_TO_DEGREES_LNG_AT_45;
 
       const conditions = [
-        gte(importedPois.lat, (input.centerLat - latDelta).toString()),
-        lte(importedPois.lat, (input.centerLat + latDelta).toString()),
-        gte(importedPois.lng, (input.centerLng - lngDelta).toString()),
-        lte(importedPois.lng, (input.centerLng + lngDelta).toString()),
+        gte(importedPois.lat, input.centerLat - latDelta),
+        lte(importedPois.lat, input.centerLat + latDelta),
+        gte(importedPois.lng, input.centerLng - lngDelta),
+        lte(importedPois.lng, input.centerLng + lngDelta),
         // Shared (OSM) POIs OR this workspace's private uploads (iOverlander) —
         // never another workspace's non-redistributable data.
         or(
@@ -81,8 +81,8 @@ export const corridorRouter = {
         externalId: string;
         name: string;
         category: string;
-        lat: string;
-        lng: string;
+        lat: number;
+        lng: number;
         data: unknown;
         workspaceId: string | null;
         importedAt: Date;

@@ -1824,8 +1824,8 @@ export const tripsRouter = {
           ),
         )) as Array<{
         userId: string;
-        lat: string;
-        lng: string;
+        lat: number;
+        lng: number;
         updatedAt: Date;
         displayName: string | null;
       }>;
@@ -1833,8 +1833,8 @@ export const tripsRouter = {
       const memberLocationsInput = locationRows.map((r) => ({
         userId: r.userId,
         name: r.displayName ?? "Member",
-        lat: Number(r.lat),
-        lng: Number(r.lng),
+        lat: r.lat,
+        lng: r.lng,
         updatedAt: r.updatedAt,
       }));
 

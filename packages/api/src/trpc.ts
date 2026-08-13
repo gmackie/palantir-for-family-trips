@@ -356,7 +356,9 @@ const rlsSessionMiddleware = t.middleware(async ({ ctx, next }) => {
     next({
       ctx: {
         ...ctx,
-        db: tx as typeof ctx.db,
+        // On D1 `withDatabaseSessionContext` is a no-op that passes the base db
+        // through as `tx` (SQLite has no RLS session context); cast via unknown.
+        db: tx as unknown as typeof ctx.db,
       },
     }),
   );

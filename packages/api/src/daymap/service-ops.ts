@@ -100,10 +100,10 @@ export async function computeServiceAlerts(
     .where(
       and(
         inArray(importedPois.category, SERVICE_CATEGORIES),
-        gte(importedPois.lat, (position.lat - NEARBY_DEGREES).toString()),
-        lte(importedPois.lat, (position.lat + NEARBY_DEGREES).toString()),
-        gte(importedPois.lng, (position.lng - NEARBY_DEGREES).toString()),
-        lte(importedPois.lng, (position.lng + NEARBY_DEGREES).toString()),
+        gte(importedPois.lat, position.lat - NEARBY_DEGREES),
+        lte(importedPois.lat, position.lat + NEARBY_DEGREES),
+        gte(importedPois.lng, position.lng - NEARBY_DEGREES),
+        lte(importedPois.lng, position.lng + NEARBY_DEGREES),
         p.workspaceId
           ? or(
               isNull(importedPois.workspaceId),

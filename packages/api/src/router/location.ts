@@ -35,22 +35,22 @@ export const locationRouter = {
         .values({
           tripId: ctx.tripId,
           userId: ctx.session.user.id,
-          lat: String(input.lat),
-          lng: String(input.lng),
-          heading: input.heading != null ? String(input.heading) : null,
-          speed: input.speed != null ? String(input.speed) : null,
-          accuracy: input.accuracy != null ? String(input.accuracy) : null,
+          lat: input.lat,
+          lng: input.lng,
+          heading: input.heading ?? null,
+          speed: input.speed ?? null,
+          accuracy: input.accuracy ?? null,
           sharingEnabled: true,
           updatedAt: now,
         })
         .onConflictDoUpdate({
           target: [memberLocations.tripId, memberLocations.userId],
           set: {
-            lat: String(input.lat),
-            lng: String(input.lng),
-            heading: input.heading != null ? String(input.heading) : null,
-            speed: input.speed != null ? String(input.speed) : null,
-            accuracy: input.accuracy != null ? String(input.accuracy) : null,
+            lat: input.lat,
+            lng: input.lng,
+            heading: input.heading ?? null,
+            speed: input.speed ?? null,
+            accuracy: input.accuracy ?? null,
             sharingEnabled: true,
             updatedAt: now,
           },
@@ -103,8 +103,8 @@ export const locationRouter = {
         .values({
           tripId: ctx.tripId,
           userId: ctx.session.user.id,
-          lat: "0",
-          lng: "0",
+          lat: 0,
+          lng: 0,
           sharingEnabled: true,
           updatedAt: new Date(),
         })
@@ -165,10 +165,10 @@ export const locationRouter = {
           ),
         )) as Array<{
         userId: string;
-        lat: string;
-        lng: string;
-        heading: string | null;
-        speed: string | null;
+        lat: number;
+        lng: number;
+        heading: number | null;
+        speed: number | null;
         updatedAt: Date;
         displayName: string | null;
         colorHex: string | null;
@@ -176,10 +176,10 @@ export const locationRouter = {
 
       return rows.map((r) => ({
         userId: r.userId,
-        lat: Number(r.lat),
-        lng: Number(r.lng),
-        heading: r.heading != null ? Number(r.heading) : null,
-        speed: r.speed != null ? Number(r.speed) : null,
+        lat: r.lat,
+        lng: r.lng,
+        heading: r.heading,
+        speed: r.speed,
         updatedAt: r.updatedAt,
         displayName: r.displayName,
         colorHex: r.colorHex,

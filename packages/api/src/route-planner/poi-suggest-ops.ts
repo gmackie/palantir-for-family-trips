@@ -34,10 +34,10 @@ export async function loadNearbyImportedPois(
   const latDelta = p.radiusMiles * MILES_TO_DEGREES_LAT;
   const lngDelta = p.radiusMiles * MILES_TO_DEGREES_LNG;
   const conditions = [
-    gte(importedPois.lat, (p.centerLat - latDelta).toString()),
-    lte(importedPois.lat, (p.centerLat + latDelta).toString()),
-    gte(importedPois.lng, (p.centerLng - lngDelta).toString()),
-    lte(importedPois.lng, (p.centerLng + lngDelta).toString()),
+    gte(importedPois.lat, p.centerLat - latDelta),
+    lte(importedPois.lat, p.centerLat + latDelta),
+    gte(importedPois.lng, p.centerLng - lngDelta),
+    lte(importedPois.lng, p.centerLng + lngDelta),
     or(
       isNull(importedPois.workspaceId),
       eq(importedPois.workspaceId, p.workspaceId),

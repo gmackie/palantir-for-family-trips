@@ -44,8 +44,8 @@ export const vanProfilesRouter = {
           make: input.make,
           model: input.model,
           fuelType: input.fuelType,
-          mpgEstimate: input.mpgEstimate?.toString(),
-          tankGallons: input.tankGallons?.toString(),
+          mpgEstimate: input.mpgEstimate,
+          tankGallons: input.tankGallons,
           heightInches: input.heightInches,
           lengthFeet: input.lengthFeet,
         })
@@ -68,9 +68,9 @@ export const vanProfilesRouter = {
       const updates: Record<string, unknown> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.mpgEstimate !== undefined)
-        updates.mpgEstimate = input.mpgEstimate.toString();
+        updates.mpgEstimate = input.mpgEstimate;
       if (input.tankGallons !== undefined)
-        updates.tankGallons = input.tankGallons.toString();
+        updates.tankGallons = input.tankGallons;
       if (input.fuelType !== undefined) updates.fuelType = input.fuelType;
 
       const [updated] = await ctx.db

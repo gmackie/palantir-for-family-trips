@@ -427,10 +427,10 @@ async function collectCorridorPois(
         .from(importedPois)
         .where(
           and(
-            gte(importedPois.lat, (sample.lat - latDelta).toString()),
-            lte(importedPois.lat, (sample.lat + latDelta).toString()),
-            gte(importedPois.lng, (sample.lng - lngDelta).toString()),
-            lte(importedPois.lng, (sample.lng + lngDelta).toString()),
+            gte(importedPois.lat, sample.lat - latDelta),
+            lte(importedPois.lat, sample.lat + latDelta),
+            gte(importedPois.lng, sample.lng - lngDelta),
+            lte(importedPois.lng, sample.lng + lngDelta),
             // Shared (OSM) POIs OR this workspace's private uploads — never
             // another workspace's non-redistributable data.
             or(

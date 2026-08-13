@@ -692,7 +692,7 @@ export const expensesRouter = {
         .values({
           expenseId: input.expenseId,
           name: input.name,
-          quantity: String(input.quantity),
+          quantity: input.quantity,
           unitPriceCents: input.unitPriceCents,
           lineTotalCents: input.lineTotalCents,
           sortOrder: input.sortOrder,
@@ -760,7 +760,7 @@ export const expensesRouter = {
           input.items.map((item) => ({
             expenseId: input.expenseId,
             name: item.name,
-            quantity: String(item.quantity),
+            quantity: item.quantity,
             unitPriceCents: item.unitPriceCents,
             lineTotalCents: item.lineTotalCents,
             sortOrder: item.sortOrder,

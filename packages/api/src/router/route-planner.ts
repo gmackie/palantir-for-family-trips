@@ -452,8 +452,8 @@ export const routePlannerRouter = {
         .update(trips)
         .set({
           destinationName: input.destination.name,
-          destinationLat: input.destination.lat.toString(),
-          destinationLng: input.destination.lng.toString(),
+          destinationLat: input.destination.lat,
+          destinationLng: input.destination.lng,
           startDate: input.startDate,
         })
         .where(eq(trips.id, ctx.tripId));
@@ -486,16 +486,16 @@ export const routePlannerRouter = {
               tripId: ctx.tripId,
               name: seg.name,
               originName: i === 0 ? input.origin.name : undefined,
-              originLat: seg.origin.lat.toString(),
-              originLng: seg.origin.lng.toString(),
+              originLat: seg.origin.lat,
+              originLng: seg.origin.lng,
               destinationName:
                 i === splitSegments.length - 1
                   ? input.destination.name
                   : `Day ${i + 1} overnight`,
-              destinationLat: seg.destination.lat.toString(),
-              destinationLng: seg.destination.lng.toString(),
+              destinationLat: seg.destination.lat,
+              destinationLng: seg.destination.lng,
               routePolyline: seg.encodedPolyline,
-              distanceMiles: seg.distanceMiles.toString(),
+              distanceMiles: seg.distanceMiles,
               durationMinutes: seg.durationMinutes,
               startDate: seg.startDate,
               endDate: seg.startDate,
@@ -533,13 +533,13 @@ export const routePlannerRouter = {
           tripId: ctx.tripId,
           name: `${input.origin.name} → ${input.destination.name}`,
           originName: input.origin.name,
-          originLat: input.origin.lat.toString(),
-          originLng: input.origin.lng.toString(),
+          originLat: input.origin.lat,
+          originLng: input.origin.lng,
           destinationName: input.destination.name,
-          destinationLat: input.destination.lat.toString(),
-          destinationLng: input.destination.lng.toString(),
+          destinationLat: input.destination.lat,
+          destinationLng: input.destination.lng,
           routePolyline: fullPolyline,
-          distanceMiles: totalMiles.toString(),
+          distanceMiles: totalMiles,
           durationMinutes: totalMinutes,
           startDate: input.startDate,
           endDate: input.startDate,
