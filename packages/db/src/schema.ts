@@ -544,7 +544,7 @@ export const lineItems = sqliteTable("line_item", (t) => ({
     .notNull()
     .references(() => expenses.id, { onDelete: "cascade" }),
   name: t.text().notNull(),
-  quantity: t.real().notNull().default("1"),
+  quantity: t.real().notNull().default(1),
   unitPriceCents: t.integer().notNull().default(0),
   lineTotalCents: t.integer().notNull().default(0),
   sortOrder: t.integer().notNull().default(0),
