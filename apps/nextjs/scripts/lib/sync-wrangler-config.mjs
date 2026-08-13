@@ -1,4 +1,5 @@
 const PASSTHROUGH_KEYS = [
+  "d1_databases",
   "durable_objects",
   "hyperdrive",
   "migrations",

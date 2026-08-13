@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sortey-app",
+  "name": "trip-beta",
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat"],
   "placement": { "mode": "smart" },
@@ -13,7 +13,7 @@
   "main": "./worker/index.ts",
   "routes": [
     {
-      "pattern": "sortey.app",
+      "pattern": "beta.sortey.app",
       "custom_domain": true
     }
   ],
@@ -26,21 +26,16 @@
     "binding": "IMAGES"
   },
   "vars": {
-    "APP_ENV": "production",
+    "APP_ENV": "staging",
     "FG_APP": "sortey",
-    "APP_URL": "https://sortey.app",
-    "NEXT_PUBLIC_APP_URL": "https://sortey.app",
+    "FG_STAGE": "beta",
+    "SKIP_ENV_VALIDATION": "1",
+    "APP_URL": "https://beta.sortey.app",
+    "NEXT_PUBLIC_APP_URL": "https://beta.sortey.app",
     "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCCz6GZeB8qfIXJhCmKtHqhhY9kW23IllQ",
     "NEXT_PUBLIC_SENTRY_DSN": "https://569e9c22f10b15178541b945bf15a88f@o4509749405810688.ingest.us.sentry.io/4511437067911168",
     "SENTRY_ORG": "sortie-app",
     "SENTRY_PROJECT": "sortie-app"
-  },
-  "env": {
-    "staging": {
-      "vars": {
-        "APP_ENV": "staging"
-      }
-    }
   },
   "r2_buckets": [
     {
@@ -48,10 +43,11 @@
       "bucket_name": "sortie-receipts"
     }
   ],
-  "hyperdrive": [
+  "d1_databases": [
     {
-      "binding": "HYPERDRIVE",
-      "id": "71e7b1f713a841c4b98b4fa41c42ffef"
+      "binding": "DB",
+      "database_name": "fg-trip-beta",
+      "database_id": "d133795d-334b-4777-b064-1d21578d3bda"
     }
   ],
   "durable_objects": {

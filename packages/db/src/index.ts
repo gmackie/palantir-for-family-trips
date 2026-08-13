@@ -1,2 +1,2 @@
-export { alias } from "drizzle-orm/pg-core";
+export { alias } from "drizzle-orm/sqlite-core";
 export * from "drizzle-orm/sql";

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, pgTable, unique, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, sqliteTable, unique, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -55,14 +55,14 @@ export type BillingLimitPeriod = (typeof billingLimitPeriodEnum)[number];
 export const usageAggregationEnum = ["sum", "max"] as const;
 export type UsageAggregation = (typeof usageAggregationEnum)[number];
 
-export const Post = pgTable("post", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
-  title: t.varchar({ length: 256 }).notNull(),
+export const Post = sqliteTable("post", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: t.text().notNull(),
   content: t.text().notNull(),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
 export const CreatePostSchema = createInsertSchema(Post, {
@@ -74,41 +74,41 @@ export const CreatePostSchema = createInsertSchema(Post, {
   updatedAt: true,
 });
 
-export const userPreferences = pgTable("user_preferences", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const userPreferences = sqliteTable("user_preferences", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: t
     .text()
     .notNull()
     .unique()
     .references(() => user.id, { onDelete: "cascade" }),
-  theme: t.varchar({ length: 20 }).notNull().default("system"),
-  language: t.varchar({ length: 10 }).notNull().default("en"),
-  timezone: t.varchar({ length: 50 }).notNull().default("UTC"),
-  emailNotifications: t.boolean().notNull().default(true),
-  pushNotifications: t.boolean().notNull().default(true),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  theme: t.text().notNull().default("system"),
+  language: t.text().notNull().default("en"),
+  timezone: t.text().notNull().default("UTC"),
+  emailNotifications: t.integer({ mode: "boolean" }).notNull().default(true),
+  pushNotifications: t.integer({ mode: "boolean" }).notNull().default(true),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const pushTokens = pgTable(
+export const pushTokens = sqliteTable(
   "push_token",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     userId: t
       .text()
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    token: t.varchar({ length: 255 }).notNull(),
-    platform: t.varchar({ length: 10 }).notNull().default("ios"),
+    token: t.text().notNull(),
+    platform: t.text().notNull().default("ios"),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
   }),
   (table) => [
@@ -116,42 +116,42 @@ export const pushTokens = pgTable(
   ],
 );
 
-export const apiKeys = pgTable("api_keys", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const apiKeys = sqliteTable("api_keys", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  name: t.varchar({ length: 100 }).notNull(),
+  name: t.text().notNull(),
   keyHash: t.text().notNull(),
-  keyPrefix: t.varchar({ length: 12 }).notNull(),
-  permissions: t.json().$type<string[]>().notNull().default(["read"]),
-  lastUsedAt: t.timestamp({ mode: "date", withTimezone: true }),
-  expiresAt: t.timestamp({ mode: "date", withTimezone: true }),
-  createdAt: t.timestamp().defaultNow().notNull(),
-  revokedAt: t.timestamp({ mode: "date", withTimezone: true }),
+  keyPrefix: t.text().notNull(),
+  permissions: t.text({ mode: "json" }).$type<string[]>().notNull().default(["read"]),
+  lastUsedAt: t.integer({ mode: "timestamp" }),
+  expiresAt: t.integer({ mode: "timestamp" }),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
+  revokedAt: t.integer({ mode: "timestamp" }),
 }));
 
-export const workspace = pgTable("workspace", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
-  name: t.varchar({ length: 120 }).notNull(),
-  slug: t.varchar({ length: 160 }).notNull().unique(),
+export const workspace = sqliteTable("workspace", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: t.text().notNull(),
+  slug: t.text().notNull().unique(),
   ownerUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const workspaceMembership = pgTable(
+export const workspaceMembership = sqliteTable(
   "workspace_membership",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     workspaceId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
     userId: t
@@ -159,10 +159,10 @@ export const workspaceMembership = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     role: t.text().$type<WorkspaceRole>().notNull().default("member"),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("workspace_membership_workspace_user_unique").on(
@@ -172,24 +172,24 @@ export const workspaceMembership = pgTable(
   ],
 );
 
-export const workspaceInviteAllowlist = pgTable(
+export const workspaceInviteAllowlist = sqliteTable(
   "workspace_invite_allowlist",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     workspaceId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
-    email: t.varchar({ length: 320 }).notNull(),
+    email: t.text().notNull(),
     role: t.text().$type<WorkspaceRole>().notNull().default("member"),
     invitedByUserId: t
       .text()
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("workspace_invite_allowlist_workspace_email_unique").on(
@@ -199,55 +199,55 @@ export const workspaceInviteAllowlist = pgTable(
   ],
 );
 
-export const trips = pgTable("trip", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const trips = sqliteTable("trip", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   workspaceId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => workspace.id, { onDelete: "cascade" }),
-  name: t.varchar({ length: 160 }).notNull(),
+  name: t.text().notNull(),
   createdByUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   status: t.text().$type<TripStatus>().notNull().default("planning"),
-  groupMode: t.boolean().notNull().default(false),
+  groupMode: t.integer({ mode: "boolean" }).notNull().default(false),
   tripMode: t.text().$type<TripMode>().notNull().default("destination"),
   claimMode: t.text().$type<TripClaimMode>().notNull().default("organizer"),
-  destinationName: t.varchar({ length: 160 }),
-  destinationLat: t.numeric(),
-  destinationLng: t.numeric(),
+  destinationName: t.text(),
+  destinationLat: t.real(),
+  destinationLng: t.real(),
   defaultZoom: t.integer().notNull().default(13),
-  startDate: t.date(),
-  endDate: t.date(),
-  tz: t.varchar({ length: 100 }).notNull().default("UTC"),
+  startDate: t.text(),
+  endDate: t.text(),
+  tz: t.text().notNull().default("UTC"),
   // Phase 1a — device-sent share invite (one reusable, revocable link per trip)
-  shareInviteToken: t.varchar({ length: 64 }).unique(),
-  shareInviteEnabled: t.boolean().notNull().default(true),
-  shareInviteCreatedAt: t.timestamp({ mode: "date", withTimezone: true }),
+  shareInviteToken: t.text().unique(),
+  shareInviteEnabled: t.integer({ mode: "boolean" }).notNull().default(true),
+  shareInviteCreatedAt: t.integer({ mode: "timestamp" }),
   /** Van execution: on plan vs exploring off-corridor vs paused. */
   runState: t.text().$type<TripRunState>().notNull().default("on_plan"),
-  runStateSince: t.timestamp({ mode: "date", withTimezone: true }),
-  runStateNote: t.varchar({ length: 500 }),
+  runStateSince: t.integer({ mode: "timestamp" }),
+  runStateNote: t.text(),
   /**
    * Corridor Cast narrator for this trip. NULL keeps the deployment default
    * (ELEVENLABS_VOICE_ID_DEFAULT, else the premade "George"). Stored per trip
    * rather than per user: an episode is a shared artifact, and the group hears
    * one voice.
    */
-  castVoiceId: t.varchar({ length: 64 }),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  castVoiceId: t.text(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const tripMembers = pgTable(
+export const tripMembers = sqliteTable(
   "trip_member",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     userId: t
@@ -255,10 +255,10 @@ export const tripMembers = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     role: t.text().$type<TripMemberRole>().notNull().default("member"),
-    displayName: t.varchar({ length: 120 }),
-    colorHex: t.varchar({ length: 16 }),
-    venmoHandle: t.varchar({ length: 80 }),
-    joinedAt: t.timestamp().defaultNow().notNull(),
+    displayName: t.text(),
+    colorHex: t.text(),
+    venmoHandle: t.text(),
+    joinedAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   }),
   (table) => [
     unique("trip_members_trip_user_unique").on(table.tripId, table.userId),
@@ -266,56 +266,56 @@ export const tripMembers = pgTable(
 );
 
 /** Per-user dashboard UI preferences for a trip (replaces localStorage). */
-export const tripMemberState = pgTable(
+export const tripMemberState = sqliteTable(
   "trip_member_state",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     userId: t
       .text()
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    state: t.jsonb().$type<Record<string, unknown>>().notNull(),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    state: t.text({ mode: "json" }).$type<Record<string, unknown>>().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("trip_member_state_trip_user_unique").on(table.tripId, table.userId),
   ],
 );
 
-export const tripSegments = pgTable(
+export const tripSegments = sqliteTable(
   "trip_segment",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
-    name: t.varchar({ length: 160 }).notNull(),
-    destinationName: t.varchar({ length: 160 }),
-    destinationLat: t.numeric(),
-    destinationLng: t.numeric(),
+    name: t.text().notNull(),
+    destinationName: t.text(),
+    destinationLat: t.real(),
+    destinationLng: t.real(),
     defaultZoom: t.integer().notNull().default(13),
-    startDate: t.date(),
-    endDate: t.date(),
-    tz: t.varchar({ length: 100 }).notNull().default("UTC"),
-    originName: t.varchar({ length: 200 }),
-    originLat: t.numeric(),
-    originLng: t.numeric(),
+    startDate: t.text(),
+    endDate: t.text(),
+    tz: t.text().notNull().default("UTC"),
+    originName: t.text(),
+    originLat: t.real(),
+    originLng: t.real(),
     routePolyline: t.text(),
-    distanceMiles: t.numeric(),
+    distanceMiles: t.real(),
     durationMinutes: t.integer(),
     sortOrder: t.integer().notNull(),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("trip_segments_trip_sort_order_unique").on(
@@ -346,21 +346,21 @@ export type JourneyRouteStatus = (typeof journeyRouteStatusEnum)[number];
  * remain the map/routing representation; this row distinguishes recorded
  * progress from future itinerary legs and gives offline retries a stable id.
  */
-export const journeyStops = pgTable(
+export const journeyStops = sqliteTable(
   "journey_stop",
   (t) => ({
-    id: t.uuid().notNull().primaryKey(),
+    id: t.text().notNull().primaryKey(),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     segmentId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => tripSegments.id, { onDelete: "cascade" }),
     kind: t.text().$type<JourneyStopKind>().notNull().default("custom"),
     sortOrder: t.integer().notNull(),
-    arrivedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+    arrivedAt: t.integer({ mode: "timestamp" }).notNull(),
     note: t.text(),
     routeStatus: t
       .text()
@@ -372,12 +372,12 @@ export const journeyStops = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("journey_stop_segment_unique").on(table.segmentId),
@@ -389,12 +389,12 @@ export const journeyStops = pgTable(
   ],
 );
 
-export const segmentMembers = pgTable(
+export const segmentMembers = sqliteTable(
   "segment_member",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     segmentId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => tripSegments.id, { onDelete: "cascade" }),
     userId: t
@@ -410,54 +410,54 @@ export const segmentMembers = pgTable(
   ],
 );
 
-export const tripInvites = pgTable(
+export const tripInvites = sqliteTable(
   "trip_invite",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
-    email: t.varchar({ length: 320 }).notNull(),
-    token: t.varchar({ length: 255 }).notNull().unique(),
+    email: t.text().notNull(),
+    token: t.text().notNull().unique(),
     role: t.text().$type<TripMemberRole>().notNull().default("member"),
     invitedByUserId: t
       .text()
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    expiresAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
-    acceptedAt: t.timestamp({ mode: "date", withTimezone: true }),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    expiresAt: t.integer({ mode: "timestamp" }).notNull(),
+    acceptedAt: t.integer({ mode: "timestamp" }),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("trip_invites_trip_email_unique").on(table.tripId, table.email),
   ],
 );
 
-export const tripMessages = pgTable(
+export const tripMessages = sqliteTable(
   "trip_message",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     userId: t
       .text()
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    body: t.varchar({ length: 4000 }).notNull(),
+    body: t.text().notNull(),
     contextType: t.text().$type<"pin" | "poll" | "expense" | "segment">(),
-    contextId: t.uuid(),
+    contextId: t.text(),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
-    editedAt: t.timestamp({ mode: "date", withTimezone: true }),
-    deletedAt: t.timestamp({ mode: "date", withTimezone: true }),
+    editedAt: t.integer({ mode: "timestamp" }),
+    deletedAt: t.integer({ mode: "timestamp" }),
   }),
   (table) => [
     index("trip_message_trip_created_idx").on(table.tripId, table.createdAt),
@@ -484,89 +484,89 @@ export const expenseCategoryEnum = [
 ] as const;
 export type ExpenseCategory = (typeof expenseCategoryEnum)[number];
 
-export const expenses = pgTable("expense", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const expenses = sqliteTable("expense", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   segmentId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => tripSegments.id, { onDelete: "cascade" }),
   payerUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  merchant: t.varchar({ length: 200 }).notNull(),
+  merchant: t.text().notNull(),
   category: t.text().$type<ExpenseCategory>().notNull().default("general"),
-  occurredAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  occurredAt: t.integer({ mode: "timestamp" }).notNull(),
   subtotalCents: t.integer().notNull().default(0),
   taxCents: t.integer().notNull().default(0),
   tipCents: t.integer().notNull().default(0),
   totalCents: t.integer().notNull().default(0),
-  currency: t.varchar({ length: 8 }).notNull().default("USD"),
+  currency: t.text().notNull().default("USD"),
   notes: t.text(),
   // OCR provenance — persisted from the receipt-OCR pipeline so a low-confidence
   // or failed extraction can be surfaced for review instead of silently trusted.
   // Null on all three = manually-entered (no OCR was run).
   ocrConfidence: t.real(),
-  ocrWarnings: t.jsonb().$type<string[]>(),
+  ocrWarnings: t.text({ mode: "json" }).$type<string[]>(),
   ocrProvider: t.text().$type<"claude" | "gemini" | "fixture">(),
   ocrStatus: t.text().$type<"success" | "failed">(),
   status: t.text().$type<ExpenseStatus>().notNull().default("draft"),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const receiptImages = pgTable("receipt_image", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const receiptImages = sqliteTable("receipt_image", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   expenseId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => expenses.id, { onDelete: "cascade" }),
-  storageKey: t.varchar({ length: 500 }).notNull(),
-  mimeType: t.varchar({ length: 100 }).notNull(),
+  storageKey: t.text().notNull(),
+  mimeType: t.text().notNull(),
   sizeBytes: t.integer().notNull(),
   uploadedByUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 }));
 
-export const lineItems = pgTable("line_item", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const lineItems = sqliteTable("line_item", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   expenseId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => expenses.id, { onDelete: "cascade" }),
-  name: t.varchar({ length: 200 }).notNull(),
-  quantity: t.numeric({ precision: 10, scale: 3 }).notNull().default("1"),
+  name: t.text().notNull(),
+  quantity: t.real().notNull().default("1"),
   unitPriceCents: t.integer().notNull().default(0),
   lineTotalCents: t.integer().notNull().default(0),
   sortOrder: t.integer().notNull().default(0),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const lineItemClaims = pgTable(
+export const lineItemClaims = sqliteTable(
   "line_item_claim",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     lineItemId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => lineItems.id, { onDelete: "cascade" }),
     userId: t
       .text()
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   }),
   (table) => [
     unique("line_item_claim_line_item_user_unique").on(
@@ -580,10 +580,10 @@ export const lineItemClaims = pgTable(
 // SETTLEMENTS (Phase 4)
 // ═══════════════════════════════════════════════════════
 
-export const settlements = pgTable("settlement", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const settlements = sqliteTable("settlement", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   fromUserId: t
@@ -595,44 +595,44 @@ export const settlements = pgTable("settlement", (t) => ({
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   amountCents: t.integer().notNull(),
-  idempotencyKey: t.varchar({ length: 255 }).notNull().unique(),
+  idempotencyKey: t.text().notNull().unique(),
   note: t.text(),
   settledAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
-  undoneAt: t.timestamp({ mode: "date", withTimezone: true }),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  undoneAt: t.integer({ mode: "timestamp" }),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
 // ═══════════════════════════════════════════════════════
 // PHOTOS
 // ═══════════════════════════════════════════════════════
 
-export const tripPhotos = pgTable("trip_photo", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const tripPhotos = sqliteTable("trip_photo", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   segmentId: t
-    .uuid()
+    .text()
     .references(() => tripSegments.id, { onDelete: "set null" }),
   userId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  storageKey: t.varchar({ length: 512 }).notNull(),
-  caption: t.varchar({ length: 500 }),
-  lat: t.numeric(),
-  lng: t.numeric(),
-  takenAt: t.timestamp({ mode: "date", withTimezone: true }),
+  storageKey: t.text().notNull(),
+  caption: t.text(),
+  lat: t.real(),
+  lng: t.real(),
+  takenAt: t.integer({ mode: "timestamp" }),
   uploadedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
 }));
 
@@ -645,12 +645,12 @@ export const photoReactionEnum = [
 ] as const;
 export type PhotoReaction = (typeof photoReactionEnum)[number];
 
-export const photoReactions = pgTable(
+export const photoReactions = sqliteTable(
   "photo_reaction",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     photoId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => tripPhotos.id, { onDelete: "cascade" }),
     userId: t
@@ -659,8 +659,8 @@ export const photoReactions = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     reaction: t.text().$type<PhotoReaction>().notNull(),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
   }),
   (table) => [
@@ -684,32 +684,32 @@ export const itineraryEventCategoryEnum = [
 export type ItineraryEventCategory =
   (typeof itineraryEventCategoryEnum)[number];
 
-export const itineraryEvents = pgTable("itinerary_event", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const itineraryEvents = sqliteTable("itinerary_event", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   segmentId: t
-    .uuid()
+    .text()
     .references(() => tripSegments.id, { onDelete: "set null" }),
-  title: t.varchar({ length: 200 }).notNull(),
+  title: t.text().notNull(),
   description: t.text(),
   category: t.text().$type<ItineraryEventCategory>().notNull().default("other"),
-  location: t.varchar({ length: 300 }),
-  lat: t.numeric(),
-  lng: t.numeric(),
-  startsAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
-  endsAt: t.timestamp({ mode: "date", withTimezone: true }),
-  allDay: t.boolean().notNull().default(false),
+  location: t.text(),
+  lat: t.real(),
+  lng: t.real(),
+  startsAt: t.integer({ mode: "timestamp" }).notNull(),
+  endsAt: t.integer({ mode: "timestamp" }),
+  allDay: t.integer({ mode: "boolean" }).notNull().default(false),
   createdByUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   sortOrder: t.integer().notNull().default(0),
   createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
 }));
 
@@ -756,45 +756,45 @@ export const proposalReactionEnum = [
 ] as const;
 export type ProposalReaction = (typeof proposalReactionEnum)[number];
 
-export const polls = pgTable("poll", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const polls = sqliteTable("poll", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   createdByUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  title: t.varchar({ length: 200 }).notNull(),
+  title: t.text().notNull(),
   pollType: t.text().$type<PollType>().notNull().default("single_choice"),
   status: t.text().$type<PollStatus>().notNull().default("open"),
-  closesAt: t.timestamp({ mode: "date", withTimezone: true }),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  closesAt: t.integer({ mode: "timestamp" }),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const pollOptions = pgTable("poll_option", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const pollOptions = sqliteTable("poll_option", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   pollId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => polls.id, { onDelete: "cascade" }),
-  label: t.varchar({ length: 200 }).notNull(),
+  label: t.text().notNull(),
   description: t.text(),
   url: t.text(),
   sortOrder: t.integer().notNull().default(0),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 }));
 
-export const pollVotes = pgTable(
+export const pollVotes = sqliteTable(
   "poll_vote",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     pollOptionId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => pollOptions.id, { onDelete: "cascade" }),
     userId: t
@@ -804,10 +804,10 @@ export const pollVotes = pgTable(
     response: t.text().$type<PollVoteResponse>().notNull().default("yes"),
     rank: t.integer(),
     note: t.text(),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("poll_votes_option_user_unique").on(
@@ -817,41 +817,41 @@ export const pollVotes = pgTable(
   ],
 );
 
-export const proposals = pgTable("proposal", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const proposals = sqliteTable("proposal", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   segmentId: t
-    .uuid()
+    .text()
     .references(() => tripSegments.id, { onDelete: "set null" }),
   createdByUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   proposalType: t.text().$type<ProposalType>().notNull().default("other"),
-  title: t.varchar({ length: 200 }).notNull(),
+  title: t.text().notNull(),
   description: t.text(),
   url: t.text(),
   priceCents: t.integer(),
-  currency: t.varchar({ length: 8 }).notNull().default("USD"),
+  currency: t.text().notNull().default("USD"),
   priceNote: t.text(),
   imageUrl: t.text(),
   status: t.text().$type<ProposalStatus>().notNull().default("proposed"),
   bookedByUserId: t.text().references(() => user.id, { onDelete: "set null" }),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const proposalReactions = pgTable(
+export const proposalReactions = sqliteTable(
   "proposal_reaction",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     proposalId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => proposals.id, { onDelete: "cascade" }),
     userId: t
@@ -860,10 +860,10 @@ export const proposalReactions = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     reaction: t.text().$type<ProposalReaction>().notNull().default("up"),
     note: t.text(),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("proposal_reactions_proposal_user_unique").on(
@@ -898,22 +898,22 @@ export const pinTypeEnum = [
 ] as const;
 export type PinType = (typeof pinTypeEnum)[number];
 
-export const pins = pgTable("pin", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const pins = sqliteTable("pin", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   segmentId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => tripSegments.id, { onDelete: "cascade" }),
   type: t.text().$type<PinType>().notNull().default("custom"),
-  title: t.varchar({ length: 200 }).notNull(),
-  lat: t.numeric().notNull(),
-  lng: t.numeric().notNull(),
-  startsAt: t.timestamp({ mode: "date", withTimezone: true }),
-  endsAt: t.timestamp({ mode: "date", withTimezone: true }),
+  title: t.text().notNull(),
+  lat: t.real().notNull(),
+  lng: t.real().notNull(),
+  startsAt: t.integer({ mode: "timestamp" }),
+  endsAt: t.integer({ mode: "timestamp" }),
   notes: t.text(),
   createdByUserId: t
     .text()
@@ -922,19 +922,19 @@ export const pins = pgTable("pin", (t) => ({
   editLockedByUserId: t
     .text()
     .references(() => user.id, { onDelete: "set null" }),
-  editLockedUntil: t.timestamp({ mode: "date", withTimezone: true }),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  editLockedUntil: t.integer({ mode: "timestamp" }),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const pinAttendees = pgTable(
+export const pinAttendees = sqliteTable(
   "pin_attendee",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     pinId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => pins.id, { onDelete: "cascade" }),
     userId: t
@@ -968,43 +968,43 @@ export const lodgingSourceTypeEnum = [
 ] as const;
 export type LodgingSourceType = (typeof lodgingSourceTypeEnum)[number];
 
-export const lodgings = pgTable("lodging", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const lodgings = sqliteTable("lodging", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   segmentId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => tripSegments.id, { onDelete: "cascade" }),
   createdByUserId: t.text().references(() => user.id, { onDelete: "set null" }),
   provider: t.text().$type<LodgingProvider>(),
-  propertyName: t.varchar({ length: 200 }).notNull(),
+  propertyName: t.text().notNull(),
   address: t.text(),
-  lat: t.numeric(),
-  lng: t.numeric(),
-  checkInAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
-  checkOutAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  lat: t.real(),
+  lng: t.real(),
+  checkInAt: t.integer({ mode: "timestamp" }).notNull(),
+  checkOutAt: t.integer({ mode: "timestamp" }).notNull(),
   checkInInstructions: t.text(),
-  confirmationNumber: t.varchar({ length: 100 }),
+  confirmationNumber: t.text(),
   bookingUrl: t.text(),
   nightlyRateCents: t.integer(),
   totalCostCents: t.integer(),
-  currency: t.varchar({ length: 8 }).notNull().default("USD"),
-  hostName: t.varchar({ length: 120 }),
-  hostPhone: t.varchar({ length: 30 }),
+  currency: t.text().notNull().default("USD"),
+  hostName: t.text(),
+  hostPhone: t.text(),
   notes: t.text(),
   sourceType: t.text().$type<LodgingSourceType>().notNull().default("manual"),
   sourceRaw: t.text(),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const lodgingGuests = pgTable(
+export const lodgingGuests = sqliteTable(
   "lodging_guest",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     lodgingId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => lodgings.id, { onDelete: "cascade" }),
     userId: t
@@ -1021,23 +1021,23 @@ export const lodgingGuests = pgTable(
 );
 
 // Sleeping arrangements within a lodging: named rooms + who occupies each.
-export const roomAssignments = pgTable("room_assignment", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const roomAssignments = sqliteTable("room_assignment", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   lodgingId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => lodgings.id, { onDelete: "cascade" }),
-  roomLabel: t.varchar({ length: 120 }).notNull(),
+  roomLabel: t.text().notNull(),
   sortOrder: t.integer().notNull().default(0),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 }));
 
-export const roomOccupants = pgTable(
+export const roomOccupants = sqliteTable(
   "room_occupant",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     roomAssignmentId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => roomAssignments.id, { onDelete: "cascade" }),
     userId: t
@@ -1075,10 +1075,10 @@ export const trackingStatusEnum = [
 ] as const;
 export type TrackingStatus = (typeof trackingStatusEnum)[number];
 
-export const memberTransits = pgTable("member_transit", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const memberTransits = sqliteTable("member_transit", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   segmentId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => tripSegments.id, { onDelete: "cascade" }),
   userId: t
@@ -1087,65 +1087,65 @@ export const memberTransits = pgTable("member_transit", (t) => ({
     .references(() => user.id, { onDelete: "cascade" }),
   direction: t.text().$type<TransitDirection>(),
   transitType: t.text().$type<TransitType>(),
-  carrier: t.varchar({ length: 100 }),
-  transitNumber: t.varchar({ length: 50 }),
-  departureStation: t.varchar({ length: 200 }),
-  arrivalStation: t.varchar({ length: 200 }),
-  scheduledAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
-  estimatedAt: t.timestamp({ mode: "date", withTimezone: true }),
-  actualAt: t.timestamp({ mode: "date", withTimezone: true }),
+  carrier: t.text(),
+  transitNumber: t.text(),
+  departureStation: t.text(),
+  arrivalStation: t.text(),
+  scheduledAt: t.integer({ mode: "timestamp" }).notNull(),
+  estimatedAt: t.integer({ mode: "timestamp" }),
+  actualAt: t.integer({ mode: "timestamp" }),
   trackingStatus: t
     .text()
     .$type<TrackingStatus>()
     .notNull()
     .default("scheduled"),
   notes: t.text(),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
 export const ferrySourceEnum = ["manual", "ocr"] as const;
 export type FerrySource = (typeof ferrySourceEnum)[number];
 
-export const ferryCrossings = pgTable("ferry_crossing", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const ferryCrossings = sqliteTable("ferry_crossing", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   createdByUserId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  operator: t.varchar({ length: 200 }),
-  departureTerminal: t.varchar({ length: 200 }),
-  arrivalTerminal: t.varchar({ length: 200 }),
-  scheduledDepartureAt: t.timestamp({ mode: "date", withTimezone: true }),
+  operator: t.text(),
+  departureTerminal: t.text(),
+  arrivalTerminal: t.text(),
+  scheduledDepartureAt: t.integer({ mode: "timestamp" }),
   durationMinutes: t.integer(),
   arrivalCutoffMinutes: t.integer().notNull().default(30),
-  vehicleReservation: t.boolean().notNull().default(false),
-  confirmationNumber: t.varchar({ length: 100 }),
+  vehicleReservation: t.integer({ mode: "boolean" }).notNull().default(false),
+  confirmationNumber: t.text(),
   fareCents: t.integer(),
-  currency: t.varchar({ length: 3 }).notNull().default("USD"),
-  fareNote: t.varchar({ length: 200 }),
+  currency: t.text().notNull().default("USD"),
+  fareNote: t.text(),
   afterSegmentId: t
-    .uuid()
+    .text()
     .references(() => tripSegments.id, { onDelete: "set null" }),
   source: t.text().$type<FerrySource>().notNull().default("manual"),
   sourceRaw: t.text(),
-  ocrProvider: t.varchar({ length: 20 }),
-  ocrConfidence: t.numeric({ precision: 4, scale: 3 }),
-  expenseId: t.uuid().references(() => expenses.id, { onDelete: "set null" }),
+  ocrProvider: t.text(),
+  ocrConfidence: t.real(),
+  expenseId: t.text().references(() => expenses.id, { onDelete: "set null" }),
   createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
+    .integer({ mode: "timestamp" })
     .notNull()
-    .defaultNow(),
+    .$defaultFn(() => new Date()),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
+    .integer({ mode: "timestamp" })
     .notNull()
-    .defaultNow(),
+    .$defaultFn(() => new Date()),
 }));
 
 export const insertFerryCrossingSchema = createInsertSchema(ferryCrossings);
@@ -1159,33 +1159,33 @@ export const groundTransportTypeEnum = [
 ] as const;
 export type GroundTransportType = (typeof groundTransportTypeEnum)[number];
 
-export const groundTransportGroups = pgTable("ground_transport_group", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const groundTransportGroups = sqliteTable("ground_transport_group", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   segmentId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => tripSegments.id, { onDelete: "cascade" }),
   createdByUserId: t.text().references(() => user.id, { onDelete: "set null" }),
   transportType: t.text().$type<GroundTransportType>(),
-  label: t.varchar({ length: 200 }).notNull(),
+  label: t.text().notNull(),
   fromDescription: t.text(),
   toDescription: t.text(),
-  scheduledAt: t.timestamp({ mode: "date", withTimezone: true }),
+  scheduledAt: t.integer({ mode: "timestamp" }),
   costCents: t.integer(),
-  currency: t.varchar({ length: 8 }).notNull().default("USD"),
+  currency: t.text().notNull().default("USD"),
   notes: t.text(),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const groundTransportMembers = pgTable(
+export const groundTransportMembers = sqliteTable(
   "ground_transport_member",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     groundTransportGroupId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => groundTransportGroups.id, { onDelete: "cascade" }),
     userId: t
@@ -1201,25 +1201,25 @@ export const groundTransportMembers = pgTable(
   ],
 );
 
-export const applicationSettings = pgTable("application_settings", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
-  setupCompletedAt: t.timestamp({ mode: "date", withTimezone: true }),
+export const applicationSettings = sqliteTable("application_settings", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  setupCompletedAt: t.integer({ mode: "timestamp" }),
   setupCompletedByUserId: t
     .text()
     .references(() => user.id, { onDelete: "set null" }),
   initialWorkspaceId: t
-    .uuid()
+    .text()
     .references(() => workspace.id, { onDelete: "set null" }),
   tenancyMode: t.text().$type<TenancyMode>().notNull().default("single-tenant"),
-  maintenanceMode: t.boolean().notNull().default(false),
-  signupEnabled: t.boolean().notNull().default(true),
+  maintenanceMode: t.integer({ mode: "boolean" }).notNull().default(false),
+  signupEnabled: t.integer({ mode: "boolean" }).notNull().default(true),
   announcementMessage: t.text(),
-  announcementTone: t.varchar({ length: 24 }).notNull().default("info"),
-  allowedEmailDomains: t.json().$type<string[]>().notNull().default([]),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  announcementTone: t.text().notNull().default("info"),
+  allowedEmailDomains: t.text({ mode: "json" }).$type<string[]>().notNull().default([]),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
 export const waitlistSourceEnum = [
@@ -1238,128 +1238,128 @@ export const waitlistStatusEnum = [
 ] as const;
 export type WaitlistStatus = (typeof waitlistStatusEnum)[number];
 
-export const waitlistEntry = pgTable(
+export const waitlistEntry = sqliteTable(
   "waitlist_entry",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
-    email: t.varchar({ length: 320 }).notNull(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    email: t.text().notNull(),
     source: t.text().$type<WaitlistSource>().notNull().default("landing"),
     status: t.text().$type<WaitlistStatus>().notNull().default("pending"),
     message: t.text(),
-    referralCode: t.varchar({ length: 120 }),
+    referralCode: t.text(),
     reviewedByUserId: t
       .text()
       .references(() => user.id, { onDelete: "set null" }),
-    reviewedAt: t.timestamp({ mode: "date", withTimezone: true }),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    reviewedAt: t.integer({ mode: "timestamp" }),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("waitlist_entry_email_source_unique").on(table.email, table.source),
   ],
 );
 
-export const billingPlan = pgTable("billing_plan", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
-  key: t.varchar({ length: 64 }).notNull().unique(),
-  name: t.varchar({ length: 120 }).notNull(),
+export const billingPlan = sqliteTable("billing_plan", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  key: t.text().notNull().unique(),
+  name: t.text().notNull(),
   description: t.text(),
   interval: t.text().$type<BillingInterval>().notNull().default("month"),
   amountInCents: t.integer().notNull().default(0),
-  currency: t.varchar({ length: 3 }).notNull().default("usd"),
-  isDefault: t.boolean().notNull().default(false),
-  active: t.boolean().notNull().default(true),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  currency: t.text().notNull().default("usd"),
+  isDefault: t.integer({ mode: "boolean" }).notNull().default(false),
+  active: t.integer({ mode: "boolean" }).notNull().default(true),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const billingPlanLimit = pgTable(
+export const billingPlanLimit = sqliteTable(
   "billing_plan_limit",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     planId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => billingPlan.id, { onDelete: "cascade" }),
-    key: t.varchar({ length: 80 }).notNull(),
+    key: t.text().notNull(),
     value: t.integer(),
     period: t.text().$type<BillingLimitPeriod>().notNull().default("month"),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("billing_plan_limit_plan_key_unique").on(table.planId, table.key),
   ],
 );
 
-export const workspaceSubscription = pgTable(
+export const workspaceSubscription = sqliteTable(
   "workspace_subscription",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     workspaceId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
-    planId: t.uuid().references(() => billingPlan.id, { onDelete: "set null" }),
+    planId: t.text().references(() => billingPlan.id, { onDelete: "set null" }),
     status: t
       .text()
       .$type<WorkspaceSubscriptionStatus>()
       .notNull()
       .default("free"),
     provider: t.text().$type<BillingProvider>().notNull().default("manual"),
-    stripeCustomerId: t.varchar({ length: 255 }),
-    stripeSubscriptionId: t.varchar({ length: 255 }),
-    currentPeriodStart: t.timestamp({ mode: "date", withTimezone: true }),
-    currentPeriodEnd: t.timestamp({ mode: "date", withTimezone: true }),
-    cancelAtPeriodEnd: t.boolean().notNull().default(false),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    stripeCustomerId: t.text(),
+    stripeSubscriptionId: t.text(),
+    currentPeriodStart: t.integer({ mode: "timestamp" }),
+    currentPeriodEnd: t.integer({ mode: "timestamp" }),
+    cancelAtPeriodEnd: t.integer({ mode: "boolean" }).notNull().default(false),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("workspace_subscription_workspace_unique").on(table.workspaceId),
   ],
 );
 
-export const usageMeter = pgTable("usage_meter", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
-  key: t.varchar({ length: 80 }).notNull().unique(),
-  name: t.varchar({ length: 120 }).notNull(),
+export const usageMeter = sqliteTable("usage_meter", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+  key: t.text().notNull().unique(),
+  name: t.text().notNull(),
   description: t.text(),
   aggregation: t.text().$type<UsageAggregation>().notNull().default("sum"),
-  unit: t.varchar({ length: 40 }).notNull().default("count"),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  unit: t.text().notNull().default("count"),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const workspaceUsageRollup = pgTable(
+export const workspaceUsageRollup = sqliteTable(
   "workspace_usage_rollup",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     workspaceId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
     meterId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => usageMeter.id, { onDelete: "cascade" }),
-    periodStart: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
-    periodEnd: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+    periodStart: t.integer({ mode: "timestamp" }).notNull(),
+    periodEnd: t.integer({ mode: "timestamp" }).notNull(),
     quantity: t.integer().notNull().default(0),
-    createdAt: t.timestamp().defaultNow().notNull(),
+    createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     unique("workspace_usage_rollup_workspace_meter_period_unique").on(
@@ -1375,87 +1375,87 @@ export const workspaceUsageRollup = pgTable(
 // ROAD TRIP MODE
 // ═══════════════════════════════════════════════════════
 
-export const vanProfiles = pgTable("van_profile", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const vanProfiles = sqliteTable("van_profile", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   workspaceId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => workspace.id, { onDelete: "cascade" }),
   userId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  name: t.varchar({ length: 100 }).notNull(),
-  vehicleType: t.varchar({ length: 50 }),
+  name: t.text().notNull(),
+  vehicleType: t.text(),
   year: t.integer(),
-  make: t.varchar({ length: 100 }),
-  model: t.varchar({ length: 100 }),
-  fuelType: t.varchar({ length: 20 }).notNull().default("gas"),
-  mpgEstimate: t.numeric(),
-  tankGallons: t.numeric(),
+  make: t.text(),
+  model: t.text(),
+  fuelType: t.text().notNull().default("gas"),
+  mpgEstimate: t.real(),
+  tankGallons: t.real(),
   heightInches: t.integer(),
   lengthFeet: t.integer(),
   // Links this van to a driftport "rig" for live van-system telemetry. NULLABLE
   // and intentionally NOT a foreign key: the referenced row lives in driftport's
   // separate Postgres database, reached over a service-token HTTP call.
-  driftportRigId: t.uuid(),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  driftportRigId: t.text(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .$onUpdateFn(() => sql`now()`),
+    .integer({ mode: "timestamp" })
+    .$onUpdateFn(() => new Date()),
 }));
 
-export const fuelLogs = pgTable("fuel_log", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const fuelLogs = sqliteTable("fuel_log", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   segmentId: t
-    .uuid()
+    .text()
     .references(() => tripSegments.id, { onDelete: "set null" }),
   userId: t
     .text()
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   vanProfileId: t
-    .uuid()
+    .text()
     .references(() => vanProfiles.id, { onDelete: "set null" }),
-  odometerMiles: t.numeric(),
-  gallons: t.numeric().notNull(),
-  pricePerGallon: t.numeric().notNull(),
+  odometerMiles: t.real(),
+  gallons: t.real().notNull(),
+  pricePerGallon: t.real().notNull(),
   totalCents: t.integer().notNull(),
-  fuelType: t.varchar({ length: 20 }).notNull().default("gas"),
-  stationName: t.varchar({ length: 200 }),
-  stationLat: t.numeric(),
-  stationLng: t.numeric(),
-  isCostco: t.boolean().notNull().default(false),
-  loggedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
-  expenseId: t.uuid().references(() => expenses.id, { onDelete: "set null" }),
+  fuelType: t.text().notNull().default("gas"),
+  stationName: t.text(),
+  stationLat: t.real(),
+  stationLng: t.real(),
+  isCostco: t.integer({ mode: "boolean" }).notNull().default(false),
+  loggedAt: t.integer({ mode: "timestamp" }).notNull(),
+  expenseId: t.text().references(() => expenses.id, { onDelete: "set null" }),
   notes: t.text(),
-  createdAt: t.timestamp().defaultNow().notNull(),
+  createdAt: t.integer({ mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 }));
 
-export const importedPois = pgTable(
+export const importedPois = sqliteTable(
   "imported_poi",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
-    source: t.varchar({ length: 50 }).notNull(),
-    externalId: t.varchar({ length: 200 }).notNull(),
-    name: t.varchar({ length: 300 }).notNull(),
-    category: t.varchar({ length: 100 }).notNull(),
-    lat: t.numeric().notNull(),
-    lng: t.numeric().notNull(),
-    data: t.jsonb(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    source: t.text().notNull(),
+    externalId: t.text().notNull(),
+    name: t.text().notNull(),
+    category: t.text().notNull(),
+    lat: t.real().notNull(),
+    lng: t.real().notNull(),
+    data: t.text({ mode: "json" }),
     // NULL = globally shared (e.g. OSM). Set = a single workspace's private
     // upload (e.g. iOverlander, which can't be redistributed) — queries must
     // filter `workspaceId IS NULL OR workspaceId = :currentWorkspace`.
     workspaceId: t
-      .uuid()
+      .text()
       .references(() => workspace.id, { onDelete: "cascade" }),
     importedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
   }),
   (table) => [
@@ -1473,22 +1473,22 @@ export const importedPois = pgTable(
   ],
 );
 
-export const poiCache = pgTable(
+export const poiCache = sqliteTable(
   "poi_cache",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
-    source: t.varchar({ length: 50 }).notNull(),
-    externalId: t.varchar({ length: 200 }).notNull(),
-    name: t.varchar({ length: 300 }).notNull(),
-    category: t.varchar({ length: 100 }).notNull(),
-    lat: t.numeric().notNull(),
-    lng: t.numeric().notNull(),
-    data: t.jsonb(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
+    source: t.text().notNull(),
+    externalId: t.text().notNull(),
+    name: t.text().notNull(),
+    category: t.text().notNull(),
+    lat: t.real().notNull(),
+    lng: t.real().notNull(),
+    data: t.text({ mode: "json" }),
     fetchedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
-    expiresAt: t.timestamp({ mode: "date", withTimezone: true }),
+    expiresAt: t.integer({ mode: "timestamp" }),
   }),
   (table) => [
     unique("poi_cache_source_external_id_unique").on(
@@ -1498,37 +1498,37 @@ export const poiCache = pgTable(
   ],
 );
 
-export const gpsTrackPoints = pgTable("gps_track_point", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const gpsTrackPoints = sqliteTable("gps_track_point", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
   segmentId: t
-    .uuid()
+    .text()
     .references(() => tripSegments.id, { onDelete: "set null" }),
-  lat: t.numeric().notNull(),
-  lng: t.numeric().notNull(),
-  speed: t.numeric(),
-  recordedAt: t.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  lat: t.real().notNull(),
+  lng: t.real().notNull(),
+  speed: t.real(),
+  recordedAt: t.integer({ mode: "timestamp" }).notNull(),
 }));
 
 // A shareable public link for a trip's journal/recap. The token is the
 // capability; when enabled, /share/<token> renders a read-only recap (traveled
 // route, stops, states, driven miles) with NO private data — no expenses, no
 // member PII, and no workspace-scoped iOverlander POIs (non-redistributable).
-export const tripShares = pgTable("trip_share", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const tripShares = sqliteTable("trip_share", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .unique()
     .references(() => trips.id, { onDelete: "cascade" }),
-  token: t.varchar({ length: 64 }).notNull().unique(),
-  enabled: t.boolean().notNull().default(true),
+  token: t.text().notNull().unique(),
+  enabled: t.integer({ mode: "boolean" }).notNull().default(true),
   createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
 }));
 
@@ -1536,25 +1536,25 @@ export const tripShares = pgTable("trip_share", (t) => ({
 // campground reservation, family visit, a booked hotel). Anchors constrain the
 // day-map: the briefing counts down to the next one and flags when you're too
 // far to make it at your current pace. See route-planner/anchors.
-export const tripAnchors = pgTable("trip_anchor", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const tripAnchors = sqliteTable("trip_anchor", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
-  title: t.varchar({ length: 300 }).notNull(),
-  kind: t.varchar({ length: 32 }).notNull().default("event"), // event/reservation/lodging/must_see
-  placeName: t.varchar({ length: 300 }),
-  lat: t.numeric(),
-  lng: t.numeric(),
-  startDate: t.date().notNull(), // YYYY-MM-DD
-  endDate: t.date(),
-  confirmationCode: t.varchar({ length: 100 }),
-  url: t.varchar({ length: 500 }),
-  note: t.varchar({ length: 1000 }),
+  title: t.text().notNull(),
+  kind: t.text().notNull().default("event"), // event/reservation/lodging/must_see
+  placeName: t.text(),
+  lat: t.real(),
+  lng: t.real(),
+  startDate: t.text().notNull(), // YYYY-MM-DD
+  endDate: t.text(),
+  confirmationCode: t.text(),
+  url: t.text(),
+  note: t.text(),
   createdAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
 }));
 
@@ -1578,48 +1578,48 @@ export const OVERNIGHT_KINDS = [
 ] as const;
 export type OvernightKind = (typeof OVERNIGHT_KINDS)[number];
 
-export const tripDays = pgTable(
+export const tripDays = sqliteTable(
   "trip_day",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
-    date: t.date().notNull(), // YYYY-MM-DD
+    date: t.text().notNull(), // YYYY-MM-DD
     intent: t.text().$type<DayIntent>().notNull().default("drive"),
-    title: t.varchar({ length: 200 }),
-    overnightName: t.varchar({ length: 300 }),
+    title: t.text(),
+    overnightName: t.text(),
     overnightKind: t.text().$type<OvernightKind | null>(),
-    overnightLat: t.numeric(),
-    overnightLng: t.numeric(),
-    heroTitle: t.varchar({ length: 300 }),
-    heroDetail: t.varchar({ length: 1000 }),
-    cutIfBehind: t.varchar({ length: 500 }),
+    overnightLat: t.real(),
+    overnightLng: t.real(),
+    heroTitle: t.text(),
+    heroDetail: t.text(),
+    cutIfBehind: t.text(),
     /** Time blocks: [{ part: morning|midday|afternoon|evening, title, detail }] */
-    blocksJson: t.jsonb().$type<
+    blocksJson: t.text({ mode: "json" }).$type<
       Array<{
         part: "morning" | "midday" | "afternoon" | "evening";
         title: string;
         detail: string;
       }>
     >(),
-    segmentId: t.uuid().references(() => tripSegments.id, {
+    segmentId: t.text().references(() => tripSegments.id, {
       onDelete: "set null",
     }),
     sortOrder: t.integer().notNull().default(0),
-    note: t.varchar({ length: 1000 }),
+    note: t.text(),
     /** Actuals vs plan — Today Command mark done/partial/skipped. */
     status: t.text().$type<TripDayStatus>().notNull().default("planned"),
-    completedAt: t.timestamp({ mode: "date", withTimezone: true }),
-    actualNote: t.varchar({ length: 500 }),
+    completedAt: t.integer({ mode: "timestamp" }),
+    actualNote: t.text(),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [unique("trip_day_trip_date_unique").on(table.tripId, table.date)],
 );
@@ -1628,43 +1628,43 @@ export const tripDays = pgTable(
 // manual entry or DriftPort telemetry. The latest reading per resource is the
 // current level; the series feeds consumption-rate learning so predictive
 // service alerts use *this van's* real drain/fill behavior. See daymap/vanstate.
-export const vanStateReadings = pgTable("van_state_reading", (t) => ({
-  id: t.uuid().notNull().primaryKey().defaultRandom(),
+export const vanStateReadings = sqliteTable("van_state_reading", (t) => ({
+  id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
   tripId: t
-    .uuid()
+    .text()
     .notNull()
     .references(() => trips.id, { onDelete: "cascade" }),
-  resource: t.varchar({ length: 32 }).notNull(), // grey/black/fresh/propane/fuel
-  levelPct: t.numeric().notNull(), // 0–100
-  source: t.varchar({ length: 32 }).notNull().default("manual"), // manual/driftport
-  note: t.varchar({ length: 500 }),
+  resource: t.text().notNull(), // grey/black/fresh/propane/fuel
+  levelPct: t.real().notNull(), // 0–100
+  source: t.text().notNull().default("manual"), // manual/driftport
+  note: t.text(),
   recordedAt: t
-    .timestamp({ mode: "date", withTimezone: true })
-    .defaultNow()
+    .integer({ mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .notNull(),
 }));
 
-export const memberLocations = pgTable(
+export const memberLocations = sqliteTable(
   "member_location",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     userId: t
       .text()
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    lat: t.numeric().notNull(),
-    lng: t.numeric().notNull(),
-    heading: t.numeric(),
-    speed: t.numeric(),
-    accuracy: t.numeric(),
-    sharingEnabled: t.boolean().notNull().default(false),
+    lat: t.real().notNull(),
+    lng: t.real().notNull(),
+    heading: t.real(),
+    speed: t.real(),
+    accuracy: t.real(),
+    sharingEnabled: t.integer({ mode: "boolean" }).notNull().default(false),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
   }),
   (table) => [
@@ -1740,12 +1740,12 @@ export type CastCheckpoint = {
   durationSeconds: number;
 };
 
-export const castEpisodeJobs = pgTable(
+export const castEpisodeJobs = sqliteTable(
   "cast_episode_job",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     createdByUserId: t
@@ -1753,7 +1753,7 @@ export const castEpisodeJobs = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     /** Drive day the episode covers, YYYY-MM-DD in the trip's tz. */
-    targetDate: t.date().notNull(),
+    targetDate: t.text().notNull(),
     durationMinutes: t.integer().notNull().default(30), // 15 | 30
     status: t.text().$type<CastJobStatus>().notNull().default("pending"),
     /**
@@ -1761,29 +1761,29 @@ export const castEpisodeJobs = pgTable(
      * before the cron wall clock; a claim older than 20 min is stale and may
      * be reclaimed by a later pump run.
      */
-    claimedAt: t.timestamp({ mode: "date", withTimezone: true }),
+    claimedAt: t.integer({ mode: "timestamp" }),
     attemptCount: t.integer().notNull().default(0),
-    error: t.varchar({ length: 2000 }),
-    scriptJson: t.jsonb().$type<CastScript>(),
-    checkpointsJson: t.jsonb().$type<CastCheckpoint[]>(),
+    error: t.text(),
+    scriptJson: t.text({ mode: "json" }).$type<CastScript>(),
+    checkpointsJson: t.text({ mode: "json" }).$type<CastCheckpoint[]>(),
     /**
      * Structural quality report for the drafted script (cast/evals). Advisory,
      * not a gate: the human read gate is the decision, and a failing check is
      * information for it — blocking on one would strand an episode over a
      * chapter that ran 30 words short.
      */
-    evalJson: t.jsonb().$type<CastScriptEval>(),
+    evalJson: t.text({ mode: "json" }).$type<CastScriptEval>(),
     llmInputTokens: t.integer().notNull().default(0),
     llmOutputTokens: t.integer().notNull().default(0),
     /** Characters actually billed to ElevenLabs across all attempts. */
     ttsCharacters: t.integer().notNull().default(0),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
     updatedAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .$onUpdateFn(() => sql`now()`),
+      .integer({ mode: "timestamp" })
+      .$onUpdateFn(() => new Date()),
   }),
   (table) => [
     // Server-side dedup: at most one non-terminal job per (trip, day). The
@@ -1795,38 +1795,38 @@ export const castEpisodeJobs = pgTable(
   ],
 );
 
-export const castEpisodes = pgTable(
+export const castEpisodes = sqliteTable(
   "cast_episode",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
-    jobId: t.uuid().references(() => castEpisodeJobs.id, {
+    jobId: t.text().references(() => castEpisodeJobs.id, {
       onDelete: "set null",
     }),
-    targetDate: t.date().notNull(),
+    targetDate: t.text().notNull(),
     durationMinutes: t.integer().notNull(),
-    title: t.varchar({ length: 300 }).notNull(),
+    title: t.text().notNull(),
     /** Final MP3 in the app bucket under the cast/ prefix. */
-    r2Key: t.varchar({ length: 500 }).notNull(),
+    r2Key: t.text().notNull(),
     sizeBytes: t.integer().notNull(),
-    durationSeconds: t.numeric().notNull(),
+    durationSeconds: t.real().notNull(),
     /** Chapter markers; offsets come from actual synthesized durations. */
     segmentsJson: t
-      .jsonb()
+      .text({ mode: "json" })
       .$type<
         Array<{ title: string; startSeconds: number; durationSeconds: number }>
       >()
       .notNull(),
-    voiceId: t.varchar({ length: 100 }).notNull(),
-    ttsModel: t.varchar({ length: 100 }).notNull(),
-    scriptModel: t.varchar({ length: 100 }).notNull(),
+    voiceId: t.text().notNull(),
+    ttsModel: t.text().notNull(),
+    scriptModel: t.text().notNull(),
     ttsCharacters: t.integer().notNull().default(0),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
   }),
   (table) => [
@@ -1864,29 +1864,29 @@ export type CastGroundingFact = {
  * "campfire truth" color into source-backed narration (eng-review Issue 7
  * follow-up).
  */
-export const castGroundingBriefs = pgTable(
+export const castGroundingBriefs = sqliteTable(
   "cast_grounding_brief",
   (t) => ({
-    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    id: t.text().notNull().primaryKey().$defaultFn(() => crypto.randomUUID()),
     tripId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => trips.id, { onDelete: "cascade" }),
     segmentId: t
-      .uuid()
+      .text()
       .notNull()
       .references(() => tripSegments.id, { onDelete: "cascade" }),
-    title: t.varchar({ length: 300 }).notNull(),
-    facts: t.jsonb().$type<CastGroundingFact[]>().notNull(),
-    sources: t.jsonb().$type<CastGroundingSource[]>().notNull(),
-    provenance: t.jsonb().$type<{
+    title: t.text().notNull(),
+    facts: t.text({ mode: "json" }).$type<CastGroundingFact[]>().notNull(),
+    sources: t.text({ mode: "json" }).$type<CastGroundingSource[]>().notNull(),
+    provenance: t.text({ mode: "json" }).$type<{
       oodaThreadId?: string;
       exportedAt?: string;
       workspaceCommit?: string;
     }>(),
     createdAt: t
-      .timestamp({ mode: "date", withTimezone: true })
-      .defaultNow()
+      .integer({ mode: "timestamp" })
+      .$defaultFn(() => new Date())
       .notNull(),
   }),
   (table) => [

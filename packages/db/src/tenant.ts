@@ -260,10 +260,29 @@ using (${deletePredicate});`,
   ];
 }
 
+// --- D1 (SQLite) migration note --------------------------------------------
+// Cloudflare D1 is SQLite: it has NO row-level security, no `set_config`/session
+// GUCs, and no interactive multi-statement transactions. The Postgres RLS
+// session-context machinery below is therefore inert on D1 — attempting the
+// `set_config(...)` calls (or wrapping them in `database.transaction(...)`)
+// throws "no such function: set_config" / a D1 transaction error and would 500
+// every authenticated request.
+//
+// On D1, tenant isolation relies on the APPLICATION-LEVEL authorization checks
+// in the routers/guards (workspace + trip membership lookups), not DB-layer RLS.
+// The policy-builder helpers above are retained unchanged for the Postgres
+// deployment path and the RLS unit tests. See the D1 migration report.
+const IS_D1 = true;
+
 export async function applyDatabaseSessionContext(
   executor: SessionExecutor,
   context: DatabaseSessionContext,
 ): Promise<void> {
+  if (IS_D1) {
+    // No-op on D1/SQLite — session GUCs do not exist.
+    return;
+  }
+
   const settings = getDatabaseSessionSettings(context);
 
   for (const [key, value] of Object.entries(settings)) {
@@ -279,6 +298,12 @@ export async function withDatabaseSessionContext<
   context: DatabaseSessionContext,
   callback: (tx: TTx) => Promise<TResult>,
 ): Promise<TResult> {
+  if (IS_D1) {
+    // No transaction / no set_config on D1; run the callback against the base
+    // database. App-level authorization still enforces tenant boundaries.
+    return callback(database as unknown as TTx);
+  }
+
   return database.transaction(async (tx) => {
     await applyDatabaseSessionContext(tx, context);
     return callback(tx);

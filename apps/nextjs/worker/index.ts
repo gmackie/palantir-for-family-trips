@@ -1,7 +1,7 @@
 import { wrapFetch } from "@forgegraph/otel/workers";
 import { runCastPump, runWithRealtimeRuntime } from "@sortey/api";
 import { and, eq } from "@sortey/db";
-import { db } from "@sortey/db/client";
+import { db, setD1Binding } from "@sortey/db/client";
 import { runWithDatabaseRuntime } from "@sortey/db/runtime";
 import { tripMembers } from "@sortey/db/schema";
 import handler from "vinext/server/app-router-entry";
@@ -57,6 +57,10 @@ export interface Env {
   HYPERDRIVE?: {
     connectionString?: string | null;
   };
+  // Cloudflare D1 binding (drizzle-orm/d1). Loosely typed here to avoid pulling
+  // `@cloudflare/workers-types` into this app's tsc env (types: node/google.maps
+  // only); the exact type is derived from `setD1Binding` at the call site.
+  DB?: unknown;
   R2?: R2Bucket;
   FG_APP?: string;
   FG_STAGE?: string;
@@ -235,6 +239,12 @@ const instrumentedFetch = wrapFetch(
   async (request, workerEnv, ctx) => {
     const env = workerEnv as Env;
     syncEnvSecrets(env);
+    // Hand the request's D1 binding to the db client (vinext has no
+    // getCloudflareContext). The binding is stable per isolate; setD1Binding is
+    // idempotent and the client is cached, so this is cheap on every request.
+    if (env.DB) {
+      setD1Binding(env.DB as Parameters<typeof setD1Binding>[0]);
+    }
     const url = new URL(request.url);
 
     if (url.pathname === "/api/auth-debug") {
@@ -339,6 +349,9 @@ export { TripRoom } from "./trip-room";
 // voluntarily releases its lease well before the cron wall clock.
 async function runScheduled(env: Env): Promise<void> {
   syncEnvSecrets(env);
+  if (env.DB) {
+    setD1Binding(env.DB as Parameters<typeof setD1Binding>[0]);
+  }
   await runWithDatabaseRuntime(
     {
       databaseUrl:

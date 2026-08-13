@@ -813,15 +813,27 @@ export const castRouter = {
 
 const SUPERSEDED_ERROR = "Superseded by a newer generation for this day.";
 
-/** Postgres 23505 across driver wrappings (postgres-js nests under `cause`). */
+/**
+ * Unique-constraint violation across driver wrappings (the error is often
+ * nested under `cause`). Detects both Postgres (SQLSTATE 23505) and SQLite/D1
+ * (drizzle-orm/d1 surfaces "UNIQUE constraint failed" in the message, with no
+ * numeric code) so the partial-unique-index race still surfaces as CONFLICT
+ * after the D1 migration.
+ */
 function isUniqueViolation(error: unknown): boolean {
   let current: unknown = error;
   for (let depth = 0; depth < 4 && current != null; depth++) {
-    if (
-      typeof current === "object" &&
-      (current as { code?: unknown }).code === "23505"
-    ) {
-      return true;
+    if (typeof current === "object") {
+      if ((current as { code?: unknown }).code === "23505") {
+        return true;
+      }
+      const message = (current as { message?: unknown }).message;
+      if (
+        typeof message === "string" &&
+        /UNIQUE constraint failed/i.test(message)
+      ) {
+        return true;
+      }
     }
     current = (current as { cause?: unknown }).cause;
   }
