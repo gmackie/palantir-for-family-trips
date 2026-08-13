@@ -67,7 +67,6 @@
     "@changesets/cli": "^2.31.0",
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
-    "@forgegraph/cli": "^0.3.1",
     "@turbo/gen": "^2.9.14",
     "@types/suncalc": "^1.9.2",
     "dotenv-cli": "^11.0.0",

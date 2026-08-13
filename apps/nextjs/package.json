@@ -30,7 +30,6 @@
     "test:src": "vitest run --config vitest.src.config.ts"
   },
   "dependencies": {
-    "@forgegraph/otel": "^0.1.1",
     "@googlemaps/js-api-loader": "^2.0.2",
     "@sentry/nextjs": "^10.53.1",
     "@sortey/analytics": "workspace:*",

@@ -1,4 +1,3 @@
-import { wrapFetch } from "@forgegraph/otel/workers";
 import { runCastPump, runWithRealtimeRuntime } from "@sortey/api";
 import { and, eq } from "@sortey/db";
 import { db, setD1Binding } from "@sortey/db/client";
@@ -233,9 +232,27 @@ interface ScheduledEvent {
 
 const imageConfig: ImageConfig = {};
 
+// Local passthrough replacement for `@forgegraph/otel`'s `wrapFetch`. The
+// private `@forgegraph/otel` package is not fetchable from the D1 beta build
+// (the scoped-tarball registry read requires auth the break-glass build does
+// not carry), so beta runs without OTel tracing. Restore the real import when
+// the registry serves the scoped tarball. Signature-compatible: takes the fetch
+// handler (+ options) and returns the handler unchanged.
+type WorkerFetchHandler = (
+  request: Request,
+  env: unknown,
+  ctx: ExecutionContext,
+) => Promise<Response>;
+function wrapFetch(
+  handler: WorkerFetchHandler,
+  _opts: { serviceName: string },
+): WorkerFetchHandler {
+  return handler;
+}
+
 const instrumentedFetch = wrapFetch(
-  // `wrapFetch` types the handler against otel's looser `WorkerEnv`; narrow it
-  // back to this worker's `Env` (which guarantees the ASSETS/IMAGES bindings).
+  // Narrow the loosely-typed `env` to this worker's `Env` (which guarantees the
+  // ASSETS/IMAGES bindings).
   async (request, workerEnv, ctx) => {
     const env = workerEnv as Env;
     syncEnvSecrets(env);
