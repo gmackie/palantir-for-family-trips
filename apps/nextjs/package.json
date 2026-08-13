@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm with-env next build",
+    "build": "SKIP_ENV_VALIDATION=1 VINEXT=1 pnpm with-env vinext build",
+    "build:next": "pnpm with-env next build",
     "clean": "git clean -xdf .cache .next .turbo node_modules playwright-report storybook-static test-results",
     "dev": "pnpm with-env next dev",
     "dev:vinext": "pnpm prebuild:vinext && VINEXT=1 pnpm with-env vinext dev --port 3001",
