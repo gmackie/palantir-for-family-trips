@@ -43,7 +43,11 @@ linkWorkspacePackages: true
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
-  - esbuild
+  # esbuild's self-validating postinstall (install.js) hard-fails on the managed
+  # build node under the hoisted multi-version layout ("Expected 0.28.0 but got
+  # 0.25.12"). The native binary is supplied by the @esbuild/<platform> optional
+  # packages regardless, so esbuild works without running this postinstall.
+  # Removed from onlyBuiltDependencies to unblock the D1 beta frozen install.
 
 overrides:
   '@types/minimatch': 5.1.2
