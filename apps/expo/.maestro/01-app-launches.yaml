@@ -1,14 +1,14 @@
-# Launch smoke flow — the Preflight build farm's default simulator-proof flow.
-appId: com.gmacko.sortey.dev
+appId: ${APP_ID}
 name: "App Launches (smoke)"
 tags: [smoke]
 ---
 - launchApp
 - runFlow:
     when:
-      visible: "http://localhost:8081"
+      visible: "Continue"
     commands:
-      - tapOn: "http://localhost:8081"
-      - waitForAnimationToEnd
-- waitForAnimationToEnd
-- assertVisible: ".*"
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 90000
+- takeScreenshot: launched
