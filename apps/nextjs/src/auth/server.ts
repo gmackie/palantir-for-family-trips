@@ -1,6 +1,6 @@
 import "server-only";
 
-import { initAuth } from "@sortey/auth";
+import { demoLoginAllowlist, initAuth } from "@sortey/auth";
 import { sendEmail } from "@sortey/email";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
@@ -32,7 +32,12 @@ export const auth = initAuth({
   appleClientId: env.AUTH_APPLE_ID,
   appleClientSecret: env.AUTH_APPLE_SECRET,
   appleBundleIdentifier: env.AUTH_APPLE_BUNDLE_ID,
-  devMagicLinkBypassEnabled: env.NODE_ENV === "development",
+  // Enabled in development, and in any deployment that explicitly lists
+  // reviewer addresses in DEMO_LOGIN_EMAILS. Setting that variable is the
+  // opt-in: with it unset the endpoint stays disabled exactly as before, so a
+  // deployment cannot acquire a bypass by accident.
+  devMagicLinkBypassEnabled:
+    env.NODE_ENV === "development" || demoLoginAllowlist().length > 0,
   extraPlugins: [
     magicLink({
       sendMagicLink: async ({ email, url }) => {

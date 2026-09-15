@@ -1,11 +1,16 @@
-import { and, desc, eq, inArray } from "@sortey/db";
+import { and, desc, eq, gte, inArray, sql } from "@sortey/db";
 import { getR2Bucket } from "@sortey/db/runtime";
 import {
   CAST_JOB_ACTIVE_STATUSES,
+  type CastGroundingFact,
+  type CastGroundingSource,
   type CastJobStatus,
   type CastScript,
+  type CastScriptEval,
   castEpisodeJobs,
   castEpisodes,
+  castGroundingBriefs,
+  tripSegments,
   trips,
 } from "@sortey/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
@@ -14,12 +19,25 @@ import { z } from "zod/v4";
 
 import { tripProcedure } from "../auth/guards";
 import {
+  assertWithinCastBudget,
+  CastBudgetExceededError,
+  castBudgetLimits,
+  monthStart,
+  remainingCastBudget,
+} from "../cast/budget";
+import {
   castTodayInTz,
   probeCastDriveLeg,
   resolveCastTargetDate,
 } from "../cast/context";
+import {
+  type CastVoice,
+  listCastVoices,
+  resolveTripVoiceId,
+} from "../cast/elevenlabs";
 import { CAST_EXPIRED_ERROR } from "../cast/job";
 import { type CastR2Bucket, deleteCheckpoints } from "../cast/tts";
+import { NoLlmProviderError, resolveLlmProvider } from "../llm/structured";
 import { assertRateLimit } from "../rate-limit";
 
 /** LLM spend guard: script generation starts without any approval gate. */
@@ -53,6 +71,41 @@ const jobSummary = {
   updatedAt: castEpisodeJobs.updatedAt,
 };
 
+/** This calendar month's metered Corridor Cast usage for one trip. */
+async function loadCastMonthUsage(
+  // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
+  db: any,
+  tripId: string,
+  now: Date = new Date(),
+): Promise<{
+  llmOutputTokens: number;
+  ttsCharacters: number;
+  episodes: number;
+}> {
+  const [row] = (await db
+    .select({
+      llmOutputTokens: sql<number>`coalesce(sum(${castEpisodeJobs.llmOutputTokens}), 0)::int`,
+      ttsCharacters: sql<number>`coalesce(sum(${castEpisodeJobs.ttsCharacters}), 0)::int`,
+      episodes: sql<number>`count(*)::int`,
+    })
+    .from(castEpisodeJobs)
+    .where(
+      and(
+        eq(castEpisodeJobs.tripId, tripId),
+        gte(castEpisodeJobs.createdAt, monthStart(now)),
+      ),
+    )) as Array<{
+    llmOutputTokens: number;
+    ttsCharacters: number;
+    episodes: number;
+  }>;
+  return {
+    llmOutputTokens: Number(row?.llmOutputTokens ?? 0),
+    ttsCharacters: Number(row?.ttsCharacters ?? 0),
+    episodes: Number(row?.episodes ?? 0),
+  };
+}
+
 export const castRouter = {
   /**
    * Everything the Generate button needs: tomorrow's resolved target date IN
@@ -80,7 +133,18 @@ export const castRouter = {
         tripId: ctx.tripId,
         targetDate,
       });
-      return { targetDate, tz: trip.tz, ...probe };
+      // Surfaced so the console can warn before the ceiling refuses a tap.
+      const usage = await loadCastMonthUsage(ctx.db, ctx.tripId);
+      return {
+        targetDate,
+        tz: trip.tz,
+        ...probe,
+        budget: {
+          usage,
+          limits: castBudgetLimits(),
+          remaining: remainingCastBudget(usage),
+        },
+      };
     }),
 
   /** Enqueue tomorrow's episode. Idempotent: a second tap returns the active job. */
@@ -120,6 +184,36 @@ export const castRouter = {
         key: `cast:generate:${ctx.session.user.id}`,
         ...CAST_GENERATE_RATE_LIMIT,
       });
+
+      // Preflight: an unkeyed deployment would enqueue a job that can only
+      // fail. Say so now instead of surfacing it 5 minutes later as a job
+      // error the traveller has to go read.
+      try {
+        resolveLlmProvider();
+      } catch (error) {
+        if (error instanceof NoLlmProviderError) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "No script model is configured for this deployment, so an episode cannot be written.",
+          });
+        }
+        throw error;
+      }
+
+      // Spend ceiling, checked before either the model or the voice bill
+      // starts. Refusing afterwards is just an expensive error message.
+      try {
+        assertWithinCastBudget(await loadCastMonthUsage(ctx.db, ctx.tripId));
+      } catch (error) {
+        if (error instanceof CastBudgetExceededError) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
 
       const targetDate =
         input.targetDate ?? resolveCastTargetDate(trip.tz, new Date());
@@ -253,6 +347,7 @@ export const castRouter = {
           scriptJson: castEpisodeJobs.scriptJson,
           targetDate: castEpisodeJobs.targetDate,
           durationMinutes: castEpisodeJobs.durationMinutes,
+          evalJson: castEpisodeJobs.evalJson,
         })
         .from(castEpisodeJobs)
         .where(
@@ -267,6 +362,7 @@ export const castRouter = {
         scriptJson: CastScript | null;
         targetDate: string;
         durationMinutes: number;
+        evalJson: CastScriptEval | null;
       }>;
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
       return job;
@@ -300,6 +396,292 @@ export const castRouter = {
         });
       }
       return { jobId: input.jobId };
+    }),
+
+  /**
+   * Narrator choices for this deployment's ElevenLabs key, plus the trip's
+   * current pick. Fails soft to an empty catalogue — a voice API outage must
+   * not break the cast page.
+   */
+  voices: tripProcedure()
+    .input(
+      z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }),
+    )
+    .query(async ({ ctx }) => {
+      const [trip] = (await ctx.db
+        .select({ castVoiceId: trips.castVoiceId })
+        .from(trips)
+        .where(eq(trips.id, ctx.tripId))
+        .limit(1)) as Array<{ castVoiceId: string | null }>;
+      if (!trip) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const voices: CastVoice[] = await listCastVoices();
+      return {
+        voices,
+        /** What the next episode will actually use. */
+        effectiveVoiceId: resolveTripVoiceId(trip.castVoiceId),
+        /** Null means "follow the deployment default". */
+        tripVoiceId: trip.castVoiceId,
+      };
+    }),
+
+  /** Choose the trip's narrator. Null restores the deployment default. */
+  setVoice: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        voiceId: z.string().trim().min(1).max(64).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Only a voice this key can actually speak with — an unusable id would
+      // otherwise surface as a mid-synthesis TTS failure after the read gate.
+      if (input.voiceId) {
+        const voices = await listCastVoices();
+        if (
+          voices.length > 0 &&
+          !voices.some((v) => v.voiceId === input.voiceId)
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That voice is not available to this deployment.",
+          });
+        }
+      }
+
+      await ctx.db
+        .update(trips)
+        .set({ castVoiceId: input.voiceId })
+        .where(eq(trips.id, ctx.tripId));
+
+      return { voiceId: resolveTripVoiceId(input.voiceId) };
+    }),
+
+  /**
+   * Push a provenance-tracked research brief for a drive segment (produced by
+   * an OODA research thread — the cast-grounding bridge parses the export).
+   * Latest brief per segment wins; the script generator's tier-1.5 rules let
+   * verified facts be narrated with attribution.
+   */
+  uploadGroundingBrief: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        segmentId: z.string().min(1),
+        title: z.string().min(1).max(300),
+        facts: z
+          .array(
+            z.object({
+              title: z.string().min(1).max(300),
+              text: z.string().min(1).max(4000),
+              verified: z.boolean(),
+              sourceIndexes: z.array(z.number().int()).max(20),
+            }),
+          )
+          .min(1)
+          .max(80),
+        sources: z
+          .array(
+            z.object({
+              index: z.number().int(),
+              capabilityId: z.string().max(200),
+              url: z.string().max(1000).nullable(),
+              retrievedAt: z.string().max(100).nullable(),
+            }),
+          )
+          .max(80),
+        provenance: z
+          .object({
+            oodaThreadId: z.string().max(200).optional(),
+            exportedAt: z.string().max(100).optional(),
+            workspaceCommit: z.string().max(100).optional(),
+          })
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // The segment must belong to this trip — a cross-trip segment id would
+      // let a member attach research to someone else's corridor.
+      const [segment] = (await ctx.db
+        .select({ id: tripSegments.id })
+        .from(tripSegments)
+        .where(
+          and(
+            eq(tripSegments.id, input.segmentId),
+            eq(tripSegments.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<{ id: string }>;
+      if (!segment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Segment does not belong to this trip.",
+        });
+      }
+
+      const inserted = (await ctx.db
+        .insert(castGroundingBriefs)
+        .values({
+          tripId: ctx.tripId,
+          segmentId: input.segmentId,
+          title: input.title,
+          facts: input.facts,
+          sources: input.sources,
+          provenance: input.provenance ?? null,
+        })
+        .returning({ id: castGroundingBriefs.id })) as Array<{ id: string }>;
+
+      return {
+        briefId: inserted[0]?.id,
+        factCount: input.facts.length,
+        verifiedCount: input.facts.filter((f) => f.verified).length,
+      };
+    }),
+
+  /**
+   * The trip's research: every segment's latest brief with its sources, plus
+   * the drive legs that have none. The gaps matter as much as the briefs —
+   * research is gathered out-of-band in an OODA thread, so knowing which
+   * corridor is still unresearched is the whole prompt to go do it.
+   */
+  grounding: tripProcedure()
+    .input(
+      z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }),
+    )
+    .query(async ({ ctx }) => {
+      const briefs = (await ctx.db
+        .select({
+          id: castGroundingBriefs.id,
+          segmentId: castGroundingBriefs.segmentId,
+          title: castGroundingBriefs.title,
+          facts: castGroundingBriefs.facts,
+          sources: castGroundingBriefs.sources,
+          provenance: castGroundingBriefs.provenance,
+          createdAt: castGroundingBriefs.createdAt,
+          segmentName: tripSegments.name,
+        })
+        .from(castGroundingBriefs)
+        .innerJoin(
+          tripSegments,
+          eq(tripSegments.id, castGroundingBriefs.segmentId),
+        )
+        .where(eq(castGroundingBriefs.tripId, ctx.tripId))
+        .orderBy(desc(castGroundingBriefs.createdAt))) as Array<{
+        id: string;
+        segmentId: string;
+        title: string;
+        facts: CastGroundingFact[];
+        sources: CastGroundingSource[];
+        provenance: unknown;
+        createdAt: Date;
+        segmentName: string;
+      }>;
+
+      // Only the newest brief per segment is ever used by the context pack,
+      // so superseded ones are noise here too.
+      const latestBySegment = new Map<string, (typeof briefs)[number]>();
+      for (const brief of briefs) {
+        if (!latestBySegment.has(brief.segmentId)) {
+          latestBySegment.set(brief.segmentId, brief);
+        }
+      }
+
+      const segments = (await ctx.db
+        .select({ id: tripSegments.id, name: tripSegments.name })
+        .from(tripSegments)
+        .where(eq(tripSegments.tripId, ctx.tripId))
+        .orderBy(tripSegments.sortOrder)) as Array<{
+        id: string;
+        name: string;
+      }>;
+
+      return {
+        briefs: [...latestBySegment.values()].map((brief) => ({
+          id: brief.id,
+          segmentId: brief.segmentId,
+          segmentName: brief.segmentName,
+          title: brief.title,
+          createdAt: brief.createdAt,
+          sources: brief.sources,
+          facts: brief.facts,
+          verifiedCount: brief.facts.filter((f) => f.verified).length,
+        })),
+        /** Segments with no research yet — the queue for the next thread. */
+        gaps: segments
+          .filter((segment) => !latestBySegment.has(segment.id))
+          .map((segment) => ({ segmentId: segment.id, name: segment.name })),
+      };
+    }),
+
+  /**
+   * Drop one fact from a brief. A bad lead should be removable without
+   * re-running the research thread — and removing it must not silently
+   * renumber the others.
+   */
+  removeGroundingFact: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        briefId: z.string().min(1),
+        factTitle: z.string().min(1).max(300),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [brief] = (await ctx.db
+        .select({
+          id: castGroundingBriefs.id,
+          facts: castGroundingBriefs.facts,
+        })
+        .from(castGroundingBriefs)
+        .where(
+          and(
+            eq(castGroundingBriefs.id, input.briefId),
+            eq(castGroundingBriefs.tripId, ctx.tripId),
+          ),
+        )
+        .limit(1)) as Array<{ id: string; facts: CastGroundingFact[] }>;
+      if (!brief) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const remaining = brief.facts.filter((f) => f.title !== input.factTitle);
+      if (remaining.length === brief.facts.length) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "That fact is not in this brief.",
+        });
+      }
+
+      await ctx.db
+        .update(castGroundingBriefs)
+        .set({ facts: remaining })
+        .where(eq(castGroundingBriefs.id, brief.id));
+
+      return { factCount: remaining.length };
+    }),
+
+  /** Discard a brief entirely — the next episode falls back to hedged color. */
+  deleteGroundingBrief: tripProcedure()
+    .input(
+      z.object({
+        workspaceId: z.string().min(1),
+        tripId: z.string().min(1),
+        briefId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const deleted = (await ctx.db
+        .delete(castGroundingBriefs)
+        .where(
+          and(
+            eq(castGroundingBriefs.id, input.briefId),
+            eq(castGroundingBriefs.tripId, ctx.tripId),
+          ),
+        )
+        .returning({ id: castGroundingBriefs.id })) as Array<{ id: string }>;
+      if (deleted.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
+      return { deleted: true };
     }),
 
   /**

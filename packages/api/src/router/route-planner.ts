@@ -16,6 +16,7 @@ import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
 import { labelRouteCandidates } from "../route-planner/route-candidates";
 import { assessSideTrip } from "../route-planner/side-trip";
+import { getTrackStats } from "../route-planner/track-ops";
 import {
   computeFuelZones,
   computeOvernightZones,
@@ -642,7 +643,10 @@ export const routePlannerRouter = {
       let vanProfileId: string | null = null;
 
       const [latestFuelLog] = await ctx.db
-        .select({ vanProfileId: fuelLogs.vanProfileId })
+        .select({
+          vanProfileId: fuelLogs.vanProfileId,
+          loggedAt: fuelLogs.loggedAt,
+        })
         .from(fuelLogs)
         .where(
           and(
@@ -704,6 +708,19 @@ export const routePlannerRouter = {
       const rangeMiles = fuelRangeMiles(mpg, tankGallons);
       const fuelZones = computeFuelZones(points, rangeMiles);
 
+      // Miles burned since the last fill-up, from the GPS breadcrumb track.
+      // Without a track we fall back to 0 — the same topped-off assumption
+      // driving-summary makes — rather than guessing.
+      let milesSinceFill = 0;
+      if (latestFuelLog?.loggedAt) {
+        const since =
+          latestFuelLog.loggedAt instanceof Date
+            ? latestFuelLog.loggedAt.toISOString()
+            : String(latestFuelLog.loggedAt);
+        const track = await getTrackStats(ctx.db, ctx.tripId, { since });
+        milesSinceFill = Math.max(track.actualMiles, 0);
+      }
+
       const zoneSegments: ZoneSegment[] = segments.map((s) => ({
         destinationLat:
           s.destinationLat != null ? Number(s.destinationLat) : null,
@@ -718,6 +735,7 @@ export const routePlannerRouter = {
         overnightZones,
         rangeMiles: Math.round(rangeMiles),
         hasVanModel: rangeMiles > 0,
+        milesSinceFill: Math.round(milesSinceFill),
       };
     }),
 

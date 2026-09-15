@@ -1,5 +1,12 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
+// Plain CJS on purpose: the Expo config loader transpiles this file and
+// requires siblings at runtime, so a .ts helper would not resolve.
+const { otaCodeSigning, resolveOtaUrl } = require("./ota-config");
+
+// Throws at config time on a plain-HTTP LAN endpoint — see src/utils/ota-config.
+const PREFLIGHT_OTA_URL = resolveOtaUrl();
+
 type AppVariant = "development" | "preview" | "production";
 
 const APP_VARIANT: AppVariant = (() => {
@@ -175,13 +182,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     // Prefer Preflight-hosted OTA when PREFLIGHT_OTA_URL is set (see
     // preflight-app/docs/plans/2026-07-14-preflight-native-ota.md). Otherwise
     // keep EAS Update + fingerprint (legacy pilot path).
-    runtimeVersion: process.env.PREFLIGHT_OTA_URL
+    runtimeVersion: PREFLIGHT_OTA_URL
       ? (process.env.PREFLIGHT_OTA_RUNTIME_VERSION ?? "sortey-p0")
       : { policy: "fingerprint" },
     updates: {
-      url: process.env.PREFLIGHT_OTA_URL
-        ? process.env.PREFLIGHT_OTA_URL
-        : `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      url: PREFLIGHT_OTA_URL ?? `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      ...otaCodeSigning(),
       checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: 0,
       requestHeaders: {
@@ -218,11 +224,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "Sortey uses the camera to scan receipts and capture trip photos.",
         NSPhotoLibraryUsageDescription:
           "Sortey accesses your photo library so you can attach receipts and share photos with your trip group.",
-        ...(process.env.PREFLIGHT_OTA_URL?.startsWith("http://")
+        ...(PREFLIGHT_OTA_URL?.startsWith("http://")
           ? {
               NSAppTransportSecurity: {
-                // Covers the LAN Preflight OTA host (IP-literal http) without
-                // disabling ATS for every other connection the app makes.
+                // Only reachable now for a loopback OTA host (simulator);
+                // resolveOtaUrl rejects plain HTTP anywhere else.
                 NSAllowsLocalNetworking: true,
               },
             }
@@ -270,7 +276,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
       preflightOta: {
         appSlug: "sortey",
-        enabled: Boolean(process.env.PREFLIGHT_OTA_URL),
+        enabled: Boolean(PREFLIGHT_OTA_URL),
       },
     },
     owner: "gmacko",

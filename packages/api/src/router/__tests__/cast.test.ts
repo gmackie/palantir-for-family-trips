@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@localhost:5432/gmacko_test";
+// generate() preflights the script provider; without one it refuses before
+// touching the database, which is its own test below.
+process.env.ANTHROPIC_API_KEY ??= "test-key";
 
 const { appRouter } = await import("../../root");
 const { resetRateLimitBuckets } = await import("../../rate-limit");
@@ -40,6 +43,7 @@ function createDbMock(opts: {
   selectQueue: unknown[][];
   insertReturningQueue?: unknown[][];
   updateReturningQueue?: unknown[][];
+  deleteReturningQueue?: unknown[][];
 }) {
   const inserts: Array<Record<string, unknown>> = [];
   const updates: Array<Record<string, unknown>> = [];
@@ -50,6 +54,8 @@ function createDbMock(opts: {
       // biome-ignore lint/suspicious/noExplicitAny: test chain stub
       const chain: any = {
         from: () => chain,
+        innerJoin: () => chain,
+        leftJoin: () => chain,
         where: () => chain,
         orderBy: () => chain,
         limit: () => Promise.resolve(rows),
@@ -89,6 +95,15 @@ function createDbMock(opts: {
         return chain;
       },
     })),
+    delete: vi.fn(() => {
+      // biome-ignore lint/suspicious/noExplicitAny: test chain stub
+      const chain: any = {
+        where: () => chain,
+        returning: () =>
+          Promise.resolve(opts.deleteReturningQueue?.shift() ?? []),
+      };
+      return chain;
+    }),
     execute: vi.fn(async () => undefined),
     transaction: vi.fn(
       async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> => fn(db),
@@ -125,12 +140,16 @@ const SEGMENT = [
   },
 ];
 
+/** A trip that has spent nothing this month. */
+const NO_USAGE = [{ llmOutputTokens: 0, ttsCharacters: 0, episodes: 0 }];
+
 describe("cast.generate", () => {
   it("enqueues a job for a drive day", async () => {
     const { db, inserts } = createDbMock({
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }], // trip tz
+        NO_USAGE, // budget: this month's metered usage
         DAY_WITH_SEGMENT, // probe: trip_day
         SEGMENT, // probe: segment by id
         [], // cleanup: no failed jobs
@@ -156,6 +175,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [], // cleanup
@@ -170,6 +190,59 @@ describe("cast.generate", () => {
       durationMinutes: 15,
     });
     expect(result).toMatchObject({ jobId: "job_1", deduplicated: true });
+  });
+
+  it("refuses before touching the database when no provider is configured", async () => {
+    // An unkeyed deployment would enqueue a job that can only fail four times.
+    const { db, inserts } = createDbMock({
+      selectQueue: [...authSelects(), [{ tz: "America/Denver" }]],
+    });
+    const caller = createCaller(db);
+    const anthropic = process.env.ANTHROPIC_API_KEY;
+    const gemini = process.env.GEMINI_API_KEY;
+    const google = process.env.GOOGLE_AI_API_KEY;
+    process.env.ANTHROPIC_API_KEY = undefined as unknown as string;
+    process.env.GEMINI_API_KEY = undefined as unknown as string;
+    process.env.GOOGLE_AI_API_KEY = undefined as unknown as string;
+    // biome-ignore lint/performance/noDelete: env vars must be absent, not "undefined"
+    delete process.env.ANTHROPIC_API_KEY;
+    // biome-ignore lint/performance/noDelete: see above
+    delete process.env.GEMINI_API_KEY;
+    // biome-ignore lint/performance/noDelete: see above
+    delete process.env.GOOGLE_AI_API_KEY;
+    try {
+      await expect(
+        caller.cast.generate({ ...SCOPE, durationMinutes: 30 }),
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringMatching(/no script model is configured/i),
+      });
+      expect(inserts).toHaveLength(0);
+    } finally {
+      if (anthropic) process.env.ANTHROPIC_API_KEY = anthropic;
+      if (gemini) process.env.GEMINI_API_KEY = gemini;
+      if (google) process.env.GOOGLE_AI_API_KEY = google;
+    }
+  });
+
+  it("refuses when the trip has spent its month's voice budget", async () => {
+    // Enforced at enqueue: refusing after the spend is just an expensive
+    // error message.
+    const { db, inserts } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [{ tz: "America/Denver" }],
+        [{ llmOutputTokens: 10, ttsCharacters: 5_000_000, episodes: 40 }],
+      ],
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.generate({ ...SCOPE, durationMinutes: 30 }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringMatching(/voice characters/i),
+    });
+    expect(inserts).toHaveLength(0);
   });
 
   it("rejects a no-drive-leg day server-side even though the button is hidden", async () => {
@@ -193,6 +266,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [], // cleanup
@@ -213,6 +287,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [], // cleanup
@@ -232,6 +307,7 @@ describe("cast.generate", () => {
       selectQueue: [
         ...authSelects(),
         [{ tz: "America/Denver" }],
+        NO_USAGE,
         DAY_WITH_SEGMENT,
         SEGMENT,
         [
@@ -367,6 +443,38 @@ describe("cast.retry", () => {
     const caller = createCaller(db);
     const result = await caller.cast.retry({ ...SCOPE, jobId: "job_1" });
     expect(result.status).toBe("pending");
+  });
+
+  it("a provider-failed job retries — funding the account is the whole fix", async () => {
+    // The pump now fails these on attempt 1 rather than burning all four
+    // (llm/errors.ts). The user's next move is to add credit and press Retry,
+    // so this must NOT join the error-keyed refusals above: superseded and
+    // expired are refused because reviving them would lose paid audio or
+    // bypass the read gate, and neither is true here.
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [
+          failedJob({
+            scriptJson: null,
+            error:
+              "The script model account is out of credit. Top up billing for the configured provider, then retry.",
+          }),
+        ],
+        [],
+      ],
+      updateReturningQueue: [[{ id: "job_1" }]],
+    });
+    const caller = createCaller(db);
+    const result = await caller.cast.retry({ ...SCOPE, jobId: "job_1" });
+    expect(result.status).toBe("pending");
+    // Attempts reset, so a funded retry gets a full budget rather than
+    // inheriting the failed run's count.
+    expect(updates[0]).toMatchObject({
+      status: "pending",
+      attemptCount: 0,
+      error: null,
+    });
   });
 
   it("a revive that loses the race to a supersede refuses with CONFLICT", async () => {
@@ -505,6 +613,66 @@ describe("cast.script", () => {
   });
 });
 
+describe("cast.uploadGroundingBrief", () => {
+  const BRIEF_INPUT = {
+    ...SCOPE,
+    segmentId: "seg_1",
+    title: "Moab to Grand Junction corridor",
+    facts: [
+      {
+        title: "Uranium boom",
+        text: "Charlie Steen's Mi Vida mine…",
+        verified: true,
+        sourceIndexes: [1],
+      },
+      {
+        title: "Ghost vineyards",
+        text: "Locals say…",
+        verified: false,
+        sourceIndexes: [],
+      },
+    ],
+    sources: [
+      {
+        index: 1,
+        capabilityId: "wikipedia-search",
+        url: "https://en.wikipedia.org/wiki/Moab,_Utah",
+        retrievedAt: "2026-07-30T02:00:00Z",
+      },
+    ],
+  };
+
+  it("stores a brief for a segment in this trip", async () => {
+    const { db, inserts } = createDbMock({
+      selectQueue: [...authSelects(), [{ id: "seg_1" }]],
+      insertReturningQueue: [[{ id: "brief_1" }]],
+    });
+    const caller = createCaller(db);
+    const result = await caller.cast.uploadGroundingBrief(BRIEF_INPUT);
+    expect(result).toEqual({
+      briefId: "brief_1",
+      factCount: 2,
+      verifiedCount: 1,
+    });
+    expect(inserts[0]).toMatchObject({
+      tripId: TRIP_ID,
+      segmentId: "seg_1",
+      title: "Moab to Grand Junction corridor",
+    });
+  });
+
+  it("refuses a segment that belongs to another trip", async () => {
+    const { db, inserts } = createDbMock({
+      selectQueue: [...authSelects(), []], // segment lookup scoped to trip
+    });
+    const caller = createCaller(db);
+    await expect(
+      caller.cast.uploadGroundingBrief(BRIEF_INPUT),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(inserts).toHaveLength(0);
+  });
+});
+
 describe("cast.tonight", () => {
   it("resolves tomorrow in the trip tz and probes the drive leg", async () => {
     const { db } = createDbMock({
@@ -513,6 +681,7 @@ describe("cast.tonight", () => {
         [{ tz: "America/Denver" }],
         DAY_WITH_SEGMENT,
         SEGMENT,
+        NO_USAGE, // tonight reads the budget after probing the leg
       ],
     });
     const caller = createCaller(db);
@@ -520,5 +689,150 @@ describe("cast.tonight", () => {
     expect(result.tz).toBe("America/Denver");
     expect(result.hasDriveLeg).toBe(true);
     expect(result.targetDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("cast.grounding", () => {
+  const BRIEF = {
+    id: "brief_1",
+    segmentId: "seg_1",
+    title: "Bryce → Moab corridor",
+    facts: [
+      {
+        title: "Waterpocket Fold",
+        text: "…",
+        verified: true,
+        sourceIndexes: [1],
+      },
+      {
+        title: "Burr Trail lead",
+        text: "…",
+        verified: false,
+        sourceIndexes: [],
+      },
+    ],
+    sources: [
+      {
+        index: 1,
+        capabilityId: "web.fetch",
+        url: "https://usgs.gov/x",
+        retrievedAt: null,
+      },
+    ],
+    provenance: null,
+    createdAt: new Date("2026-08-02T00:00:00.000Z"),
+    segmentName: "Bryce Canyon area → Moab",
+  };
+
+  it("returns the latest brief per segment and names the unresearched legs", async () => {
+    const superseded = { ...BRIEF, id: "brief_0", title: "older" };
+    const { db } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        [BRIEF, superseded], // newest first, same segment
+        [
+          { id: "seg_1", name: "Bryce Canyon area → Moab" },
+          { id: "seg_2", name: "Moab → Grand Junction" },
+        ],
+      ],
+    });
+    const result = await createCaller(db).cast.grounding(SCOPE);
+
+    // Only the newest survives — the context pack ignores the rest, so
+    // showing them would misrepresent what a script will actually use.
+    expect(result.briefs).toHaveLength(1);
+    expect(result.briefs[0]).toMatchObject({
+      id: "brief_1",
+      verifiedCount: 1,
+      segmentName: "Bryce Canyon area → Moab",
+    });
+    expect(result.gaps).toEqual([
+      { segmentId: "seg_2", name: "Moab → Grand Junction" },
+    ]);
+  });
+});
+
+describe("cast.removeGroundingFact", () => {
+  const brief = (facts: unknown[]) => [{ id: "brief_1", facts }];
+
+  it("drops just the named fact", async () => {
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        brief([
+          { title: "Keep me", text: "…", verified: true, sourceIndexes: [1] },
+          { title: "Drop me", text: "…", verified: false, sourceIndexes: [] },
+        ]),
+      ],
+    });
+    const result = await createCaller(db).cast.removeGroundingFact({
+      ...SCOPE,
+      briefId: "brief_1",
+      factTitle: "Drop me",
+    });
+    expect(result.factCount).toBe(1);
+    expect(updates[0]).toMatchObject({
+      facts: [{ title: "Keep me", verified: true, sourceIndexes: [1] }],
+    });
+  });
+
+  it("404s an unknown fact instead of silently writing the list back", async () => {
+    const { db, updates } = createDbMock({
+      selectQueue: [
+        ...authSelects(),
+        brief([
+          { title: "Only", text: "…", verified: true, sourceIndexes: [] },
+        ]),
+      ],
+    });
+    await expect(
+      createCaller(db).cast.removeGroundingFact({
+        ...SCOPE,
+        briefId: "brief_1",
+        factTitle: "Nope",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(updates).toHaveLength(0);
+  });
+
+  it("404s a brief belonging to another trip", async () => {
+    const { db } = createDbMock({ selectQueue: [...authSelects(), []] });
+    await expect(
+      createCaller(db).cast.removeGroundingFact({
+        ...SCOPE,
+        briefId: "brief_elsewhere",
+        factTitle: "x",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("cast.deleteGroundingBrief", () => {
+  it("discards a brief that belongs to this trip", async () => {
+    const { db } = createDbMock({
+      selectQueue: [...authSelects()],
+      deleteReturningQueue: [[{ id: "brief_1" }]],
+    });
+    await expect(
+      createCaller(db).cast.deleteGroundingBrief({
+        ...SCOPE,
+        briefId: "brief_1",
+      }),
+    ).resolves.toEqual({ deleted: true });
+  });
+
+  it("404s rather than reporting success for another trip's brief", async () => {
+    // The where clause is trip-scoped, so a cross-trip id deletes nothing —
+    // and must not come back as `deleted: true`.
+    const { db } = createDbMock({
+      selectQueue: [...authSelects()],
+      deleteReturningQueue: [[]],
+    });
+    await expect(
+      createCaller(db).cast.deleteGroundingBrief({
+        ...SCOPE,
+        briefId: "brief_elsewhere",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });

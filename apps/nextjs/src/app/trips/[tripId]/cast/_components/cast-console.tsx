@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
 import {
+  evictForeignEpisodeAudio,
   getCachedEpisodeAudio,
   listCachedEpisodeIds,
   putCachedEpisodeAudio,
@@ -63,9 +64,12 @@ function formatDate(iso: string): string {
 export function CastConsole({
   workspaceId,
   tripId,
+  userId,
 }: {
   workspaceId: string;
   tripId: string;
+  /** Scopes the offline audio cache — see cast-audio-store. */
+  userId: string;
 }) {
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -89,6 +93,48 @@ export function CastConsole({
             : false,
       },
     ),
+  );
+
+  const voicesQuery = useQuery(
+    trpc.cast.voices.queryOptions({ workspaceId, tripId }),
+  );
+  const setVoice = useMutation(
+    trpc.cast.setVoice.mutationOptions({
+      onSuccess: () => {
+        toast.success("Narrator updated. It applies to the next episode.");
+        void qc.invalidateQueries({
+          queryKey: trpc.cast.voices.queryKey({ workspaceId, tripId }),
+        });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const groundingQuery = useQuery(
+    trpc.cast.grounding.queryOptions({ workspaceId, tripId }),
+  );
+  const invalidateGrounding = useCallback(() => {
+    void qc.invalidateQueries({
+      queryKey: trpc.cast.grounding.queryKey({ workspaceId, tripId }),
+    });
+  }, [qc, trpc, workspaceId, tripId]);
+  const removeFact = useMutation(
+    trpc.cast.removeGroundingFact.mutationOptions({
+      onSuccess: () => {
+        toast.success("Fact dropped. It will not reach the next script.");
+        invalidateGrounding();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  const deleteBrief = useMutation(
+    trpc.cast.deleteGroundingBrief.mutationOptions({
+      onSuccess: () => {
+        toast.success("Research discarded for that leg.");
+        invalidateGrounding();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
   );
 
   const invalidateStatus = useCallback(() => {
@@ -174,6 +220,36 @@ export function CastConsole({
                 Tomorrow&apos;s leg has no route geometry yet — the episode will
                 skip corridor points of interest.
               </p>
+            )}
+            {voicesQuery.data && voicesQuery.data.voices.length > 0 && (
+              <label className="flex flex-wrap items-center gap-2 text-xs text-[#8B949E]">
+                <span className="font-mono uppercase tracking-wider">
+                  Narrator
+                </span>
+                <select
+                  value={voicesQuery.data.tripVoiceId ?? ""}
+                  disabled={setVoice.isPending}
+                  onChange={(event) =>
+                    setVoice.mutate({
+                      workspaceId,
+                      tripId,
+                      voiceId: event.target.value || null,
+                    })
+                  }
+                  className="rounded-[2px] border border-[#30363D] bg-[#0A0C10] px-2 py-1 font-mono text-xs text-[#C9D1D9]"
+                >
+                  <option value="">Default voice</option>
+                  {voicesQuery.data.voices.map((voice) => (
+                    <option key={voice.voiceId} value={voice.voiceId}>
+                      {voice.name}
+                      {voice.labels.accent ? ` — ${voice.labels.accent}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[#8B949E]">
+                  applies to the next episode
+                </span>
+              </label>
             )}
             <div className="flex items-center gap-2">
               {([15, 30] as const).map((minutes) => (
@@ -287,6 +363,127 @@ export function CastConsole({
         </div>
       )}
 
+      {/* ── Research ── */}
+      <div className="flex flex-col gap-3 rounded-lg border border-[#21262D] bg-[#0D1117] p-4">
+        <div className="font-mono text-xs uppercase tracking-widest text-[#8B949E]">
+          Corridor research
+        </div>
+        {groundingQuery.isLoading ? (
+          <p className="text-sm text-[#8B949E]">Loading research…</p>
+        ) : groundingQuery.isError ? (
+          <p className="text-sm text-[#F85149]">
+            Could not load research: {groundingQuery.error.message}
+          </p>
+        ) : (
+          <>
+            {groundingQuery.data?.briefs.length === 0 ? (
+              <p className="text-sm text-[#8B949E]">
+                No research yet. Without it the episode still runs — the
+                histories are just hedged as campfire truth.
+              </p>
+            ) : (
+              groundingQuery.data?.briefs.map((brief) => (
+                <details
+                  key={brief.id}
+                  className="rounded-[3px] border border-[#21262D] bg-[#0A0C10] p-3"
+                >
+                  <summary className="cursor-pointer text-sm text-[#C9D1D9]">
+                    {brief.segmentName}{" "}
+                    <span className="font-mono text-xs text-[#8B949E]">
+                      {brief.verifiedCount}/{brief.facts.length} sourced ·{" "}
+                      {brief.sources.length} sources
+                    </span>
+                  </summary>
+                  <p className="mt-2 text-xs text-[#8B949E]">{brief.title}</p>
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {brief.facts.map((fact) => (
+                      <li
+                        key={fact.title}
+                        className="flex items-start justify-between gap-3 border-[#21262D] border-t pt-2"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-[#C9D1D9]">
+                              {fact.title}
+                            </span>
+                            <span
+                              className={`rounded-[2px] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                fact.verified
+                                  ? "bg-[#3FB950]/15 text-[#3FB950]"
+                                  : "bg-[#D29922]/15 text-[#D29922]"
+                              }`}
+                            >
+                              {fact.verified ? "Sourced" : "Unverified"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-[#8B949E]">
+                            {fact.text}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={removeFact.isPending}
+                          onClick={() =>
+                            removeFact.mutate({
+                              workspaceId,
+                              tripId,
+                              briefId: brief.id,
+                              factTitle: fact.title,
+                            })
+                          }
+                          className="shrink-0 rounded-[2px] border border-[#30363D] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E] transition-colors hover:border-[#F85149] hover:text-[#F85149] disabled:opacity-50"
+                        >
+                          Drop
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {brief.sources.length > 0 && (
+                    <ol className="mt-3 flex flex-col gap-1 border-[#21262D] border-t pt-2">
+                      {brief.sources.map((source) => (
+                        <li
+                          key={source.index}
+                          className="font-mono text-[10px] text-[#8B949E]"
+                        >
+                          [{source.index}] {source.url ?? "no URL recorded"}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <button
+                    type="button"
+                    disabled={deleteBrief.isPending}
+                    onClick={() =>
+                      deleteBrief.mutate({
+                        workspaceId,
+                        tripId,
+                        briefId: brief.id,
+                      })
+                    }
+                    className="mt-3 self-start rounded-[2px] border border-[#30363D] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8B949E] transition-colors hover:border-[#F85149] hover:text-[#F85149] disabled:opacity-50"
+                  >
+                    Discard this research
+                  </button>
+                </details>
+              ))
+            )}
+            {groundingQuery.data && groundingQuery.data.gaps.length > 0 && (
+              <p className="text-xs text-[#8B949E]">
+                No research yet for:{" "}
+                <span className="text-[#D29922]">
+                  {groundingQuery.data.gaps.map((g) => g.name).join(", ")}
+                </span>
+                . Run an OODA thread for those corridors and push it with{" "}
+                <code className="text-[#C9D1D9]">
+                  scripts/cast-grounding.ts push
+                </code>
+                .
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
       {/* ── Episodes ── */}
       <div className="flex flex-col gap-3 rounded-lg border border-[#21262D] bg-[#0D1117] p-4">
         <div className="font-mono text-xs uppercase tracking-widest text-[#8B949E]">
@@ -315,7 +512,7 @@ export function CastConsole({
           </p>
         ) : (
           episodes.map((episode) => (
-            <EpisodeRow key={episode.id} episode={episode} />
+            <EpisodeRow key={episode.id} episode={episode} userId={userId} />
           ))
         )}
       </div>
@@ -369,6 +566,42 @@ function ScriptReview({
           words
         </span>
       </div>
+      {(() => {
+        // Advisory quality report. Shown so the person about to authorise
+        // voice minutes can see where the draft missed its contract — it does
+        // not gate approval, because a chapter 30 words short is not worth
+        // stranding an episode over.
+        const report = scriptQuery.data?.evalJson;
+        if (!report) return null;
+        const failures = report.checks.filter((c) => !c.passed);
+        if (failures.length === 0) {
+          return (
+            <p className="font-mono text-[10px] text-[#3FB950]">
+              Quality checks passed ({report.checks.length}/
+              {report.checks.length})
+            </p>
+          );
+        }
+        return (
+          <div className="flex flex-col gap-1 rounded-[3px] border border-[#30363D] bg-[#0A0C10] p-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#8B949E]">
+              Quality report — advisory
+            </p>
+            {failures.map((check) => (
+              <p
+                key={check.id}
+                className={`font-mono text-[10px] ${
+                  check.severity === "error"
+                    ? "text-[#F85149]"
+                    : "text-[#D29922]"
+                }`}
+              >
+                {check.id}: {check.detail}
+              </p>
+            ))}
+          </div>
+        );
+      })()}
       <div className="flex max-h-80 flex-col gap-3 overflow-y-auto pr-1">
         {script.segments.map((segment) => (
           <div key={segment.key}>
@@ -410,7 +643,13 @@ type EpisodeSummary = {
 
 const PLAYBACK_RATES = [1, 1.25, 1.5] as const;
 
-function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
+function EpisodeRow({
+  episode,
+  userId,
+}: {
+  episode: EpisodeSummary;
+  userId: string;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
@@ -421,15 +660,19 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
 
   useEffect(() => {
     let alive = true;
-    listCachedEpisodeIds()
+    // Purge any other account's blobs before trusting this list — the store
+    // is origin-scoped, so a shared browser can hold a previous user's audio.
+    evictForeignEpisodeAudio(userId)
+      .catch(() => {})
+      .then(() => listCachedEpisodeIds(userId))
       .then((ids) => {
-        if (alive) setCached(ids.includes(episode.id));
+        if (alive && ids) setCached(ids.includes(episode.id));
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [episode.id]);
+  }, [episode.id, userId]);
 
   useEffect(
     () => () => {
@@ -442,7 +685,9 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
     if (objectUrl) return objectUrl;
     setCaching(true);
     try {
-      let blob = await getCachedEpisodeAudio(episode.id).catch(() => null);
+      let blob = await getCachedEpisodeAudio(userId, episode.id).catch(
+        () => null,
+      );
       let persisted = blob != null;
       if (!blob) {
         const response = await fetch(audioHref);
@@ -453,7 +698,7 @@ function EpisodeRow({ episode }: { episode: EpisodeSummary }) {
         // Cache write failure only costs the offline bonus, not playback —
         // but the "Ready offline" badge must never claim persistence that
         // didn't happen (DESIGN.md: never imply a write succeeded).
-        persisted = await putCachedEpisodeAudio(episode.id, blob)
+        persisted = await putCachedEpisodeAudio(userId, episode.id, blob)
           .then(() => true)
           .catch(() => false);
       }

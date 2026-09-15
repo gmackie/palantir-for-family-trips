@@ -88,7 +88,13 @@ describe("buildCastDayContext", () => {
         note: null,
       },
     ];
-    const { db, select } = fakeSelectDb([TRIP, [day], [segment], anchors]);
+    const { db, select } = fakeSelectDb([
+      TRIP,
+      [day],
+      [segment],
+      anchors,
+      [], // grounding: no brief pushed
+    ]);
 
     const context = await buildCastDayContext(db, INPUT);
     expect(context).toMatchObject({
@@ -97,6 +103,7 @@ describe("buildCastDayContext", () => {
       hasDriveLeg: true,
       degraded: true,
       pois: [],
+      grounding: null,
     });
     expect(context.segment).toMatchObject({
       originName: "Denver",
@@ -110,8 +117,51 @@ describe("buildCastDayContext", () => {
       blocks: [], // null blocksJson normalizes to []
     });
     expect(context.anchors).toEqual(anchors);
-    // trip + day + segment + anchors — and NOT the 5 corridor POI samples.
-    expect(select).toHaveBeenCalledTimes(4);
+    // trip + day + segment + anchors + grounding — NOT the 5 POI samples.
+    expect(select).toHaveBeenCalledTimes(5);
+  });
+
+  it("a pushed grounding brief rides into the context, capped", async () => {
+    const day = {
+      intent: "drive",
+      title: null,
+      heroTitle: null,
+      heroDetail: null,
+      overnightName: null,
+      overnightKind: null,
+      cutIfBehind: null,
+      note: null,
+      blocksJson: null,
+      segmentId: "seg-1",
+    };
+    const segment = {
+      id: "seg-1",
+      name: "Moab → Grand Junction",
+      originName: "Moab",
+      destinationName: "Grand Junction",
+      routePolyline: null,
+      distanceMiles: "113",
+      durationMinutes: 110,
+    };
+    const facts = Array.from({ length: 45 }, (_, i) => ({
+      title: `Fact ${i}`,
+      text: `Body ${i}`,
+      verified: i % 2 === 0,
+      sourceIndexes: [],
+    }));
+    const { db } = fakeSelectDb([
+      TRIP,
+      [day],
+      [segment],
+      [], // anchors
+      [{ title: "Corridor research", facts }],
+    ]);
+
+    const context = await buildCastDayContext(db, INPUT);
+    expect(context.grounding?.title).toBe("Corridor research");
+    // Bounded prompt payload even for oversized briefs.
+    expect(context.grounding?.facts).toHaveLength(40);
+    expect(context.grounding?.facts[0]).toMatchObject({ title: "Fact 0" });
   });
 
   it("with geometry: samples the corridor and dedupes POIs across samples", async () => {
@@ -153,12 +203,13 @@ describe("buildCastDayContext", () => {
       midRows,
       midRows,
       midRows,
+      [], // grounding: no brief pushed
     ]);
 
     const context = await buildCastDayContext(db, INPUT);
     expect(context.degraded).toBe(false);
     expect(context.day?.blocks).toHaveLength(1);
-    expect(select).toHaveBeenCalledTimes(4 + 5); // 5 corridor samples
+    expect(select).toHaveBeenCalledTimes(4 + 5 + 1); // 5 POI samples + grounding
 
     const ids = context.pois.map((p) => p.name).sort();
     expect(ids).toEqual(["POI p1", "POI p2"]);

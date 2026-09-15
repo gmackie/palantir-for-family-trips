@@ -229,6 +229,13 @@ export const trips = pgTable("trip", (t) => ({
   runState: t.text().$type<TripRunState>().notNull().default("on_plan"),
   runStateSince: t.timestamp({ mode: "date", withTimezone: true }),
   runStateNote: t.varchar({ length: 500 }),
+  /**
+   * Corridor Cast narrator for this trip. NULL keeps the deployment default
+   * (ELEVENLABS_VOICE_ID_DEFAULT, else the premade "George"). Stored per trip
+   * rather than per user: an episode is a shared artifact, and the group hears
+   * one voice.
+   */
+  castVoiceId: t.varchar({ length: 64 }),
   createdAt: t.timestamp().defaultNow().notNull(),
   updatedAt: t
     .timestamp({ mode: "date", withTimezone: true })
@@ -1456,6 +1463,13 @@ export const importedPois = pgTable(
       table.source,
       table.externalId,
     ),
+    // Every corridor query is a lat/lng bounding box — cast context packs,
+    // poi-suggest, the daily briefing, the corridor router. Without this they
+    // all sequential-scan the whole table. The eventual upgrade is a PostGIS
+    // geography column with a GiST index (docs/adr/0001), which turns the
+    // 5-sample box approximation into one ST_DWithin; this index is the cheap
+    // win until then.
+    index("imported_poi_lat_lng_idx").on(table.lat, table.lng),
   ],
 );
 
@@ -1702,6 +1716,20 @@ export type CastScript = {
   segments: CastScriptSegment[];
 };
 
+/** One structural check over a drafted script. */
+export type CastScriptEvalCheck = {
+  id: string;
+  severity: "error" | "warning";
+  passed: boolean;
+  detail: string;
+};
+
+export type CastScriptEval = {
+  passed: boolean;
+  checks: CastScriptEvalCheck[];
+  evaluatedAt: string;
+};
+
 /** One synthesized-segment checkpoint: paid audio parked in R2 temp space. */
 export type CastCheckpoint = {
   segmentKey: string;
@@ -1738,6 +1766,13 @@ export const castEpisodeJobs = pgTable(
     error: t.varchar({ length: 2000 }),
     scriptJson: t.jsonb().$type<CastScript>(),
     checkpointsJson: t.jsonb().$type<CastCheckpoint[]>(),
+    /**
+     * Structural quality report for the drafted script (cast/evals). Advisory,
+     * not a gate: the human read gate is the decision, and a failing check is
+     * information for it — blocking on one would strand an episode over a
+     * chapter that ran 30 words short.
+     */
+    evalJson: t.jsonb().$type<CastScriptEval>(),
     llmInputTokens: t.integer().notNull().default(0),
     llmOutputTokens: t.integer().notNull().default(0),
     /** Characters actually billed to ElevenLabs across all attempts. */
@@ -1799,6 +1834,63 @@ export const castEpisodes = pgTable(
     // One episode per job — makes crash-replayed finalization idempotent
     // (insert ON CONFLICT DO NOTHING). NULL jobIds (job deleted) don't collide.
     uniqueIndex("cast_episode_job_unique").on(table.jobId),
+  ],
+);
+
+/** One source line from an OODA research-brief export's `## Sources` index. */
+export type CastGroundingSource = {
+  index: number;
+  capabilityId: string;
+  url: string | null;
+  retrievedAt: string | null;
+};
+
+/**
+ * One narratable research fact. `verified: false` mirrors OODA's
+ * `[UNVERIFIED]` marker — a lead, not a fact; the script prompt keeps it
+ * hedged exactly like unsourced model knowledge.
+ */
+export type CastGroundingFact = {
+  title: string;
+  text: string;
+  verified: boolean;
+  sourceIndexes: number[];
+};
+
+/**
+ * Provenance-tracked documentary research for one drive segment, produced by
+ * an OODA research thread (docs: /Volumes/dev/bob/ooda) and pushed via the
+ * cast-grounding bridge. Latest row per (trip, segment) wins. Raises tier-2
+ * "campfire truth" color into source-backed narration (eng-review Issue 7
+ * follow-up).
+ */
+export const castGroundingBriefs = pgTable(
+  "cast_grounding_brief",
+  (t) => ({
+    id: t.uuid().notNull().primaryKey().defaultRandom(),
+    tripId: t
+      .uuid()
+      .notNull()
+      .references(() => trips.id, { onDelete: "cascade" }),
+    segmentId: t
+      .uuid()
+      .notNull()
+      .references(() => tripSegments.id, { onDelete: "cascade" }),
+    title: t.varchar({ length: 300 }).notNull(),
+    facts: t.jsonb().$type<CastGroundingFact[]>().notNull(),
+    sources: t.jsonb().$type<CastGroundingSource[]>().notNull(),
+    provenance: t.jsonb().$type<{
+      oodaThreadId?: string;
+      exportedAt?: string;
+      workspaceCommit?: string;
+    }>(),
+    createdAt: t
+      .timestamp({ mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  }),
+  (table) => [
+    index("cast_grounding_trip_segment_idx").on(table.tripId, table.segmentId),
   ],
 );
 

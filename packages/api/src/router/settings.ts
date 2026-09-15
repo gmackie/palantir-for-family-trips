@@ -125,16 +125,6 @@ async function getWorkspaceScope(ctx: SettingsContext) {
 }
 
 export const settingsRouter = {
-  debugAuth: publicProcedure.query(async ({ ctx }) => {
-    const session = ctx.session;
-    return {
-      hasSession: !!session,
-      userEmail: session?.user?.email ?? null,
-      sessionId: session?.session?.id ?? null,
-      apiKeyAuth: !!ctx.apiKeyAuth,
-    };
-  }),
-
   getLaunchState: publicProcedure.query(async ({ ctx }) => {
     const settings = await ctx.db.query.applicationSettings.findFirst();
     const defaults = getLaunchDefaults();
@@ -241,37 +231,6 @@ export const settingsRouter = {
       canManageWorkspace: workspaceScope.canManageCurrentWorkspace,
       isPlatformAdmin: workspaceScope.isPlatformAdmin,
       inviteAllowlistCount: inviteAllowlistEntries.length,
-    };
-  }),
-
-  getPlatformPrimitives: protectedProcedure.query(() => {
-    return {
-      featureFlags: {
-        enabled: platformPrimitives.featureFlags.enabled,
-        provider: platformPrimitives.featureFlags.provider,
-      },
-      jobs: {
-        enabled: platformPrimitives.jobs.enabled,
-        provider: platformPrimitives.jobs.provider,
-      },
-      rateLimits: {
-        enabled: platformPrimitives.rateLimits.enabled,
-        scopes: [...platformPrimitives.rateLimits.scopes],
-      },
-      botProtection: {
-        enabled: platformPrimitives.botProtection.enabled,
-        provider: platformPrimitives.botProtection.provider,
-      },
-      compliance: {
-        enabled: platformPrimitives.compliance.enabled,
-        dataExport: platformPrimitives.compliance.dataExport,
-        dataDeletion: platformPrimitives.compliance.dataDeletion,
-      },
-      emailDelivery: {
-        enabled: platformPrimitives.emailDelivery.enabled,
-        provider: platformPrimitives.emailDelivery.provider,
-        requiredEnv: [...platformPrimitives.emailDelivery.requiredEnv],
-      },
     };
   }),
 

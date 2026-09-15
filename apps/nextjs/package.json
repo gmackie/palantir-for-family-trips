@@ -16,7 +16,7 @@
     "deploy:cloudflare:production": "pnpm build:vinext && pnpm with-env wrangler deploy -c dist/server/wrangler.json",
     "format": "biome check .",
     "lint": "oxlint .",
-    "test": "vitest run --config vitest.worker.config.ts",
+    "test": "vitest run --config vitest.src.config.ts && vitest run --config vitest.worker.config.ts",
     "test:watch": "vitest --config vitest.worker.config.ts",
     "storybook": "SKIP_ENV_VALIDATION=1 storybook dev -p 6006",
     "storybook:build": "SKIP_ENV_VALIDATION=1 storybook build",
@@ -25,7 +25,9 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
-    "with-env": "dotenv -e ../../.env --"
+    "with-env": "dotenv -e ../../.env --",
+    "test:worker": "vitest run --config vitest.worker.config.ts",
+    "test:src": "vitest run --config vitest.src.config.ts"
   },
   "dependencies": {
     "@forgegraph/otel": "^0.1.1",

@@ -8,6 +8,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import { useEffect, useState } from "react";
 
 import { useTRPC } from "~/trpc/react";
+import { PinEditor } from "./pin-editor";
 
 type PinListOutput = inferRouterOutputs<AppRouter>["pins"]["list"];
 type PinItem = PinListOutput[number];
@@ -95,6 +96,8 @@ export function PinList(props: {
       setLng("");
     },
   });
+
+  const [editingPinId, setEditingPinId] = useState<string | null>(null);
 
   const deleteMutation = useMutation({
     ...trpc.pins.delete.mutationOptions(),
@@ -194,17 +197,39 @@ export function PinList(props: {
                   {pin.attendeeCount !== 1 ? "s" : ""}
                 </p>
               )}
+              {editingPinId === pin.id && (
+                <PinEditor
+                  workspaceId={workspaceId}
+                  tripId={tripId}
+                  pin={pin}
+                  onClose={() => {
+                    setEditingPinId(null);
+                    invalidate();
+                  }}
+                />
+              )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={deleteMutation.isPending}
-              onClick={() =>
-                deleteMutation.mutate({ workspaceId, tripId, pinId: pin.id })
-              }
-            >
-              Delete
-            </Button>
+            <div className="flex shrink-0 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setEditingPinId(editingPinId === pin.id ? null : pin.id)
+                }
+              >
+                {editingPinId === pin.id ? "Close" : "Edit"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={deleteMutation.isPending}
+                onClick={() =>
+                  deleteMutation.mutate({ workspaceId, tripId, pinId: pin.id })
+                }
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         ))}
       </div>

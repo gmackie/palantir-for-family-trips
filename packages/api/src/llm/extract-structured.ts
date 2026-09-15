@@ -1,6 +1,13 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import AnthropicSdk from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod/v4";
+
+import {
+  DEFAULT_SCRIPT_MODELS,
+  type LlmUsage,
+  type StructuredGenerator,
+} from "./structured";
 
 /**
  * Generic Claude → Zod structured-output helper.
@@ -20,10 +27,7 @@ export type StructuredImageInput = {
   mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
 };
 
-export type LlmUsage = {
-  inputTokens: number;
-  outputTokens: number;
-};
+export type { LlmUsage } from "./structured";
 
 export async function generateStructured<T>(params: {
   client: Anthropic;
@@ -83,4 +87,24 @@ export async function generateStructured<T>(params: {
   }
 
   return response.parsed_output as T;
+}
+
+/** `generateStructured` bound to one client + model, as a StructuredGenerator. */
+export function createAnthropicGenerator(params: {
+  client?: Anthropic;
+  model?: string;
+}): StructuredGenerator {
+  const client = params.client ?? new AnthropicSdk();
+  const model = params.model ?? DEFAULT_SCRIPT_MODELS.anthropic;
+  return (request) =>
+    generateStructured({
+      client,
+      model,
+      systemPrompt: request.systemPrompt,
+      userText: request.userText,
+      schema: request.schema,
+      maxTokens: request.maxTokens,
+      timeoutMs: request.timeoutMs,
+      onUsage: request.onUsage,
+    });
 }

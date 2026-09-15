@@ -51,15 +51,35 @@ export function fuelBandAt(
   return "safe";
 }
 
+/**
+ * Split a route polyline into colored segments by remaining fuel range.
+ *
+ * The tank only refills where `refuelAtMiles` says it does — those are the
+ * predicted Fuel Zones, in cumulative route miles. Past the last one the route
+ * stays **red**: running dry is the thing this coloring exists to warn about,
+ * so it must not be papered over by assuming a fill-up happens exactly when the
+ * tank empties. `milesSinceFill` offsets the start and is NOT wrapped into one
+ * tank cycle — a van that is already past empty reads as empty, not as full.
+ */
 export function colorPolylineByFuelRange(
   points: LatLng[],
   rangeMiles: number,
-  options?: { milesSinceFill?: number; cautionFraction?: number },
+  options?: {
+    milesSinceFill?: number;
+    cautionFraction?: number;
+    /** Cumulative route miles at which the tank is refilled. */
+    refuelAtMiles?: number[];
+  },
 ): FuelColoredSegment[] {
   if (points.length < 2 || !(rangeMiles > 0)) return [];
 
   const cautionFraction = options?.cautionFraction ?? DEFAULT_CAUTION_FRACTION;
-  let sinceLastFill = Math.max(options?.milesSinceFill ?? 0, 0) % rangeMiles;
+  let sinceLastFill = Math.max(options?.milesSinceFill ?? 0, 0);
+  const refuels = [...(options?.refuelAtMiles ?? [])]
+    .filter((m) => Number.isFinite(m) && m > 0)
+    .sort((a, b) => a - b);
+  let nextRefuel = 0;
+  let cumulative = 0;
 
   const segments: FuelColoredSegment[] = [];
   let segStart = 0;
@@ -68,8 +88,14 @@ export function colorPolylineByFuelRange(
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1]!;
     const curr = points[i]!;
-    sinceLastFill += haversineMiles(prev, curr);
-    while (sinceLastFill >= rangeMiles) sinceLastFill -= rangeMiles;
+    const d = haversineMiles(prev, curr);
+    cumulative += d;
+    sinceLastFill += d;
+
+    while (nextRefuel < refuels.length && cumulative >= refuels[nextRefuel]!) {
+      sinceLastFill = 0;
+      nextRefuel++;
+    }
 
     const band = fuelBandAt(sinceLastFill, rangeMiles, cautionFraction);
     if (band !== currentBand) {
@@ -96,6 +122,80 @@ export function colorPolylineByFuelRange(
   });
 
   return segments.filter((s) => s.coordinates.length >= 2);
+}
+
+/** One continuous drawable stretch of the route. */
+export interface RouteRun {
+  points: LatLng[];
+  /**
+   * Miles driven between the previous run and this one that have no polyline
+   * to draw (a segment without route geometry). They still burn fuel, so they
+   * count against range even though nothing is rendered for them.
+   */
+  gapMilesBefore: number;
+}
+
+function runLengthMiles(points: LatLng[]): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += haversineMiles(points[i - 1]!, points[i]!);
+  }
+  return total;
+}
+
+/**
+ * Color each continuous run separately, carrying fuel state across the gaps.
+ *
+ * Concatenating runs into one polyline draws a straight line across a segment
+ * that has no geometry — a road that does not exist — and charges its
+ * great-circle distance to the tank. Splitting avoids the false line; carrying
+ * `gapMilesBefore` keeps the fuel math honest about miles actually driven.
+ */
+export function colorRouteRunsByFuelRange(
+  runs: RouteRun[],
+  rangeMiles: number,
+  options?: {
+    milesSinceFill?: number;
+    cautionFraction?: number;
+    refuelAtMiles?: number[];
+  },
+): FuelColoredSegment[][] {
+  if (!(rangeMiles > 0)) return [];
+
+  const startSinceFill = Math.max(options?.milesSinceFill ?? 0, 0);
+  const refuels = [...(options?.refuelAtMiles ?? [])]
+    .filter((m) => Number.isFinite(m) && m > 0)
+    .sort((a, b) => a - b);
+
+  const out: FuelColoredSegment[][] = [];
+  let cumulative = 0;
+
+  for (const run of runs) {
+    cumulative += Math.max(run.gapMilesBefore, 0);
+
+    // Fuel state entering this run: miles since the most recent refuel at or
+    // before this point, else the trip-start offset plus everything driven.
+    const lastRefuel = refuels.filter((m) => m <= cumulative).at(-1);
+    const sinceFill =
+      lastRefuel != null
+        ? cumulative - lastRefuel
+        : startSinceFill + cumulative;
+
+    out.push(
+      colorPolylineByFuelRange(run.points, rangeMiles, {
+        milesSinceFill: sinceFill,
+        cautionFraction: options?.cautionFraction,
+        // Shift the remaining refuel points into this run's local mileage.
+        refuelAtMiles: refuels
+          .filter((m) => m > cumulative)
+          .map((m) => m - cumulative),
+      }),
+    );
+
+    cumulative += runLengthMiles(run.points);
+  }
+
+  return out;
 }
 
 export function isCostcoName(name: string | null | undefined): boolean {

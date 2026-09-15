@@ -675,6 +675,16 @@ export default function PollsScreen() {
     }),
   );
 
+  // A proposal could be created, listed and reacted to, but its status could
+  // never change — nothing called `updateProposalStatus`, so every proposal
+  // stayed "proposed" forever. Select/reject are organizer-only server-side;
+  // the server is the gate, this just offers the action.
+  const statusMutation = useMutation(
+    trpc.planning.updateProposalStatus.mutationOptions({
+      onSuccess: invalidateAll,
+    }),
+  );
+
   const handleCreatePoll = useCallback(
     async (data: {
       title: string;
@@ -1103,6 +1113,54 @@ export default function PollsScreen() {
                         >
                           {proposal.status}
                         </Text>
+                        {proposal.status === "proposed" && (
+                          <>
+                            <Pressable
+                              disabled={statusMutation.isPending}
+                              onPress={() =>
+                                statusMutation.mutate({
+                                  workspaceId,
+                                  tripId,
+                                  proposalId: proposal.id,
+                                  status: "selected",
+                                })
+                              }
+                              style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: R.sm,
+                                borderWidth: 1,
+                                borderColor: C.success,
+                              }}
+                            >
+                              <Text style={{ color: C.success, fontSize: 11 }}>
+                                Select
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              disabled={statusMutation.isPending}
+                              onPress={() =>
+                                statusMutation.mutate({
+                                  workspaceId,
+                                  tripId,
+                                  proposalId: proposal.id,
+                                  status: "rejected",
+                                })
+                              }
+                              style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: R.sm,
+                                borderWidth: 1,
+                                borderColor: C.border,
+                              }}
+                            >
+                              <Text style={{ color: C.muted, fontSize: 11 }}>
+                                Reject
+                              </Text>
+                            </Pressable>
+                          </>
+                        )}
                         {proposal.priceCents != null && (
                           <Text
                             style={{

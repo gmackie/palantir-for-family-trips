@@ -459,25 +459,6 @@ export const plannerRouter = {
     ),
 
   /** Per-day overnight top picks for the whole trip (long-term plan scan). */
-  suggestOvernightsTrip: tripProcedure()
-    .input(
-      z.object({
-        workspaceId: z.string().min(1),
-        tripId: z.string().min(1),
-        maxMiles: z.number().positive().max(80).default(25),
-        perDay: z.number().int().min(1).max(10).default(5),
-      }),
-    )
-    .query(({ ctx, input }) =>
-      suggestOvernightsForTrip(ctx.db, {
-        tripId: ctx.tripId,
-        workspaceId: input.workspaceId,
-        maxMiles: input.maxMiles,
-        perDay: input.perDay,
-      }),
-    ),
-
-  /** Set a trip day's overnight from an imported POI (iOverlander row). */
   applyOvernight: tripProcedure()
     .input(
       z.object({

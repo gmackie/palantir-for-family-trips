@@ -23,18 +23,32 @@ function generateMagicLinkToken() {
 }
 // dev-stage: magic-link bypass for demo login (env flag doesn't reach the vinext worker; gate before real prod)
 // Demo/verification accounts allowed to use the magic-link bypass. Restricted to
-// these (several per app) so it can never mint a session for a real user. Demo
-// accounts = any email at the reserved domain below, plus an optional
-// DEMO_LOGIN_EMAILS allowlist. SECURITY: keep restricted to demo accounts.
+// these (several per app) so it can never mint a session for a real user.
+// SECURITY: keep restricted to demo accounts.
+//
+// Outside development the reserved-domain shortcut does NOT apply: production
+// honours the explicit DEMO_LOGIN_EMAILS allowlist and nothing else, so the
+// bypass can only ever mint a session for an address someone deliberately
+// listed. Sortey is passwordless (magic link + social), so App Review has no
+// other unattended way in — but that is not a reason to let a whole domain
+// through on a live deployment.
 const DEMO_EMAIL_DOMAIN = "@demo.preflight.app";
-function isDemoLoginEmail(email: string): boolean {
-  const e = (email ?? "").trim().toLowerCase();
-  if (e.endsWith(DEMO_EMAIL_DOMAIN)) return true;
-  const extra = (process.env.DEMO_LOGIN_EMAILS ?? "")
+
+export function demoLoginAllowlist(): string[] {
+  return (process.env.DEMO_LOGIN_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  return extra.includes(e);
+}
+
+function isDemoLoginEmail(email: string): boolean {
+  const e = (email ?? "").trim().toLowerCase();
+  if (!e) return false;
+  if (demoLoginAllowlist().includes(e)) return true;
+  // Convenience only where a stray session cannot matter.
+  return (
+    process.env.NODE_ENV === "development" && e.endsWith(DEMO_EMAIL_DOMAIN)
+  );
 }
 
 function devMagicLinkBypass(enabled: boolean | undefined) {

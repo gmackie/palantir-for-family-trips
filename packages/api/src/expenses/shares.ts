@@ -72,7 +72,21 @@ export function computeExpenseShares(
     subtotalByUser.set(userId, (subtotalByUser.get(userId) ?? 0) + cents);
   };
 
-  for (const item of input.lineItems) {
+  // A finalized expense with no itemized line items still has a subtotal. Treat
+  // it as a single unclaimed item for the whole subtotal so it splits equally
+  // among trip participants (matching the UI), instead of producing no shares.
+  const effectiveLineItems: readonly ExpenseLineItemInput[] =
+    input.lineItems.length > 0 || input.subtotalCents <= 0
+      ? input.lineItems
+      : [
+          {
+            id: "__subtotal__",
+            lineTotalCents: input.subtotalCents,
+            claimantUserIds: [],
+          },
+        ];
+
+  for (const item of effectiveLineItems) {
     const claimants =
       item.claimantUserIds.length > 0
         ? [...item.claimantUserIds].sort()

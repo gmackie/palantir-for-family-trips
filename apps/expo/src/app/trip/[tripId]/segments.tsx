@@ -14,8 +14,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-
 import { trpc } from "~/utils/api";
+import { authClient } from "~/utils/auth";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -70,6 +70,26 @@ function SegmentMemberRow({
 
   const { data: tripMembers } = useQuery(
     trpc.trips.listMembers.queryOptions({ workspaceId, tripId }),
+  );
+
+  // Self-service join/leave. `addToSegment` is the ORGANIZER action; these are
+  // how a member puts themselves on a leg, and they had no caller — you could
+  // see who was on a segment and not join it yourself.
+  const session = authClient.useSession();
+  const currentUserId = session.data?.user?.id;
+  const invalidateMembership = () => {
+    void queryClient.invalidateQueries(
+      trpc.trips.listSegmentMembers.queryFilter(),
+    );
+    void queryClient.invalidateQueries(trpc.trips.listSegments.queryFilter());
+  };
+  const joinMutation = useMutation(
+    trpc.trips.joinSegment.mutationOptions({ onSuccess: invalidateMembership }),
+  );
+  const leaveMutation = useMutation(
+    trpc.trips.leaveSegment.mutationOptions({
+      onSuccess: invalidateMembership,
+    }),
   );
 
   const addMutation = useMutation(
@@ -151,6 +171,43 @@ function SegmentMemberRow({
           {memberCount} {memberCount === 1 ? "person" : "people"}
         </Text>
         <View style={{ flex: 1 }} />
+        {currentUserId != null && (
+          <Pressable
+            disabled={joinMutation.isPending || leaveMutation.isPending}
+            onPress={() => {
+              const scope = { workspaceId, tripId, segmentId };
+              if (segmentUserIds.has(currentUserId)) {
+                leaveMutation.mutate(scope);
+              } else {
+                joinMutation.mutate(scope);
+              }
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: R.sm,
+              borderWidth: 1,
+              borderColor: C.border,
+              minHeight: 36,
+            }}
+          >
+            <Ionicons
+              name={
+                segmentUserIds.has(currentUserId)
+                  ? "exit-outline"
+                  : "enter-outline"
+              }
+              size={14}
+              color={C.muted}
+            />
+            <Text style={{ color: C.muted, fontSize: 12, fontWeight: "500" }}>
+              {segmentUserIds.has(currentUserId) ? "Leave" : "Join"}
+            </Text>
+          </Pressable>
+        )}
         {nonMembers.length > 0 && (
           <Pressable
             onPress={() => setShowAddMember(!showAddMember)}

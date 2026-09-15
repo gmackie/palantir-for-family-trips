@@ -1,6 +1,8 @@
 import { decode } from "@googlemaps/polyline-codec";
-import { and, asc, eq, gte, isNull, lte, or } from "@sortey/db";
+import { and, asc, desc, eq, gte, isNull, lte, or } from "@sortey/db";
 import {
+  type CastGroundingFact,
+  castGroundingBriefs,
   importedPois,
   tripAnchors,
   tripDays,
@@ -69,7 +71,19 @@ export type CastDayContext = {
     note: string | null;
   }>;
   pois: CastContextPoi[];
+  /**
+   * Provenance-tracked corridor research from an OODA thread (latest brief
+   * for this segment). Verified facts may be narrated with soft attribution;
+   * unverified ones stay hedged. Null when no research has been pushed.
+   */
+  grounding: {
+    title: string;
+    facts: CastGroundingFact[];
+  } | null;
 };
+
+/** Keep the prompt payload bounded even if a huge brief is pushed. */
+const GROUNDING_FACT_LIMIT = 40;
 
 /**
  * "Tomorrow" as a YYYY-MM-DD calendar date in the trip's timezone. The night-
@@ -238,6 +252,10 @@ export async function buildCastDayContext(
       ? await collectCorridorPois(db, trip.workspaceId, segmentRow)
       : [];
 
+  const grounding = segmentRow
+    ? await loadGroundingBrief(db, input.tripId, segmentRow.id)
+    : null;
+
   return {
     tripName: trip.name,
     tz: trip.tz,
@@ -271,6 +289,35 @@ export async function buildCastDayContext(
       : null,
     anchors,
     pois,
+    grounding,
+  };
+}
+
+async function loadGroundingBrief(
+  // biome-ignore lint/suspicious/noExplicitAny: db is a Drizzle client
+  db: any,
+  tripId: string,
+  segmentId: string,
+): Promise<CastDayContext["grounding"]> {
+  const [brief] = (await db
+    .select({
+      title: castGroundingBriefs.title,
+      facts: castGroundingBriefs.facts,
+    })
+    .from(castGroundingBriefs)
+    .where(
+      and(
+        eq(castGroundingBriefs.tripId, tripId),
+        eq(castGroundingBriefs.segmentId, segmentId),
+      ),
+    )
+    .orderBy(desc(castGroundingBriefs.createdAt))
+    .limit(1)) as Array<{ title: string; facts: CastGroundingFact[] }>;
+
+  if (!brief) return null;
+  return {
+    title: brief.title,
+    facts: brief.facts.slice(0, GROUNDING_FACT_LIMIT),
   };
 }
 

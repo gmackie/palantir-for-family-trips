@@ -6,6 +6,15 @@ import { notFound } from "next/navigation";
 
 import { requireTripsWorkspace } from "../../_lib/server";
 import { RoomBoard } from "./_components/room-board";
+import {
+  AddLodging,
+  AddTransit,
+  AddTransportGroup,
+  DeleteLodging,
+  EditLodging,
+  EditTransit,
+  LodgingGuests,
+} from "./_components/segment-actions";
 import { TransitRefreshButton } from "./_components/transit-refresh-button";
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -111,9 +120,11 @@ export default async function LodgingPage(props: {
                   <h3 className="text-sm font-semibold text-[#C9D1D9]">
                     Lodging
                   </h3>
-                  <Button variant="outline" size="sm" disabled>
-                    Add lodging
-                  </Button>
+                  <AddLodging
+                    workspaceId={workspace.id}
+                    tripId={tripId}
+                    segmentId={segment.id}
+                  />
                 </div>
 
                 {lodgingList.length === 0 ? (
@@ -137,6 +148,29 @@ export default async function LodgingPage(props: {
                                 {PROVIDER_LABELS[l.provider] ?? l.provider}
                               </span>
                             )}
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                              <EditLodging
+                                workspaceId={workspace.id}
+                                tripId={tripId}
+                                lodging={l}
+                              />
+                              <LodgingGuests
+                                workspaceId={workspace.id}
+                                tripId={tripId}
+                                lodgingId={l.id}
+                                guestUserIds={l.guestUserIds ?? []}
+                                members={members.map((m) => ({
+                                  userId: m.userId,
+                                  name: m.displayName ?? m.userId,
+                                }))}
+                              />
+                              <DeleteLodging
+                                workspaceId={workspace.id}
+                                tripId={tripId}
+                                lodgingId={l.id}
+                                propertyName={l.propertyName}
+                              />
+                            </div>
                           </div>
                           {l.totalCostCents != null && (
                             <span className="font-mono text-sm font-medium tabular-nums text-[#C9D1D9]">
@@ -180,9 +214,15 @@ export default async function LodgingPage(props: {
                   <h3 className="text-sm font-semibold text-[#C9D1D9]">
                     Arrivals &amp; Departures
                   </h3>
-                  <Button variant="outline" size="sm" disabled>
-                    Add transit
-                  </Button>
+                  <AddTransit
+                    workspaceId={workspace.id}
+                    tripId={tripId}
+                    segmentId={segment.id}
+                    members={members.map((m) => ({
+                      userId: m.userId,
+                      name: m.displayName ?? m.userId,
+                    }))}
+                  />
                 </div>
 
                 {transits.length === 0 ? (
@@ -233,6 +273,11 @@ export default async function LodgingPage(props: {
                             </p>
                           )}
                           <div className="mt-1 flex items-center justify-end gap-2">
+                            <EditTransit
+                              workspaceId={workspace.id}
+                              tripId={tripId}
+                              transit={t}
+                            />
                             <span
                               className={`inline-block rounded-[2px] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLORS[t.trackingStatus] ?? "bg-[#8B949E]/15 text-[#8B949E]"}`}
                             >
@@ -259,9 +304,11 @@ export default async function LodgingPage(props: {
                   <h3 className="text-sm font-semibold text-[#C9D1D9]">
                     Ground Transport
                   </h3>
-                  <Button variant="outline" size="sm" disabled>
-                    Add transport
-                  </Button>
+                  <AddTransportGroup
+                    workspaceId={workspace.id}
+                    tripId={tripId}
+                    segmentId={segment.id}
+                  />
                 </div>
 
                 {transportGroups.length === 0 ? (

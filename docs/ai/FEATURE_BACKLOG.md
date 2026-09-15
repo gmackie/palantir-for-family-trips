@@ -32,13 +32,35 @@ Goal: group destination trips feel complete on web **and** mobile for lodging, r
 | D1 | Room assignments API | ✅ | `packages/api/src/router/rooms.ts` + tests |
 | D2 | Room board (web) | ✅ | `apps/nextjs/.../lodging/_components/room-board.tsx` |
 | D3 | Room board (mobile) | ✅ | `apps/expo/src/components/trip/room-board.tsx` + lodging screen |
-| D4 | Member transit CRUD + list | ✅ | `lodging.createTransit` / `updateTransit` / `listTransitsForSegment` |
+| D4 | Member transit CRUD + list | ✅ | Create, edit, list, refresh all wired on web (2026-08-03) |
 | D5 | AviationStack refresh (web) | ✅ | `refreshTransitStatus` + `transit-refresh-button.tsx` |
 | D6 | AviationStack refresh (mobile) | ✅ | "Refresh status" on flight transit rows |
 | D7 | Ground transport groups | ✅ | API + web + mobile join/leave |
 | D8 | Personal workspace on first use | ✅ | `ensurePersonalWorkspace` from trips server path |
 | D9 | Workspace switcher in nav | ✅ | Flag-gated on trips list |
 | D10 | `workspacesVisible` flag | ✅ | `@sortey/flags` — off in prod, on in dev/staging |
+
+> **Audit + fix (2026-08-03).** `scripts/audit-orphans.ts` found 29 of 211
+> procedures with no caller. The lodging page rendered three `disabled`
+> buttons over working procedures, so the whole write half of the feature was
+> unreachable. Now wired on web: `createLodging`, `deleteLodging`,
+> `createTransit`, `createTransportGroup`. Down to 24 orphans.
+>
+> Lodging is now fully wired — create, edit, guests, delete, plus transit
+> create/edit and transport-group create. Down to 21 orphans. `listForSegment`
+> gained `guestUserIds` because `setGuests` replaces the whole list, and an
+> editor that cannot read the current one can only clobber it.
+>
+> **Pin editing shipped 2026-08-03.** `map/_components/pin-editor.tsx` holds
+> the collaborative edit lock while the form is open — acquired on open,
+> released on save or cancel. Safety rests on the server-side
+> `editLockedUntil` TTL, not on release: a closed tab cannot strand a pin.
+> `pins.setAttendees` is still uncalled; who is going to a pin has no UI.
+>
+> Still unwired, each needing a product call rather than a deletion:
+> `trips.joinSegment` / `leaveSegment`, `planner.suggestOvernightsTrip`,
+> `corridor.amenityGroups` / `searchCached`, and the eight `admin.*`
+> procedures (no admin surface exists yet).
 
 **Track 1 acceptance**
 
@@ -83,10 +105,10 @@ Source: `docs/plans/2026-07-09-itinerary-planner.md`, DayMap/DriftPort specs, `C
 | R7 | Route gradient (mobile Driving Mode) | ✅ | `RouteAheadCard` gradient bar + zone markers on Drive |
 | R8 | P2 hour-aware packer for plain A→B | ✅ | `estimateDriveDays` + `totalDriveMiles` / `leadInMiles` on replanDraft |
 | R9 | P4 dual-candidate routes (coast vs inland) | ✅ | `listCandidates` + select; `planRoute.preferredRoute` writes chosen polyline |
-| R10 | P5 cut-if-behind automation | 🟡 | Cut text seeded; no auto-drop of blocks |
+| R10 | P5 cut-if-behind automation | ✅ | `cut-if-behind.ts` + replan wiring: a `behind` replan drops the days the traveller pre-authorised (never a drive, event, or anchored day), reports each cut with their own words, and names the shortfall when cutting everything allowed still is not enough |
 | R11 | Predicted Stop as first-class list | ✅ | Predicted stops list on Route Ahead (fuel + overnight zones) |
 | R12 | DriftPort predictive service logistics | 🟡 | Telemetry spike + service queue; full consumption→POI matching open |
-| R13 | Work-window finder (DayMap B1) | ❌ | Spec only |
+| R13 | Work-window finder (DayMap B1) | 🟡 | `daymap/work-window.ts` — pure planner ranking the day's parts against drive time, house power, and connectivity, with named blockers when nothing fits. Input-driven (manual or telemetry); not yet wired to a surface |
 
 **Track 3 acceptance (near-term)**
 

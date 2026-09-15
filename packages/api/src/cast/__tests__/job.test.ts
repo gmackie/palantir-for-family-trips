@@ -182,6 +182,57 @@ describe("runCastPump", () => {
     });
   });
 
+  it("scores the draft at the read gate, without gating on it", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => ({
+          hasDriveLeg: true,
+          anchors: [],
+          pois: [],
+          grounding: null,
+          segment: null,
+        })) as never,
+        generateScript: vi.fn(async () => SCRIPT) as never,
+      },
+    });
+
+    const parked = updates.at(-1) as { evalJson?: { checks: unknown[] } };
+    expect(parked).toMatchObject({ status: "awaiting_approval" });
+    // The report rides along with the script the human is about to read.
+    expect(parked.evalJson?.checks.length).toBeGreaterThan(0);
+  });
+
+  it("a scoring failure never costs a generated script", async () => {
+    // The eval is advisory. A bug in it must not discard work the model was
+    // already paid for.
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    const result = await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => {
+          // A context shaped so evaluateCastScript throws when it reads it.
+          return { hasDriveLeg: true } as never;
+        }) as never,
+        generateScript: vi.fn(async () => SCRIPT) as never,
+      },
+    });
+    expect(result.status).toBe("awaiting_approval");
+    expect(updates.at(-1)).toMatchObject({
+      status: "awaiting_approval",
+      scriptJson: SCRIPT,
+    });
+  });
+
   it("approved: synthesizes, concats, uploads, records the episode, cleans temp", async () => {
     const r2 = fakeR2();
     // Park both segments' audio in R2 as finished checkpoints would.
@@ -204,8 +255,11 @@ describe("runCastPump", () => {
 
     const { db, updates, inserts } = fakePumpDb({
       claimRows: [claimedJob({ status: "approved", scriptJson: SCRIPT })],
-      // runSynthesisStep re-reads accumulated ttsCharacters for the episode row.
-      selectQueue: [[{ ttsCharacters: 1234 }]],
+      selectQueue: [
+        [{ castVoiceId: null }], // trip narrator: follow the deployment default
+        // runSynthesisStep re-reads accumulated ttsCharacters for the episode row.
+        [{ ttsCharacters: 1234 }],
+      ],
     });
 
     const result = await runCastPump({
@@ -256,6 +310,32 @@ describe("runCastPump", () => {
     }
   });
 
+  it("uses the trip's chosen narrator over the deployment default", async () => {
+    const r2 = fakeR2();
+    const { db, inserts } = fakePumpDb({
+      claimRows: [claimedJob({ status: "approved", scriptJson: SCRIPT })],
+      selectQueue: [[{ castVoiceId: "v_trip_choice" }], [{ ttsCharacters: 0 }]],
+    });
+    const seen: string[] = [];
+
+    await runCastPump({
+      r2,
+      db,
+      deps: {
+        ...baseDeps,
+        synthesizeSegments: vi.fn(async (params: { voiceId: string }) => {
+          seen.push(params.voiceId);
+          return { checkpoints: [], finished: true, charactersBilled: 0 };
+        }) as never,
+      },
+    });
+
+    // Read at synthesis, not at claim, so a voice changed after enqueue still
+    // takes effect. (The episode row recording the voice it was spoken with is
+    // covered by the full synthesis test above.)
+    expect(seen).toEqual(["v_trip_choice"]);
+  });
+
   it("synthesizing: voluntary checkpoint-and-release when out of budget", async () => {
     const { db, updates, inserts } = fakePumpDb({
       claimRows: [claimedJob({ status: "synthesizing", scriptJson: SCRIPT })],
@@ -301,6 +381,53 @@ describe("runCastPump", () => {
     expect(String(updates.at(-1)?.error)).toMatch(/429/);
     // checkpointsJson untouched — resume must not re-bill.
     expect(updates.at(-1)).not.toHaveProperty("checkpointsJson");
+  });
+
+  it("a billing failure fails the job now instead of burning every attempt", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    const result = await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => ({ hasDriveLeg: true }) as never),
+        generateScript: vi.fn(async () => {
+          throw new Error(
+            "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] Your prepayment credits are depleted.",
+          );
+        }) as never,
+      },
+    });
+    // Attempt 1 of 4, but retrying an empty wallet just delays the same answer.
+    expect(result.status).toBe("failed");
+    expect(updates.at(-1)).toMatchObject({ status: "failed", attemptCount: 1 });
+    expect(String(updates.at(-1)?.error)).toMatch(/out of credit/);
+    // The raw vendor blob must not be what the console shows.
+    expect(String(updates.at(-1)?.error)).not.toMatch(/generativelanguage/);
+  });
+
+  it("a transient model error still gets its retries", async () => {
+    const { db, updates } = fakePumpDb({
+      claimRows: [claimedJob({ status: "pending" })],
+    });
+    const result = await runCastPump({
+      r2: fakeR2(),
+      db,
+      deps: {
+        ...baseDeps,
+        buildContext: vi.fn(async () => ({ hasDriveLeg: true }) as never),
+        generateScript: vi.fn(async () => {
+          throw new Error("rate limit exceeded");
+        }) as never,
+      },
+    });
+    expect(result.status).toBe("pending");
+    expect(updates.at(-1)).toMatchObject({
+      status: "pending",
+      attemptCount: 1,
+    });
   });
 
   it("claims from a {rows: [...]} driver shape too", async () => {

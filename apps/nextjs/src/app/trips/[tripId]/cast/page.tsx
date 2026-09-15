@@ -9,7 +9,7 @@ export default async function CastPage(props: {
   params: Promise<{ tripId: string }>;
 }) {
   const { tripId } = await props.params;
-  const { caller, workspace } = await requireTripsWorkspace();
+  const { caller, workspace, session } = await requireTripsWorkspace();
 
   let trip: Awaited<ReturnType<typeof caller.trips.get>>;
   try {
@@ -36,7 +36,11 @@ export default async function CastPage(props: {
         </Link>
       </div>
 
-      <CastConsole workspaceId={workspace.id} tripId={tripId} />
+      <CastConsole
+        workspaceId={workspace.id}
+        tripId={tripId}
+        userId={session.user.id}
+      />
     </div>
   );
 }

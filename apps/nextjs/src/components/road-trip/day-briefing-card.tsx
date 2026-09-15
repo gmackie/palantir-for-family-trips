@@ -18,6 +18,15 @@ export function DayBriefingCard(props: {
     }),
   );
 
+  // The service run is the "several needs converge, take one stop" answer.
+  // It only appears when the plan is actually actionable.
+  const serviceRun = useQuery(
+    trpc.daymap.serviceAlerts.queryOptions({
+      workspaceId: props.workspaceId,
+      tripId: props.tripId,
+    }),
+  );
+
   const b = briefing.data;
   if (briefing.isLoading) {
     return (
@@ -76,6 +85,23 @@ export function DayBriefingCard(props: {
       {b.notes.slice(0, 3).map((n) => (
         <p key={n} className="text-[10px] text-[#D29922]">
           {n}
+        </p>
+      ))}
+      {serviceRun.data?.run.stops.slice(0, 2).map((stop) => (
+        <p key={stop.poi.id} className="text-[10px] text-[#3FB950]">
+          Service run · {stop.poi.name} at mile {Math.round(stop.poi.routeMile)}
+          {stop.poi.milesOffRoute >= 1
+            ? ` (${stop.poi.milesOffRoute} mi off route)`
+            : ""}{" "}
+          — {stop.needs.map((n) => n.label).join(", ")}
+        </p>
+      ))}
+      {serviceRun.data?.run.unserved.map((need) => (
+        // Nowhere ahead to service this. Saying so beats silence: that is how
+        // someone reaches the overnight with a full tank and no options.
+        <p key={need.resource} className="text-[10px] text-[#F85149]">
+          No {need.label.toLowerCase()} stop on the route ahead —{" "}
+          {need.daysUntil <= 0 ? "due now" : `~${need.daysUntil}d`}
         </p>
       ))}
     </div>

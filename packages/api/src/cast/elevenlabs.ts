@@ -75,3 +75,82 @@ export async function synthesizeSpeech(params: {
 
   return new Uint8Array(await response.arrayBuffer());
 }
+
+/** A narrator the trip can choose. */
+export interface CastVoice {
+  voiceId: string;
+  name: string;
+  /** Free-text descriptors from the catalogue (accent, age, use case). */
+  labels: Record<string, string>;
+  previewUrl: string | null;
+}
+
+const VOICES_REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * The voices this API key can use. Read-only and cheap, but it is a network
+ * call on someone's trip page, so it fails soft: an empty list renders as
+ * "voice picking is unavailable", never as a broken page.
+ */
+export async function listCastVoices(params?: {
+  apiKey?: string;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+}): Promise<CastVoice[]> {
+  const apiKey = params?.apiKey ?? process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) return [];
+  const fetchImpl = params?.fetchImpl ?? fetch;
+
+  const timeoutSignal = (
+    AbortSignal as unknown as { timeout?: (ms: number) => unknown }
+  ).timeout?.(params?.timeoutMs ?? VOICES_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetchImpl("https://api.elevenlabs.io/v1/voices", {
+      headers: { "xi-api-key": apiKey },
+      ...(timeoutSignal ? { signal: timeoutSignal as never } : {}),
+    });
+  } catch {
+    return [];
+  }
+  if (!response.ok) return [];
+
+  const body = (await response.json().catch(() => null)) as {
+    voices?: Array<{
+      voice_id?: unknown;
+      name?: unknown;
+      labels?: unknown;
+      preview_url?: unknown;
+    }>;
+  } | null;
+
+  return (body?.voices ?? [])
+    .map((voice) => ({
+      voiceId: typeof voice.voice_id === "string" ? voice.voice_id : "",
+      name: typeof voice.name === "string" ? voice.name : "",
+      labels:
+        voice.labels && typeof voice.labels === "object"
+          ? Object.fromEntries(
+              Object.entries(voice.labels as Record<string, unknown>)
+                .filter(([, v]) => typeof v === "string")
+                .map(([k, v]) => [k, v as string]),
+            )
+          : {},
+      previewUrl:
+        typeof voice.preview_url === "string" ? voice.preview_url : null,
+    }))
+    .filter((voice) => voice.voiceId.length > 0 && voice.name.length > 0);
+}
+
+/**
+ * The narrator for one trip: its own choice, else the deployment default.
+ * A blank or whitespace-only stored value is treated as unset rather than
+ * being sent to the API as an empty voice id.
+ */
+export function resolveTripVoiceId(
+  tripVoiceId: string | null | undefined,
+): string {
+  const trimmed = tripVoiceId?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : castVoiceId();
+}

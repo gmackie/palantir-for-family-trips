@@ -1,7 +1,13 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { CastScript } from "@sortey/db/schema";
 
-import { generateStructured, type LlmUsage } from "../llm/extract-structured";
+import { createScriptGenerator } from "../llm/create-generator";
+import {
+  DEFAULT_SCRIPT_MODELS,
+  type LlmUsage,
+  resolveLlmProviderOrDefault,
+  type StructuredGenerator,
+  scriptModelFor,
+} from "../llm/structured";
 import type { CastDayContext } from "./context";
 import {
   buildOutlineUserPrompt,
@@ -18,12 +24,17 @@ import {
  * the tail of the previous chapter for continuity.
  */
 
-export const DEFAULT_CAST_SCRIPT_MODEL = "claude-sonnet-4-6";
+export const DEFAULT_CAST_SCRIPT_MODEL = DEFAULT_SCRIPT_MODELS.anthropic;
 /** Per-LLM-call cap so one slow request can't eat the whole cron budget. */
 const SCRIPT_CALL_TIMEOUT_MS = 3 * 60 * 1000;
 
+/**
+ * The model this deployment will actually use — provider-aware, so a
+ * Gemini-keyed worker records `gemini-…` on the episode rather than the Claude
+ * default it never called.
+ */
 export function castScriptModel(): string {
-  return process.env.CAST_SCRIPT_MODEL ?? DEFAULT_CAST_SCRIPT_MODEL;
+  return scriptModelFor(resolveLlmProviderOrDefault());
 }
 
 export class CastDeadlineError extends Error {}
@@ -31,20 +42,19 @@ export class CastDeadlineError extends Error {}
 export async function generateCastScript(params: {
   context: CastDayContext;
   durationMinutes: number;
-  client?: Anthropic;
+  /** Test seam / explicit provider override; resolved from env by default. */
+  generate?: StructuredGenerator;
   model?: string;
   /** Epoch ms — abort between chapters before the cron wall clock kills us. */
   deadline?: number;
   now?: () => number;
   onUsage?: (usage: LlmUsage) => void;
 }): Promise<CastScript> {
-  const client = params.client ?? new Anthropic();
-  const model = params.model ?? castScriptModel();
+  const generate =
+    params.generate ?? createScriptGenerator({ model: params.model }).generate;
   const now = params.now ?? Date.now;
 
-  const outline = await generateStructured({
-    client,
-    model,
+  const outline = await generate({
     systemPrompt: CAST_SYSTEM_PROMPT,
     userText: buildOutlineUserPrompt(params.context, params.durationMinutes),
     schema: castOutlineSchema,
@@ -64,9 +74,7 @@ export async function generateCastScript(params: {
         `Script generation ran out of pump budget after ${segments.length}/${outline.segments.length} chapters.`,
       );
     }
-    const chapter: { text: string } = await generateStructured({
-      client,
-      model,
+    const chapter: { text: string } = await generate({
       systemPrompt: CAST_SYSTEM_PROMPT,
       userText: buildSegmentUserPrompt({
         context: params.context,
