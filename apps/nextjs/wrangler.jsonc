@@ -2,6 +2,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sortey-app",
   "observability": {
+    "traces": {
+      "enabled": true,
+      "destinations": ["signoz-traces"]
+    },
     "enabled": true,
     "logs": { "enabled": true, "destinations": ["signoz-logs"] }
   },
