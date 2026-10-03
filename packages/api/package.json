@@ -34,6 +34,10 @@
     "./copilot": {
       "types": "./src/copilot/index.ts",
       "default": "./src/copilot/index.ts"
+    },
+    "./trips/dashboard-state": {
+      "types": "./src/trips/dashboard-state.ts",
+      "default": "./src/trips/dashboard-state.ts"
     }
   },
   "license": "MIT",
