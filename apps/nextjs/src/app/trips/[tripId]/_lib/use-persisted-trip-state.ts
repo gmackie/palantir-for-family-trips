@@ -5,7 +5,7 @@ import {
   LEGACY_TRIP_DOCUMENT_STORAGE_KEY,
   LEGACY_VIEWER_PROFILE_STORAGE_KEY,
   type TripDashboardState,
-} from "@sortey/api";
+} from "@sortey/api/trips/dashboard-state";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 
