@@ -14,7 +14,7 @@
   "placement": { "mode": "smart" },
   "triggers": { "crons": ["*/5 * * * *"] },
   "build": {
-    "command": "pnpm prebuild:vinext && VINEXT=1 pnpm with-env vinext build",
+    "command": "npx --yes pnpm@10.32.1 prebuild:vinext && VINEXT=1 npx --yes pnpm@10.32.1 with-env vinext build",
     "cwd": ".",
     "watch_dir": ["src", "worker", "../../packages"]
   },
