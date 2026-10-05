@@ -14,9 +14,22 @@ appId: com.gmacko.sortey
 ---
 # tf:step "Launch the app and sign in with the organizer demo account (magic link via the demo bypass)." capture=screenshot
 - launchApp
+# A session from an earlier run may still be cached in the keychain: sign out first so the
+# flow always starts from the signed-out screen.
+- extendedWaitUntil:
+    visible: "Sign (in|out)"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+      - tapOn:
+          text: "Sign out"
+          below: "Are you sure you want to sign out?"
 - extendedWaitUntil:
     visible: "Sign in"
-    timeout: 15000
+    timeout: 20000
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
 - tapOn: "Send magic link"
@@ -25,6 +38,10 @@ appId: com.gmacko.sortey
     timeout: 15000
 - evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
 - openLink: "${output.magicUrl}"
+# Safari asks "Open in Sortey?" before handing the custom-scheme redirect to the app.
+- tapOn:
+    text: "Open"
+    optional: true
 - extendedWaitUntil:
     visible: "Your Trips"
     timeout: 30000
@@ -33,14 +50,22 @@ appId: com.gmacko.sortey
 - extendedWaitUntil:
     visible: "Start a trip"
     timeout: 15000
-- assertVisible: "Start from scratch"
+# Buttons that carry an icon expose "<glyph>Label" to accessibility, so match with a regex.
+- assertVisible: ".*Start from scratch.*"
 # tf:step "Pick Start from scratch, then choose Destination as the trip type and Group (expense splitting), and tap Next." capture=screenshot
-- tapOn: "Start from scratch"
+# The label also matches an enclosing container, so anchor on the card below the subtitle.
+- tapOn:
+    text: ".*Start from scratch.*"
+    below: "Pick a template or start from scratch."
 - extendedWaitUntil:
     visible: "What kind of trip?"
     timeout: 10000
-- tapOn: "Destination"
-- tapOn: "Group"
+- tapOn:
+    text: ".*Fixed place.*"
+    below: "What kind of trip?"
+- tapOn:
+    text: ".*Shared members.*"
+    below: "Family or group?"
 - tapOn: "Next"
 # tf:step "Name the trip 'TrueFlight Review Trip' and tap Next (dates are optional)." capture=screenshot
 - extendedWaitUntil:
@@ -61,4 +86,9 @@ appId: com.gmacko.sortey
     timeout: 30000
 - assertVisible: "Members"
 - assertVisible: "Expenses"
-- assertVisible: "Invite"
+# The quick-action row scrolls horizontally; Invite is the last action, so swipe it into view.
+- swipe:
+    from:
+      text: ".*New Poll.*"
+    direction: LEFT
+- assertVisible: ".*Invite.*"

@@ -16,9 +16,22 @@ appId: com.gmacko.sortey
 ---
 # tf:step "Launch the app and sign in with the disposable demo account (magic link via the demo bypass)." capture=screenshot
 - launchApp
+# A session from an earlier run may still be cached in the keychain: sign out first so the
+# flow always starts from the signed-out screen.
+- extendedWaitUntil:
+    visible: "Sign (in|out)"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+      - tapOn:
+          text: "Sign out"
+          below: "Are you sure you want to sign out?"
 - extendedWaitUntil:
     visible: "Sign in"
-    timeout: 15000
+    timeout: 20000
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
 - tapOn: "Send magic link"
@@ -27,6 +40,10 @@ appId: com.gmacko.sortey
     timeout: 15000
 - evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
 - openLink: "${output.magicUrl}"
+# Safari asks "Open in Sortey?" before handing the custom-scheme redirect to the app.
+- tapOn:
+    text: "Open"
+    optional: true
 - extendedWaitUntil:
     visible: "Settings"
     timeout: 30000
@@ -41,12 +58,13 @@ appId: com.gmacko.sortey
     direction: DOWN
     timeout: 20000
 # tf:step "Tap Delete Account and confirm the irreversible deletion in the alert." capture=video
+- tapOn: "Delete Account"
+# The confirmation alert repeats the label (and the Settings button is still behind it): pick the
+# button between the alert message and Cancel.
 - tapOn:
     text: "Delete Account"
-    index: 0
-- tapOn:
-    text: "Delete Account"
-    index: 1
+    below: "This permanently deletes.*"
+    above: "Cancel"
 # tf:step "Sortey confirms 'Account deleted' and signs you out." capture=screenshot
 - extendedWaitUntil:
     visible: "Account deleted"

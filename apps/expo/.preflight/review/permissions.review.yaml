@@ -25,9 +25,22 @@ appId: com.gmacko.sortey
     text: "Allow"
     optional: true
 # tf:step "Sign in with the organizer demo account (magic link via the demo bypass) and open the demo trip." capture=screenshot
+# A session from an earlier run may still be cached in the keychain: sign out first so the
+# flow always starts from the signed-out screen.
+- extendedWaitUntil:
+    visible: "Sign (in|out)"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+      - tapOn:
+          text: "Sign out"
+          below: "Are you sure you want to sign out?"
 - extendedWaitUntil:
     visible: "Sign in"
-    timeout: 15000
+    timeout: 20000
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
 - tapOn: "Send magic link"
@@ -36,19 +49,39 @@ appId: com.gmacko.sortey
     timeout: 15000
 - evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
 - openLink: "${output.magicUrl}"
+# Safari asks "Open in Sortey?" before handing the custom-scheme redirect to the app.
+- tapOn:
+    text: "Open"
+    optional: true
 - extendedWaitUntil:
     visible: "Your Trips"
     timeout: 30000
-- tapOn: "Reviewer Reunion"
+- tapOn: "Reviewer Reunion.*"
 - extendedWaitUntil:
-    visible: "Map"
+    visible: "Members"
     timeout: 15000
 # tf:step "Open Map and tap Share Location — iOS asks for location while using the app; tap Allow Once or Allow While Using App." capture=video
-- tapOn: "Map"
-- extendedWaitUntil:
-    visible: "Share Location"
+# Buttons that carry an icon expose "<glyph>Label" to accessibility, so match with a regex.
+# Map is the last tile of the hub grid, below the fold.
+- scrollUntilVisible:
+    element:
+      text: ".*Map.*"
+    direction: DOWN
     timeout: 20000
-- tapOn: "Share Location"
+- tapOn: ".*Map.*"
+- extendedWaitUntil:
+    visible: ".*(Share Location|Sharing).*"
+    timeout: 20000
+# Sharing state lives on the server; turn it off first if an earlier run left it on.
+- runFlow:
+    when:
+      visible: ".*Sharing.*"
+    commands:
+      - tapOn: ".*Sharing.*"
+      - extendedWaitUntil:
+          visible: ".*Share Location.*"
+          timeout: 15000
+- tapOn: ".*Share Location.*"
 - tapOn:
     text: "Allow While Using App"
     optional: true
@@ -57,24 +90,43 @@ appId: com.gmacko.sortey
     optional: true
 # tf:step "Location sharing is on — the button now reads Sharing." capture=screenshot
 - extendedWaitUntil:
-    visible: "Sharing"
+    visible: ".*Sharing.*"
     timeout: 15000
-- back
+# `back` is Android-only; on iOS tap the header back pill (it carries the previous screen's title).
+- tapOn:
+    text: "Reviewer Reunion"
+    index: 0
+- extendedWaitUntil:
+    visible: "Members"
+    timeout: 15000
 # tf:step "Back on the trip hub, tap Add Expense, then Scan Receipt — iOS asks for camera access; tap OK." capture=video
+- scrollUntilVisible:
+    element:
+      text: ".*Add Expense.*"
+    direction: UP
+    timeout: 20000
+- tapOn: ".*Add Expense.*"
 - extendedWaitUntil:
-    visible: "Add Expense"
+    visible: ".*Scan Receipt.*"
     timeout: 15000
-- tapOn: "Add Expense"
-- extendedWaitUntil:
-    visible: "Scan Receipt"
-    timeout: 15000
-- tapOn: "Scan Receipt"
+- tapOn: ".*Scan Receipt.*"
 - tapOn:
     text: "OK"
     optional: true
+# iOS 26 simulators open a simulated camera whose close control has no text label; it shows the
+# "PHOTO" mode pill, so close it with a tap on the X in the bottom-left corner.
+- runFlow:
+    when:
+      visible: "PHOTO"
+    commands:
+      - tapOn:
+          point: "14%,93%"
 - tapOn:
     text: "Cancel"
     optional: true
+- extendedWaitUntil:
+    visible: ".*Scan Receipt.*"
+    timeout: 10000
 # tf:step "Tap 'or choose from photo library' — the photo picker opens; cancel it." capture=screenshot
 - tapOn: "or choose from photo library"
 - tapOn:
