@@ -6,7 +6,7 @@ import {
 import { formatMoney } from "@sortey/validators/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
@@ -1128,8 +1128,17 @@ function AccountSection() {
   const { mutate: deleteAccount, isPending } = useMutation(
     trpc.settings.deleteAccount.mutationOptions({
       onSuccess: async () => {
-        await authClient.signOut();
-        Alert.alert("Account deleted", "Your account has been deleted.");
+        try {
+          await authClient.signOut();
+        } finally {
+          await SecureStore.deleteItemAsync("expo_cookie");
+          await SecureStore.deleteItemAsync("expo_session_data");
+          await SecureStore.deleteItemAsync("active_workspace_id");
+          queryClient.clear();
+          Alert.alert("Account deleted", "Your account has been deleted.", [
+            { text: "OK", onPress: () => { router.dismissAll(); router.replace("/"); } },
+          ]);
+        }
       },
     }),
   );
