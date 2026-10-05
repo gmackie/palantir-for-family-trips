@@ -12,9 +12,22 @@ appId: com.gmacko.sortey
 ---
 # tf:step "Launch the app — you land on the Sortey sign-in screen." capture=screenshot
 - launchApp
+# A session from an earlier run may still be cached in the keychain: sign out first so the
+# flow always starts from the signed-out screen.
+- extendedWaitUntil:
+    visible: "Sign (in|out)"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+      - tapOn:
+          text: "Sign out"
+          below: "Are you sure you want to sign out?"
 - extendedWaitUntil:
     visible: "Sign in"
-    timeout: 15000
+    timeout: 20000
 - assertVisible: "Send magic link"
 # tf:step "Enter the member demo email and tap Send magic link." capture=screenshot
 - tapOn: "you@example.com"
@@ -26,22 +39,30 @@ appId: com.gmacko.sortey
 # tf:step "Open the magic link (minted through the demo bypass); Sortey signs you in." capture=none
 - evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
 - openLink: "${output.magicUrl}"
+# Safari asks "Open in Sortey?" before handing the custom-scheme redirect to the app.
+- tapOn:
+    text: "Open"
+    optional: true
 # tf:step "You reach the Your Trips list, signed in, with the shared trip listed." capture=screenshot
 - extendedWaitUntil:
     visible: "Your Trips"
     timeout: 30000
-- assertVisible: "Reviewer Reunion"
+- assertVisible: "Reviewer Reunion.*"
 # tf:step "Open the trip, then Members — you are listed with the member badge." capture=screenshot
-- tapOn: "Reviewer Reunion"
+- tapOn: "Reviewer Reunion.*"
 - extendedWaitUntil:
-    visible: "Members"
+    visible: ".*Lodging.*"
     timeout: 15000
-- tapOn: "Members"
+# Buttons that carry an icon expose "<glyph>Label" to accessibility, so match with a regex.
+# The Members tile sits below the Lodging tile (the stat card above is also labelled Members).
+- tapOn:
+    text: ".*Members.*"
+    below: ".*Lodging.*"
 - extendedWaitUntil:
-    visible: "Share invite"
+    visible: ".*Share invite.*"
     timeout: 15000
 # tf:step "Tap Share invite — as a member you are told only organizers can create invite links." capture=screenshot
-- tapOn: "Share invite"
+- tapOn: ".*Share invite.*"
 - extendedWaitUntil:
     visible: "Cannot share invite"
     timeout: 10000

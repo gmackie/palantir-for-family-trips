@@ -18,9 +18,22 @@ appId: com.gmacko.sortey
 ---
 # tf:step "Launch the app — you land on the Sortey sign-in screen (magic link or Apple/Google)." capture=screenshot
 - launchApp
+# A session from an earlier run may still be cached in the keychain: sign out first so the
+# flow always starts from the signed-out screen.
+- extendedWaitUntil:
+    visible: "Sign (in|out)"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+      - tapOn:
+          text: "Sign out"
+          below: "Are you sure you want to sign out?"
 - extendedWaitUntil:
     visible: "Sign in"
-    timeout: 15000
+    timeout: 20000
 - assertVisible: "Send magic link"
 # tf:step "Enter the organizer demo email and tap Send magic link — Sortey confirms it sent the link." capture=screenshot
 - tapOn: "you@example.com"
@@ -32,14 +45,24 @@ appId: com.gmacko.sortey
 # tf:step "Open the magic link (the review harness mints it through the demo bypass instead of reading an inbox); Sortey signs you in." capture=none
 - evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
 - openLink: "${output.magicUrl}"
+# Safari asks "Open in Sortey?" before handing the custom-scheme redirect to the app.
+- tapOn:
+    text: "Open"
+    optional: true
 # tf:step "You reach the Your Trips list, signed in." capture=screenshot
 - extendedWaitUntil:
     visible: "Your Trips"
     timeout: 30000
 # tf:step "Open the demo trip — the trip hub shows the Members tile and the Invite quick action." capture=screenshot
 - tapOn:
-    text: "Reviewer Reunion"
+    text: "Reviewer Reunion.*"
 - extendedWaitUntil:
     visible: "Members"
     timeout: 15000
-- assertVisible: "Invite"
+# The quick-action row scrolls horizontally; Invite is the last action, so swipe it into view.
+- swipe:
+    from:
+      text: ".*New Poll.*"
+    direction: LEFT
+# Buttons that carry an icon expose "<glyph>Label" to accessibility, so match with a regex.
+- assertVisible: ".*Invite.*"

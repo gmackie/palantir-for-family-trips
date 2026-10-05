@@ -15,9 +15,22 @@ appId: com.gmacko.sortey
 ---
 # tf:step "Launch the app and sign in with the organizer demo account (magic link via the demo bypass)." capture=screenshot
 - launchApp
+# A session from an earlier run may still be cached in the keychain: sign out first so the
+# flow always starts from the signed-out screen.
+- extendedWaitUntil:
+    visible: "Sign (in|out)"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Sign out"
+    commands:
+      - tapOn: "Sign out"
+      - tapOn:
+          text: "Sign out"
+          below: "Are you sure you want to sign out?"
 - extendedWaitUntil:
     visible: "Sign in"
-    timeout: 15000
+    timeout: 20000
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
 - tapOn: "Send magic link"
@@ -26,24 +39,33 @@ appId: com.gmacko.sortey
     timeout: 15000
 - evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
 - openLink: "${output.magicUrl}"
+# Safari asks "Open in Sortey?" before handing the custom-scheme redirect to the app.
+- tapOn:
+    text: "Open"
+    optional: true
 - extendedWaitUntil:
     visible: "Your Trips"
     timeout: 30000
 # tf:step "Open the demo trip and tap the Invite quick action — the Members screen opens." capture=screenshot
-- tapOn: "Reviewer Reunion"
+- tapOn: "Reviewer Reunion.*"
 - extendedWaitUntil:
-    visible: "Invite"
+    visible: ".*New Poll.*"
     timeout: 15000
-- tapOn:
-    text: "Invite"
-    index: 0
+# The quick-action row scrolls horizontally; Invite is the last action, so swipe it into view.
+- swipe:
+    from:
+      text: ".*New Poll.*"
+    direction: LEFT
+# Buttons that carry an icon expose "<glyph>Label" to accessibility, so match with a regex.
+- tapOn: ".*Invite.*"
 - extendedWaitUntil:
-    visible: "Share invite"
+    visible: ".*Share invite.*"
     timeout: 15000
+# The hub underneath still exposes its own Invite action (index 0); the Members button is index 1.
 # tf:step "Tap Invite, enter an email address and tap Send — Sortey confirms 'Invite sent'." capture=video
 - tapOn:
-    text: "Invite"
-    index: 0
+    text: ".*Invite.*"
+    index: 1
 - extendedWaitUntil:
     visible: "Invite by email"
     timeout: 10000
@@ -55,13 +77,21 @@ appId: com.gmacko.sortey
     visible: "Invite sent"
     timeout: 20000
 - tapOn: "OK"
-# tf:step "The share link for this trip is shown under 'Or share this link'." capture=screenshot
+# tf:step "Sending closes the invite form; tap Invite again — the share link for this trip is now shown under 'Or share this link'." capture=screenshot
+- tapOn:
+    text: ".*Invite.*"
+    index: 1
+- extendedWaitUntil:
+    visible: "Invite by email"
+    timeout: 10000
 - extendedWaitUntil:
     visible: "Or share this link"
     timeout: 10000
 # tf:step "Tap Done, then Share invite — the iOS share sheet opens with the trip link; dismiss it." capture=video
+# The email field autofocuses and the keyboard covers the panel; dismiss it before tapping Done.
+- hideKeyboard
 - tapOn: "Done"
-- tapOn: "Share invite"
+- tapOn: ".*Share invite.*"
 - tapOn:
     text: "Close"
     optional: true
