@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
 import { trpc } from "./api";
+import { authClient } from "./auth";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,11 +18,13 @@ Notifications.setNotificationHandler({
 
 export function usePushNotifications() {
   const registered = useRef(false);
+  const { data: session } = authClient.useSession();
   const registerMutation = useMutation(
     trpc.notifications.registerPushToken.mutationOptions({}),
   );
 
   useEffect(() => {
+    if (!session?.user) return;
     if (registered.current) return;
     registered.current = true;
 
@@ -45,5 +48,5 @@ export function usePushNotifications() {
         platform: Platform.OS === "ios" ? "ios" : "android",
       });
     })();
-  }, [registerMutation]);
+  }, [registerMutation, session?.user?.id]);
 }

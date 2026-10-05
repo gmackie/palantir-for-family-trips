@@ -13,6 +13,13 @@ export function initSentryNative(config: SentryNativeConfig): void {
     return;
   }
 
+  try {
+    const dsn = new URL(config.dsn);
+    if (!['https:', 'http:'].includes(dsn.protocol) || !dsn.username || !/^\/\d+$/.test(dsn.pathname)) return;
+  } catch {
+    return;
+  }
+
   const environment = config.environment ?? "development";
   const isProduction = environment === "production";
 

@@ -304,7 +304,7 @@ export default function MembersScreen() {
     trpc.trips.createInvite.mutationOptions({
       onSuccess: (data) => {
         setInviteEmail("");
-        setShowInviteField(false);
+        setShowInviteField(true);
         void queryClient.invalidateQueries({
           queryKey: trpc.trips.listInvites.queryKey({
             workspaceId,
@@ -470,7 +470,6 @@ export default function MembersScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                autoFocus
                 style={{
                   flex: 1,
                   backgroundColor: C.bg,

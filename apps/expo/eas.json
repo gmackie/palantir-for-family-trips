@@ -25,7 +25,6 @@
       "env": {
         "APP_VARIANT": "development",
         "API_URL": "https://sortey.app",
-        "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_DEV}",
         "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_DEV}",
         "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
       },
@@ -59,7 +58,6 @@
       "env": {
         "APP_VARIANT": "preview",
         "API_URL": "https://sortey.app",
-        "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_STAGING}",
         "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_STAGING}",
         "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
