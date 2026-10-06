@@ -1,14 +1,12 @@
-appId: ${APP_ID}
-name: "App Launches (smoke)"
+appId: com.gmacko.sortey.expo
+name: "Sortey signed-out launch (smoke)"
 tags: [smoke]
 ---
-- launchApp
-- runFlow:
-    when:
-      visible: "Continue"
-    commands:
-      - tapOn: "Continue"
+# Preflight opens this development client with the current Metro URL before
+# running smoke. Preserve that session and wait for the actual Sortey screen.
 - extendedWaitUntil:
-    visible: ".*"
+    visible: "Sign in"
     timeout: 90000
-- takeScreenshot: launched
+- assertVisible: "Send magic link"
+- assertVisible: "Continue with Google"
+- takeScreenshot: sortey-launched-signed-out
