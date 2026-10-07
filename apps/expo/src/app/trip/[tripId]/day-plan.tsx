@@ -17,6 +17,7 @@ import {
 
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import { useTripCalendarDay } from "~/utils/use-trip-calendar-day";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 const INTENTS = ["play", "drive", "position", "event", "recovery"] as const;
@@ -34,10 +35,6 @@ const INTENT_COLOR: Record<string, string> = {
   event: "#A371F7",
   recovery: C.muted,
 };
-
-function todayUtc() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function formatShort(date: string) {
   return new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", {
@@ -87,6 +84,13 @@ export default function DayPlanScreen() {
   });
 
   const tid = tripId ?? "";
+  const { data: trip, isError: tripError } = useQuery(
+    trpc.trips.get.queryOptions(
+      { workspaceId, tripId: tid },
+      { enabled: Boolean(workspaceId && tid) },
+    ),
+  );
+  const today = useTripCalendarDay(trip?.tz) ?? "";
 
   const { data: days, isLoading } = useQuery(
     trpc.planner.listDays.queryOptions({ workspaceId, tripId: tid }),
@@ -136,6 +140,7 @@ export default function DayPlanScreen() {
   );
 
   async function replanFromGps() {
+    if (!today) return;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
@@ -159,7 +164,7 @@ export default function DayPlanScreen() {
                 tripId: tid,
                 template: "open_sauce_full",
                 replaceExisting: true,
-                fromDate: todayUtc(),
+                fromDate: today,
                 origin: {
                   lat: loc.coords.latitude,
                   lng: loc.coords.longitude,
@@ -214,11 +219,11 @@ export default function DayPlanScreen() {
     ...trpc.planner.suggestOvernights.queryOptions({
       workspaceId,
       tripId: tid,
-      date: editing?.date ?? todayUtc(),
+      date: editing?.date ?? today,
       maxMiles: 25,
       limit: 10,
     }),
-    enabled: !!editing?.date && !!workspaceId,
+    enabled: !!editing?.date && !!workspaceId && !!today,
   });
 
   const applyOvernight = useMutation(
@@ -252,7 +257,6 @@ export default function DayPlanScreen() {
     }),
   );
 
-  const today = todayUtc();
   const dayList = (days ?? []) as DayRow[];
   const filtered = useMemo(() => {
     if (filter === "upcoming") return dayList.filter((d) => d.date >= today);
@@ -344,6 +348,21 @@ export default function DayPlanScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, padding: 16 }}>
         <Text style={{ color: C.muted }}>Missing trip context</Text>
+      </View>
+    );
+  }
+
+  if (!today) {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg, padding: 16 }}>
+        <Stack.Screen options={{ title: "Day plan" }} />
+        {tripError ? (
+          <Text style={{ color: C.critical }}>
+            Could not load trip timezone.
+          </Text>
+        ) : (
+          <ActivityIndicator color={C.muted} />
+        )}
       </View>
     );
   }

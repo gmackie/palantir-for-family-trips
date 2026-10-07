@@ -19,6 +19,7 @@ import {
   saveTripOfflineBundle,
   tripOfflineBundleMeta,
 } from "~/utils/trip-offline-cache";
+import { useTripCalendarDay } from "~/utils/use-trip-calendar-day";
 
 const STATUS_COLORS: Record<string, string> = {
   planning: C.warning,
@@ -41,6 +42,7 @@ interface Trip {
   destinationName: string | null;
   startDate: string | null;
   endDate: string | null;
+  tz: string;
 }
 
 export function RoadTripDetail({
@@ -81,12 +83,17 @@ export function RoadTripDetail({
   );
 
   const { data: nextAnchor } = useQuery(
-    trpc.anchors.next.queryOptions({ workspaceId, tripId }),
+    trpc.anchors.next.queryOptions(
+      { workspaceId, tripId },
+      { refetchInterval: 60_000 },
+    ),
   );
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = useTripCalendarDay(trip.tz);
   const upcomingDay =
-    planDays?.find((d) => d.date >= todayStr) ?? planDays?.[0] ?? null;
+    planDays?.find((d) => todayStr !== null && d.date >= todayStr) ??
+    planDays?.[0] ??
+    null;
 
   const updateTrip = useMutation(
     trpc.trips.update.mutationOptions({

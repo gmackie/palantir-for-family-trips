@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-10-07T06:48:04.904356+00:00",
+  "source": "Supported read-only reserved trip API corpus",
+  "trip": {
+    "tz": "America/Los_Angeles"
+  },
+  "days": [
+    {
+      "date": "2026-10-06",
+      "title": "Review day: prepare and explore"
+    },
+    {
+      "date": "2026-10-07",
+      "title": "Review day: travel and settle"
+    }
+  ],
+  "today": {
+    "date": "2026-10-06",
+    "title": "Review day: prepare and explore"
+  }
+}

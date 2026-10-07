@@ -168,20 +168,18 @@ export default function DriveScreen() {
     };
   }, [data, tripId]);
 
-  const today = new Date().toISOString().slice(0, 10);
   const { data: todayCmd } = useQuery(
-    trpc.planner.todayCommand.queryOptions({
-      workspaceId,
-      tripId: tripId ?? "",
-      date: today,
-    }),
+    trpc.planner.todayCommand.queryOptions(
+      { workspaceId, tripId: tripId ?? "" },
+      { enabled: Boolean(workspaceId && tripId), refetchInterval: 60_000 },
+    ),
   );
+  const today = todayCmd?.date;
   const { data: briefing } = useQuery(
-    trpc.daymap.briefing.queryOptions({
-      workspaceId,
-      tripId: tripId ?? "",
-      date: today,
-    }),
+    trpc.daymap.briefing.queryOptions(
+      { workspaceId, tripId: tripId ?? "", date: today },
+      { enabled: Boolean(workspaceId && tripId && today) },
+    ),
   );
   const { data: amenityScan } = useQuery(
     trpc.planner.scanAmenities.queryOptions({
@@ -258,11 +256,16 @@ export default function DriveScreen() {
       params: { tripId: tripId ?? "" },
     });
 
-  const goDayPlan = () =>
+  const goDayPlan = () => {
+    const params: { tripId: string; date?: string } = {
+      tripId: tripId ?? "",
+    };
+    if (today) params.date = today;
     router.push({
       pathname: "/trip/[tripId]/day-plan" as any,
-      params: { tripId: tripId ?? "", date: today },
+      params,
     });
+  };
 
   const goToday = () =>
     router.push({
