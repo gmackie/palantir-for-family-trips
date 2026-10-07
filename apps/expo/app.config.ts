@@ -151,10 +151,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
   ];
 
+  // Xcode mods execute in reverse registration order: create, then reconcile.
+  plugins.push("./plugins/with-share-extension-identity.cjs");
   plugins.push([
     "expo-share-intent",
     {
       iosShareExtensionName: "SorteyShare",
+      iosShareExtensionBundleIdentifier: `${getBundleId()}.share-extension`,
       // One App Group shared across all variants (registered in the portal),
       // instead of the plugin default group.<bundleId> which would need a
       // separate group per dev/preview/prod.
