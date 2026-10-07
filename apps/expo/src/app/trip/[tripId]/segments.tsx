@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
+import { formatCalendarDate } from "~/utils/calendar-date";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -29,20 +30,17 @@ const SEGMENT_COLORS = [
 ];
 
 function formatDate(value: string | null) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-US", {
+  return formatCalendarDate(value, {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }).format(new Date(value));
+  });
 }
 
 function formatDateRange(start: string | null, end: string | null): string {
   if (!start && !end) return "";
   if (start && end) {
-    const s = new Date(start);
-    const e = new Date(end);
-    if (s.toDateString() === e.toDateString()) return formatDate(start);
+    if (start === end) return formatDate(start);
     return `${formatDate(start)} – ${formatDate(end)}`;
   }
   return formatDate(start ?? end);

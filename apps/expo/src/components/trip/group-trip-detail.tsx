@@ -3,9 +3,9 @@ import { formatMoney as formatCurrency } from "@sortey/validators/money";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
-
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
+import { formatCalendarDate } from "~/utils/calendar-date";
 import { C as DC, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
@@ -28,10 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function formatDate(value: string | null) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return formatCalendarDate(value);
 }
 
 function getDaysUntil(dateStr: string | null): string | null {

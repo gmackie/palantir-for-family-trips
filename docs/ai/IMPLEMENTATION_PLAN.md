@@ -363,6 +363,10 @@ Create the following files as stubs (table of contents only, content filled by l
 
 2.1 **Schema additions in `packages/db/src/schema/`**
 
+### Native calendar-date labels
+
+Trip start/end dates and segment date ranges are calendar values (`YYYY-MM-DD`), so dashboard and detail labels preserve that date regardless of the device timezone. Native labels share a date-only parser and format with UTC solely to prevent an offset from changing the calendar day; this does not alter timestamp display or trip-local clock calculations.
+
 `trips.ts`:
 ```ts
 trips: id (uuid, pk, default random),
