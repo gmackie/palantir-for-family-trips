@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { tripCalendarDay } from "@sortey/validators/trip-day";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Location from "expo-location";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -62,7 +63,12 @@ export default function TodayScreen() {
   const [ppg, setPpg] = useState("");
   const [cached, setCached] = useState<TodayCommand | null>(null);
   const [fromCache, setFromCache] = useState(false);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const [cacheClock, setCacheClock] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setCacheClock(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
   const { suggestion: dwell, dismiss: dismissDwell } = useDwellSuggest(true);
 
   useEffect(() => {
@@ -91,10 +97,16 @@ export default function TodayScreen() {
 
   useEffect(() => {
     if (!tripId) return;
-    void loadTodaySnapshot<TodayCommand>(tripId, todayStr).then((snap) => {
-      if (snap?.payload) setCached(snap.payload);
-    });
-  }, [tripId, todayStr]);
+    let cancelled = false;
+    void loadTodaySnapshot<TodayCommand>(tripId, new Date(cacheClock)).then(
+      (snap) => {
+        if (!cancelled) setCached(snap?.payload ?? null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId, cacheClock]);
 
   const {
     data: live,
@@ -122,7 +134,7 @@ export default function TodayScreen() {
     if (live && tripId) {
       setFromCache(false);
       setCached(live);
-      void saveTodaySnapshot(tripId, live.date, live);
+      void saveTodaySnapshot(tripId, live.date, live, live.tz);
     }
   }, [live, tripId]);
 
@@ -130,7 +142,12 @@ export default function TodayScreen() {
     if (isError && cached) setFromCache(true);
   }, [isError, cached]);
 
-  const data = live ?? cached;
+  const now = new Date(cacheClock);
+  const currentLive =
+    live && live.date === tripCalendarDay(now, live.tz) ? live : null;
+  const currentCached =
+    cached && cached.date === tripCalendarDay(now, cached.tz) ? cached : null;
+  const data = currentLive ?? currentCached;
 
   const { data: preview, isFetching: previewLoading } = useQuery(
     trpc.planner.replanPreview.queryOptions(

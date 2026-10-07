@@ -261,7 +261,6 @@ export function RoadTripDetail({
   const downloadOffline = useCallback(async () => {
     setDownloading(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
       const [
         drivingSummary,
         segs,
@@ -283,7 +282,7 @@ export function RoadTripDetail({
           .query({ workspaceId, tripId })
           .catch(() => null),
         trpcClient.planner.todayCommand
-          .query({ workspaceId, tripId, date: today })
+          .query({ workspaceId, tripId })
           .catch(() => null),
         trpcClient.planner.listDays
           .query({ workspaceId, tripId })
