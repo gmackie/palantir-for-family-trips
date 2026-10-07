@@ -4,6 +4,10 @@
 
 import { asc, desc, eq } from "@sortey/db";
 import { fuelLogs, tripSegments, trips } from "@sortey/db/schema";
+import {
+  resolveTripTimezone,
+  tripCalendarDay,
+} from "@sortey/validators/trip-day";
 import SunCalc from "suncalc";
 import { resolveVanState } from "../daymap/vanstate-ops";
 import { haversineMiles } from "../trips/driving-summary";
@@ -101,7 +105,6 @@ export async function getTodayCommand(
   },
 ): Promise<TodayCommandResult> {
   const now = p.now ?? new Date();
-  const date = p.date ?? now.toISOString().slice(0, 10);
 
   const [trip] = (await db
     .select({
@@ -117,7 +120,8 @@ export async function getTodayCommand(
     runStateNote: string | null;
   }>;
 
-  const tz = trip?.tz ?? "America/Los_Angeles";
+  const tz = resolveTripTimezone(trip?.tz ?? "America/Los_Angeles");
+  const date = p.date ?? tripCalendarDay(now, tz);
   const days = await listDays(db, p.tripId);
   const day = days.find((d) => d.date === date) ?? null;
   const tomorrowDate = new Date(`${date}T12:00:00Z`);

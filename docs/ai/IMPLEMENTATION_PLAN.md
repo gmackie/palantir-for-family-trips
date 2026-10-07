@@ -1136,3 +1136,7 @@ These were open questions, now closed:
 ## Next Step
 
 Implementation begins with Phase 0. Run `pnpm -F @sortey/nextjs storybook` after porting to confirm visual parity before proceeding to Phase 1.
+
+### Today Command calendar-day contract
+
+Today defaults to the current calendar day in the stored trip timezone (A30), including DST transitions. Explicit date requests remain overrides. Invalid stored timezones use effective UTC consistently in the response and calculations. Native offline Today snapshots keep a versioned trip-timezone index and read the matching local-day key; snapshots without that index or with mismatched day/timezone are withheld. Download offline uses the server default rather than supplying a device-derived UTC date.

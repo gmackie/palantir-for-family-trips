@@ -14,6 +14,10 @@
     "./status": {
       "types": "./dist/status.d.ts",
       "default": "./src/status.ts"
+    },
+    "./trip-day": {
+      "types": "./src/trip-day.ts",
+      "default": "./src/trip-day.ts"
     }
   },
   "license": "MIT",
