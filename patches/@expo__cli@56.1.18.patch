@@ -1,0 +1,36 @@
+diff --git a/build/src/start/server/middleware/ExpoGoManifestHandlerMiddleware.js b/build/src/start/server/middleware/ExpoGoManifestHandlerMiddleware.js
+index 7d211cbf2d9d76f7343cf0bee6301d724dc4ad54..1de2200f7547de11993227f1a68a7646ce267579 100644
+--- a/build/src/start/server/middleware/ExpoGoManifestHandlerMiddleware.js
++++ b/build/src/start/server/middleware/ExpoGoManifestHandlerMiddleware.js
+@@ -129,7 +129,17 @@ class ExpoGoManifestHandlerMiddleware extends _ManifestMiddleware.ManifestMiddle
+         headers.set('cache-control', 'private, max-age=0');
+         return headers;
+     }
+-    async _getManifestResponseAsync(requestOptions) {
++    async _getManifestResponseAsync(requestOptions, req) {
++        // The iOS dev launcher probes HEAD with a 10-second timeout before fetching the manifest.
++        // Detection needs only the negotiated headers; GET still resolves the complete native runtime.
++        if (req?.method === 'HEAD' && req.url === '/' &&
++            req.headers['expo-platform'] === 'ios' &&
++            req.headers.accept === 'application/expo+json,application/json' &&
++            !requestOptions.expectSignature && this.options.mode !== 'production') {
++            const headers = this.getDefaultResponseHeaders();
++            headers.set('content-type', ExpoGoManifestHandlerMiddleware.getContentTypeForResponseContentType(requestOptions.responseContentType));
++            return new Response(null, { status: 200, headers });
++        }
+         var _exp_extra_eas, _exp_extra;
+         const { exp, hostUri, expoGoConfig, bundleUrl } = await this._resolveProjectSettingsAsync(requestOptions);
+         const runtimeVersion = await (0, _resolveRuntimeVersionWithExpoUpdatesAsync.resolveRuntimeVersionWithExpoUpdatesAsync)({
+diff --git a/build/src/start/server/middleware/ManifestMiddleware.js b/build/src/start/server/middleware/ManifestMiddleware.js
+index c04fdedcaad13c0a97022c21742f81ac2d8c8f90..6d58d28d7ffceae555107af0bf813c6206f55601 100644
+--- a/build/src/start/server/middleware/ManifestMiddleware.js
++++ b/build/src/start/server/middleware/ManifestMiddleware.js
+@@ -314,7 +314,7 @@ class ManifestMiddleware extends _ExpoMiddleware.ExpoMiddleware {
+         await this.saveDevicesAsync(req);
+         // Read from headers
+         const options = this.getParsedHeaders(req);
+-        const response = await this._getManifestResponseAsync(options);
++        const response = await this._getManifestResponseAsync(options, req);
+         // Convert `Response` to node:http response
+         if (typeof res.setHeaders === 'function') {
+             res.setHeaders(response.headers);

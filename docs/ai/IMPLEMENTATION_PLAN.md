@@ -1144,3 +1144,7 @@ Implementation begins with Phase 0. Run `pnpm -F @sortey/nextjs storybook` after
 ### Today Command calendar-day contract
 
 Today defaults to the current calendar day in the stored trip timezone (A30), including DST transitions. Explicit date requests remain overrides. Invalid stored timezones use effective UTC consistently in the response and calculations. Native offline Today snapshots keep a versioned trip-timezone index and read the matching local-day key; snapshots without that index or with mismatched day/timezone are withheld. Download offline uses the server default rather than supplying a device-derived UTC date.
+
+### Expo development manifest detection
+
+The Sortey Expo CLI 56.1.18 patch returns negotiated manifest headers for the iOS launcher's unsigned development HEAD request at `/`. Existing routing, browser handling, platform validation and device registration still run. The following GET resolves the full runtime fingerprint and signing behavior unchanged. The launcher uses a 10-second HEAD timeout; measured cold fingerprint resolution exceeded it. Other HEAD requests retain the existing manifest path. Run `pnpm test:manifest-head` to verify this contract after dependency installation. The patch and lockfile change require fresh Preflight build/evidence binding; prior native recordings do not validate the patched tooling.
