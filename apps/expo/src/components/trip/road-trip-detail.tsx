@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { setLastTripId } from "~/utils/active-trip";
 import { trpc, trpcClient } from "~/utils/api";
+import { formatCalendarDate } from "~/utils/calendar-date";
 import { C, mono, R } from "~/utils/design";
 import {
   saveTripOfflineBundle,
@@ -29,10 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function formatDate(value: string | null) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return formatCalendarDate(value);
 }
 
 interface Trip {

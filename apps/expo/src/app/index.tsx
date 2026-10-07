@@ -24,6 +24,7 @@ import {
 } from "~/utils/active-trip";
 import { queryClient, trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
+import { formatCalendarDate } from "~/utils/calendar-date";
 import { C, mono, R } from "~/utils/design";
 import {
   getActiveWorkspaceId,
@@ -31,10 +32,7 @@ import {
 } from "~/utils/workspace-store";
 
 function formatDate(value: string | null) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return formatCalendarDate(value);
 }
 
 function getDaysUntilTrip(dateStr: string): number | null {
