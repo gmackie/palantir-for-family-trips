@@ -1,5 +1,6 @@
 import { eq } from "@sortey/db";
-import { tripSegments } from "@sortey/db/schema";
+import { tripSegments, trips } from "@sortey/db/schema";
+import { tripCalendarDay } from "@sortey/validators/trip-day";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { z } from "zod/v4";
 import { tripProcedure } from "../auth/guards";
@@ -63,7 +64,12 @@ export const anchorsRouter = {
       z.object({ workspaceId: z.string().min(1), tripId: z.string().min(1) }),
     )
     .query(async ({ ctx }) => {
-      const today = new Date().toISOString().slice(0, 10);
+      const [trip] = await ctx.db
+        .select({ tz: trips.tz })
+        .from(trips)
+        .where(eq(trips.id, ctx.tripId))
+        .limit(1);
+      const today = tripCalendarDay(new Date(), trip?.tz ?? "UTC");
       const from = await currentPoint(ctx.db, ctx.tripId, today);
       return computeNextAnchor(ctx.db, { tripId: ctx.tripId, from, today });
     }),
