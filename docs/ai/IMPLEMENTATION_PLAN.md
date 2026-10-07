@@ -39,6 +39,12 @@ The sibling directory `../create-gmacko-app` is the template. Observed facts fro
 - Magic-link delivery is wired in `apps/nextjs/src/auth/server.ts`; development logs links and production sends via Resend (`RESEND_API_KEY`)
 - Auth consumers in the Next.js app live at `apps/nextjs/src/auth/client.ts` and `apps/nextjs/src/auth/server.ts`
 - Route handler is already mounted at `apps/nextjs/src/app/api/auth/[...all]/`
+- Expo Settings account deletion and sign-out share local session cleanup:
+  cancel active queries, remove session/workspace credentials, settle the auth
+  store, clear retained query data, and dismiss Settings to the root sign-in
+  screen. Settings also redirects a settled signed-out session. Remote sign-out
+  failure after account deletion cannot skip this cleanup. Fresh simulator
+  confirmation of the immediate transition remains a release gate.
 
 **Existing multi-tenant model (critical discovery)**
 - The template already has a **Workspace** concept with `workspaceRoleEnum = ['owner','admin','member']`, plus billing enums attached to workspaces (`workspaceSubscriptionStatusEnum`, `billingIntervalEnum`, `billingProviderEnum`, `billingLimitPeriodEnum`, `usageAggregationEnum`)
