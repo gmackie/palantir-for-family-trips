@@ -60,7 +60,8 @@
     "release": "turbo run build --filter='@sortey/mcp-server' --filter='@sortey/trpc-client' && changeset publish",
     "ui-add": "pnpm dlx shadcn@latest add && biome check src --write",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "test:manifest-head": "node --test scripts/__tests__/manifest-head.test.cjs"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
@@ -98,6 +99,9 @@
       "@react-native/normalize-colors": "0.85.3",
       "@react-native/virtualized-lists": "0.85.3",
       "@react-native/gradle-plugin": "0.85.3"
+    },
+    "patchedDependencies": {
+      "@expo/cli@56.1.18": "patches/@expo__cli@56.1.18.patch"
     }
   },
   "version": "0.2.0.0"
