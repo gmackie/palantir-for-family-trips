@@ -6,12 +6,11 @@ import {
 import { formatMoney } from "@sortey/validators/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
-import { Stack } from "expo-router";
+import { Redirect, router, Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
   Alert,
-  DevSettings,
   Pressable,
   ScrollView,
   Text,
@@ -24,10 +23,50 @@ import { queryClient, trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { C, mono, R } from "~/utils/design";
 import { setLocale } from "~/utils/i18n";
+import { exitNativeSession } from "~/utils/session-exit";
 import { useOtaUpdates } from "~/utils/use-ota-updates";
 
 const PERMISSIONS = ["read", "write", "delete", "admin"] as const;
 const COLLABORATION_ROLES = ["member", "admin"] as const;
+
+async function leaveNativeSession() {
+  return exitNativeSession({
+    signOut: async () => {
+      await authClient.signOut();
+    },
+    cancelQueries: () => queryClient.cancelQueries(),
+    deleteSecureItem: (key) => SecureStore.deleteItemAsync(key),
+    clearSession: () => {
+      const session = authClient.$store.atoms.session;
+      session?.set({
+        ...session.get(),
+        data: null,
+        error: null,
+        isPending: false,
+        isRefetching: false,
+      });
+    },
+    clearQueries: () => queryClient.clear(),
+    showSignIn: () => {
+      router.dismissAll();
+      router.replace("/");
+    },
+  });
+}
+
+function retrySessionCleanup() {
+  void leaveNativeSession().then((result) => {
+    if (result === "storage-error") showSessionCleanupError();
+  });
+}
+
+function showSessionCleanupError() {
+  Alert.alert(
+    "Sign-in data could not be cleared",
+    "You are signed out. Retry removing the saved sign-in data.",
+    [{ text: "Retry", onPress: retrySessionCleanup }],
+  );
+}
 
 function formatDate(value: Date | string | null) {
   if (!value) {
@@ -1052,16 +1091,11 @@ function SignOutSection() {
         onPress: async () => {
           setSigningOut(true);
           try {
-            await authClient.signOut();
-          } catch {
-            // signOut may fail if session already expired
+            const result = await leaveNativeSession();
+            if (result === "storage-error") showSessionCleanupError();
+          } finally {
+            setSigningOut(false);
           }
-          await SecureStore.deleteItemAsync("expo_cookie");
-          await SecureStore.deleteItemAsync("expo_session_data");
-          await SecureStore.deleteItemAsync("active_workspace_id");
-          queryClient.clear();
-          setSigningOut(false);
-          if (__DEV__) DevSettings.reload();
         },
       },
     ]);
@@ -1128,8 +1162,19 @@ function AccountSection() {
   const { mutate: deleteAccount, isPending } = useMutation(
     trpc.settings.deleteAccount.mutationOptions({
       onSuccess: async () => {
-        await authClient.signOut();
-        Alert.alert("Account deleted", "Your account has been deleted.");
+        const result = await leaveNativeSession();
+        if (result === "cleared") {
+          Alert.alert("Account deleted", "Your account has been deleted.");
+        } else {
+          Alert.alert(
+            "Account deleted",
+            "Your account has been deleted. Retry removing the saved sign-in data.",
+            [{ text: "Retry", onPress: retrySessionCleanup }],
+          );
+        }
+      },
+      onError: () => {
+        Alert.alert("Account could not be deleted", "Please try again.");
       },
     }),
   );
@@ -1294,6 +1339,8 @@ function OtaUpdatesSection() {
 
 export default function SettingsScreen() {
   "use no memo";
+  const { data: session, isPending } = authClient.useSession();
+  if (!isPending && !session?.user) return <Redirect href="/" />;
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen
