@@ -1,0 +1,45 @@
+# TrueFlight review workflow: sign-in (trip organizer)
+# Reaching the authenticated app as a trip organizer. Proves the R1 reviewer-login path.
+# Sortey is passwordless: sign-in is a magic link (email) or Sign in with Apple / Google.
+# For unattended review the backend exposes a demo bypass,
+#   POST https://sortey.app/api/auth/dev/sign-in/magic-link  { email, callbackURL }
+# which mints the magic-link URL for addresses listed in the server's DEMO_LOGIN_EMAILS
+# allowlist (packages/auth devMagicLinkBypass). The flow requests the magic link in the
+# UI exactly as a user would, then mints the same link via the bypass and opens it, so
+# no inbox is needed. ${TF_ACCOUNT_PASSWORD} is unused — there is no password.
+# Trip roles come from tripMemberRoleEnum = ["organizer", "member"] (packages/db schema).
+#
+# tf:workflow id=sign-in-organizer title="Sign in as a trip organizer" account=organizer
+# tf:account role=organizer email="reviewer+organizer@sortey.app" secretRef=sortey/review/organizer_pw permissions=trips,members,invites,expenses,itinerary,map notes="Trip organizer — owns a destination-mode demo trip (e.g. 'Reviewer Reunion'). Passwordless: the address must be listed in the backend DEMO_LOGIN_EMAILS allowlist so the magic-link bypass can mint a session; no password is stored at the secretRef."
+# TODO: confirm a real organizer demo account is provisioned on sortey.app (listed in DEMO_LOGIN_EMAILS, organizer of one destination-mode trip whose status is not 'active' so cold start lands on the trip list) and its password is stored at sortey/review/organizer_pw
+# tf:verify "You reach the 'Your Trips' list, signed in as the organizer."
+# tf:verify "Opening the demo trip shows the trip hub with the Members tile and the Invite quick action (organizer surface)."
+appId: com.gmacko.sortey
+---
+# tf:step "Launch the app — you land on the Sortey sign-in screen (magic link or Apple/Google)." capture=screenshot
+- launchApp
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 15000
+- assertVisible: "Send magic link"
+# tf:step "Enter the organizer demo email and tap Send magic link — Sortey confirms it sent the link." capture=screenshot
+- tapOn: "you@example.com"
+- inputText: "${TF_ACCOUNT_EMAIL}"
+- tapOn: "Send magic link"
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 15000
+# tf:step "Open the magic link (the review harness mints it through the demo bypass instead of reading an inbox); Sortey signs you in." capture=none
+- evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
+- openLink: "${output.magicUrl}"
+# tf:step "You reach the Your Trips list, signed in." capture=screenshot
+- extendedWaitUntil:
+    visible: "Your Trips"
+    timeout: 30000
+# tf:step "Open the demo trip — the trip hub shows the Members tile and the Invite quick action." capture=screenshot
+- tapOn:
+    text: "Reviewer Reunion"
+- extendedWaitUntil:
+    visible: "Members"
+    timeout: 15000
+- assertVisible: "Invite"

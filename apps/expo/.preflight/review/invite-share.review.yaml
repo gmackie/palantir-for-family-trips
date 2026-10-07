@@ -1,0 +1,67 @@
+# TrueFlight review workflow: invite-share (app-specific)
+# Sortey trips are shared by invite: an organizer invites a member by email and/or hands
+# out a share link (https://sortey.app/invite/<token>, also deep-linked into the app).
+# A reviewer would otherwise miss that invite creation is organizer-only and that the
+# link is the way new members join. This flow sends an email invite from the Members
+# screen and surfaces the share link.
+# Sortey is passwordless — see sign-in-organizer for how the magic-link bypass is used.
+#
+# tf:workflow id=invite-share title="Invite a member and share the trip link" account=organizer
+# tf:account role=organizer email="reviewer+organizer@sortey.app" secretRef=sortey/review/organizer_pw permissions=trips,members,invites,expenses,itinerary,map notes="Trip organizer of the 'Reviewer Reunion' demo trip; only organizers can create invites and share links."
+# TODO: confirm the organizer demo account organizes the 'Reviewer Reunion' trip and its password is stored at sortey/review/organizer_pw
+# tf:verify "An email invite is sent ('Invite sent') and the invite appears in the Members list as pending."
+# tf:verify "A share link for the trip is shown ('Or share this link') and Share invite opens the iOS share sheet."
+appId: com.gmacko.sortey
+---
+# tf:step "Launch the app and sign in with the organizer demo account (magic link via the demo bypass)." capture=screenshot
+- launchApp
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 15000
+- tapOn: "you@example.com"
+- inputText: "${TF_ACCOUNT_EMAIL}"
+- tapOn: "Send magic link"
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 15000
+- evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
+- openLink: "${output.magicUrl}"
+- extendedWaitUntil:
+    visible: "Your Trips"
+    timeout: 30000
+# tf:step "Open the demo trip and tap the Invite quick action — the Members screen opens." capture=screenshot
+- tapOn: "Reviewer Reunion"
+- extendedWaitUntil:
+    visible: "Invite"
+    timeout: 15000
+- tapOn:
+    text: "Invite"
+    index: 0
+- extendedWaitUntil:
+    visible: "Share invite"
+    timeout: 15000
+# tf:step "Tap Invite, enter an email address and tap Send — Sortey confirms 'Invite sent'." capture=video
+- tapOn:
+    text: "Invite"
+    index: 0
+- extendedWaitUntil:
+    visible: "Invite by email"
+    timeout: 10000
+- tapOn: "name@example.com"
+- inputText: "reviewer+invitee@sortey.app"
+- hideKeyboard
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Invite sent"
+    timeout: 20000
+- tapOn: "OK"
+# tf:step "The share link for this trip is shown under 'Or share this link'." capture=screenshot
+- extendedWaitUntil:
+    visible: "Or share this link"
+    timeout: 10000
+# tf:step "Tap Done, then Share invite — the iOS share sheet opens with the trip link; dismiss it." capture=video
+- tapOn: "Done"
+- tapOn: "Share invite"
+- tapOn:
+    text: "Close"
+    optional: true
