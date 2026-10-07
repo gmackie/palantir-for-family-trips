@@ -112,6 +112,11 @@ overrides:
   '@react-native/virtualized-lists': 0.85.3
   '@react-native/gradle-plugin': 0.85.3
 
+patchedDependencies:
+  '@expo/cli@56.1.18':
+    hash: 08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2
+    path: patches/@expo__cli@56.1.18.patch
+
 importers:
 
   .:
@@ -15213,7 +15218,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@expo/cli@56.1.18(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)(lightningcss@1.32.0)))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@6.0.4)':
+  '@expo/cli@56.1.18(patch_hash=08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)(lightningcss@1.32.0)))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@6.0.4)':
     dependencies:
       '@expo/code-signing-certificates': 0.0.6
       '@expo/config': 56.0.11(typescript@5.9.3)
@@ -15290,7 +15295,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@expo/cli@56.1.18(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)))(react@19.2.3)(typescript@5.9.3)':
+  '@expo/cli@56.1.18(patch_hash=08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)))(react@19.2.3)(typescript@5.9.3)':
     dependencies:
       '@expo/code-signing-certificates': 0.0.6
       '@expo/config': 56.0.11(typescript@5.9.3)
@@ -15368,7 +15373,7 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  '@expo/cli@56.1.18(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1))(react@19.2.3)(typescript@5.9.3)':
+  '@expo/cli@56.1.18(patch_hash=08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1))(react@19.2.3)(typescript@5.9.3)':
     dependencies:
       '@expo/code-signing-certificates': 0.0.6
       '@expo/config': 56.0.11(typescript@5.9.3)
@@ -22990,7 +22995,7 @@ snapshots:
   expo@56.0.14(@babel/core@7.29.0)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-router@56.2.13)(react-dom@19.2.3(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)(lightningcss@1.32.0)))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@6.0.4):
     dependencies:
       '@babel/runtime': 7.29.2
-      '@expo/cli': 56.1.18(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)(lightningcss@1.32.0)))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@6.0.4)
+      '@expo/cli': 56.1.18(patch_hash=08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)(lightningcss@1.32.0)))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@6.0.4)
       '@expo/config': 56.0.11(typescript@5.9.3)
       '@expo/config-plugins': 56.0.11(typescript@5.9.3)
       '@expo/devtools': 56.0.2(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react@19.2.3)
@@ -23031,7 +23036,7 @@ snapshots:
   expo@56.0.14(@babel/core@7.29.0)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-router@56.2.13)(react-dom@19.2.3(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)))(react@19.2.3)(typescript@5.9.3):
     dependencies:
       '@babel/runtime': 7.29.2
-      '@expo/cli': 56.1.18(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)))(react@19.2.3)(typescript@5.9.3)
+      '@expo/cli': 56.1.18(patch_hash=08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0)))(react@19.2.3)(typescript@5.9.3)
       '@expo/config': 56.0.11(typescript@5.9.3)
       '@expo/config-plugins': 56.0.11(typescript@5.9.3)
       '@expo/devtools': 56.0.2(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3)
@@ -23073,7 +23078,7 @@ snapshots:
   expo@56.0.14(@babel/core@7.29.0)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-router@56.2.13)(react-dom@19.2.3(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1))(react@19.2.3)(typescript@5.9.3):
     dependencies:
       '@babel/runtime': 7.29.2
-      '@expo/cli': 56.1.18(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1))(react@19.2.3)(typescript@5.9.3)
+      '@expo/cli': 56.1.18(patch_hash=08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2)(@expo/dom-webview@56.0.6)(@expo/metro-runtime@56.0.16)(bufferutil@4.1.0)(expo-constants@56.0.20)(expo-font@56.0.7)(expo-router@56.2.13)(expo@56.0.14)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react-server-dom-webpack@19.2.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(webpack@5.104.1))(react@19.2.3)(typescript@5.9.3)
       '@expo/config': 56.0.11(typescript@5.9.3)
       '@expo/config-plugins': 56.0.11(typescript@5.9.3)
       '@expo/devtools': 56.0.2(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3)
