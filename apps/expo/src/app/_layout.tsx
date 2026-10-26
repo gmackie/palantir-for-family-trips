@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import { ShareIntentProvider } from "expo-share-intent";
 import { StatusBar } from "expo-status-bar";
 
 import { useEffect } from "react";
@@ -42,27 +43,29 @@ function QueryCachePersistHost() {
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <Providers>
-          <QueryCachePersistHost />
-          <PushNotificationRegistrar />
-          <OtaUpdateChecker />
-          <MagicLinkCookieCatcher />
-          <OutboxSyncHost />
-          <Stack
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: C.bg,
-              },
-              headerTintColor: C.fg,
-              contentStyle: {
-                backgroundColor: C.bg,
-              },
-            }}
-          />
-          <StatusBar style="light" />
-        </Providers>
-      </QueryClientProvider>
+      <ShareIntentProvider>
+        <QueryClientProvider client={queryClient}>
+          <Providers>
+            <QueryCachePersistHost />
+            <PushNotificationRegistrar />
+            <OtaUpdateChecker />
+            <MagicLinkCookieCatcher />
+            <OutboxSyncHost />
+            <Stack
+              screenOptions={{
+                headerStyle: {
+                  backgroundColor: C.bg,
+                },
+                headerTintColor: C.fg,
+                contentStyle: {
+                  backgroundColor: C.bg,
+                },
+              }}
+            />
+            <StatusBar style="light" />
+          </Providers>
+        </QueryClientProvider>
+      </ShareIntentProvider>
     </ErrorBoundary>
   );
 }
