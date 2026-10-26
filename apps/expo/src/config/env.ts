@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { selectSentryDsn } from "./sentry-dsn.js";
 
 export type AppEnvironment = "development" | "staging" | "production";
 
@@ -45,9 +46,10 @@ function getApiUrl(): string {
 function getObservabilityConfig(): ObservabilityConfig {
   const environment = getAppEnvironment();
 
-  const sentryDsn =
-    Constants.expoConfig?.extra?.SENTRY_DSN ??
-    getSentryDsnForEnvironment(environment);
+  const sentryDsn = selectSentryDsn(
+    Constants.expoConfig?.extra?.SENTRY_DSN,
+    getSentryDsnForEnvironment(environment),
+  );
 
   const posthogKey =
     Constants.expoConfig?.extra?.POSTHOG_KEY ??
@@ -70,20 +72,20 @@ function getSentryDsnForEnvironment(
 ): string | undefined {
   switch (environment) {
     case "production":
-      return (
-        process.env.EXPO_PUBLIC_SENTRY_DSN_PROD ??
-        process.env.EXPO_PUBLIC_SENTRY_DSN
+      return selectSentryDsn(
+        process.env.EXPO_PUBLIC_SENTRY_DSN_PROD,
+        process.env.EXPO_PUBLIC_SENTRY_DSN,
       );
     case "staging":
-      return (
-        process.env.EXPO_PUBLIC_SENTRY_DSN_STAGING ??
-        process.env.EXPO_PUBLIC_SENTRY_DSN
+      return selectSentryDsn(
+        process.env.EXPO_PUBLIC_SENTRY_DSN_STAGING,
+        process.env.EXPO_PUBLIC_SENTRY_DSN,
       );
     case "development":
     default:
-      return (
-        process.env.EXPO_PUBLIC_SENTRY_DSN_DEV ??
-        process.env.EXPO_PUBLIC_SENTRY_DSN
+      return selectSentryDsn(
+        process.env.EXPO_PUBLIC_SENTRY_DSN_DEV,
+        process.env.EXPO_PUBLIC_SENTRY_DSN,
       );
   }
 }
