@@ -1,62 +1,85 @@
 # TrueFlight standard workflow: permissions
-# Every iOS permission Sortey raises, each with the purpose string from
-# app.config.ts infoPlist. Sortey requests:
-#   - Notifications  (NSUserNotifications) — auto-requested on app launch
-#                     (_layout.tsx usePushNotifications → Notifications.requestPermissionsAsync)
-#   - Location       (NSLocationWhenInUseUsageDescription) — trip map / Today /
-#                     Log stop (Location.requestForegroundPermissionsAsync)
-#   - Camera         (NSCameraUsageDescription) — Scan Receipt on a new expense
-#                     (ImagePicker.requestCameraPermissionsAsync)
-#   - Photo Library  (NSPhotoLibraryUsageDescription) — "Library" on a new
-#                     expense / trip photos (launchImageLibraryAsync; iOS may not
-#                     re-prompt on modern versions, so it is asserted optional)
+# Sortey declares these iOS permission strings (app.config.ts ios.infoPlist + plugins):
+#   NSLocationWhenInUseUsageDescription — "Sortey uses your location to show where you are on
+#     the trip map, surface what's next on today's route, and suggest logging a stop when you
+#     linger somewhere."  -> raised by Map -> "Share Location".
+#   NSCameraUsageDescription — "Sortey uses the camera to scan receipts and capture trip photos."
+#     -> raised by Add Expense -> "Scan Receipt".
+#   NSPhotoLibraryUsageDescription — "Sortey accesses your photo library so you can attach
+#     receipts and share photos with your trip group."  -> raised by Add Expense ->
+#     "or choose from photo library" (PHPicker shows no prompt on iOS 14+; included for completeness).
+#   expo-notifications (push) — requested on first launch by usePushNotifications in the root layout.
+# Sortey is passwordless — see sign-in-organizer for how the magic-link bypass is used.
 #
-# tf:workflow id=permissions title="Permission prompts" account=traveler
-# tf:account role=traveler email="reviewer+traveler@sortey.app" secretRef=sortey/review/traveler_pw permissions=standard notes="Standard trip participant. Grant every prompt to see the purpose strings and that each feature works."
-# tf:verify "Notifications, Location, and Camera are each requested with a clear purpose string and work when granted."
+# tf:workflow id=permissions title="Permission prompts (notifications, location, camera, photos)" account=organizer
+# tf:account role=organizer email="reviewer+organizer@sortey.app" secretRef=sortey/review/organizer_pw permissions=trips,members,invites,expenses,itinerary,map notes="Reuses the organizer reviewer account; any member of a destination-mode trip works."
+# tf:verify "Push notifications are requested on first launch with the standard iOS prompt."
+# tf:verify "Location is requested from the trip Map when you tap Share Location, with the stated purpose string, and the button flips to 'Sharing' once granted."
+# tf:verify "Camera is requested from Add Expense -> Scan Receipt with the stated purpose string; the photo-library picker opens from 'or choose from photo library'."
+# TODO: the simulator has no camera — on a simulator the camera prompt is granted but launchCameraAsync returns immediately; use a physical device to see the receipt capture itself.
 appId: com.gmacko.sortey
 ---
-# tf:step "Launch and sign in. On first launch Sortey requests push-notification permission — grant it." capture=video
+# tf:step "Launch the app — iOS asks to allow notifications; tap Allow." capture=screenshot
 - launchApp
-- assertVisible: "Sign in"
+- tapOn:
+    text: "Allow"
+    optional: true
+# tf:step "Sign in with the organizer demo account (magic link via the demo bypass) and open the demo trip." capture=screenshot
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 15000
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
 - tapOn: "Send magic link"
-- tapOn:
-    text: "Allow"
-    optional: true
-- assertVisible: "Settings"
-# tf:step "Create a trip so location- and receipt-backed features are reachable: tap New, pick the Road Trip template." capture=screenshot
-# TODO: on a fresh account tap "Create Your First Trip"; on a seeded account tap "+ New".
-- tapOn:
-    text: "Create Your First Trip"
-    optional: true
-- tapOn:
-    text: "+ New"
-    optional: true
-- tapOn: "Road Trip"
-# tf:step "Step through the wizard (mode → details → dates) and create the trip." capture=screenshot
-- tapOn: "Next"
-- tapOn: "Seattle to Des Moines"
-- inputText: "Review Road Trip"
-- tapOn: "Next"
-- tapOn: "Create Trip"
-# tf:step "On the trip, open the map / Log stop — Sortey requests Location (when in use). Grant it." capture=video
-# TODO: confirm the on-trip action label; today.tsx exposes an ActionBtn labelled "Log stop" (and "Map").
-- tapOn:
-    text: "Log stop"
-    optional: true
-- tapOn:
-    text: "Map"
-    optional: true
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 15000
+- evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
+- openLink: "${output.magicUrl}"
+- extendedWaitUntil:
+    visible: "Your Trips"
+    timeout: 30000
+- tapOn: "Reviewer Reunion"
+- extendedWaitUntil:
+    visible: "Map"
+    timeout: 15000
+# tf:step "Open Map and tap Share Location — iOS asks for location while using the app; tap Allow Once or Allow While Using App." capture=video
+- tapOn: "Map"
+- extendedWaitUntil:
+    visible: "Share Location"
+    timeout: 20000
+- tapOn: "Share Location"
 - tapOn:
     text: "Allow While Using App"
     optional: true
-# tf:step "Add an expense and tap Scan Receipt — Sortey requests Camera. Grant it." capture=video
-# TODO: map the exact nav to the new-expense screen (expenses tab → add expense); "Scan Receipt" is the camera trigger in new-expense.tsx.
 - tapOn:
-    text: "Scan Receipt"
+    text: "Allow Once"
+    optional: true
+# tf:step "Location sharing is on — the button now reads Sharing." capture=screenshot
+- extendedWaitUntil:
+    visible: "Sharing"
+    timeout: 15000
+- back
+# tf:step "Back on the trip hub, tap Add Expense, then Scan Receipt — iOS asks for camera access; tap OK." capture=video
+- extendedWaitUntil:
+    visible: "Add Expense"
+    timeout: 15000
+- tapOn: "Add Expense"
+- extendedWaitUntil:
+    visible: "Scan Receipt"
+    timeout: 15000
+- tapOn: "Scan Receipt"
+- tapOn:
+    text: "OK"
     optional: true
 - tapOn:
-    text: "Allow"
+    text: "Cancel"
+    optional: true
+# tf:step "Tap 'or choose from photo library' — the photo picker opens; cancel it." capture=screenshot
+- tapOn: "or choose from photo library"
+- tapOn:
+    text: "Allow Full Access"
+    optional: true
+- tapOn:
+    text: "Cancel"
     optional: true

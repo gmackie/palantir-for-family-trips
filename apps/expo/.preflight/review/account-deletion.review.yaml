@@ -1,33 +1,58 @@
 # TrueFlight standard workflow: account-deletion
 # Apple requires an in-app way to delete the account (App Store Review 5.1.1(v)).
-# Sortey exposes this in Settings → Account → Delete Account
-# (settings.tsx AccountSection.handleDeleteAccount → trpc settings.deleteAccount).
-# Confirming green proves the R1 compliance gate. Uses a throwaway account that
-# gets destroyed by this run.
+# Running this green proves the R1 compliance gate.
+# In Sortey the control lives on the Settings screen (Your Trips -> Settings -> Account
+# section -> "Delete Account"). It calls trpc settings.deleteAccount (hard-deletes the
+# user row; sessions, API keys and preferences cascade), signs you out, and shows an
+# "Account deleted" alert before returning to the sign-in screen.
+# Sortey is passwordless — see sign-in-organizer for how the magic-link bypass is used.
 #
-# tf:workflow id=account-deletion title="Delete your Sortey account" account=deletable
-# tf:account role=deletable email="reviewer+delete@sortey.app" secretRef=sortey/review/delete_pw permissions=full notes="Throwaway account safe to delete during review. Passwordless magic-link sign-in (reviewer bypass). Re-provision before each run since deletion is permanent."
-# tf:verify "The account, its sessions, API keys, and preferences are permanently deleted."
-# tf:verify "You are signed out and returned to the Sortey sign-in screen."
+# tf:workflow id=account-deletion title="Delete your account" account=deletable
+# tf:account role=deletable email="reviewer+delete@sortey.app" secretRef=sortey/review/delete_pw permissions=full notes="A throwaway account (member of no important trip) that is safe to permanently delete during review — it is destroyed by this flow and must be re-provisioned before the next run. Passwordless: the address must be listed in DEMO_LOGIN_EMAILS; no password is stored at the secretRef."
+# TODO: confirm a real deletable demo account is provisioned on sortey.app (listed in DEMO_LOGIN_EMAILS; recreate it after every run) and its password is stored at sortey/review/delete_pw
+# tf:verify "The account is deleted (settings.deleteAccount) and you are returned to the signed-out Sortey sign-in screen."
+# tf:verify "Requesting a magic link again for the same address creates a fresh, empty account rather than restoring the old one."
 appId: com.gmacko.sortey
 ---
-# tf:step "Launch the app and sign in with the throwaway demo account." capture=screenshot
+# tf:step "Launch the app and sign in with the disposable demo account (magic link via the demo bypass)." capture=screenshot
 - launchApp
-- assertVisible: "Sign in"
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 15000
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
 - tapOn: "Send magic link"
-- assertVisible: "Settings"
-# tf:step "Open Settings from the account header." capture=screenshot
+- extendedWaitUntil:
+    visible: "Check your email"
+    timeout: 15000
+- evalScript: "${output.magicUrl = JSON.parse(http.post('https://sortey.app/api/auth/dev/sign-in/magic-link', { headers: { 'Content-Type': 'application/json', 'Origin': 'https://sortey.app' }, body: JSON.stringify({ email: TF_ACCOUNT_EMAIL, callbackURL: 'sortey:///' }) }).body).url}"
+- openLink: "${output.magicUrl}"
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 30000
+# tf:step "Tap Settings in the header, then scroll down to the Account section." capture=screenshot
 - tapOn: "Settings"
-# tf:step "Scroll to the Account section at the bottom of Settings." capture=screenshot
+- extendedWaitUntil:
+    visible: "Push notifications"
+    timeout: 15000
 - scrollUntilVisible:
     element:
       text: "Delete Account"
-# tf:step "Tap Delete Account, then confirm the irreversible deletion in the alert." capture=video
-- tapOn: "Delete Account"
+    direction: DOWN
+    timeout: 20000
+# tf:step "Tap Delete Account and confirm the irreversible deletion in the alert." capture=video
+- tapOn:
+    text: "Delete Account"
+    index: 0
 - tapOn:
     text: "Delete Account"
     index: 1
-# tf:step "The account is deleted, you are signed out, and land back on the sign-in screen." capture=screenshot
-- assertVisible: "Sign in"
+# tf:step "Sortey confirms 'Account deleted' and signs you out." capture=screenshot
+- extendedWaitUntil:
+    visible: "Account deleted"
+    timeout: 20000
+- tapOn: "OK"
+# tf:step "You land back on the signed-out Sortey sign-in screen." capture=screenshot
+- extendedWaitUntil:
+    visible: "Send magic link"
+    timeout: 15000
