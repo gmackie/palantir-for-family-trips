@@ -3,6 +3,7 @@ import type { ConfigContext, ExpoConfig } from "expo/config";
 // Plain CJS on purpose: the Expo config loader transpiles this file and
 // requires siblings at runtime, so a .ts helper would not resolve.
 const { otaCodeSigning, resolveOtaUrl } = require("./ota-config");
+const { selectSentryDsn } = require("./src/config/sentry-dsn.js");
 
 // Throws at config time on a plain-HTTP LAN endpoint — see src/utils/ota-config.
 const PREFLIGHT_OTA_URL = resolveOtaUrl();
@@ -25,13 +26,15 @@ const GOOGLE_MAPS_API_KEY =
   "";
 const ASSOCIATED_DOMAIN = process.env.EXPO_PUBLIC_APP_DOMAIN ?? "sortey.app";
 
-const SENTRY_DSN =
-  process.env.SENTRY_DSN ??
-  (APP_VARIANT === "production"
+const SENTRY_DSN = selectSentryDsn(
+  process.env.SENTRY_DSN,
+  APP_VARIANT === "production"
     ? process.env.EXPO_PUBLIC_SENTRY_DSN_PROD
     : APP_VARIANT === "preview"
       ? process.env.EXPO_PUBLIC_SENTRY_DSN_STAGING
-      : process.env.EXPO_PUBLIC_SENTRY_DSN_DEV);
+      : process.env.EXPO_PUBLIC_SENTRY_DSN_DEV,
+  process.env.EXPO_PUBLIC_SENTRY_DSN,
+);
 const POSTHOG_KEY =
   process.env.POSTHOG_KEY ??
   (APP_VARIANT === "production"
