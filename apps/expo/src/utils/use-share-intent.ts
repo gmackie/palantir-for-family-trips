@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useShareIntent } from "expo-share-intent";
+import { useShareIntentContext } from "expo-share-intent";
 import { useEffect } from "react";
 import { Alert } from "react-native";
 
@@ -9,7 +9,7 @@ import { getBaseUrl } from "./base-url";
 import { getActiveWorkspaceId } from "./workspace-store";
 
 export function useShareIntentHandler(tripId: string | undefined) {
-  const { shareIntent, resetShareIntent } = useShareIntent();
+  const { shareIntent, resetShareIntent } = useShareIntentContext();
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation(
