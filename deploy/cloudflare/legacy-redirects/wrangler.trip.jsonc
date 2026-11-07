@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  // Legacy redirect for trip.gmac.io -> https://sortey.app (SORTEY-31).
+  // Deploy: npx wrangler deploy -c deploy/cloudflare/legacy-redirects/wrangler.trip.jsonc
+  "name": "trip-gmac-io",
+  "main": "worker.js",
+  "compatibility_date": "2026-04-15",
+  "workers_dev": false,
+  "routes": [{ "pattern": "trip.gmac.io", "custom_domain": true }],
+  "triggers": { "crons": [] },
+  "observability": { "enabled": true }
+}
