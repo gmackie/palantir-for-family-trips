@@ -51,6 +51,13 @@ export default function RootLayout(props: { children: React.ReactNode }) {
             __html: `localStorage.setItem("theme-mode","dark");document.documentElement.className="dark"`,
           }}
         />
+        <script
+          defer
+          src="/dataflare.js"
+          data-enabled={
+            env.NEXT_PUBLIC_DATAFLARE_ENABLED !== "false" ? "true" : "false"
+          }
+        />
       </head>
       <body
         className={cn(
