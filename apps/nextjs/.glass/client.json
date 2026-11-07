@@ -1,0 +1,5 @@
+{
+  "host": "https://observe.gmac.io",
+  "project": "trip",
+  "wranglerConfig": "wrangler.jsonc"
+}
