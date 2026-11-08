@@ -88,7 +88,7 @@ Install from TestFlight (fresh binary required after 2026-07-13 fingerprint chan
 
 ## Review notes (paste into ASC)
 
-> Sortey is a private group trip / road-trip companion. Sign in with magic link (email). Demo: create or open a trip, use Today and Driving Mode. Location is used only while logging journey stops and while Driving Mode is open. No account purchase flows in v1.
+> Sortey is a private group trip / road-trip companion. In the review build, enter `reviewer+traveler@sortey.app` and tap **Sign in for App Review**; no password or inbox is needed. Demo: create or open a trip, use Today and Driving Mode. Location is used only while logging journey stops and while Driving Mode is open. No account purchase flows in v1.
 
 ## Remaining manual steps (cannot automate from this agent without ASC session)
 
@@ -104,3 +104,31 @@ Install from TestFlight (fresh binary required after 2026-07-13 fingerprint chan
 3. Privacy → Edit → paste questionnaire answers  
 4. TestFlight → Internal → install → smoke  
 5. Add for Review → Submit
+
+## Reviewer sign-in (GMA-614)
+
+- Build from `apps/expo` with `eas build --platform ios --profile review`.
+  This extends the production binary configuration and enables
+  `EXPO_PUBLIC_REVIEW_SIGN_IN=true` on the isolated `review` update channel.
+  Submit that build ID with the production submit profile. Ordinary production
+  builds do not show the review button.
+- For review-channel OTA updates, also set `EXPO_PUBLIC_REVIEW_SIGN_IN=true`
+  when bundling (`eas update --channel review --environment production`).
+  Do not publish an ordinary production bundle to the review channel.
+- Production must explicitly set `DEMO_LOGIN_EMAILS` to all three reviewer
+  addresses agreed in palantir-for-family-trips PR #19. This checkout's flows
+  identify `reviewer+traveler@sortey.app` and `reviewer+delete@sortey.app`;
+  obtain the third from that deployment change. This code change does not
+  configure or deploy the live allowlist. Never allowlist real customer accounts.
+- The Worker forwards that binding before handling requests; the bypass gate
+  evaluates it at request time. An unset binding or a non-allowlisted address
+  is denied. The reserved demo-domain shortcut remains development-only.
+- Enter the traveler address and tap **Sign in for App Review**. The app mints
+  and verifies the single-use magic-link token using its cookie-aware auth
+  client, then displays the signed-in workspace. No TrueFlight evalScript,
+  email inbox, or external browser is needed. Errors stay on the sign-in form
+  and can be retried. **Send magic link** retains the ordinary email flow.
+- Before submission, run the tracked `.preflight/review/sign-in.review.yaml`
+  on the actual review binary, cold-launch to confirm the session persists,
+  and verify that an address absent from the allowlist is rejected. Use the
+  deletion address only for the destructive account-deletion flow.

@@ -195,10 +195,11 @@ platform :ios do
         last_name: ENV["REVIEW_LAST_NAME"] || "Mackie",
         phone_number: ENV["REVIEW_PHONE"] || "+1 734 555 0100",
         email_address: ENV["REVIEW_EMAIL"] || "mackieg@umich.edu",
-        demo_user: ENV["REVIEW_DEMO_USER"] || "",
+        demo_user: ENV["REVIEW_DEMO_USER"] || "reviewer+traveler@sortey.app",
         demo_password: ENV["REVIEW_DEMO_PASSWORD"] || "",
         notes: ENV["REVIEW_NOTES"] ||
-          "Sortey is a private group trip companion. Sign in with magic link (email). " \
+          "Sortey is a private group trip companion. In the review build, enter " \
+          "reviewer+traveler@sortey.app and tap Sign in for App Review. No password or inbox is needed. " \
           "Open a trip, use Today and Driving Mode. Location is used for journey " \
           "stops and Driving Mode only. No IAP."
       }

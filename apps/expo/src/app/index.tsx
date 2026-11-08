@@ -26,6 +26,7 @@ import { queryClient, trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { formatCalendarDate } from "~/utils/calendar-date";
 import { C, mono, R } from "~/utils/design";
+import { reviewSignInEnabled, signInForReview } from "~/utils/review-sign-in";
 import {
   getActiveWorkspaceId,
   setActiveWorkspaceId,
@@ -86,18 +87,25 @@ function SignIn() {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
-  const handleSend = async () => {
+  const handleSend = async (review = false) => {
     if (!email.trim()) return;
     setLoading(true);
     setError(null);
     try {
+      if (review) {
+        await signInForReview(email);
+        return;
+      }
       // Pass an app deep link so the post-verify redirect returns to the app
       // (sortey:// in standalone builds, exp:// in Expo Go) instead of loading
       // the web app in Safari. The scheme must be in the server trustedOrigins.
-      await authClient.signIn.magicLink({
+      const result = await authClient.signIn.magicLink({
         email: email.trim(),
         callbackURL: Linking.createURL("/"),
       });
+      if (result.error) {
+        throw new Error(result.error.message ?? "Failed to send link");
+      }
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send link");
@@ -261,6 +269,19 @@ function SignIn() {
           </Text>
         )}
       </Pressable>
+
+      {reviewSignInEnabled && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void handleSend(true)}
+          disabled={loading || socialLoading !== null || !email.trim()}
+          style={{ padding: 12, marginBottom: 12 }}
+        >
+          <Text style={{ color: C.info, fontWeight: "600" }}>
+            Sign in for App Review
+          </Text>
+        </Pressable>
+      )}
 
       <View
         style={{

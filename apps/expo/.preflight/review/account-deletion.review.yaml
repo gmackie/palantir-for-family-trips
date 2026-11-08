@@ -16,7 +16,7 @@ appId: com.gmacko.sortey
 - assertVisible: "Sign in"
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
-- tapOn: "Send magic link"
+- tapOn: "Sign in for App Review"
 - assertVisible: "Settings"
 # tf:step "Open Settings from the account header." capture=screenshot
 - tapOn: "Settings"

@@ -83,3 +83,7 @@ network write succeeded when only local persistence has completed.
 |------|----------|-----------|
 | 2026-04-07 | Initial design system created | Created to match the provided Palantir dashboard image. |
 | 2026-04-15 | Added accessibility and Palantir-on-mobile guidance | Required to unblock receipt claiming, planning, and settlement flows across web and Expo. |
+
+### App Review sign-in
+
+In review builds, the email sign-in screen also offers **Sign in for App Review**. It uses the entered reviewer email, shows failures inline, and proceeds directly to the signed-in workspace. The ordinary **Send magic link** interaction remains available.

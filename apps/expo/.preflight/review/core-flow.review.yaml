@@ -14,7 +14,7 @@ appId: com.gmacko.sortey
 - assertVisible: "Sign in"
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
-- tapOn: "Send magic link"
+- tapOn: "Sign in for App Review"
 - assertVisible: "Settings"
 # tf:step "Start a new trip." capture=screenshot
 # TODO: on a fresh account tap "Create Your First Trip"; on a seeded account tap "+ New".

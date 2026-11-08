@@ -21,7 +21,7 @@ appId: com.gmacko.sortey
 - assertVisible: "Sign in"
 - tapOn: "you@example.com"
 - inputText: "${TF_ACCOUNT_EMAIL}"
-- tapOn: "Send magic link"
+- tapOn: "Sign in for App Review"
 - tapOn:
     text: "Allow"
     optional: true

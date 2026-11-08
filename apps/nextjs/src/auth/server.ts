@@ -36,7 +36,7 @@ export const auth = initAuth({
   // reviewer addresses in DEMO_LOGIN_EMAILS. Setting that variable is the
   // opt-in: with it unset the endpoint stays disabled exactly as before, so a
   // deployment cannot acquire a bypass by accident.
-  devMagicLinkBypassEnabled:
+  devMagicLinkBypassEnabled: () =>
     env.NODE_ENV === "development" || demoLoginAllowlist().length > 0,
   extraPlugins: [
     magicLink({
