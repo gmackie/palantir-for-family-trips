@@ -21,7 +21,6 @@ function generateMagicLinkToken() {
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
 }
-// dev-stage: magic-link bypass for demo login (env flag doesn't reach the vinext worker; gate before real prod)
 // Demo/verification accounts allowed to use the magic-link bypass. Restricted to
 // these (several per app) so it can never mint a session for a real user.
 // SECURITY: keep restricted to demo accounts.
@@ -51,7 +50,7 @@ function isDemoLoginEmail(email: string): boolean {
   );
 }
 
-function devMagicLinkBypass(enabled: boolean | undefined) {
+function devMagicLinkBypass(enabled: boolean | (() => boolean) | undefined) {
   return {
     id: "sortey-dev-magic-link-bypass",
     endpoints: {
@@ -59,7 +58,7 @@ function devMagicLinkBypass(enabled: boolean | undefined) {
         "/dev/sign-in/magic-link",
         { method: "POST", requireHeaders: true, body: devMagicLinkBodySchema },
         async (ctx) => {
-          if (!enabled)
+          if (!(typeof enabled === "function" ? enabled() : enabled))
             throw ctx.error("FORBIDDEN", {
               message: "Magic link bypass is disabled",
             });
@@ -125,7 +124,7 @@ export function initAuth<
   appleClientId?: string;
   appleClientSecret?: string;
   appleBundleIdentifier?: string;
-  devMagicLinkBypassEnabled?: boolean;
+  devMagicLinkBypassEnabled?: boolean | (() => boolean);
   extraPlugins?: TExtraPlugins;
 }) {
   const config = {

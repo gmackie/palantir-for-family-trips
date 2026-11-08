@@ -131,3 +131,7 @@ docs/ai              Planning artifacts (this file, IMPLEMENTATION_PLAN.md, etc.
 ## Next Step
 
 `docs/ai/IMPLEMENTATION_PLAN.md` — phased work breakdown starting with the monorepo migration, then auth, then trips/groups, then expenses/OCR, then settlement, then map/itinerary, with Storybook coverage gates throughout.
+
+### App Review sign-in
+
+App Review uses a dedicated review build with an in-app sign-in button for explicitly allowlisted demo accounts, so human reviewers need no email inbox.

@@ -108,6 +108,14 @@
         "buildType": "app-bundle"
       },
       "channel": "production"
+    },
+    "review": {
+      "extends": "production",
+      "environment": "production",
+      "channel": "review",
+      "env": {
+        "EXPO_PUBLIC_REVIEW_SIGN_IN": "true"
+      }
     }
   },
   "submit": {

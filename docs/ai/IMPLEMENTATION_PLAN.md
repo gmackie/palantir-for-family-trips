@@ -1156,3 +1156,7 @@ Road-trip detail previews and Day Plan filters, highlights and replanning use th
 ### Expo development manifest detection
 
 The Sortey Expo CLI 56.1.18 patch returns negotiated manifest headers for the iOS launcher's unsigned development HEAD request at `/`. Existing routing, browser handling, platform validation and device registration still run. The following GET resolves the full runtime fingerprint and signing behavior unchanged. The launcher uses a 10-second HEAD timeout; measured cold fingerprint resolution exceeded it. Other HEAD requests retain the existing manifest path. Run `pnpm test:manifest-head` to verify this contract after dependency installation. The patch and lockfile change require fresh Preflight build/evidence binding; prior native recordings do not validate the patched tooling.
+
+### App Review sign-in
+
+GMA-614: the EAS `review` profile enables `EXPO_PUBLIC_REVIEW_SIGN_IN`; the visible review button mints and verifies a magic-link token through the Expo auth client. Production `DEMO_LOGIN_EMAILS` remains a deployment prerequisite (PR #19), evaluated per request after Worker binding synchronization. See `APP_STORE_CHECKLIST.md`.

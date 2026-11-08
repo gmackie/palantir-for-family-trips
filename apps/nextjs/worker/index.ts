@@ -106,6 +106,9 @@ const PUBLIC_ENV_KEYS = [
 ] as const;
 
 function syncEnvSecrets(env: Env) {
+  // Evaluate the demo gate per request, including removal of the binding.
+  process.env.DEMO_LOGIN_EMAILS =
+    typeof env.DEMO_LOGIN_EMAILS === "string" ? env.DEMO_LOGIN_EMAILS : "";
   for (const key of SECRET_KEYS) {
     const val = env[key];
     if (typeof val === "string" && val) {
