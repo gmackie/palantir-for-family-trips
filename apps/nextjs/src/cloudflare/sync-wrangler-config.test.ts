@@ -30,4 +30,17 @@ describe("syncWranglerDeployConfig", () => {
       assets: { directory: "../client", binding: "ASSETS" },
     });
   });
+
+  it("preserves the version_metadata binding used for health identity", () => {
+    expect(
+      syncWranglerDeployConfig({
+        buildConfig: { name: "sortey-app", main: "index.js" },
+        sourceConfig: {
+          version_metadata: { binding: "FG_WORKER_VERSION" },
+        },
+      }),
+    ).toMatchObject({
+      version_metadata: { binding: "FG_WORKER_VERSION" },
+    });
+  });
 });

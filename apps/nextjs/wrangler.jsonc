@@ -11,6 +11,7 @@
   },
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat"],
+  "version_metadata": { "binding": "FG_WORKER_VERSION" },
   "placement": { "mode": "smart" },
   "triggers": { "crons": ["*/5 * * * *"] },
   "build": {
