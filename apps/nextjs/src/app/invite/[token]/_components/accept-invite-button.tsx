@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 
+import { track } from "~/lib/analytics";
 import { useTRPC } from "~/trpc/react";
 
 export function AcceptInviteButton(props: { token: string }) {
@@ -26,6 +27,7 @@ export function AcceptInviteButton(props: { token: string }) {
               const result = await acceptInvite.mutateAsync({
                 token: props.token,
               });
+              track("invite_accepted", { method: "email_invite" });
               router.push(`/trips/${result.tripId}`);
             } catch (mutationError) {
               setError(

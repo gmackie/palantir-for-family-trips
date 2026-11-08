@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { track } from "~/lib/analytics";
 import { useTRPC } from "~/trpc/react";
 import { ShareInviteCard } from "../share-invite-card";
 
@@ -31,7 +32,11 @@ export function MembersPanel(props: {
 
   const createInvite = useMutation(
     trpc.trips.createInvite.mutationOptions({
-      onSuccess: (data) => {
+      onSuccess: (data, variables) => {
+        track("invite_sent", {
+          method: data.emailSent ? "email" : "link",
+          role: variables.role ?? "member",
+        });
         setInviteStatus(
           data.emailSent
             ? `Invite sent to ${data.email}.`

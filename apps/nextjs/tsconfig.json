@@ -25,6 +25,8 @@
   "exclude": [
     "node_modules",
     "dist",
+    // Browser loaders copied verbatim (public/dataflare.js); not app source.
+    "public/**",
     "storybook-static",
     "**/*.test.ts",
     "e2e/**",

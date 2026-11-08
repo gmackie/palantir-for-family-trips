@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 
+import { track } from "~/lib/analytics";
 import { useTRPC } from "~/trpc/react";
 
 export function JoinButton(props: { token: string }) {
@@ -24,6 +25,7 @@ export function JoinButton(props: { token: string }) {
           startTransition(async () => {
             try {
               const result = await join.mutateAsync({ token: props.token });
+              track("invite_accepted", { method: "share_link" });
               router.push(`/trips/${result.tripId}`);
             } catch (mutationError) {
               setError(

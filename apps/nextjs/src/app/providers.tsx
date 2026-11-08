@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 
 import { env } from "~/env";
 
+import { AnalyticsBridge } from "./_components/analytics-bridge";
+
 interface ProvidersProps {
   children: ReactNode;
 }
@@ -17,10 +19,16 @@ export function Providers({ children }: ProvidersProps) {
         apiKey={env.NEXT_PUBLIC_POSTHOG_KEY}
         apiHost={env.NEXT_PUBLIC_POSTHOG_HOST}
       >
+        <AnalyticsBridge />
         {children}
       </PostHogProvider>
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <AnalyticsBridge />
+      {children}
+    </>
+  );
 }
