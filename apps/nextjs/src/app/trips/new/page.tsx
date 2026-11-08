@@ -13,6 +13,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, getSession } from "~/auth/server";
+import { TRIP_CREATED_PARAM, tripCreatedFlag } from "~/lib/analytics";
 import { DestinationPicker } from "../_components/destination-picker";
 import { parseCreateTripFormData } from "../_lib/create-trip-form";
 import { requireTripsWorkspace } from "../_lib/server";
@@ -56,10 +57,12 @@ export default async function NewTripPage() {
       groupMode: input.groupMode,
     });
 
+    // Lets the client record `trip_created` (observe.gmac.io) after the redirect.
+    const createdFlag = `${TRIP_CREATED_PARAM}=${tripCreatedFlag(tripMode, input.groupMode)}`;
     if (tripMode === "roadtrip") {
-      redirect(`/trips/${created.trip.id}/road-trip`);
+      redirect(`/trips/${created.trip.id}/road-trip?${createdFlag}`);
     }
-    redirect(`/trips/${created.trip.id}`);
+    redirect(`/trips/${created.trip.id}?${createdFlag}`);
   }
 
   return (

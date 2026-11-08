@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { track } from "~/lib/analytics";
 import { useTRPC } from "~/trpc/react";
 
 export function ShareInviteCard(props: {
@@ -56,6 +57,7 @@ export function ShareInviteCard(props: {
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
+      track("invite_sent", { method: "share_link" });
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -103,6 +105,8 @@ export function ShareInviteCard(props: {
             </button>
             <a
               href={smsHref}
+              data-glass-event="invite_sent"
+              data-glass-prop-method="sms"
               className="shrink-0 rounded-[4px] border border-[#3FB950]/30 bg-[#3FB950]/10 px-3 py-2 text-[10px] font-semibold text-[#3FB950] transition-colors hover:bg-[#3FB950]/20"
             >
               Text it
