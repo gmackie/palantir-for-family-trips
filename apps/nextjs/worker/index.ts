@@ -12,6 +12,7 @@ import {
   handleImageOptimization,
 } from "vinext/server/image-optimization";
 import { auth } from "~/auth/server";
+import { withHealthIdentity } from "~/cloudflare/health-identity";
 
 interface R2Bucket {
   put(
@@ -62,6 +63,10 @@ export interface Env {
   FG_STAGE?: string;
   OTEL_ENDPOINT?: string;
   OTEL_DISABLED?: string;
+  /** Injected by ForgeGraph at deploy time; reported on health responses. */
+  FG_COMMIT_HASH?: string;
+  /** wrangler `version_metadata` binding. */
+  FG_WORKER_VERSION?: { id: string };
   [key: string]: unknown;
 }
 
@@ -361,5 +366,13 @@ export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
     await runScheduled(env);
   },
-  fetch: instrumentedFetch,
+  // Health paths carry the ForgeGraph deployment identity headers (commit and
+  // Worker version) from immutable bindings only; see health-identity.ts.
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return withHealthIdentity(
+      request,
+      env,
+      await instrumentedFetch(request, env, ctx),
+    );
+  },
 };

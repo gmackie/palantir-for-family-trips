@@ -6,6 +6,7 @@ const PASSTHROUGH_KEYS = [
   "route",
   "routes",
   "triggers",
+  "version_metadata",
   "workers_dev",
 ];
 
