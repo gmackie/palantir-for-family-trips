@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { useEffect } from "react";
 
+import { AnalyticsHost } from "~/components/analytics-host";
 import { ErrorBoundary } from "~/components/error-boundary";
 import { OutboxSyncHost } from "~/components/outbox-sync-host";
 import { queryClient } from "~/utils/api";
@@ -47,6 +48,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <Providers>
             <QueryCachePersistHost />
+            <AnalyticsHost />
             <PushNotificationRegistrar />
             <OtaUpdateChecker />
             <MagicLinkCookieCatcher />

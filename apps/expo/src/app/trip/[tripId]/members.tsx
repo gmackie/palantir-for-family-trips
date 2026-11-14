@@ -20,6 +20,7 @@ import QRCode from "react-native-qrcode-svg";
 
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import { track } from "~/utils/observe-analytics";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 const APP_URL = "https://sortey.app";
@@ -280,10 +281,13 @@ export default function MembersScreen() {
       );
       const tripName = trip?.name ?? "our trip";
       try {
-        await Share.share({
+        const result = await Share.share({
           message: `You're invited to ${tripName} on Sortey 🚗 Tap to join: ${url}`,
           url,
         });
+        if (result.action !== Share.dismissedAction) {
+          track("invite_sent", { method: "share_link" });
+        }
       } catch {
         // User dismissed the share sheet — ignore.
       }
@@ -303,6 +307,10 @@ export default function MembersScreen() {
   const sendInvite = useMutation(
     trpc.trips.createInvite.mutationOptions({
       onSuccess: (data) => {
+        track("invite_sent", {
+          method: data.emailSent ? "email" : "link",
+          role: "member",
+        });
         setInviteEmail("");
         setShowInviteField(false);
         void queryClient.invalidateQueries({

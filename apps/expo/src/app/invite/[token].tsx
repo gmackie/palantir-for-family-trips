@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import { track } from "~/utils/observe-analytics";
 
 export default function InviteScreen() {
   "use no memo";
@@ -22,6 +23,7 @@ export default function InviteScreen() {
   const acceptMutation = useMutation(
     trpc.trips.acceptInvite.mutationOptions({
       onSuccess: (data) => {
+        track("invite_accepted", { method: "email_invite" });
         router.replace(`/trip/${data.tripId}`);
       },
       onError: (err) => {

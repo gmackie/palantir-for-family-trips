@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { trpc } from "~/utils/api";
 import { C, mono, R } from "~/utils/design";
+import { track } from "~/utils/observe-analytics";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 type TripMode = "destination" | "roadtrip";
@@ -492,7 +493,11 @@ export default function NewTripScreen() {
 
   const createTrip = useMutation(
     trpc.trips.create.mutationOptions({
-      onSuccess: (data) => {
+      onSuccess: (data, variables) => {
+        track("trip_created", {
+          trip_mode: variables.tripMode ?? null,
+          group_mode: variables.groupMode ?? false,
+        });
         void queryClient.invalidateQueries({
           queryKey: trpc.trips.list.queryKey({ workspaceId }),
         });
