@@ -21,6 +21,7 @@ import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, R } from "~/utils/design";
 import { createJourneyStopId } from "~/utils/journey-outbox";
 import { journeyOutbox } from "~/utils/journey-outbox-native";
+import { track } from "~/utils/observe-analytics";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 const KINDS = [
@@ -243,6 +244,11 @@ export default function LogStopScreen() {
       const stillQueued = (await journeyOutbox.list()).some(
         (entry) => entry.command.stopId === stopId,
       );
+      track("stop_logged", {
+        kind,
+        queued: stillQueued,
+        photos: photoUris.length,
+      });
       if (stillQueued) {
         Alert.alert(
           "Saved for sync",

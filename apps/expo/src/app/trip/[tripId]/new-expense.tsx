@@ -22,6 +22,7 @@ import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { getBaseUrl } from "~/utils/base-url";
 import { C, mono, R } from "~/utils/design";
+import { track } from "~/utils/observe-analytics";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
 
 interface OcrResult {
@@ -430,6 +431,11 @@ export default function NewExpense() {
           currency,
           splitWithGroup,
         });
+        track("expense_created", {
+          expense_type: "gas",
+          queued: false,
+          split: splitWithGroup,
+        });
 
         await queryClient.invalidateQueries(trpc.expenses.list.queryFilter());
         router.back();
@@ -455,6 +461,7 @@ export default function NewExpense() {
           totalCents,
           currency,
         });
+        track("expense_created", { expense_type: "regular", queued: true });
         Alert.alert(
           "Queued offline",
           "Expense saved on this device. It will sync when you're back online. Receipts/line items need a connection.",
@@ -474,6 +481,12 @@ export default function NewExpense() {
         tipCents,
         totalCents,
         currency,
+      });
+      track("expense_created", {
+        expense_type: "regular",
+        queued: false,
+        receipt: Boolean(receiptMeta),
+        line_items: lineItemDrafts.length,
       });
 
       if (receiptMeta && created?.id) {
