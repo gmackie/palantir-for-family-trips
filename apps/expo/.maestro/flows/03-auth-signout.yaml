@@ -1,44 +1,18 @@
-# Authentication - Sign Out Flow
-# Tests the sign-out functionality (requires signed-in state)
-
+# Requires a signed-in account with a workspace.
 appId: ${APP_ID}
-
 ---
-# Launch app (assumes already signed in)
 - launchApp
-
-# Navigate to profile/settings
 - tapOn:
-    text: "Profile|Settings|Account"
-    regex: true
-    optional: true
-
+    id: "open-settings"
+- scrollUntilVisible:
+    element:
+      id: "sign-out"
+    direction: DOWN
 - tapOn:
-    id: "profile-tab"
-    optional: true
-
-# Wait for profile screen
-- assertVisible:
-    text: "Profile|Settings|Account"
-    regex: true
-    optional: true
-
-# Tap sign out
-- tapOn:
-    text: "Sign [Oo]ut|Log [Oo]ut"
-    regex: true
-
-# Confirm sign out if dialog appears
-- tapOn:
-    text: "Confirm|Yes|Sign [Oo]ut"
-    regex: true
-    optional: true
-
-# Verify signed out - should see sign in option
-- assertVisible:
-    text: "Sign [Ii]n|Log [Ii]n|Welcome"
-    regex: true
-    timeout: 5000
-
-# Take screenshot
+    id: "sign-out"
+- tapOn: "Sign out"
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 10000
 - takeScreenshot: auth-signout-result

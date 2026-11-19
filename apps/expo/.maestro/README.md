@@ -19,10 +19,9 @@ curl -Ls "https://get.maestro.mobile.dev" | bash
 Set the following environment variables:
 
 ```bash
-export APP_ID="com.gmacko.app"  # Your app's bundle ID
+export APP_ID="com.gmacko.sortey"  # Your app's bundle ID
 export API_URL="http://localhost:3000"  # Backend API URL
 export TEST_EMAIL="test@example.com"  # Test account email
-export TEST_PASSWORD="testpassword123"  # Test account password
 ```
 
 ## Running Tests
@@ -60,7 +59,7 @@ maestro test .maestro/ --device "Pixel 6"
 | Flow                   | Description                         |
 | ---------------------- | ----------------------------------- |
 | `01-app-launch.yaml`   | Verifies app launches successfully  |
-| `02-auth-signin.yaml`  | Tests sign-in flow                  |
+| `02-auth-signin.yaml`  | Requests a magic link and checks email-sent state |
 | `03-auth-signout.yaml` | Tests sign-out flow                 |
 | `04-navigation.yaml`   | Tests tab navigation and deep links |
 | `05-posts-crud.yaml`   | Tests creating and deleting posts   |
@@ -179,3 +178,16 @@ Configure in `config.yaml`:
 onFlowError:
   - takeScreenshot: error-${timestamp}
 ```
+
+## Auth selectors
+
+Use `email-input`, `send-magic-link`, `magic-link-sent`, and
+`review-sign-in` (review builds only). Signed-in controls expose
+`open-settings`, `sign-out`, `create-trip`, and `delete-account`.
+Native confirmation alerts are selected by their visible button text.
+
+The request flow stops at email confirmation. To verify the full sign-in flow,
+open the emailed `https://sortey.app/api/auth/magic-link/verify?...` URL on
+an installed build: verification must stay in the browser before the callback
+returns to the app. AASA changes require deployment and Apple's association
+cache refresh. The sign-out flow requires an already signed-in workspace.

@@ -1160,3 +1160,18 @@ The Sortey Expo CLI 56.1.18 patch returns negotiated manifest headers for the iO
 ### App Review sign-in
 
 GMA-614: the EAS `review` profile enables `EXPO_PUBLIC_REVIEW_SIGN_IN`; the visible review button mints and verifies a magic-link token through the Expo auth client. Production `DEMO_LOGIN_EMAILS` remains a deployment prerequisite (PR #19), evaluated per request after Worker binding synchronization. See `APP_STORE_CHECKLIST.md`.
+
+### Mobile auth and account deletion (GMA-615)
+
+AASA explicitly excludes `/api/*` before allowing invite/trip links for all
+three bundle IDs. The verify URL stays in the browser; only the post-verification
+callback returns to Expo. Regression tests cover the published AASA asset.
+Expo auth/account controls expose stable Maestro IDs; the sign-in smoke flow
+checks magic-link delivery acknowledgement rather than the obsolete password UI.
+
+Account deletion continues to delete the authenticated user and rely on database
+foreign keys. Schema and migration regression checks confirm `ON DELETE CASCADE`
+for trip/workspace memberships, trip/workspace invites sent by the user, and
+member locations. Invites received by email are not user-linked and remain until
+expiry/revocation. These checks verify repository definitions, not migration
+application in production; no new migration is required.
