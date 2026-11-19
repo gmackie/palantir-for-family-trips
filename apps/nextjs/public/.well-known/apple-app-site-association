@@ -4,15 +4,15 @@
     "details": [
       {
         "appID": "P4SWQXAB5H.com.gmacko.sortey",
-        "paths": ["/invite/*", "/trip/*"]
+        "paths": ["NOT /api/*", "/invite/*", "/trip/*"]
       },
       {
         "appID": "P4SWQXAB5H.com.gmacko.sortey.dev",
-        "paths": ["/invite/*", "/trip/*"]
+        "paths": ["NOT /api/*", "/invite/*", "/trip/*"]
       },
       {
         "appID": "P4SWQXAB5H.com.gmacko.sortey.expo",
-        "paths": ["/invite/*", "/trip/*"]
+        "paths": ["NOT /api/*", "/invite/*", "/trip/*"]
       }
     ]
   }

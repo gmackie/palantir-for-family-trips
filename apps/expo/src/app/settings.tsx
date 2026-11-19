@@ -1133,6 +1133,7 @@ function SignOutSection() {
         </Text>
       )}
       <Pressable
+        testID="sign-out"
         onPress={handleSignOut}
         disabled={signingOut}
         style={{
@@ -1220,6 +1221,7 @@ function AccountSection() {
         is supported.
       </Text>
       <Pressable
+        testID="delete-account"
         onPress={handleDeleteAccount}
         disabled={isPending}
         style={{

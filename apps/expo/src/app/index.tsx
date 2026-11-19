@@ -144,6 +144,7 @@ function SignIn() {
         }}
       >
         <Text
+          testID="magic-link-sent"
           style={{
             color: C.fg,
             fontSize: 24,
@@ -227,6 +228,7 @@ function SignIn() {
       </Text>
 
       <TextInput
+        testID="email-input"
         value={email}
         onChangeText={setEmail}
         placeholder="you@example.com"
@@ -249,6 +251,7 @@ function SignIn() {
       />
 
       <Pressable
+        testID="send-magic-link"
         onPress={() => void handleSend()}
         disabled={loading || !email.trim()}
         style={{
@@ -273,6 +276,7 @@ function SignIn() {
       {reviewSignInEnabled && (
         <Pressable
           accessibilityRole="button"
+          testID="review-sign-in"
           onPress={() => void handleSend(true)}
           disabled={loading || socialLoading !== null || !email.trim()}
           style={{ padding: 12, marginBottom: 12 }}
@@ -416,6 +420,7 @@ function UserHeader({
         )}
       </View>
       <Pressable
+        testID="open-settings"
         onPress={() => router.push("/settings")}
         style={{
           paddingHorizontal: 10,
@@ -428,6 +433,7 @@ function UserHeader({
         <Text style={{ color: C.muted, fontSize: 13 }}>Settings</Text>
       </Pressable>
       <Pressable
+        testID="sign-out"
         onPress={handleSignOut}
         disabled={signingOut}
         style={{
@@ -613,6 +619,7 @@ function TripList({
           </View>
 
           <Pressable
+            testID="create-trip"
             onPress={() => router.push("/new-trip")}
             style={{
               backgroundColor: C.info,
@@ -667,6 +674,7 @@ function TripList({
             Your Trips
           </Text>
           <Pressable
+            testID="create-trip"
             onPress={() => router.push("/new-trip")}
             style={{
               backgroundColor: C.info,
