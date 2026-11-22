@@ -6,6 +6,7 @@ type RouterInputs = inferRouterInputs<AppRouter>;
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export { CAST_PUMP_TIME_BUDGET_MS, runCastPump } from "./cast/job";
+export { OAUTH_PROCEDURE_SCOPES, oauthProcedureScope } from "./oauth-scopes";
 export {
   assertRateLimit,
   RECEIPT_OCR_RATE_LIMIT,
@@ -22,7 +23,11 @@ export {
   type TripDashboardNavItem,
   type TripDashboardState,
 } from "./trips/dashboard-state";
-export { createTRPCContext } from "./trpc";
+export {
+  createTRPCContext,
+  type OAuthDispatch,
+  type OAuthGrant,
+} from "./trpc";
 export type {
   ApiVersion,
   VersionContext,

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { demoLoginAllowlist, initAuth } from "@sortey/auth";
+import { mcpResource } from "@sortey/auth/oauth-provider";
 import { sendEmail } from "@sortey/email";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
@@ -10,7 +11,7 @@ import { cache } from "react";
 import { env } from "~/env";
 import { devMagicLinkStore } from "./dev-magic-link";
 
-const baseUrl =
+export const baseUrl =
   env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 function escapeHtml(value: string) {
@@ -38,6 +39,7 @@ export const auth = initAuth({
   // deployment cannot acquire a bypass by accident.
   devMagicLinkBypassEnabled: () =>
     env.NODE_ENV === "development" || demoLoginAllowlist().length > 0,
+  mcpResource: mcpResource(baseUrl),
   extraPlugins: [
     magicLink({
       sendMagicLink: async ({ email, url }) => {
