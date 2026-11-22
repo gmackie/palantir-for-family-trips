@@ -264,9 +264,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       adaptiveIcon: {
+        // Production foreground is pre-shrunk into the launcher safe zone.
         foregroundImage:
           APP_VARIANT === "production"
-            ? "./assets/icon-light.png"
+            ? "./assets/adaptive-icon.png"
             : getVariantIcon(),
         backgroundColor:
           APP_VARIANT === "development"
