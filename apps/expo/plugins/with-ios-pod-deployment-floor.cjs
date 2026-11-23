@@ -8,7 +8,8 @@ const {
 // and expo-router's LinkPreview code (compiled in its pod) uses iOS 16 APIs.
 // Copied from DailyDose's plugins/with-ios-pod-deployment-floor.js (DOSE-25,
 // FORGE-356), with the floor as an option: Sortey uses expo-router, so it
-// raises the app, its extensions and every pod to iOS 16.0. No build-time
+// raises every pod, and the app and its extensions if they are set lower,
+// to at least iOS 16.0 (Expo SDK 56 itself defaults the app to 16.4). No build-time
 // overrides needed, so local, Preflight and store builds behave the same.
 const DEFAULT_FLOOR = "15.1";
 const marker = "# Sortey: keep pods compatible with the app deployment target.";
@@ -62,14 +63,24 @@ function raiseProjectTargets(project, floor = DEFAULT_FLOOR) {
   return project;
 }
 
+/**
+ * Raises `ios.deploymentTarget` in Podfile.properties.json when it is set
+ * below the floor. Unset means Expo's own default (16.4 on SDK 56), which is
+ * already above the floor and must not be lowered.
+ */
+function raisePodfileProperties(properties, floor = DEFAULT_FLOOR) {
+  const current = properties["ios.deploymentTarget"];
+  if (current && isBelow(current, floor)) {
+    properties["ios.deploymentTarget"] = floor;
+  }
+  return properties;
+}
+
 /** @type {import('expo/config-plugins').ConfigPlugin<{ floor?: string } | void>} */
 module.exports = function withIosPodDeploymentFloor(config, options) {
   const floor = options?.floor ?? DEFAULT_FLOOR;
   config = withPodfileProperties(config, (mod) => {
-    const current = mod.modResults["ios.deploymentTarget"];
-    if (!current || isBelow(current, floor)) {
-      mod.modResults["ios.deploymentTarget"] = floor;
-    }
+    raisePodfileProperties(mod.modResults, floor);
     return mod;
   });
   config = withXcodeProject(config, (mod) => {
@@ -87,3 +98,4 @@ module.exports = function withIosPodDeploymentFloor(config, options) {
 module.exports.applyDeploymentFloor = applyDeploymentFloor;
 module.exports.raiseProjectTargets = raiseProjectTargets;
 module.exports.isBelow = isBelow;
+module.exports.raisePodfileProperties = raisePodfileProperties;
