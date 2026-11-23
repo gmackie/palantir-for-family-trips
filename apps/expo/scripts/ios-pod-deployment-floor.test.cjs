@@ -5,6 +5,7 @@ const test = require("node:test");
 const {
   applyDeploymentFloor,
   isBelow,
+  raisePodfileProperties,
   raiseProjectTargets,
 } = require("../plugins/with-ios-pod-deployment-floor.cjs");
 
@@ -77,4 +78,20 @@ test("raises app and extension build configurations below the floor", () => {
   assert.equal(section.A.buildSettings.IPHONEOS_DEPLOYMENT_TARGET, "16.0");
   assert.equal(section.B.buildSettings.IPHONEOS_DEPLOYMENT_TARGET, "17.0");
   assert.equal(section.C.buildSettings.IPHONEOS_DEPLOYMENT_TARGET, undefined);
+});
+
+test("raises a low Podfile deployment target but never lowers or adds one", () => {
+  assert.deepEqual(
+    raisePodfileProperties({ "ios.deploymentTarget": "15.1" }, "16.0"),
+    {
+      "ios.deploymentTarget": "16.0",
+    },
+  );
+  assert.deepEqual(
+    raisePodfileProperties({ "ios.deploymentTarget": "16.4" }, "16.0"),
+    {
+      "ios.deploymentTarget": "16.4",
+    },
+  );
+  assert.deepEqual(raisePodfileProperties({}, "16.0"), {});
 });
