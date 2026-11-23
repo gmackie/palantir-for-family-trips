@@ -381,12 +381,18 @@ importers:
 
   apps/nextjs:
     dependencies:
+      '@forgegraph/opium':
+        specifier: ^0.1.0
+        version: 0.1.0(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))
       '@forgegraph/otel':
         specifier: ^0.1.1
         version: 0.1.1
       '@googlemaps/js-api-loader':
         specifier: ^2.0.2
         version: 2.0.2
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@4.4.3)
       '@sentry/nextjs':
         specifier: ^10.53.1
         version: 10.53.1(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(webpack@5.104.1(esbuild@0.28.0))
@@ -417,6 +423,9 @@ importers:
       '@sortey/monitoring':
         specifier: workspace:*
         version: link:../../packages/monitoring
+      '@sortey/operator-core':
+        specifier: workspace:*
+        version: link:../../packages/operator-core
       '@sortey/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime
@@ -769,6 +778,9 @@ importers:
       '@better-auth/expo':
         specifier: 'catalog:'
         version: 1.6.17(@better-auth/core@1.6.17(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.1.8(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.3.0))(better-auth@1.6.17(d45f13b0d057491e007fb8f5f19b3a74))(expo-constants@56.0.20)(expo-linking@56.0.15)(expo-network@56.0.5(expo@56.0.14)(react@19.2.3))(expo-web-browser@56.0.5(expo@56.0.14)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)))
+      '@better-auth/oauth-provider':
+        specifier: 1.6.17
+        version: 1.6.17(@better-auth/core@1.6.17(@better-auth/utils@0.4.1)(@better-fetch/fetch@1.3.0)(@opentelemetry/api@1.9.1)(better-call@1.3.6(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.3.0))(@better-auth/utils@0.4.1)(@better-fetch/fetch@1.3.0)(better-auth@1.6.17(d45f13b0d057491e007fb8f5f19b3a74))(better-call@1.3.6(zod@4.4.3))
       '@sortey/db':
         specifier: workspace:*
         version: link:../db
@@ -2012,6 +2024,15 @@ packages:
     peerDependenciesMeta:
       mongodb:
         optional: true
+
+  '@better-auth/oauth-provider@1.6.17':
+    resolution: {integrity: sha512-ymIOJIVkNOV1mAl8dhT6Gm2wv1t3VQAu2A1lQZ9WVtoddUggDrLK5sqF0H9W45Edl6uvktCQ6kBQIdMTYsWlWw==}
+    peerDependencies:
+      '@better-auth/core': ^1.6.17
+      '@better-auth/utils': 0.4.1
+      '@better-fetch/fetch': 1.3.0
+      better-auth: ^1.6.17
+      better-call: 1.3.6
 
   '@better-auth/prisma-adapter@1.6.17':
     resolution: {integrity: sha512-DW1eEXw39Hv/z34ctfoR6lB3rZRt/+X/m7j74dYTsSUt7TjaIjfhQkN01mYN7+GeLSqzGxJ132N93L7iGutKuA==}
@@ -3690,6 +3711,17 @@ packages:
 
   '@forgegraph/log@0.1.0':
     resolution: {integrity: sha512-kxexFE6CPzsSbF66JlDNRykD8PyGhMmRjHVP6FpDsRbOIFqe7DnRcRUiXm/xgfpI7aUrzzYNKyXNR0bYaDoqNw==}
+
+  '@forgegraph/opium@0.1.0':
+    resolution: {integrity: sha512-YXwzWLkItXmsQs4Ng9HvN8do2acuNCqmyxQ+DRYA0leCYQKgMeaUXDxyj6GKwYflIW9XpbYVSXz0+TEso1U3Pg==}
+    engines: {node: '>=22.18'}
+    hasBin: true
+    peerDependencies:
+      '@better-auth/oauth-provider': '>=1.7.14 <2'
+      '@modelcontextprotocol/sdk': '>=1.25.2 <2'
+    peerDependenciesMeta:
+      '@better-auth/oauth-provider':
+        optional: true
 
   '@forgegraph/otel@0.1.1':
     resolution: {integrity: sha512-ouH1SF7z2mGsN48jOrc4izyjlDxZacc3B4wY+MEs/DyYryyS6w9a8P/qcVTCfranqtCM7+FB72YM1U7cK15VZg==}
@@ -14161,6 +14193,16 @@ snapshots:
     optionalDependencies:
       mongodb: 7.1.0(socks@2.8.9)
 
+  '@better-auth/oauth-provider@1.6.17(@better-auth/core@1.6.17(@better-auth/utils@0.4.1)(@better-fetch/fetch@1.3.0)(@opentelemetry/api@1.9.1)(better-call@1.3.6(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.3.0))(@better-auth/utils@0.4.1)(@better-fetch/fetch@1.3.0)(better-auth@1.6.17(d45f13b0d057491e007fb8f5f19b3a74))(better-call@1.3.6(zod@4.4.3))':
+    dependencies:
+      '@better-auth/core': 1.6.17(@better-auth/utils@0.4.1)(@better-fetch/fetch@1.3.0)(@opentelemetry/api@1.9.1)(better-call@1.3.6(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.3.0)
+      '@better-auth/utils': 0.4.1
+      '@better-fetch/fetch': 1.3.0
+      better-auth: 1.6.17(d45f13b0d057491e007fb8f5f19b3a74)
+      better-call: 1.3.6(zod@4.4.3)
+      jose: 6.2.3
+      zod: 4.4.3
+
   '@better-auth/prisma-adapter@1.6.17(@better-auth/core@1.6.17(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.1.8(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.3.0))(@better-auth/utils@0.4.1)(@prisma/client@5.22.0(prisma@5.22.0))(prisma@5.22.0)':
     dependencies:
       '@better-auth/core': 1.6.17(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.1.8(zod@4.4.3))(jose@6.2.3)(kysely@0.28.17)(nanostores@1.3.0)
@@ -16491,6 +16533,10 @@ snapshots:
       '@forgegraph/cli-linux-x64': 0.3.1
 
   '@forgegraph/log@0.1.0': {}
+
+  '@forgegraph/opium@0.1.0(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
 
   '@forgegraph/otel@0.1.1':
     dependencies:

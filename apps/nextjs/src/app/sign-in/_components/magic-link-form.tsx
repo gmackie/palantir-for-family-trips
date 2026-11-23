@@ -7,7 +7,12 @@ import { authClient } from "~/auth/client";
 const isDev =
   typeof process !== "undefined" && process.env.NODE_ENV === "development";
 
-export function MagicLinkForm() {
+export function MagicLinkForm({
+  callbackURL = "/trips",
+}: {
+  /** Where the link signs the user in to; the OAuth sign-in page passes its own URL. */
+  callbackURL?: string;
+} = {}) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -25,7 +30,7 @@ export function MagicLinkForm() {
     try {
       await authClient.signIn.magicLink({
         email,
-        callbackURL: "/trips",
+        callbackURL,
       });
       setSubmitted(true);
     } catch (submissionError) {

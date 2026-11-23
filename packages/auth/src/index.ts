@@ -8,6 +8,8 @@ import { createAuthEndpoint } from "better-auth/api";
 import { oAuthProxy } from "better-auth/plugins";
 import { z } from "zod/v4";
 
+import { oauthProviderPlugin } from "./oauth-provider";
+
 const devMagicLinkBodySchema = z.object({
   email: z.email(),
   name: z.string().optional(),
@@ -125,6 +127,11 @@ export function initAuth<
   appleClientSecret?: string;
   appleBundleIdentifier?: string;
   devMagicLinkBypassEnabled?: boolean | (() => boolean);
+  /**
+   * The remote MCP endpoint (`<app>/mcp`). When set, the app is also the
+   * OAuth authorization server MCP clients connect through (oauth-provider.ts).
+   */
+  mcpResource?: string;
   extraPlugins?: TExtraPlugins;
 }) {
   const config = {
@@ -144,6 +151,9 @@ export function initAuth<
         productionURL: options.productionUrl,
       }),
       expo(),
+      ...(options.mcpResource
+        ? [oauthProviderPlugin({ resource: options.mcpResource })]
+        : []),
       ...(options.extraPlugins ?? []),
     ],
     socialProviders: {
