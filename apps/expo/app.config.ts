@@ -144,11 +144,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     [
       "expo-splash-screen",
       {
-        backgroundColor: "#F0F4F8",
-        image: "./assets/icon-light.png",
+        image: "./assets/splash-icon.png",
+        imageWidth: 200,
+        resizeMode: "contain",
+        backgroundColor: "#7cd6fb",
         dark: {
-          backgroundColor: "#0D1B2A",
-          image: "./assets/icon-dark.png",
+          image: "./assets/splash-icon-dark.png",
+          backgroundColor: "#010309",
         },
       },
     ],
@@ -264,9 +266,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       adaptiveIcon: {
+        // Production foreground is pre-shrunk into the launcher safe zone.
         foregroundImage:
           APP_VARIANT === "production"
-            ? "./assets/icon-light.png"
+            ? "./assets/adaptive-icon.png"
             : getVariantIcon(),
         backgroundColor:
           APP_VARIANT === "development"
