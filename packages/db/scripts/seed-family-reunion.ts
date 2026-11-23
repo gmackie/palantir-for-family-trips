@@ -1,8 +1,12 @@
 import postgres from "postgres";
 
-const DB_URL =
-  process.env.DATABASE_URL ??
-  "postgres://trip_app:ecc75b4aa5d2b3c8ada5886d244a5263ad71e23a162aa6c94dcc31528fc26a3e@100.101.32.120:5432/trip?sslmode=disable";
+const DB_URL = process.env.DATABASE_URL;
+if (!DB_URL) {
+  console.error(
+    "Set DATABASE_URL (e.g. from `forge secret get DATABASE_URL_LOCAL --stage production`).",
+  );
+  process.exit(1);
+}
 
 const sql = postgres(DB_URL, { max: 1 });
 

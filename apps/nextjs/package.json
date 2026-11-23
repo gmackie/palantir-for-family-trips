@@ -30,8 +30,10 @@
     "test:src": "vitest run --config vitest.src.config.ts"
   },
   "dependencies": {
+    "@forgegraph/opium": "^0.1.0",
     "@forgegraph/otel": "^0.1.1",
     "@googlemaps/js-api-loader": "^2.0.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@sentry/nextjs": "^10.53.1",
     "@sortey/api": "workspace:*",
     "@sortey/auth": "workspace:*",
@@ -41,6 +43,7 @@
     "@sortey/flags": "workspace:*",
     "@sortey/i18n": "workspace:*",
     "@sortey/monitoring": "workspace:*",
+    "@sortey/operator-core": "workspace:*",
     "@sortey/realtime": "workspace:*",
     "@sortey/ui": "workspace:*",
     "@sortey/validators": "workspace:*",

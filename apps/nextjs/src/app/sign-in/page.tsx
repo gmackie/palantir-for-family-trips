@@ -1,55 +1,14 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { auth, getSession } from "~/auth/server";
-import { env } from "~/env";
-import { MagicLinkForm } from "./_components/magic-link-form";
-
-const hasGoogle = !!env.AUTH_GOOGLE_ID && !!env.AUTH_GOOGLE_SECRET;
-const hasApple = !!env.AUTH_APPLE_ID && !!env.AUTH_APPLE_SECRET;
+import { getSession } from "~/auth/server";
+import { SignInOptions } from "./_components/sign-in-options";
 
 export default async function SignInPage() {
   const session = await getSession();
 
   if (session) {
     redirect("/");
-  }
-
-  async function signInWithGoogle() {
-    "use server";
-
-    const res = await auth.api.signInSocial({
-      body: {
-        provider: "google",
-        callbackURL: "/",
-      },
-      headers: await headers(),
-    });
-
-    if (!res.url) {
-      throw new Error("No URL returned from signInSocial");
-    }
-
-    redirect(res.url);
-  }
-
-  async function signInWithApple() {
-    "use server";
-
-    const res = await auth.api.signInSocial({
-      body: {
-        provider: "apple",
-        callbackURL: "/",
-      },
-      headers: await headers(),
-    });
-
-    if (!res.url) {
-      throw new Error("No URL returned from signInSocial");
-    }
-
-    redirect(res.url);
   }
 
   return (
@@ -67,39 +26,7 @@ export default async function SignInPage() {
           </p>
         </div>
 
-        <MagicLinkForm />
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-[#21262D]" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-[#161B22] px-2 text-[#484F58]">or</span>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {hasGoogle && (
-            <form action={signInWithGoogle}>
-              <button
-                className="flex h-10 w-full items-center justify-center rounded-[2px] border border-[#21262D] bg-[#0D1117] text-sm font-semibold text-[#8B949E] transition-colors hover:border-[#484F58] hover:text-[#C9D1D9]"
-                type="submit"
-              >
-                Sign in with Google
-              </button>
-            </form>
-          )}
-          {hasApple && (
-            <form action={signInWithApple}>
-              <button
-                className="flex h-10 w-full items-center justify-center rounded-[2px] border border-[#21262D] bg-[#0D1117] text-sm font-semibold text-[#8B949E] transition-colors hover:border-[#484F58] hover:text-[#C9D1D9]"
-                type="submit"
-              >
-                Sign in with Apple
-              </button>
-            </form>
-          )}
-        </div>
+        <SignInOptions />
 
         <p className="text-center text-sm text-[#484F58]">
           <Link

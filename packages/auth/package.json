@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./middleware": "./src/middleware.ts",
+    "./oauth-provider": "./src/oauth-provider.ts",
     "./client": "./src/client.ts",
     "./env": "./env.ts"
   },
@@ -18,6 +19,7 @@
   },
   "dependencies": {
     "@better-auth/expo": "catalog:",
+    "@better-auth/oauth-provider": "1.6.17",
     "@sortey/db": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "catalog:",

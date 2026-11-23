@@ -15,6 +15,7 @@ import { createHash } from "crypto";
 import superjson from "superjson";
 import { ZodError, z } from "zod/v4";
 
+import { oauthProcedureScope } from "./oauth-scopes";
 import { getRealtimeRuntime } from "./realtime-runtime";
 
 /** Default until application_settings is read; multi-tenant is the safer RLS mode. */
@@ -56,6 +57,24 @@ export type AuthSession = {
 
 export interface AuthApi {
   getSession(input: { headers: Headers }): Promise<AuthSession>;
+}
+
+/** What an OAuth access token for `/mcp` grants: its user, client and scopes. */
+export interface OAuthGrant {
+  user: typeof user.$inferSelect;
+  clientId: string;
+  scopes: readonly string[];
+}
+
+/**
+ * Present only when the remote MCP endpoint (`/mcp`) dispatches a tool call
+ * to this API in-process (apps/nextjs/src/lib/mcp). A caller cannot set it:
+ * the `/api/trpc` route never passes it, so an OAuth bearer sent there
+ * directly authenticates nothing.
+ */
+export interface OAuthDispatch {
+  /** The grant behind `bearer`, or null when it is not a valid `/mcp` token. */
+  verify(bearer: string): Promise<OAuthGrant | null>;
 }
 
 function hashApiKey(key: string): string {
@@ -186,8 +205,27 @@ async function expoSessionFallback(cookieHeader: string): Promise<AuthSession> {
 export const createTRPCContext = async (opts: {
   headers: Headers;
   authApi: AuthApi;
+  oauth?: OAuthDispatch;
 }) => {
   const authHeader = opts.headers.get("authorization");
+  const oauthBearer = /^Bearer\s+(\S+)$/i.exec(authHeader?.trim() ?? "")?.[1];
+  if (opts.oauth && oauthBearer && !oauthBearer.startsWith("gmk_")) {
+    // A dispatch from `/mcp`: the bearer is checked again here (expiry,
+    // revocation, audience, user) and nothing else is consulted; a bearer
+    // that fails it is refused, never served as an anonymous or cookie request.
+    const oauthGrant = await opts.oauth.verify(oauthBearer);
+    if (!oauthGrant) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    return {
+      authApi: opts.authApi,
+      session: { user: oauthGrant.user, session: null },
+      apiKeyAuth: null as ApiKeyAuth | null,
+      oauthGrant: oauthGrant as OAuthGrant | null,
+      db,
+      realtime: getRealtimeRuntime(),
+    };
+  }
   if (authHeader?.startsWith("Bearer gmk_")) {
     const apiKey = authHeader.slice(7);
     const apiKeyAuth = await validateApiKey(apiKey);
@@ -207,6 +245,7 @@ export const createTRPCContext = async (opts: {
             session: null,
           },
           apiKeyAuth,
+          oauthGrant: null as OAuthGrant | null,
           db,
           // Realtime fan-out seam. Populated by the worker entry (Workers
           // runtime) via `runWithRealtimeRuntime`; `null` everywhere else
@@ -238,6 +277,7 @@ export const createTRPCContext = async (opts: {
     authApi: opts.authApi,
     session,
     apiKeyAuth: null as ApiKeyAuth | null,
+    oauthGrant: null as OAuthGrant | null,
     db,
     // See note above: the worker populates this; `null` in tests / non-Workers.
     realtime: getRealtimeRuntime(),
@@ -304,13 +344,41 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 });
 
 /**
+ * An OAuth grant (a `/mcp` tool call) reaches only the procedures the MCP
+ * tools use, each behind the scope the user consented to
+ * (./oauth-scopes.ts). Cookie sessions and API keys are not affected.
+ */
+const oauthGrantMiddleware = t.middleware(({ ctx, next, path }) => {
+  if (ctx.oauthGrant) {
+    const scope = oauthProcedureScope(path);
+    if (scope === undefined) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Not available to OAuth connections",
+      });
+    }
+    if (!ctx.oauthGrant.scopes.includes(scope)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `This connection was not granted the ${scope} scope`,
+      });
+    }
+  }
+  return next();
+});
+
+const baseProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(oauthGrantMiddleware);
+
+/**
  * Public (unauthed) procedure
  *
  * This is the base piece you use to build new queries and mutations on your
  * tRPC API. It does not guarantee that a user querying is authorized, but you
  * can still access user session data if they are logged in
  */
-export const publicProcedure = t.procedure.use(timingMiddleware);
+export const publicProcedure = baseProcedure;
 
 /**
  * Protected (authenticated) procedure
@@ -362,8 +430,7 @@ const rlsSessionMiddleware = t.middleware(async ({ ctx, next }) => {
   );
 });
 
-export const protectedProcedure = t.procedure
-  .use(timingMiddleware)
+export const protectedProcedure = baseProcedure
   .use(({ ctx, next }) => {
     if (!ctx.session?.user) {
       const diag = (ctx as Record<string, unknown>)._expoAuthDiag;
@@ -381,8 +448,7 @@ export const protectedProcedure = t.procedure
   .use(rlsSessionMiddleware);
 
 const createApiKeyProcedure = (requiredPermission: ApiKeyPermission) =>
-  t.procedure
-    .use(timingMiddleware)
+  baseProcedure
     .use(({ ctx, next }) => {
       if (!ctx.apiKeyAuth) {
         throw new TRPCError({
