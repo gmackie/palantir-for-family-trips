@@ -137,7 +137,7 @@ fi
 
 echo ""
 echo "Checking shared platform primitives..."
-ok "Feature flags: local scaffolding with room for PostHog migration later"
+ok "Feature flags: local scaffolding (@sortey/flags); remote flags via Dataflare /f (@sortey/analytics)"
 ok "Background jobs: local queue hooks scaffolded for email, billing, and metering work"
 ok "Rate limits: auth, contact, signup, API keys, and operator API guards are scaffolded"
 ok "Compliance export hooks: data export and deletion hooks are scaffolded"

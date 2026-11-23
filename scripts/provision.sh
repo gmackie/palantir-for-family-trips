@@ -50,11 +50,10 @@ echo "=== Optional Integrations ==="
 echo "Configure these based on your gmacko.integrations.json settings."
 echo ""
 
-# PostHog (if enabled)
-echo "PostHog Analytics:"
-echo "  Create project at https://posthog.com"
-prompt_env "NEXT_PUBLIC_POSTHOG_KEY" "PostHog Project API Key"
-prompt_env "NEXT_PUBLIC_POSTHOG_HOST" "PostHog Host (e.g., https://us.i.posthog.com)"
+# Dataflare (analytics + feature flags) needs no keys here: the web loader
+# (apps/nextjs/public/dataflare.js) and the Expo client send to the
+# observe.gmac.io project `trip`.
+echo "Dataflare Analytics: no secrets needed (observe.gmac.io project 'trip')"
 
 # Sentry (if enabled)
 echo ""

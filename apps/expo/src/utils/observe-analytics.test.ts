@@ -83,9 +83,9 @@ describe("observe analytics wiring", () => {
     expect(syncAnalyticsUser(null, "user_1")).toBe("user_1");
     expect(syncAnalyticsUser("user_1", "user_1")).toBe("user_1");
     expect(client.identify).toHaveBeenCalledTimes(1);
-    expect(client.identify).toHaveBeenCalledWith("user_1");
+    expect(client.identify).toHaveBeenCalledWith("user_1", undefined);
     syncAnalyticsUser("user_1", "user_2");
-    expect(client.identify).toHaveBeenLastCalledWith("user_2");
+    expect(client.identify).toHaveBeenLastCalledWith("user_2", undefined);
     expect(client.reset).not.toHaveBeenCalled();
   });
 

@@ -2,7 +2,7 @@
   "preset": "recommended",
   "integrations": {
     "sentry": true,
-    "posthog": true,
+    "dataflare": true,
     "stripe": false,
     "email": { "enabled": false, "provider": "none" },
     "realtime": { "enabled": false, "provider": "none" },

@@ -58,8 +58,8 @@ Example:
 ```typescript
 import { integrations } from "@sortey/config";
 
-if (integrations.posthog) {
-  // Initialize PostHog
+if (integrations.dataflare) {
+  // Send product events to Dataflare
 }
 ```
 

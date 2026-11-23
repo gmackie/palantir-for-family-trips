@@ -1,4 +1,3 @@
-import { PostHogNativeProvider } from "@sortey/analytics/native";
 import { integrations } from "@sortey/config";
 import en from "@sortey/i18n/messages/en.json";
 import es from "@sortey/i18n/messages/es.json";
@@ -33,22 +32,9 @@ export function Providers({ children }: ProvidersProps) {
     }
   }, []);
 
-  const content = (
+  return (
     <I18nNativeProvider resources={resources} initialLocale={initialLocale}>
       {children}
     </I18nNativeProvider>
   );
-
-  if (integrations.posthog && env.observability.posthogKey) {
-    return (
-      <PostHogNativeProvider
-        apiKey={env.observability.posthogKey}
-        apiHost={env.observability.posthogHost}
-      >
-        {content}
-      </PostHogNativeProvider>
-    );
-  }
-
-  return content;
 }

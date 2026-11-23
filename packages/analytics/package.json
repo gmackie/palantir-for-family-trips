@@ -7,6 +7,18 @@
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
     },
+    "./events": {
+      "types": "./dist/events.d.ts",
+      "default": "./src/events.ts"
+    },
+    "./facade": {
+      "types": "./dist/facade.d.ts",
+      "default": "./src/facade.ts"
+    },
+    "./flags": {
+      "types": "./dist/flags.d.ts",
+      "default": "./src/flags.ts"
+    },
     "./web": {
       "types": "./dist/web/index.d.ts",
       "default": "./src/web/index.tsx"
@@ -23,29 +35,23 @@
     "dev": "tsc",
     "format": "biome check .",
     "lint": "oxlint .",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
     "@sortey/config": "workspace:*",
-    "posthog-js": "^1.374.3",
-    "posthog-react-native": "^4.45.11"
+    "dataflare-web": "0.8.4"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@sortey/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
-    "expo-constants": "~56.0.19",
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "^4.1.7"
   },
   "peerDependencies": {
-    "expo-constants": ">=17.0.0",
     "react": ">=18.0.0"
-  },
-  "peerDependenciesMeta": {
-    "expo-constants": {
-      "optional": true
-    }
   }
 }

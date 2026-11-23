@@ -11,7 +11,7 @@ This app is built on the [create-gmacko-app](https://github.com/gmackorg/create-
 - Nix-oriented deployment guidance so generated apps can move toward living as ForgeGraph repos
 - `jj`-first repository setup with colocated Git compatibility
 - a baseline standards stack of `oxlint`, `biome`, `lefthook`, `commitlint`, and `knip`
-- Conditional integration system (Sentry, PostHog, Stripe, Email, Realtime, Storage)
+- Conditional integration system (Sentry, Dataflare, Stripe, Email, Realtime, Storage)
 - modular SaaS scaffold layers for collaboration, billing, metering, support, launch controls, referrals, operator APIs, and shared platform primitives
 - shared agent workflow support for Codex, Claude Code, and OpenCode via `AGENTS.md`, `CLAUDE.md`, `opencode.json`, and `.mcp.json`
 - optional Claude-first SaaS bootstrap guidance after local setup, including `/office-hours`, optional user-level `/autoplan`, `/design-consultation`, and local follow-up skills
@@ -74,7 +74,7 @@ packages
   ├─ ui
   │   └─ UI components using shadcn-ui
   ├─ analytics
-  │   └─ PostHog analytics wrapper (optional)
+  │   └─ Dataflare analytics and feature flags (observe.gmac.io)
   ├─ monitoring
   │   └─ Sentry monitoring wrapper (optional)
   ├─ payments
@@ -103,7 +103,7 @@ This template uses a conditional integration system. Edit `packages/config/src/i
 ```typescript
 export const integrations = {
   sentry: true, // Monitoring (default ON)
-  posthog: true, // Analytics (default ON)
+  dataflare: true, // Analytics + feature flags (default ON)
   stripe: false, // Payments (default OFF)
   email: { enabled: false, provider: "none" },
   realtime: { enabled: false, provider: "none" },
