@@ -35,17 +35,6 @@ const SENTRY_DSN = selectSentryDsn(
       : process.env.EXPO_PUBLIC_SENTRY_DSN_DEV,
   process.env.EXPO_PUBLIC_SENTRY_DSN,
 );
-const POSTHOG_KEY =
-  process.env.POSTHOG_KEY ??
-  (APP_VARIANT === "production"
-    ? process.env.EXPO_PUBLIC_POSTHOG_KEY_PROD
-    : APP_VARIANT === "preview"
-      ? process.env.EXPO_PUBLIC_POSTHOG_KEY_STAGING
-      : process.env.EXPO_PUBLIC_POSTHOG_KEY_DEV);
-const POSTHOG_HOST =
-  process.env.POSTHOG_HOST ??
-  process.env.EXPO_PUBLIC_POSTHOG_HOST ??
-  "https://us.i.posthog.com";
 
 // Production bundle id. Each variant gets a distinct id/name/scheme so all
 // three install side-by-side.
@@ -119,6 +108,8 @@ const getSentryConfig = () => {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const sentryPlugin = getSentryConfig();
   const plugins: ExpoConfig["plugins"] = [
+    // Xcode 27.2 (FORGE-442): iOS 16 for the app, its extension and all pods.
+    ["./plugins/with-ios-pod-deployment-floor.cjs", { floor: "16.0" }],
     "expo-apple-authentication",
     "expo-router",
     "expo-secure-store",
@@ -284,8 +275,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       API_URL,
       GOOGLE_MAPS_API_KEY,
       SENTRY_DSN,
-      POSTHOG_KEY,
-      POSTHOG_HOST,
       eas: {
         projectId: EAS_PROJECT_ID,
       },

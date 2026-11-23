@@ -35,7 +35,6 @@
     "@googlemaps/js-api-loader": "^2.0.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sentry/nextjs": "^10.53.1",
-    "@sortey/analytics": "workspace:*",
     "@sortey/api": "workspace:*",
     "@sortey/auth": "workspace:*",
     "@sortey/config": "workspace:*",

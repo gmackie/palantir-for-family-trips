@@ -35,7 +35,7 @@
 - `--saas-bootstrap` (add the optional Claude SaaS bootstrap pack)
 - `--trpc-operators` (add the optional CLI + MCP operator lane over tRPC)
 - `--integrations <comma-list>` overrides integration toggles entirely
-  - accepted keys: `sentry,posthog,stripe,email,realtime,storage`
+  - accepted keys: `sentry,dataflare,stripe,email,realtime,storage` (`posthog` is a legacy alias for `dataflare`)
 - `--email-provider <resend|sendgrid|none>` (default: `none`)
 - `--realtime-provider <pusher|ably|none>` (default: `none`)
 - `--storage-provider <uploadthing|none>` (default: `none`)
@@ -73,7 +73,7 @@
 - **Question:** "Choose an integration preset"
 - **Choices:**
   - "Core only" (all optional OFF)
-  - "Recommended" **[default]**: Sentry + PostHog ON, others OFF
+  - "Recommended" **[default]**: Sentry + Dataflare ON, others OFF
   - "Everything" (all optional ON, providers required)
   - "Custom" (go to Prompt 5)
 - **Validation:** one selection
@@ -82,7 +82,7 @@
 - **Question:** "Enable integrations"
 - **Toggles:**
   - Sentry (monitoring) **[default ON]**
-  - PostHog (analytics) **[default ON]**
+  - Dataflare (analytics + feature flags) **[default ON]**
   - Stripe (payments) **[default OFF]**
   - Email **[default OFF]**
   - Realtime **[default OFF]**
@@ -165,7 +165,7 @@
       "preset": "recommended",
       "integrations": {
         "sentry": true,
-        "posthog": true,
+        "dataflare": true,
         "stripe": false,
         "email": { "enabled": false, "provider": "none" },
         "realtime": { "enabled": false, "provider": "none" },
@@ -184,7 +184,7 @@
 ```ts
 export const integrations = {
   sentry: true,
-  posthog: true,
+  dataflare: true,
   stripe: false,
   email: { enabled: false, provider: "none" },
   realtime: { enabled: false, provider: "none" },
@@ -323,18 +323,15 @@ Each integration must follow these invariants:
 
 ---
 
-### 3.3 Analytics — PostHog (`integrations.posthog`)
+### 3.3 Analytics and feature flags — Dataflare (`integrations.dataflare`)
+PostHog was removed (CREA-15, SORTEY-33); see `packages/analytics/PORTING.md`.
 **When ON**
 - Web:
-  - Mount PostHog provider early (after auth, before API calls if you want user identification)
-  - Env required:
-    - `NEXT_PUBLIC_POSTHOG_KEY`
-    - `NEXT_PUBLIC_POSTHOG_HOST` (optional if default)
+  - `public/dataflare.js` (journey loader, observe project `trip`) loaded once from the root layout; `~/lib/analytics` wraps `window.dataflare`
+  - Env (optional): `NEXT_PUBLIC_DATAFLARE_ENABLED` (`"false"` turns it off)
 - Mobile:
-  - Initialize PostHog native wrapper/provider
-  - Env required:
-    - `EXPO_PUBLIC_POSTHOG_KEY`
-    - `EXPO_PUBLIC_POSTHOG_HOST` (optional)
+  - `src/utils/observe-analytics.ts` builds the `dataflare-native.ts` client and calls `initDataflareNative` (`@sortey/analytics/native`)
+  - Env (optional): `EXPO_PUBLIC_DATAFLARE` (`"off"` is the kill switch)
 
 **When OFF**
 - No provider mounted
@@ -448,11 +445,11 @@ Remove:
 Modify:
 - `apps/nextjs/src/app/layout.tsx`: remove Sentry wrapper branch entirely
 
-#### If `integrations.posthog === false`
+#### If `integrations.dataflare === false`
 Remove:
 - `packages/analytics/**` (if dedicated)
-- Any PostHog provider/component files
-- PostHog env keys from `.env.example`
+- `public/dataflare.js` and its `<script>` in the root layout
+- Dataflare env keys from `.env.example`
 
 Modify:
 - app entrypoints: remove provider branches
@@ -517,7 +514,7 @@ After scaffolding:
   - With prune: removed entirely, no references remain.
 - Defaults produce a working app with:
   - better-auth + Postgres + tRPC + shadcn UI
-  - Sentry + PostHog enabled but not blocking local dev if env vars missing (you choose whether "enabled requires env" vs "enabled but optional in dev"; pick one and enforce consistently).
+  - Sentry + Dataflare enabled but not blocking local dev if env vars missing (you choose whether "enabled requires env" vs "enabled but optional in dev"; pick one and enforce consistently).
 
 ---
 
@@ -547,20 +544,14 @@ const SentryProvider = integrations.sentry
   ? (await import("@sortey/monitoring/web")).SentryProvider 
   : ({ children }: { children: React.ReactNode }) => children;
 
-const PostHogProvider = integrations.posthog
-  ? (await import("@sortey/analytics/web")).PostHogProvider
-  : ({ children }: { children: React.ReactNode }) => children;
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <body>
         <SentryProvider>
-          <PostHogProvider>
-            <TRPCProvider>
-              {children}
-            </TRPCProvider>
-          </PostHogProvider>
+          <TRPCProvider>
+            {children}
+          </TRPCProvider>
         </SentryProvider>
       </body>
     </html>
@@ -577,9 +568,6 @@ export default function App() {
   useEffect(() => {
     if (integrations.sentry) {
       initSentry();
-    }
-    if (integrations.posthog) {
-      initPostHog();
     }
   }, []);
 
@@ -612,9 +600,6 @@ export const env = createEnv({
     }),
   },
   client: {
-    ...(integrations.posthog && {
-      NEXT_PUBLIC_POSTHOG_KEY: z.string(),
-    }),
     ...(integrations.stripe && {
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
     }),

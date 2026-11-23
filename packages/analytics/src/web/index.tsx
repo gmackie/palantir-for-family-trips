@@ -1,173 +1,168 @@
-"use client";
+/**
+ * `@sortey/analytics/web`: product analytics and feature flags for the
+ * browser, on Dataflare (`dataflare-web`, see ./dataflare for why the SDK
+ * and not the journey loader). Nothing here reads `process.env`; the host,
+ * project, kill switch and persistence come from the app's validated client
+ * config through `initDataflareWeb`.
+ *
+ * - Events: `trackEvent` (typed against the `../events` catalog),
+ *   `captureEvent` (untyped, for call sites that predate the catalog),
+ *   `identifyUser` / `resetUser` / `syncUser`. All no-ops while Dataflare is
+ *   off.
+ * - Flags: `isFeatureEnabled`, `getFeatureFlag`, `onFeatureFlags`,
+ *   `reloadFeatureFlags`, `useFeatureFlag`, evaluated by Dataflare's `/f`.
+ *   Off, not yet loaded, or cookieless → the caller's default.
+ * - Experiments: `getExperiment` / `trackExperimentExposure`; Dataflare
+ *   records the exposure when the variant is read.
+ */
+import { isDataflareEnabled } from "@sortey/config";
+import { useCallback, useSyncExternalStore } from "react";
 
-import { integrations } from "@sortey/config";
-import posthog from "posthog-js";
-import { PostHogProvider as PHProvider } from "posthog-js/react";
-import type { ReactNode } from "react";
-import { useEffect } from "react";
+import type { ClientEvents } from "../events";
+import { createAnalytics } from "../facade";
+import { isFlagOn, readFlag } from "../flags";
+import type { FeatureFlagPayload, FeatureFlagValue } from "../properties";
+import { activeDataflareWebClient, dataflareWebSink } from "./dataflare";
 
-export interface PostHogWebConfig {
-  apiKey: string;
-  apiHost?: string;
-}
+export type {
+  ClientEventName,
+  ClientEvents,
+  PropsArg,
+} from "../events";
+export type {
+  AnalyticsProperties,
+  AnalyticsValue,
+  FeatureFlagPayload,
+  FeatureFlagValue,
+} from "../properties";
+export {
+  type DataflarePersistence,
+  type DataflareWebClient,
+  type DataflareWebConfig,
+  dataflareWebOptions,
+  initDataflareWeb,
+  isDataflareWebActive,
+  setAnalyticsConsent,
+} from "./dataflare";
 
-function detectEnvironment(): string {
-  if (typeof window === "undefined") return "server";
-  if (process.env.DEPLOY_ENV) {
-    return process.env.DEPLOY_ENV;
-  }
-  return process.env.NODE_ENV ?? "development";
-}
+/** The browser's analytics: Dataflare when the integration is on, else none. */
+export const analytics = createAnalytics<ClientEvents>(
+  isDataflareEnabled() ? [dataflareWebSink()] : [],
+);
 
-export function isPostHogEnabled(): boolean {
-  return integrations.posthog;
-}
+/** Sends a catalog event (`../events` `ClientEvents`) to Dataflare. */
+export const trackEvent = analytics.trackEvent;
+/** Sends an event outside the catalog (props scrubbed of PII). */
+export const captureEvent = analytics.captureEvent;
+/** Links later events to this opaque user id (never an email). */
+export const identifyUser = analytics.identifyUser;
+/** Forgets the user; call on sign-out. */
+export const resetUser = analytics.resetUser;
+/** Follows the signed-in user (id or `null`), identifying or resetting on change. */
+export const syncUser = analytics.syncUser;
 
-export function initPostHogWeb(config: PostHogWebConfig): void {
-  if (!integrations.posthog || typeof window === "undefined") {
-    return;
-  }
+// Feature flags
 
-  if (!posthog.__loaded) {
-    posthog.init(config.apiKey, {
-      api_host: config.apiHost ?? "https://us.i.posthog.com",
-      person_profiles: "identified_only",
-      capture_pageview: false,
-      capture_pageleave: true,
-    });
-
-    posthog.register({
-      environment: detectEnvironment(),
-    });
-  }
-}
-
-interface PostHogProviderProps {
-  children: ReactNode;
-  apiKey: string;
-  apiHost?: string;
-}
-
-export function PostHogProvider({
-  children,
-  apiKey,
-  apiHost,
-}: PostHogProviderProps): ReactNode {
-  useEffect(() => {
-    if (integrations.posthog && apiKey) {
-      initPostHogWeb({ apiKey, apiHost });
-    }
-  }, [apiKey, apiHost]);
-
-  if (!integrations.posthog) {
-    return children;
-  }
-
-  return <PHProvider client={posthog}>{children}</PHProvider>;
-}
-
-export function trackEvent(
-  eventName: string,
-  properties?: Record<string, unknown>,
-): void {
-  if (!integrations.posthog) {
-    return;
-  }
-  posthog.capture(eventName, properties);
-}
-
-export function identifyUser(
-  userId: string,
-  properties?: Record<string, unknown>,
-): void {
-  if (!integrations.posthog) {
-    return;
-  }
-  posthog.identify(userId, properties);
-}
-
-export function resetUser(): void {
-  if (!integrations.posthog) {
-    return;
-  }
-  posthog.reset();
-}
-
-// Feature Flags
-
+/**
+ * Whether the flag is on for this visitor: `"on"` or any variant but
+ * `holdout`. Records an exposure, so read it where the feature is shown.
+ */
 export function isFeatureEnabled(
   flagKey: string,
   defaultValue = false,
 ): boolean {
-  if (!integrations.posthog) {
-    return defaultValue;
-  }
-  return posthog.isFeatureEnabled(flagKey) ?? defaultValue;
+  const client = activeDataflareWebClient();
+  if (!client) return defaultValue;
+  return isFlagOn(client.flag(flagKey), defaultValue);
 }
 
-export function getFeatureFlag<T = string | boolean>(
+/**
+ * The flag's value: `true` for an on boolean flag, the variant key for a
+ * multivariate one, or `defaultValue` when off, unknown or not loaded.
+ * Records an exposure.
+ */
+export function getFeatureFlag(
   flagKey: string,
-  defaultValue?: T,
-): T | undefined {
-  if (!integrations.posthog) {
-    return defaultValue;
-  }
-  return posthog.getFeatureFlag(flagKey) as T | undefined;
+  defaultValue?: FeatureFlagValue,
+): FeatureFlagValue | undefined {
+  const client = activeDataflareWebClient();
+  if (!client) return defaultValue;
+  return readFlag(client.flag(flagKey), defaultValue);
 }
 
-export function getFeatureFlagPayload<T = Record<string, unknown>>(
-  flagKey: string,
-): T | undefined {
-  if (!integrations.posthog) {
-    return undefined;
-  }
-  return posthog.getFeatureFlagPayload(flagKey) as T | undefined;
+/**
+ * The flag's JSON payload. `dataflare-web` 0.8.x does not expose payloads
+ * (0.9 adds `flagPayload`), so this is `undefined` until the SDK is bumped;
+ * kept so call sites compile and fall back to their defaults.
+ */
+export function getFeatureFlagPayload(_flagKey: string): FeatureFlagPayload {
+  return undefined;
 }
 
-export function onFeatureFlags(callback: () => void): void {
-  if (!integrations.posthog) {
+/**
+ * Calls `callback` once flags have loaded and whenever they change; at once
+ * when Dataflare is off. Returns an unsubscribe function.
+ */
+export function onFeatureFlags(callback: () => void): () => void {
+  const client = activeDataflareWebClient();
+  if (!client) {
     callback();
-    return;
+    return () => {};
   }
-  posthog.onFeatureFlags(callback);
+  return client.onFlags(() => callback());
 }
 
-export function reloadFeatureFlags(): void {
-  if (!integrations.posthog) {
-    return;
-  }
-  posthog.reloadFeatureFlags();
+/** Fetches fresh flag values (after a plan change, say). */
+export function reloadFeatureFlags(): Promise<void> {
+  return activeDataflareWebClient()?.reloadFlags() ?? Promise.resolve();
 }
 
-// A/B Testing / Experiments
+const subscribeFlags = (onChange: () => void): (() => void) =>
+  activeDataflareWebClient()?.onFlags(() => onChange()) ?? (() => {});
+
+/**
+ * The flag's value in a component, re-rendering when flags load or change.
+ * `defaultValue` during SSR, while loading, and while Dataflare is off.
+ * Reads without recording an exposure; pair it with
+ * `trackExperimentExposure` where an experiment variant is shown.
+ */
+export function useFeatureFlag(
+  flagKey: string,
+  defaultValue?: FeatureFlagValue,
+): FeatureFlagValue | undefined {
+  const read = useCallback(
+    () => readFlag(activeDataflareWebClient()?.flags()[flagKey], defaultValue),
+    [flagKey, defaultValue],
+  );
+  return useSyncExternalStore(subscribeFlags, read, () => defaultValue);
+}
+
+/** `useFeatureFlag` as a boolean: on for `"on"` or any variant. */
+export function useFeatureFlagEnabled(
+  flagKey: string,
+  defaultValue = false,
+): boolean {
+  const value = useFeatureFlag(flagKey);
+  return value === undefined ? defaultValue : value !== false;
+}
+
+// A/B testing / experiments
 
 export interface Experiment {
   key: string;
-  variant: string | boolean | undefined;
-  payload?: Record<string, unknown>;
+  variant: FeatureFlagValue | undefined;
+  payload?: FeatureFlagPayload;
 }
 
+/** The experiment's variant for this visitor; reading it records the exposure. */
 export function getExperiment(experimentKey: string): Experiment {
-  if (!integrations.posthog) {
-    return { key: experimentKey, variant: undefined };
-  }
-  return {
-    key: experimentKey,
-    variant: posthog.getFeatureFlag(experimentKey),
-    payload: posthog.getFeatureFlagPayload(experimentKey) as
-      | Record<string, unknown>
-      | undefined,
-  };
+  return { key: experimentKey, variant: getFeatureFlag(experimentKey) };
 }
 
+/**
+ * Records that the visitor saw the experiment. Dataflare counts an exposure
+ * when the flag is read, once per page, so this reads it.
+ */
 export function trackExperimentExposure(experimentKey: string): void {
-  if (!integrations.posthog) {
-    return;
-  }
-  posthog.capture("$feature_flag_called", {
-    $feature_flag: experimentKey,
-    $feature_flag_response: posthog.getFeatureFlag(experimentKey),
-  });
+  activeDataflareWebClient()?.flag(experimentKey);
 }
-
-export { posthog };

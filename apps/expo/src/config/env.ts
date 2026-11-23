@@ -5,8 +5,6 @@ export type AppEnvironment = "development" | "staging" | "production";
 
 interface ObservabilityConfig {
   sentryDsn?: string;
-  posthogKey?: string;
-  posthogHost: string;
 }
 
 interface EnvironmentConfig {
@@ -51,19 +49,8 @@ function getObservabilityConfig(): ObservabilityConfig {
     getSentryDsnForEnvironment(environment),
   );
 
-  const posthogKey =
-    Constants.expoConfig?.extra?.POSTHOG_KEY ??
-    getPosthogKeyForEnvironment(environment);
-
-  const posthogHost =
-    Constants.expoConfig?.extra?.POSTHOG_HOST ??
-    process.env.EXPO_PUBLIC_POSTHOG_HOST ??
-    "https://us.i.posthog.com";
-
   return {
     sentryDsn,
-    posthogKey,
-    posthogHost,
   };
 }
 
@@ -86,29 +73,6 @@ function getSentryDsnForEnvironment(
       return selectSentryDsn(
         process.env.EXPO_PUBLIC_SENTRY_DSN_DEV,
         process.env.EXPO_PUBLIC_SENTRY_DSN,
-      );
-  }
-}
-
-function getPosthogKeyForEnvironment(
-  environment: AppEnvironment,
-): string | undefined {
-  switch (environment) {
-    case "production":
-      return (
-        process.env.EXPO_PUBLIC_POSTHOG_KEY_PROD ??
-        process.env.EXPO_PUBLIC_POSTHOG_KEY
-      );
-    case "staging":
-      return (
-        process.env.EXPO_PUBLIC_POSTHOG_KEY_STAGING ??
-        process.env.EXPO_PUBLIC_POSTHOG_KEY
-      );
-    case "development":
-    default:
-      return (
-        process.env.EXPO_PUBLIC_POSTHOG_KEY_DEV ??
-        process.env.EXPO_PUBLIC_POSTHOG_KEY
       );
   }
 }

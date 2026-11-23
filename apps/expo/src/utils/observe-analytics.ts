@@ -10,7 +10,17 @@
  * names, places or free text. Identify with the opaque better-auth user id only.
  *
  * Kill switch: EXPO_PUBLIC_DATAFLARE=off.
+ *
+ * The same client backs `@sortey/analytics/native` (initDataflareNative,
+ * SORTEY-33), so its `*Native` event, identify and feature-flag functions
+ * (flags from Dataflare's `/f`) work anywhere in the app.
  */
+import {
+  identifyUserNative,
+  initDataflareNative,
+  resetUserNative,
+} from "@sortey/analytics/native";
+import { isDataflareEnabled } from "@sortey/config";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
@@ -58,6 +68,9 @@ function appBuild(): string | null {
   return null;
 }
 
+const enabled =
+  isDataflareEnabled() && process.env.EXPO_PUBLIC_DATAFLARE !== "off";
+
 function createClient(): DataflareClient {
   return createDataflare({
     project: OBSERVE_PROJECT,
@@ -68,11 +81,13 @@ function createClient(): DataflareClient {
       osVersion: Platform.Version,
       device: Platform.OS === "ios" && Platform.isPad ? "tablet" : "mobile",
     },
-    enabled: process.env.EXPO_PUBLIC_DATAFLARE !== "off",
+    enabled,
   });
 }
 
 export const analytics: DataflareClient = createClient();
+
+initDataflareNative({ client: analytics, project: OBSERVE_PROJECT, enabled });
 
 /** Analytics must never break the app. */
 function safely(fn: () => unknown): void {
@@ -106,9 +121,10 @@ export function syncAnalyticsUser(
   userId: string | null,
 ): string | null {
   if (userId && userId !== previousUserId) {
-    safely(() => analytics.identify(userId));
+    // Through the package so feature flags reload for the user.
+    safely(() => identifyUserNative(userId));
   } else if (!userId && previousUserId) {
-    safely(() => analytics.reset());
+    safely(() => resetUserNative());
   }
   return userId;
 }

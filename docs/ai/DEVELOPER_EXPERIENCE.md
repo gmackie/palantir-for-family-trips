@@ -76,7 +76,7 @@ Current direction:
 | Integration | TanStack Start on Workers | Next.js via `vinext` |
 | --- | --- | --- |
 | Sentry | experimental | experimental |
-| PostHog | stable | experimental |
+| Dataflare | stable | stable (journey loader `public/dataflare.js`; PostHog removed, see `packages/analytics/PORTING.md`) |
 | Stripe | unsupported | unsupported |
 | Email | stable | experimental |
 | Realtime | experimental | experimental |

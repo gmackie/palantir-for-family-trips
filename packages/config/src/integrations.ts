@@ -1,7 +1,11 @@
 export const integrations = {
   // Monitoring & Analytics (default ON)
   sentry: true,
-  posthog: true,
+  // Product analytics and feature flags: Dataflare (observe.gmac.io, project
+  // `trip`). Web loads public/dataflare.js; mobile uses the DATFLR-14 client
+  // (apps/expo/src/utils/observe-analytics.ts). EXPO_PUBLIC_DATAFLARE=off is
+  // the mobile kill switch.
+  dataflare: true,
 
   // Payments - Web (default OFF)
   stripe: false,
@@ -100,7 +104,7 @@ export const platformPrimitives = {
 export type PlatformPrimitives = typeof platformPrimitives;
 
 export const isSentryEnabled = () => integrations.sentry;
-export const isPostHogEnabled = () => integrations.posthog;
+export const isDataflareEnabled = () => integrations.dataflare;
 export const isStripeEnabled = () => integrations.stripe;
 export const isRevenueCatEnabled = () => integrations.revenuecat;
 export const isNotificationsEnabled = () => integrations.notifications;

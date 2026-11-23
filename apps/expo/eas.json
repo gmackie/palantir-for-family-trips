@@ -25,9 +25,7 @@
       "env": {
         "APP_VARIANT": "development",
         "API_URL": "https://sortey.app",
-        "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_DEV}",
-        "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_DEV}",
-        "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}"
+        "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_DEV}"
       },
       "ios": {
         "simulator": true
@@ -60,8 +58,6 @@
         "APP_VARIANT": "preview",
         "API_URL": "https://sortey.app",
         "SENTRY_DSN": "${EXPO_PUBLIC_SENTRY_DSN_STAGING}",
-        "POSTHOG_KEY": "${EXPO_PUBLIC_POSTHOG_KEY_STAGING}",
-        "POSTHOG_HOST": "${EXPO_PUBLIC_POSTHOG_HOST}",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "PREFLIGHT_OTA_URL": "http://127.0.0.1:3099/api/preflight/v1/ota/manifest",
         "PREFLIGHT_OTA_RUNTIME_VERSION": "sortey-p0"
