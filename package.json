@@ -103,7 +103,8 @@
       "@react-native/gradle-plugin": "0.85.3"
     },
     "patchedDependencies": {
-      "@expo/cli@56.1.18": "patches/@expo__cli@56.1.18.patch"
+      "@expo/cli@56.1.18": "patches/@expo__cli@56.1.18.patch",
+      "expo-modules-jsi@56.0.14": "patches/expo-modules-jsi@56.0.14.patch"
     }
   },
   "version": "0.2.0.0"

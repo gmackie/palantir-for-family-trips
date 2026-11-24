@@ -1,0 +1,11 @@
+diff --git a/apple/scripts/build-xcframework.sh b/apple/scripts/build-xcframework.sh
+--- a/apple/scripts/build-xcframework.sh
++++ b/apple/scripts/build-xcframework.sh
+@@ -207,7 +207,6 @@
+     -destination "generic/platform=${destination}" \
+     -derivedDataPath "$DERIVED_DATA_PATH" \
+     -configuration "$CONFIGURATION" \
+-    -quiet \
+     -disableAutomaticPackageResolution \
+     -skipPackagePluginValidation \
+     -skipMacroValidation \

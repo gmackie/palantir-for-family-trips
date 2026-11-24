@@ -117,6 +117,9 @@ patchedDependencies:
   '@expo/cli@56.1.18':
     hash: 08e0a51788df3296f2219158228bdde5d83bc5dc4d64a161af47e380ebfd95f2
     path: patches/@expo__cli@56.1.18.patch
+  expo-modules-jsi@56.0.14:
+    hash: 9dd7ea4a819f0faf74f5665814a8a699a053e07a0f75bfef8a9bf075b17ad41e
+    path: patches/expo-modules-jsi@56.0.14.patch
 
 importers:
 
@@ -22239,7 +22242,7 @@ snapshots:
   expo-modules-core@56.0.12(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3):
     dependencies:
       '@expo/expo-modules-macros-plugin': 0.0.9
-      expo-modules-jsi: 56.0.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))
+      expo-modules-jsi: 56.0.14(patch_hash=9dd7ea4a819f0faf74f5665814a8a699a053e07a0f75bfef8a9bf075b17ad41e)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))
       invariant: 2.2.4
       react: 19.2.3
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)
@@ -22249,7 +22252,7 @@ snapshots:
   expo-modules-core@56.0.19(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))(react@19.2.3):
     dependencies:
       '@expo/expo-modules-macros-plugin': 0.2.2
-      expo-modules-jsi: 56.0.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))
+      expo-modules-jsi: 56.0.14(patch_hash=9dd7ea4a819f0faf74f5665814a8a699a053e07a0f75bfef8a9bf075b17ad41e)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4))
       invariant: 2.2.4
       react: 19.2.3
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4)
@@ -22259,7 +22262,7 @@ snapshots:
   expo-modules-core@56.0.19(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3):
     dependencies:
       '@expo/expo-modules-macros-plugin': 0.2.2
-      expo-modules-jsi: 56.0.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))
+      expo-modules-jsi: 56.0.14(patch_hash=9dd7ea4a819f0faf74f5665814a8a699a053e07a0f75bfef8a9bf075b17ad41e)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))
       invariant: 2.2.4
       react: 19.2.3
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)
@@ -22267,11 +22270,11 @@ snapshots:
       react-native-worklets: 0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3)
     optional: true
 
-  expo-modules-jsi@56.0.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4)):
+  expo-modules-jsi@56.0.14(patch_hash=9dd7ea4a819f0faf74f5665814a8a699a053e07a0f75bfef8a9bf075b17ad41e)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4)):
     dependencies:
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.4)
 
-  expo-modules-jsi@56.0.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)):
+  expo-modules-jsi@56.0.14(patch_hash=9dd7ea4a819f0faf74f5665814a8a699a053e07a0f75bfef8a9bf075b17ad41e)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)):
     dependencies:
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(bufferutil@4.1.0)(react@19.2.3)
 
