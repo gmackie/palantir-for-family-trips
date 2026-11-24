@@ -4,6 +4,8 @@ on:
   push:
     branches: [master]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -14,62 +16,48 @@ env:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    # Fleet kit v1: `apps` runners carry the persistent /pnpm-store mount.
+    runs-on: apps
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Superseded?
+        id: superseded
+        uses: https://git.forgegraf.com/gmackie/ci-actions/fleet/superseded@ddd693744c0254b1cb078eec0e4d5a1bc38f57eb
 
-      - uses: https://github.com/pnpm/action-setup@v4
+      - if: steps.superseded.outputs.skip != 'true'
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      # Fleet kit v1: Node + pnpm (packageManager), `pnpm install --frozen-lockfile`
+      # with retries on the runner's persistent pnpm store; no archive cache.
+      - name: Set up toolchain and install
+        if: steps.superseded.outputs.skip != 'true'
+        uses: https://git.forgegraf.com/gmackie/ci-actions/fleet/setup@ddd693744c0254b1cb078eec0e4d5a1bc38f57eb
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install (retry transient registry/network flakes)
-        run: |
-          for i in 1 2 3; do
-            pnpm install --frozen-lockfile && break
-            echo "::warning::pnpm install attempt $i failed; retrying in 10s" && sleep 10
-          done
+          registry-token: ${{ secrets.FG_REGISTRY_TOKEN }}
+          turbo-token: ${{ secrets.TURBO_TOKEN }}
+          turbo-team: ci
 
       - name: Typecheck
-        run: pnpm typecheck
+        if: steps.superseded.outputs.skip != 'true'
+        run: pnpm typecheck 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+        shell: bash # -eo pipefail keeps the command's exit code through tee
 
       - name: Lint
-        run: pnpm lint
+        if: steps.superseded.outputs.skip != 'true'
+        run: pnpm lint 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+        shell: bash # -eo pipefail keeps the command's exit code through tee
 
       - name: Test
-        run: pnpm test
+        if: steps.superseded.outputs.skip != 'true'
+        run: pnpm test 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+        shell: bash # -eo pipefail keeps the command's exit code through tee
 
       - name: Report CI result to ForgeGraph
-        if: always()
-        env:
-          FG_CI_TOKEN: ${{ secrets.FORGEGRAPH_TOKEN }}
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            STATUS="success"
-          elif [ "${{ job.status }}" = "cancelled" ]; then
-            STATUS="cancelled"
-          else
-            STATUS="failure"
-          fi
-
-          REPO_FULL="${{ github.repository }}"
-          OWNER="${REPO_FULL%%/*}"
-          REPO="${REPO_FULL##*/}"
-          BRANCH="${{ github.head_ref || github.ref_name }}"
-
-          curl -sf -X POST "https://forgegraf.com/api/fg/ci/report" \
-            -H "Authorization: Bearer ${FG_CI_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"owner\": \"${OWNER}\",
-              \"repo\": \"${REPO}\",
-              \"sha\": \"${{ github.sha }}\",
-              \"branch\": \"${BRANCH}\",
-              \"status\": \"${STATUS}\",
-              \"runId\": \"${{ github.run_id }}\",
-              \"runUrl\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
-              \"workflowName\": \"CI\"
-            }" || echo "::warning::Failed to report CI result to ForgeGraph"
+        if: always() && steps.superseded.outputs.skip != 'true'
+        uses: https://git.forgegraf.com/gmackie/ci-actions/fleet/report@ddd693744c0254b1cb078eec0e4d5a1bc38f57eb
+        with:
+          token: ${{ secrets.FORGEGRAPH_TOKEN }}
+          status: ${{ job.status }}
+          workflow-name: CI
+          log-file: ${{ runner.temp }}/ci.log
