@@ -5,14 +5,17 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "react-native": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./integrations": {
       "types": "./dist/integrations.d.ts",
+      "react-native": "./src/integrations.ts",
       "default": "./dist/integrations.js"
     },
     "./preview": {
       "types": "./dist/preview.d.ts",
+      "react-native": "./src/preview.ts",
       "default": "./dist/preview.js"
     }
   },

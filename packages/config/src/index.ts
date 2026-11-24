@@ -1,2 +1,2 @@
-export * from "./integrations.js";
-export * from "./preview.js";
+export * from "./integrations.ts";
+export * from "./preview.ts";
