@@ -1,0 +1,291 @@
+{
+  "verifiedAt": "2026-11-24T13:57:10.918079+00:00",
+  "appId": "pfapp_seed_sortie",
+  "sourceBinding": {
+    "packagePath": "apps/expo",
+    "workspaceRoot": "/Volumes/dev/preflight-ci/.preflight-ci/sortey-sortey34",
+    "gitRemoteUrl": "git@git.forgegraf.com:gmackie/palantir-for-family-trips.git",
+    "gitRef": "662448502d20fd6ada148a807744eb6c056222e0",
+    "gitCommitSha": "662448502d20fd6ada148a807744eb6c056222e0",
+    "platform": "ios",
+    "lane": "store",
+    "appId": "pfapp_seed_sortie",
+    "workflowId": "pfw_9f16f5d1-d43e-4e5c-beb5-29becfd80c7b"
+  },
+  "signingTargets": {
+    "appId": "pfapp_seed_sortie",
+    "bundleId": "com.gmacko.sortey",
+    "androidApplicationId": "com.gmacko.sortey",
+    "targets": [
+      {
+        "targetName": "Sortey",
+        "bundleId": "com.gmacko.sortey",
+        "capabilities": [
+          "APP_GROUPS",
+          "APPLE_ID_AUTH",
+          "ASSOCIATED_DOMAINS",
+          "PUSH_NOTIFICATIONS"
+        ]
+      },
+      {
+        "targetName": "SorteyShare",
+        "bundleId": "com.gmacko.sortey.share-extension",
+        "capabilities": ["APP_GROUPS"]
+      }
+    ]
+  },
+  "credentialsDoctor": {
+    "appId": "pfapp_seed_sortie",
+    "fix": false,
+    "ok": true,
+    "findings": [
+      {
+        "check": "ios_targets",
+        "status": "ok",
+        "message": "2 target(s): Sortey=com.gmacko.sortey, SorteyShare=com.gmacko.sortey.share-extension"
+      },
+      {
+        "check": "apns_key",
+        "status": "ok",
+        "message": "APNs key CUZMCMBZ86",
+        "resourceId": "pfsec_q4tp8lTX25Zni7Tn"
+      },
+      {
+        "check": "asc_api_key",
+        "status": "ok",
+        "message": "ASC key in vault"
+      },
+      {
+        "check": "bundle_id",
+        "status": "ok",
+        "message": "Bundle id registered.",
+        "resourceId": "F46W6RY767",
+        "targetName": "Sortey",
+        "bundleId": "com.gmacko.sortey"
+      },
+      {
+        "check": "capability",
+        "status": "ok",
+        "message": "APP_GROUPS enabled.",
+        "capability": "APP_GROUPS",
+        "targetName": "Sortey",
+        "bundleId": "com.gmacko.sortey"
+      },
+      {
+        "check": "capability",
+        "status": "ok",
+        "message": "APPLE_ID_AUTH enabled.",
+        "capability": "APPLE_ID_AUTH",
+        "targetName": "Sortey",
+        "bundleId": "com.gmacko.sortey"
+      },
+      {
+        "check": "capability",
+        "status": "ok",
+        "message": "ASSOCIATED_DOMAINS enabled.",
+        "capability": "ASSOCIATED_DOMAINS",
+        "targetName": "Sortey",
+        "bundleId": "com.gmacko.sortey"
+      },
+      {
+        "check": "capability",
+        "status": "ok",
+        "message": "PUSH_NOTIFICATIONS enabled.",
+        "capability": "PUSH_NOTIFICATIONS",
+        "targetName": "Sortey",
+        "bundleId": "com.gmacko.sortey"
+      },
+      {
+        "check": "bundle_id",
+        "status": "ok",
+        "message": "Bundle id registered.",
+        "resourceId": "NAD35FVX28",
+        "targetName": "SorteyShare",
+        "bundleId": "com.gmacko.sortey.share-extension"
+      },
+      {
+        "check": "capability",
+        "status": "ok",
+        "message": "APP_GROUPS enabled.",
+        "capability": "APP_GROUPS",
+        "targetName": "SorteyShare",
+        "bundleId": "com.gmacko.sortey.share-extension"
+      },
+      {
+        "check": "distribution_certificate",
+        "status": "ok",
+        "message": "Distribution certificate 1F9068C16E6B1BE46399F5C0988A16CB valid in vault and ASC.",
+        "resourceId": "pfsec_5VBZ8myavlgkNq-_"
+      },
+      {
+        "check": "provisioning_profile",
+        "status": "ok",
+        "message": "Profile *[expo] com.gmacko.sortey AppStore 2026-07-06T15:22:02.400Z valid.",
+        "resourceId": "pfsec_1IcDZT1YCBgvCDjs",
+        "targetName": "Sortey",
+        "bundleId": "com.gmacko.sortey"
+      },
+      {
+        "check": "provisioning_profile",
+        "status": "ok",
+        "message": "Profile *[expo] com.gmacko.sortey.share-extension AppStore 2026-07-06T15:24:12.591Z valid.",
+        "resourceId": "pfsec_G5Q3L5k137504FdO",
+        "targetName": "SorteyShare",
+        "bundleId": "com.gmacko.sortey.share-extension"
+      },
+      {
+        "check": "android_application_id",
+        "status": "ok",
+        "message": "applicationId com.gmacko.sortey"
+      },
+      {
+        "check": "android_upload_keystore",
+        "status": "ok",
+        "message": "Upload keystore 5D:3C:65:FA:52:1C:57:59:3F:36:F2:80:EF:ED:11:5C:7D:92:00:79",
+        "resourceId": "pfsec_CuNyT9mBAHXqeUoM"
+      },
+      {
+        "check": "play_service_account",
+        "status": "ok",
+        "message": "Play service account play-account@api-project-5722806223.iam.gserviceaccount.com",
+        "resourceId": "pfsec_F4CNERhkufuELI9q"
+      }
+    ]
+  },
+  "buildWorkflowId": "pfw_9f16f5d1-d43e-4e5c-beb5-29becfd80c7b",
+  "buildJobStatus": "succeeded",
+  "buildResult": {
+    "artifact": {
+      "fileName": "Sortey.ipa",
+      "kind": "ipa",
+      "sha256": "12ade4ed9fce2d6a68a80f9c241b26ad520dc3eab1ae4e76c7366f8eff6670c2",
+      "sizeBytes": 36644315,
+      "storageKey": "store-builds/pfapp_seed_sortie/pfbuild_bebed427-61ef-43c3-807d-2b8a1e80221b/Sortey.ipa"
+    },
+    "buildId": "pfbuild_bebed427-61ef-43c3-807d-2b8a1e80221b",
+    "signing": {
+      "certificateSerial": "1F9068C16E6B1BE46399F5C0988A16CB",
+      "profiles": [
+        {
+          "bundleId": "com.gmacko.sortey",
+          "uuid": "dd11aaf8-097e-40fd-b3ae-5af7636fbe6b"
+        },
+        {
+          "bundleId": "com.gmacko.sortey.share-extension",
+          "uuid": "596a4574-a4f6-4d0e-8581-39ea382f542b"
+        }
+      ],
+      "teamId": "P4SWQXAB5H"
+    },
+    "status": "ok"
+  },
+  "uploadWorkflowId": "pfw_8bb6a969-88b8-40c7-acef-864ececf340d",
+  "uploadJobStatus": "succeeded",
+  "uploadResult": {
+    "artifact": {
+      "fileName": "Sortey.ipa",
+      "kind": "ipa",
+      "sha256": "12ade4ed9fce2d6a68a80f9c241b26ad520dc3eab1ae4e76c7366f8eff6670c2",
+      "sizeBytes": 36644315,
+      "storageKey": "store-builds/pfapp_seed_sortie/pfbuild_bebed427-61ef-43c3-807d-2b8a1e80221b/Sortey.ipa"
+    },
+    "ascDeliveryUuid": "18508790-f970-4178-8ec8-ce95333dbb6c",
+    "ascProcessingState": "UPLOADED",
+    "buildId": "pfbuild_bebed427-61ef-43c3-807d-2b8a1e80221b",
+    "destination": "testflight",
+    "status": "ok"
+  },
+  "storeBuild": {
+    "build": {
+      "id": "pfbuild_bebed427-61ef-43c3-807d-2b8a1e80221b",
+      "appId": "pfapp_seed_sortie",
+      "platform": "ios",
+      "profile": "production",
+      "version": "0.1.0",
+      "buildNumber": "11",
+      "environment": "production",
+      "status": "completed",
+      "logsUrl": null,
+      "artifactUrl": null,
+      "easBuildId": null,
+      "buildSource": "preflight",
+      "storeLane": "store",
+      "storeWorkflowId": "pfw_9f16f5d1-d43e-4e5c-beb5-29becfd80c7b",
+      "artifactStorageKey": "store-builds/pfapp_seed_sortie/pfbuild_bebed427-61ef-43c3-807d-2b8a1e80221b/Sortey.ipa",
+      "artifactSha256": "12ade4ed9fce2d6a68a80f9c241b26ad520dc3eab1ae4e76c7366f8eff6670c2",
+      "artifactSizeBytes": 36644315,
+      "storeDestination": "testflight",
+      "storeUploadStatus": "processed",
+      "ascBuildId": "18508790-f970-4178-8ec8-ce95333dbb6c",
+      "playVersionCode": null,
+      "playReleaseStatus": null,
+      "testflightDistribution": {
+        "status": "assigned",
+        "source": "auto",
+        "assignedGroups": [],
+        "alreadyInGroups": [
+          {
+            "id": "c8d41c50-a224-46b2-9bc3-0d8a8acadd8d",
+            "name": "Test"
+          }
+        ],
+        "exportCompliance": "answered",
+        "attempts": 1,
+        "at": "2026-11-24T11:30:55.837Z"
+      },
+      "errorMessage": null,
+      "startedAt": "2026-11-24T11:14:22.989Z",
+      "completedAt": "2026-11-24T11:21:41.519Z",
+      "createdAt": "2026-11-24T11:14:20.794Z",
+      "updatedAt": "2026-11-24T11:30:57.168Z"
+    },
+    "storeUploadStatus": "processed",
+    "ascBuildId": "18508790-f970-4178-8ec8-ce95333dbb6c",
+    "playVersionCode": null,
+    "playReleaseStatus": null,
+    "artifact": {
+      "storageKey": "store-builds/pfapp_seed_sortie/pfbuild_bebed427-61ef-43c3-807d-2b8a1e80221b/Sortey.ipa",
+      "sha256": "12ade4ed9fce2d6a68a80f9c241b26ad520dc3eab1ae4e76c7366f8eff6670c2",
+      "sizeBytes": 36644315
+    },
+    "runnerJobs": [
+      {
+        "id": "pfjob_10737810-a422-45dc-8a7b-9afe7c072df6",
+        "kind": "store.build",
+        "status": "succeeded",
+        "attempt": 1,
+        "maxAttempts": 2,
+        "completedAt": "2026-11-24T11:21:41.519Z"
+      }
+    ],
+    "workflow": {
+      "id": "pfw_9f16f5d1-d43e-4e5c-beb5-29becfd80c7b",
+      "status": "passed",
+      "phase": "store_build_completed"
+    }
+  },
+  "appleBuild": {
+    "id": "18508790-f970-4178-8ec8-ce95333dbb6c",
+    "version": "0.1.0",
+    "buildNumber": "11",
+    "processingState": "VALID",
+    "expired": false,
+    "expirationDate": "2027-02-22T03:26:36-08:00",
+    "uploadedDate": "2026-11-24T03:26:36-08:00",
+    "groups": [
+      {
+        "id": "c8d41c50-a224-46b2-9bc3-0d8a8acadd8d",
+        "name": "Test"
+      }
+    ]
+  },
+  "appleGroups": [
+    {
+      "id": "c8d41c50-a224-46b2-9bc3-0d8a8acadd8d",
+      "name": "Test",
+      "isInternal": true,
+      "publicLinkEnabled": false,
+      "publicLink": null
+    }
+  ]
+}
