@@ -1,12 +1,15 @@
 {
   "$schema": "../../../node_modules/wrangler/config-schema.json",
-  // Legacy redirect for sortie.gmac.io -> https://sortey.app (SORTEY-31).
+  // Public aliases for https://sortey.app (SORTEY-31, SORTEY-35).
   // Deploy: npx wrangler deploy -c deploy/cloudflare/legacy-redirects/wrangler.sortie.jsonc
   "name": "sortie-gmac-io",
   "main": "worker.js",
   "compatibility_date": "2026-04-15",
   "workers_dev": false,
-  "routes": [{ "pattern": "sortie.gmac.io", "custom_domain": true }],
+  "routes": [
+    { "pattern": "sortie.gmac.io", "custom_domain": true },
+    { "pattern": "www.sortey.app", "custom_domain": true }
+  ],
   "triggers": { "crons": [] },
   "observability": { "enabled": true }
 }
