@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,22 +12,20 @@ import {
   ScrollView,
   Text,
   TextInput,
+  StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native";
+import type { RouterOutputs } from "~/utils/api";
+import {
+  showsSegmentColumns,
+  selectedTripSegment,
+} from "~/utils/segment-layout";
 import { trpc } from "~/utils/api";
 import { authClient } from "~/utils/auth";
 import { formatCalendarDate } from "~/utils/calendar-date";
 import { C, mono, R } from "~/utils/design";
 import { getActiveWorkspaceId } from "~/utils/workspace-store";
-
-const SEGMENT_COLORS = [
-  C.info,
-  "#79C0FF",
-  "#56D364",
-  "#D2A8FF",
-  "#7EE787",
-  "#A5D6FF",
-];
 
 function formatDate(value: string | null) {
   return formatCalendarDate(value, {
@@ -472,12 +470,116 @@ const inputStyle = {
   fontSize: 16,
 };
 
+type TripLeg = RouterOutputs["trips"]["listSegments"][number];
+
+function SegmentDetails({
+  leg,
+  tripId,
+  workspaceId,
+}: {
+  leg: TripLeg;
+  tripId: string;
+  workspaceId: string;
+}) {
+  const bookings = useQuery(
+    trpc.lodging.listForSegment.queryOptions({
+      workspaceId,
+      tripId,
+      segmentId: leg.id,
+    }),
+  );
+  const dates = formatDateRange(leg.startDate, leg.endDate);
+
+  return (
+    <View style={legStyles.card}>
+      <Text accessibilityRole="header" style={legStyles.heading}>
+        {leg.name}
+      </Text>
+      {dates ? <Text style={legStyles.body}>{dates}</Text> : null}
+      {leg.originName ? (
+        <Text style={legStyles.body}>From {leg.originName}</Text>
+      ) : null}
+      {leg.destinationName ? (
+        <Text style={legStyles.body}>Meet at {leg.destinationName}</Text>
+      ) : null}
+      {leg.distanceMiles != null ? (
+        <Text style={legStyles.body}>
+          {leg.distanceMiles} mi
+          {leg.durationMinutes != null ? ` · ${leg.durationMinutes} min` : ""}
+        </Text>
+      ) : null}
+      {leg.destinationLat != null && leg.destinationLng != null ? (
+        <Text selectable style={legStyles.body}>
+          {leg.destinationLat}, {leg.destinationLng}
+        </Text>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        style={legStyles.button}
+        onPress={() =>
+          router.push({
+            pathname: "/trip/[tripId]/map",
+            params: { tripId, segmentId: leg.id },
+          })
+        }
+      >
+        <Text style={legStyles.link}>Open segment map</Text>
+      </Pressable>
+      <Text accessibilityRole="header" style={legStyles.section}>
+        Reservations
+      </Text>
+      {bookings.isLoading ? (
+        <ActivityIndicator
+          accessibilityLabel="Loading reservations"
+          color={C.info}
+        />
+      ) : null}
+      {bookings.isError ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void bookings.refetch()}
+          style={legStyles.button}
+        >
+          <Text style={legStyles.link}>Could not load reservations. Retry</Text>
+        </Pressable>
+      ) : null}
+      {bookings.data?.length === 0 ? (
+        <Text style={legStyles.body}>No reservations for this segment.</Text>
+      ) : null}
+      {bookings.data?.map((stay) => (
+        <View key={stay.id} style={{ gap: 4 }}>
+          <Text style={legStyles.section}>{stay.propertyName}</Text>
+          {stay.address ? (
+            <Text selectable style={legStyles.body}>
+              {stay.address}
+            </Text>
+          ) : null}
+          {stay.notes ? <Text style={legStyles.body}>{stay.notes}</Text> : null}
+        </View>
+      ))}
+      <Text accessibilityRole="header" style={legStyles.section}>
+        Travelers
+      </Text>
+      <SegmentMemberRow
+        segmentId={leg.id}
+        tripId={tripId}
+        workspaceId={workspaceId}
+      />
+    </View>
+  );
+}
+
 export default function SegmentsScreen() {
   "use no memo";
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const workspaceId = getActiveWorkspaceId() ?? "";
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const [showStops, setShowStops] = useState(false);
+  const [width, setWidth] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const expanded = showsSegmentColumns(width, fontScale);
 
   const { data: segments, isLoading } = useQuery(
     trpc.trips.listSegments.queryOptions({
@@ -485,6 +587,14 @@ export default function SegmentsScreen() {
       tripId: tripId ?? "",
     }),
   );
+
+  const today = new Date();
+  const localDay = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+  const selected = selectedTripSegment(segments ?? [], chosenId, localDay);
 
   const createMutation = useMutation(
     trpc.trips.createSegment.mutationOptions({
@@ -515,7 +625,10 @@ export default function SegmentsScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    <View
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      style={{ flex: 1, backgroundColor: C.bg }}
+    >
       <Stack.Screen
         options={{
           title: "Segments",
@@ -555,154 +668,81 @@ export default function SegmentsScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-        >
-          {segments.map((item, index) => {
-            const color = SEGMENT_COLORS[index % SEGMENT_COLORS.length]!;
-            const dateRange = formatDateRange(item.startDate, item.endDate);
-
-            return (
-              <View key={item.id}>
-                {index > 0 && (
-                  <View style={{ alignItems: "center", height: 24 }}>
-                    <View
-                      style={{
-                        width: 2,
-                        height: 24,
-                        backgroundColor: C.border,
-                      }}
-                    />
-                  </View>
-                )}
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    backgroundColor: C.surface,
-                    borderRadius: R.md,
-                    overflow: "hidden",
+        <View style={legStyles.workspace}>
+          {!expanded && (
+            <Pressable
+              accessibilityRole="button"
+              style={legStyles.button}
+              onPress={() => setShowStops(!showStops)}
+            >
+              <Text style={legStyles.link}>
+                {showStops ? "Return to selected segment" : "Choose a segment"}
+              </Text>
+            </Pressable>
+          )}
+          <View style={[legStyles.workspace, expanded && legStyles.columns]}>
+            <ScrollView
+              style={[
+                legStyles.pane,
+                !expanded && !showStops && legStyles.hidden,
+              ]}
+              contentContainerStyle={legStyles.content}
+            >
+              <Text accessibilityRole="header" style={legStyles.heading}>
+                Trip segments
+              </Text>
+              {segments.map((leg, index) => (
+                <Pressable
+                  key={leg.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selected?.id === leg.id }}
+                  style={[
+                    legStyles.card,
+                    selected?.id === leg.id && legStyles.chosen,
+                  ]}
+                  onPress={() => {
+                    setChosenId(leg.id);
+                    setShowStops(false);
                   }}
                 >
-                  <View style={{ height: 3, backgroundColor: color }} />
-                  <View style={{ padding: 16, gap: 10 }}>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 14,
-                          backgroundColor: `${color}22`,
-                          borderWidth: 2,
-                          borderColor: color,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color,
-                            fontSize: 12,
-                            fontWeight: "800",
-                            fontFamily: mono,
-                          }}
-                        >
-                          {index + 1}
-                        </Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            color: C.fg,
-                            fontSize: 17,
-                            fontWeight: "700",
-                          }}
-                        >
-                          {item.name}
-                        </Text>
-                        {item.destinationName && (
-                          <Text style={{ color: C.muted, fontSize: 13 }}>
-                            {item.destinationName}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-
-                    {dateRange ? (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        <Ionicons
-                          name="calendar-outline"
-                          size={13}
-                          color={C.muted}
-                        />
-                        <Text
-                          style={{
-                            color: C.info,
-                            fontSize: 13,
-                            fontFamily: mono,
-                          }}
-                        >
-                          {dateRange}
-                        </Text>
-                      </View>
-                    ) : null}
-
-                    {item.distanceMiles && (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        <Ionicons
-                          name="navigate-outline"
-                          size={13}
-                          color={C.muted}
-                        />
-                        <Text
-                          style={{
-                            color: C.muted,
-                            fontSize: 12,
-                            fontFamily: mono,
-                          }}
-                        >
-                          {item.distanceMiles} mi
-                          {item.durationMinutes
-                            ? ` · ${Math.round(item.durationMinutes / 60)}h ${item.durationMinutes % 60}m`
-                            : ""}
-                        </Text>
-                      </View>
-                    )}
-
-                    <SegmentMemberRow
-                      segmentId={item.id}
-                      tripId={tripId ?? ""}
-                      workspaceId={workspaceId}
-                    />
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
+                  <Text style={legStyles.section}>
+                    {index + 1}. {leg.name}
+                  </Text>
+                  {leg.destinationName ? (
+                    <Text style={legStyles.body}>{leg.destinationName}</Text>
+                  ) : null}
+                  {leg.startDate || leg.endDate ? (
+                    <Text style={legStyles.body}>
+                      {formatDateRange(leg.startDate, leg.endDate)}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+            <ScrollView
+              style={[
+                legStyles.pane,
+                !expanded && showStops && legStyles.hidden,
+              ]}
+              contentContainerStyle={legStyles.content}
+            >
+              {selected && (
+                <SegmentDetails
+                  key={selected.id}
+                  leg={selected}
+                  tripId={tripId ?? ""}
+                  workspaceId={workspaceId}
+                />
+              )}
+            </ScrollView>
+          </View>
+        </View>
       )}
 
       {/* FAB */}
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add segment"
         onPress={() => setShowCreate(true)}
         style={{
           position: "absolute",
@@ -733,3 +773,25 @@ export default function SegmentsScreen() {
     </View>
   );
 }
+
+const legStyles = StyleSheet.create({
+  workspace: { flex: 1 },
+  columns: { flexDirection: "row" },
+  pane: { flex: 1, minWidth: 0 },
+  hidden: { display: "none" },
+  content: { padding: 12, paddingBottom: 100, gap: 10 },
+  card: {
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: R.md,
+    backgroundColor: C.surface,
+  },
+  chosen: { borderColor: C.info, borderWidth: 2 },
+  heading: { color: C.fg, fontSize: 22, fontWeight: "700" },
+  section: { color: C.fg, fontSize: 17, fontWeight: "600" },
+  body: { color: C.muted, fontSize: 15 },
+  button: { minHeight: 44, paddingHorizontal: 14, justifyContent: "center" },
+  link: { color: C.info, fontSize: 16, fontWeight: "600" },
+});

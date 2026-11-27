@@ -174,7 +174,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: "sortie",
     scheme: getScheme(),
     version: "0.1.0",
-    orientation: "portrait",
+    orientation: "default",
     icon: getVariantIcon(),
     userInterfaceStyle: "automatic",
     // OTA updates may only target binaries with an identical native runtime.
