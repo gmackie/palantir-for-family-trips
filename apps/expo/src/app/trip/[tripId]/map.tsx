@@ -253,11 +253,14 @@ function degreesToMiles(latDelta: number): number {
 
 export default function MapScreen() {
   "use no memo";
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { tripId, segmentId } = useLocalSearchParams<{
+    tripId: string;
+    segmentId?: string;
+  }>();
   const router = useRouter();
   const workspaceId = getActiveWorkspaceId() ?? "";
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
-    null,
+    segmentId ?? null,
   );
   // Default fuel + overnight layers on so the active-trip map shows gas
   // targets without requiring a manual chip tap.
